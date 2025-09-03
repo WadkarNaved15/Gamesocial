@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Space Invaders</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: black;
+        font-family: Arial, sans-serif;
+      }
+
+      #game {
+        position: relative;
+        width: 800px;
+        height: 600px;
+        border: 2px solid #333;
+        overflow: hidden;
+      }
+
+      .player {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        background: #4a9eff;
+        clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      }
+
+      .enemy {
+        position: absolute;
+        width: 40px;
+        height: 40px;
+        background: #ff4a4a;
+        clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+      }
+
+      .bullet {
+        position: absolute;
+        width: 4px;
+        height: 10px;
+        background: #fff;
+      }
+
+      .enemy-bullet {
+        background: #ff4a4a;
+      }
+
+      #score {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        color: white;
+        font-size: 24px;
+        font-weight: bold;
+      }
+
+      .game-over {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        display: none;
+      }
+
+      .game-over h2 {
+        font-size: 48px;
+        margin-bottom: 20px;
+      }
+
+      .game-over button {
+        padding: 12px 24px;
+        font-size: 18px;
+        background: #4a9eff;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .game-over button:hover {
+        background: #3a7fd6;
+      }
+
+      .star {
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        background: white;
+        opacity: 0.5;
+        animation: twinkle var(--twinkle-duration) infinite;
+      }
+
+      @keyframes twinkle {
+        0% { opacity: 0.2; }
+        50% { opacity: 1; }
+        100% { opacity: 0.2; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game">
+      <div id="score">Score: 0</div>
+      <div class="game-over">
+        <h2>Game Over!</h2>
+        <p class="final-score">Final Score: 0</p>
+        <button onclick="resetGame()">Play Again</button>
+      </div>
+    </div>
+
+    <script>
+      const GAME_WIDTH = 800;
+      const GAME_HEIGHT = 600;
+      const PLAYER_SPEED = 5;
+      const ENEMY_ROWS = 3;
+      const ENEMIES_PER_ROW = 8;
+      const ENEMY_PADDING = 60;
+      const ENEMY_MOVE_INTERVAL = 1000;
+      const ENEMY_SHOOT_CHANCE = 0.02;
+
+      const gameElement = document.getElementById('game');
+      const scoreElement = document.getElementById('score');
+      const gameOverElement = document.querySelector('.game-over');
+      const finalScoreElement = document.querySelector('.final-score');
+
+      let player = {
+        x: GAME_WIDTH / 2 - 25,
+        y: GAME_HEIGHT - 60,
+        width: 50,
+        height: 50,
+        element: document.createElement('div')
+      };
+
+      let enemies = [];
+      let playerBullets = [];
+      let enemyBullets = [];
+      let score = 0;
+      let gameOver = false;
+      let direction = 'right';
+      let keysPressed = new Set();
+      let animationFrame;
+
+      function updateScore(newScore) {
+        score = newScore;
+        scoreElement.textContent = `Score: ${score}`;
+      }
+
+      // Create stars
+      for (let i = 0; i < 50; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        star.style.left = `${Math.random() * 100}%`;
+        star.style.top = `${Math.random() * 100}%`;
+        star.style.setProperty('--twinkle-duration', `${Math.random() * 3 + 1}s`);
+        gameElement.appendChild(star);
+      }
+
+      // Initialize player
+      player.element.className = 'player';
+      gameElement.appendChild(player.element);
+
+      // Initialize enemies
+      function createEnemies() {
+        enemies = [];
+        for (let row = 0; row < ENEMY_ROWS; row++) {
+          for (let col = 0; col < ENEMIES_PER_ROW; col++) {
+            const enemy = {
+              x: col * ENEMY_PADDING + 100,
+              y: row * ENEMY_PADDING + 50,
+              width: 40,
+              height: 40,
+              element: document.createElement('div')
+            };
+            enemy.element.className = 'enemy';
+            gameElement.appendChild(enemy.element);
+            enemies.push(enemy);
+          }
+        }
+      }
+
+      function updatePosition(entity) {
+        entity.element.style.left = `${entity.x}px`;
+        entity.element.style.top = `${entity.y}px`;
+      }
+
+      function checkCollision(a, b) {
+        return a.x < b.x + b.width &&
+               a.x + a.width > b.x &&
+               a.y < b.y + b.height &&
+               a.y + a.height > b.y;
+      }
+
+      function createBullet(x, y, isEnemy = false) {
+        const bullet = {
+          x,
+          y,
+          width: 4,
+          height: 10,
+          element: document.createElement('div')
+        };
+        bullet.element.className = `bullet ${isEnemy ? 'enemy-bullet' : ''}`;
+        gameElement.appendChild(bullet.element);
+        return bullet;
+      }
+
+      function gameLoop() {
+        if (gameOver) return;
+
+        // Player movement
+        if (keysPressed.has('ArrowLeft')) {
+          player.x = Math.max(0, player.x - PLAYER_SPEED);
+        }
+        if (keysPressed.has('ArrowRight')) {
+          player.x = Math.min(GAME_WIDTH - player.width, player.x + PLAYER_SPEED);
+        }
+        updatePosition(player);
+
+        // Update bullets
+        for (let i = playerBullets.length - 1; i >= 0; i--) {
+          const bullet = playerBullets[i];
+          bullet.y -= 8;
+          if (bullet.y < 0) {
+            gameElement.removeChild(bullet.element);
+            playerBullets.splice(i, 1);
+          } else {
+            updatePosition(bullet);
+          }
+        }
+
+        for (let i = enemyBullets.length - 1; i >= 0; i--) {
+          const bullet = enemyBullets[i];
+          bullet.y += 5;
+          if (bullet.y > GAME_HEIGHT) {
+            gameElement.removeChild(bullet.element);
+            enemyBullets.splice(i, 1);
+          } else {
+            updatePosition(bullet);
+            if (checkCollision(bullet, player)) {
+              endGame();
+            }
+          }
+        }
+
+        // Check collisions
+        for (let i = playerBullets.length - 1; i >= 0; i--) {
+          const bullet = playerBullets[i];
+          for (let j = enemies.length - 1; j >= 0; j--) {
+            const enemy = enemies[j];
+            if (checkCollision(bullet, enemy)) {
+              gameElement.removeChild(bullet.element);
+              gameElement.removeChild(enemy.element);
+              playerBullets.splice(i, 1);
+              enemies.splice(j, 1);
+              updateScore(score + 100);
+              break;
+            }
+          }
+        }
+
+        animationFrame = requestAnimationFrame(gameLoop);
+      }
+
+      function moveEnemies() {
+        if (gameOver) return;
+
+        let shouldChangeDirection = false;
+
+        enemies.forEach(enemy => {
+          if (direction === 'right') {
+            enemy.x += 20;
+            if (enemy.x + enemy.width >= GAME_WIDTH) {
+              shouldChangeDirection = true;
+            }
+          } else {
+            enemy.x -= 20;
+            if (enemy.x <= 0) {
+              shouldChangeDirection = true;
+            }
+          }
+
+          if (Math.random() < ENEMY_SHOOT_CHANCE) {
+            enemyBullets.push(createBullet(
+              enemy.x + enemy.width / 2 - 2,
+              enemy.y + enemy.height,
+              true
+            ));
+          }
+
+          updatePosition(enemy);
+        });
+
+        if (shouldChangeDirection) {
+          direction = direction === 'right' ? 'left' : 'right';
+          enemies.forEach(enemy => {
+            enemy.y += 20;
+            updatePosition(enemy);
+            if (enemy.y + enemy.height >= player.y) {
+              endGame();
+            }
+          });
+        }
+      }
+
+      function endGame() {
+        gameOver = true;
+        cancelAnimationFrame(animationFrame);
+        gameOverElement.style.display = 'flex';
+        finalScoreElement.textContent = `Final Score: ${score}`;
+      }
+
+      function resetGame() {
+        // Clear existing entities
+        while (gameElement.querySelector('.enemy')) {
+          gameElement.removeChild(gameElement.querySelector('.enemy'));
+        }
+        while (gameElement.querySelector('.bullet')) {
+          gameElement.removeChild(gameElement.querySelector('.bullet'));
+        }
+
+        // Reset game state
+        player.x = GAME_WIDTH / 2 - 25;
+        player.y = GAME_HEIGHT - 60;
+        playerBullets = [];
+        enemyBullets = [];
+        updateScore(0);
+        gameOver = false;
+        direction = 'right';
+        gameOverElement.style.display = 'none';
+
+        // Create new enemies
+        createEnemies();
+
+        // Start game loop
+        gameLoop();
+      }
+
+      // Event listeners
+      document.addEventListener('keydown', e => {
+        keysPressed.add(e.key);
+        if (e.key === ' ' && !gameOver && playerBullets.length < 3) {
+          playerBullets.push(createBullet(
+            player.x + player.width / 2 - 2,
+            player.y
+          ));
+        }
+      });
+
+      document.addEventListener('keyup', e => {
+        keysPressed.delete(e.key);
+      });
+
+      // Start game
+      createEnemies();
+      gameLoop();
+      setInterval(moveEnemies, ENEMY_MOVE_INTERVAL);
+    </script>
+  </body>
+</html>
