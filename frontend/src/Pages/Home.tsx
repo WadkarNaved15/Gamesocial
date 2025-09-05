@@ -14,33 +14,34 @@ import type { PostProps } from '../types/Post';
 import CircleLoader from '../components/Loader/CircleLoader';
 import TickerBar from '../components/Home/TickerBar';
 import UploadBox from '../components/Home/Upload';
+import FeedbackModal from '../components/Home/Feedback';
 
 // Lazy-loaded components
 const Profile = lazy(() => import('../components/Home/Profile'));
 const Billboard = lazy(() => import('../components/Home/Billboard'));
 const AddPost = lazy(() => import('../components/Home/AddPost'));
 const Music = lazy(() => import('../components/Music'));
-const HomeModal = lazy(() => import('../components/Home/HomeModal'));
 const PostModal = lazy(() => import('../components/Home/NewPost'));
 
 function Home() {
   const { user } = useUser();
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
-  const [isModalOpen, setIsModalOpen] = useState(user === null);
+  // const [isModalOpen, setIsModalOpen] = useState(user === null);
   const [posts, setPosts] = useState<PostProps[]>([]);
   const [nextCursor, setNextCursor] = useState(null);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
 
   const loaderRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    setIsModalOpen(user === null);
-  }, [user]);
+  // useEffect(() => {
+  //   setIsModalOpen(user === null);
+  // }, [user]);
 
   const fetchPosts = useCallback(async () => {
     if (loading || !hasMore) return;
@@ -99,10 +100,31 @@ function Home() {
       <Header />
       <TickerBar />
       
+<button
+  onClick={() => setIsFeedbackOpen(true)}
+  className="fixed top-2/3 left-0 m-0 p-0 rotate-90 
+             z-[9999] bg-red-500 text-white px-4 py-2 
+             rounded-tl-lg rounded-tr-lg shadow-md 
+             hover:bg-red-600 transition-all duration-200 ease-in-out"
+  style={{ left: 0 }}
+>
+  Feedback
+</button>
 
-      <Suspense fallback={null}>
+
+
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        onSubmit={(category, feedback) => {
+          console.log("Feedback submitted:", category, feedback);
+          // ✅ send to backend API here
+        }}
+      />
+
+      {/* <Suspense fallback={null}>
         {isModalOpen && <HomeModal onClose={() => setIsModalOpen(false)} />}
-      </Suspense>
+      </Suspense> */}
 
   <main className="max-w-7xl mx-auto pl-2 sm:pl-4 lg:pl-6 pr-4 sm:pr-6 lg:pr-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-10 gap-8">
