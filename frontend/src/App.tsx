@@ -9,7 +9,6 @@ const Auth = lazy(() => import('./Pages/Auth'));
 const EditProfilePage = lazy(() => import('./Pages/EditProfile'));
 const GameStream = lazy(() => import('./Pages/GameStream'));
 // const Game = lazy(() => import('./Pages/Game'));
-const TypewriterScroll = lazy(() => import('./Pages/Typewriter'));
 
 // Optional / future pages (can also be lazy-loaded when needed)
 // const UploadPage = lazy(() => import('./Pages/UploadPage'));
@@ -34,7 +33,6 @@ function App() {
             {/*<Route path="/game" element={<Game />} />
             <Route path="/profile" element={<Profile />} />*/}
             <Route path="/editprofile" element={<EditProfilePage />} /> 
-            <Route path="/typewriter" element={<TypewriterScroll />} />
             {/* Future routes */}
             {/* <Route path="/upload" element={<UploadPage />} />
             <Route path="/explore" element={<ExplorePage />} /> */}

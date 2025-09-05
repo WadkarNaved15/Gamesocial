@@ -21,6 +21,7 @@ const Billboard = lazy(() => import('../components/Home/Billboard'));
 const AddPost = lazy(() => import('../components/Home/AddPost'));
 const Music = lazy(() => import('../components/Music'));
 const HomeModal = lazy(() => import('../components/Home/HomeModal'));
+const PostModal = lazy(() => import('../components/Home/NewPost'));
 
 function Home() {
   const { user } = useUser();
@@ -31,6 +32,9 @@ function Home() {
   const [nextCursor, setNextCursor] = useState(null);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+
+  const [isUploading, setIsUploading] = useState(false);
+
 
   const loaderRef = useRef<HTMLDivElement | null>(null);
 
@@ -121,10 +125,20 @@ function Home() {
         border-t border-r border-gray-200 dark:border-[#3D7A6E] 
         hidden lg:block"> */}
         <div className="sticky top-80">
-            <UploadBox />
+            <UploadBox onUploadClick={() => setIsUploading(true)} />
         </div>
         </div>
 
+
+            {/* Center Feed + Billboard */}
+{isUploading ? (
+  <div className="lg:col-span-8 flex flex-col items-center justify-start min-h-[80vh] w-full">
+    <Suspense fallback={null}>
+      <PostModal onCancel={() => setIsUploading(false)} />
+    </Suspense>
+  </div>
+) : (
+  <>
           {/* Center Feed */}
           <div className="lg:col-span-5 flex flex-col items-center justify-start min-h-[80vh] w-full">
             {user && (
@@ -164,6 +178,8 @@ function Home() {
               </Suspense>
             </div>
           </div>
+          </>
+)}
         </div>
       </main>
 
