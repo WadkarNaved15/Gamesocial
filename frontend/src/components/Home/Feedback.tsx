@@ -4,21 +4,56 @@ import { FaTimes } from "react-icons/fa";
 interface FeedbackModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (category: string, feedback: string) => void;
 }
 
-export default function FeedbackModal({ isOpen, onClose, onSubmit }: FeedbackModalProps) {
+export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
   const [category, setCategory] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   if (!isOpen) return null;
 
-  const handleSubmit = () => {
-    if (!category || !feedback.trim()) return;
-    onSubmit(category, feedback);
-    setCategory("");
-    setFeedback("");
-    onClose();
+  const handleSubmit = async () => {
+    if (!category || !feedback.trim()) {
+      setError("Please select a category and write your feedback.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const res = await fetch("http://localhost:5000/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // Needed to send JWT cookie
+        body: JSON.stringify({
+          category,
+          message: feedback,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Something went wrong.");
+      } else {
+        setSuccess("Feedback submitted successfully!");
+        setCategory("");
+        setFeedback("");
+        setTimeout(() => {
+          onClose();
+          setSuccess("");
+        }, 1000);
+      }
+    } catch (err) {
+      setError("Failed to submit feedback. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -41,6 +76,10 @@ export default function FeedbackModal({ isOpen, onClose, onSubmit }: FeedbackMod
           or just tell us what you think about the app.
         </p>
 
+        {/* Show messages */}
+        {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
+        {success && <p className="text-green-400 text-sm mb-2">{success}</p>}
+
         {/* Category Select */}
         <label className="block text-sm font-medium mb-1">Category</label>
         <select
@@ -50,10 +89,10 @@ export default function FeedbackModal({ isOpen, onClose, onSubmit }: FeedbackMod
                      focus:ring-2 focus:ring-red-500 text-white text-sm mb-4"
         >
           <option value="">Please select a category</option>
-          <option value="feature">Feature Request</option>
-          <option value="bug">Bug Report</option>
-          <option value="ui">UI/UX Feedback</option>
-          <option value="other">Other</option>
+          <option value="Feature Request">Feature Request</option>
+          <option value="Bug Report">Bug Report</option>
+          <option value="Purchase and Payment Issue">Purchase and Payment Issue</option>
+          <option value="Other">Other</option>
         </select>
 
         {/* Feedback textarea */}
@@ -77,10 +116,11 @@ export default function FeedbackModal({ isOpen, onClose, onSubmit }: FeedbackMod
           </button>
           <button
             onClick={handleSubmit}
+            disabled={loading}
             className="px-4 py-2 rounded-lg bg-red-500 text-white font-medium 
-                       hover:bg-red-600 transition text-sm"
+                       hover:bg-red-600 transition text-sm disabled:opacity-50"
           >
-            Submit
+            {loading ? "Submitting..." : "Submit"}
           </button>
         </div>
       </div>

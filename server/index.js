@@ -9,6 +9,7 @@ import "./passportConfig.js"; // Import Passport Config
 import authRoutes from "./routes/auth.js"; // Ensure the file extension is correct
 import postRoutes from "./routes/postRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import feedBackRoutes from "./routes/feedback.js"
 import gameRoutes from "./routes/gameRoutes.js"
 
 dotenv.config();
@@ -55,6 +56,7 @@ app.use("/uploads", express.static("uploads"));
 // Upload route
 app.use("/api/upload", uploadRoutes);
 app.use("/api/gameRoutes",gameRoutes);
+app.use("/api/feedback",feedBackRoutes);
 // Connect to MongoDB
 
 mongoose

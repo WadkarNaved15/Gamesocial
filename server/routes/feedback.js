@@ -1,11 +1,11 @@
 import express from "express";
-import verifyToken from "../middleware/authMiddleware.js";
-import Feedback from "../models/Feedback.js";
+// import verifyToken from "../middlewares/authMiddleware.js";
+// import Feedback from "../models/Feedback.js";
 
 const router = express.Router();
 
 // POST - Submit feedback
-router.post("/feedback", verifyToken, async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const { category, message } = req.body;
 
@@ -13,14 +13,15 @@ router.post("/feedback", verifyToken, async (req, res) => {
       return res.status(400).json({ error: "Category and message are required" });
     }
 
-    const feedback = new Feedback({
-      user: req.user.id,
-      category,
-      message,
-    });
+    // const feedback = new Feedback({
+    //   user: req.user.id,
+    //   category,
+    //   message,
+    // });
 
-    await feedback.save();
-    res.status(201).json({ message: "Feedback submitted successfully", feedback });
+   console.log('Feedback recieved',{category, message});
+     res.status(201).json({ message: "Feedback received successfully", data: { category, message } });
+
   } catch (error) {
     console.error("Feedback error:", error);
     res.status(500).json({ error: "Internal Server Error" });
