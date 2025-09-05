@@ -12,6 +12,8 @@ import { useUser } from '../context/user';
 import axios from 'axios';
 import type { PostProps } from '../types/Post'; 
 import CircleLoader from '../components/Loader/CircleLoader';
+import TickerBar from '../components/Home/TickerBar';
+import UploadBox from '../components/Home/Upload';
 
 // Lazy-loaded components
 const Profile = lazy(() => import('../components/Home/Profile'));
@@ -19,6 +21,7 @@ const Billboard = lazy(() => import('../components/Home/Billboard'));
 const AddPost = lazy(() => import('../components/Home/AddPost'));
 const Music = lazy(() => import('../components/Music'));
 const HomeModal = lazy(() => import('../components/Home/HomeModal'));
+const PostModal = lazy(() => import('../components/Home/NewPost'));
 
 function Home() {
   const { user } = useUser();
@@ -29,6 +32,9 @@ function Home() {
   const [nextCursor, setNextCursor] = useState(null);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+
+  const [isUploading, setIsUploading] = useState(false);
+
 
   const loaderRef = useRef<HTMLDivElement | null>(null);
 
@@ -89,23 +95,50 @@ function Home() {
   }, [fetchPosts, hasMore, loading]);
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-100 dark:bg-black">
       <Header />
+      <TickerBar />
+      
 
       <Suspense fallback={null}>
         {isModalOpen && <HomeModal onClose={() => setIsModalOpen(false)} />}
       </Suspense>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <main className="max-w-7xl mx-auto pl-2 sm:pl-4 lg:pl-6 pr-4 sm:pr-6 lg:pr-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-10 gap-8">
 
+        <div className="lg:col-span-2">
           {/* Profile Sidebar */}
-          <div className="lg:col-span-2 sticky shadow-2xl top-24 h-60 dark:bg-gray-800 bg-white rounded-xl border border-gray-200 dark:border-gray-700 hidden lg:block">
+    <div
+  className="sticky top-24 shadow-2xl h-54 
+  dark:bg-black bg-white rounded-t-xl 
+  border-t border-r border-gray-200 dark:border-[#3D7A6E]"
+>
+
             <Suspense fallback={null}>
               <Profile />
             </Suspense>
           </div>
 
+          {/* <div className="lg:col-span-2 sticky shadow-2xl top-24 h-60 
+        dark:bg-black bg-white rounded-t-xl 
+        border-t border-r border-gray-200 dark:border-[#3D7A6E] 
+        hidden lg:block"> */}
+        <div className="sticky top-80">
+            <UploadBox onUploadClick={() => setIsUploading(true)} />
+        </div>
+        </div>
+
+
+            {/* Center Feed + Billboard */}
+{isUploading ? (
+  <div className="lg:col-span-8 flex flex-col items-center justify-start min-h-[80vh] w-full">
+    <Suspense fallback={null}>
+      <PostModal onCancel={() => setIsUploading(false)} />
+    </Suspense>
+  </div>
+) : (
+  <>
           {/* Center Feed */}
           <div className="lg:col-span-5 flex flex-col items-center justify-start min-h-[80vh] w-full">
             {user && (
@@ -115,7 +148,7 @@ function Home() {
             )}
 
             {posts.length > 0 && (
-              <div className="w-full flex flex-col gap-6">
+              <div className="w-full flex flex-col">
                 {posts.map((post) => (
                   <Post key={post._id } {...post} />
                 ))}
@@ -145,6 +178,8 @@ function Home() {
               </Suspense>
             </div>
           </div>
+          </>
+)}
         </div>
       </main>
 

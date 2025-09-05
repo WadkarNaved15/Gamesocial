@@ -45,7 +45,21 @@ const handleGameStream = async () => {
 
 
   return (
-    <article className="bg-white border-b-2 w-full border-gray-200 dark:border-gray-600 dark:bg-gray-800 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md">
+<article
+  className="relative bg-white border w-full border-gray-200 
+  dark:border-gray-600 dark:bg-black shadow-sm 
+  overflow-hidden transition-all duration-300 hover:shadow-md
+  /* top bolt */
+  before:content-[''] before:absolute before:top-0 before:left-0 
+  before:h-[2px] before:w-32 
+  before:bg-gradient-to-r before:from-[#3D7A6E] before:via-teal-400 before:to-transparent
+  before:animate-shine
+  /* left bolt */
+  after:content-[''] after:absolute after:top-0 after:left-0 
+  after:w-[0.75px] after:h-[40px]
+  after:bg-gradient-to-b after:from-[#3D7A6E] after:via-teal-400 after:to-transparent
+  after:animate-shine-vertical"
+>
       <div className="p-4">
         <PostHeader username={user.username} timestamp={timestamp} />
 
@@ -60,7 +74,7 @@ const handleGameStream = async () => {
             <button
               onClick={handleGameStream}
               disabled={loading}
-              className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-all"
+              className="px-6 py-3 bg-black text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-all"
             >
               {loading ? 'Loading...' : 'Play Game'}
             </button>
