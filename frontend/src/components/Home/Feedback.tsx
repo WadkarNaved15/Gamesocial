@@ -7,6 +7,7 @@ interface FeedbackModalProps {
 }
 
 export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
   const [category, setCategory] = useState("");
   const [feedback, setFeedback] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,7 +27,7 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
     setSuccess("");
 
     try {
-      const res = await fetch("http://localhost:5000/api/feedback", {
+      const res = await fetch(`${BACKEND_URL}/api/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include", // Needed to send JWT cookie

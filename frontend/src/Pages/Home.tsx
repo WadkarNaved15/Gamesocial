@@ -102,14 +102,14 @@ function Home() {
       
 <button
   onClick={() => setIsFeedbackOpen(true)}
-  className="fixed top-2/3 left-0 m-0 p-0 rotate-90 
+  className="fixed top-[75%] left-[-32px] -translate-y-1/2 rotate-90
              z-[9999] bg-red-500 text-white px-4 py-2 
              rounded-tl-lg rounded-tr-lg shadow-md 
              hover:bg-red-600 transition-all duration-200 ease-in-out"
-  style={{ left: 0 }}
 >
   Feedback
 </button>
+
 
 
 
@@ -127,16 +127,15 @@ function Home() {
       </Suspense> */}
 
   <main className="max-w-7xl mx-auto pl-2 sm:pl-4 lg:pl-6 pr-4 sm:pr-6 lg:pr-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-10 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
         <div className="lg:col-span-2">
           {/* Profile Sidebar */}
-    <div
-  className="sticky top-24 shadow-2xl h-54 
-  dark:bg-black bg-white rounded-t-xl 
-  border-t border-r border-gray-200 dark:border-[#3D7A6E]"
->
-
+        <div
+            className="sticky top-24 shadow-2xl h-54 
+            dark:bg-black bg-white rounded-t-xl 
+            border-t border-r border-gray-200 dark:border-[#3D7A6E]"
+          >
             <Suspense fallback={null}>
               <Profile />
             </Suspense>
@@ -154,7 +153,7 @@ function Home() {
 
             {/* Center Feed + Billboard */}
 {isUploading ? (
-  <div className="lg:col-span-8 flex flex-col items-center justify-start min-h-[80vh] w-full">
+  <div className="lg:col-span-10 flex flex-col items-center justify-start min-h-[80vh] w-full">
     <Suspense fallback={null}>
       <PostModal onCancel={() => setIsUploading(false)} />
     </Suspense>
@@ -162,7 +161,7 @@ function Home() {
 ) : (
   <>
           {/* Center Feed */}
-          <div className="lg:col-span-5 flex flex-col items-center justify-start min-h-[80vh] w-full">
+          <div className="lg:col-span-6 flex flex-col items-center justify-start min-h-[80vh] w-full">
             {user && (
               <Suspense fallback={null}>
                 <AddPost />
@@ -170,7 +169,7 @@ function Home() {
             )}
 
             {posts.length > 0 && (
-              <div className="w-full flex flex-col">
+              <div className="w-full mt-4 flex flex-col">
                 {posts.map((post) => (
                   <Post key={post._id } {...post} />
                 ))}
@@ -193,7 +192,7 @@ function Home() {
           </div>
 
           {/* Billboard */}
-          <div className="lg:col-span-3 hidden lg:block">
+          <div className="lg:col-span-4 hidden lg:block">
             <div className="sticky top-24 h-[500px]">
               <Suspense fallback={null}>
                 <Billboard />

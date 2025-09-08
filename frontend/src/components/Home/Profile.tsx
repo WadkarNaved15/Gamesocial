@@ -7,17 +7,24 @@ export default function Profile() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Cover Background (Gradient) */}
-      <div className="relative">
+      {/* <div className="relative">
         <div
   className="w-full h-16 bg-gradient-to-r from-[#0A1714] via-[#1F4D44] to-[#3D7A6E] 
   rounded-xl rounded-br-none"
-></div>
+></div> */}
+{/* Cover Background (Image) */}
+<div className="relative">
+  <div
+    className="w-full h-16 rounded-xl rounded-br-none bg-cover bg-center"
+    style={{ backgroundImage: "url('https://fastly.picsum.photos/id/299/800/200.jpg?hmac=xMdRbjiNM_IogJDEgKIJ0GeCxZ8nwOGd5_Wf_ODZ94s')" }}
+  ></div>
 
-        <div className="absolute -bottom-10 left-5">
+
+        <div className="absolute -bottom-8 left-2">
           <img
             src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
             alt="Profile"
-            className="cursor-pointer w-20 h-20 rounded-full border-4 border-white dark:border-gray-900"
+            className="cursor-pointer w-16 h-16 rounded-full border-4 border-white dark:border-gray-900"
             onClick={() => navigate("/profile")}
           />
         </div>
@@ -27,7 +34,7 @@ export default function Profile() {
       <div className="mt-10 px-4">
         <div className="flex justify-between items-start">
           <div>
-            <h4 className="text-lg font-bold text-gray-900 dark:text-white">John Developer</h4>
+            <h4 className="text-md font-bold text-gray-900 dark:text-white">John Developer</h4>
             <p className="text-gray-500 dark:text-gray-400">Game Developer</p>
           </div>
         </div>
@@ -40,7 +47,7 @@ export default function Profile() {
             key={idx}
             className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-purple-600/10"
           >
-            <Icon className="h-6 w-6 text-gray-600 dark:text-white" />
+            <Icon className="h-5 w-5 text-gray-600 dark:text-white" />
           </button>
         ))}
       </div>

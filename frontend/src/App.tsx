@@ -10,6 +10,7 @@ const ProfilePage = lazy(() => import('./Pages/ProfilePage'));
 // const Profile = lazy(() => import('./Pages/Profile'));
 const EditProfilePage = lazy(() => import('./Pages/EditProfile'));
 const GameStream = lazy(() => import('./Pages/GameStream'));
+const DevLogs = lazy(() => import('./Pages/DevLogs'));
 // const Game = lazy(() => import('./Pages/Game'));
 
 // Optional / future pages (can also be lazy-loaded when needed)
@@ -34,6 +35,7 @@ function App() {
             <Route path="/gamestream" element={<GameStream />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/createpost" element={<CreatePostPage />} />
+            <Route path="/devlogs" element={<DevLogs />} />
             {/*<Route path="/game" element={<Game />} />
             <Route path="/profile" element={<Profile />} />*/}
             <Route path="/editprofile" element={<EditProfilePage />} /> 
