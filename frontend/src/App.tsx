@@ -11,6 +11,7 @@ const ProfilePage = lazy(() => import('./Pages/ProfilePage'));
 const EditProfilePage = lazy(() => import('./Pages/EditProfile'));
 const GameStream = lazy(() => import('./Pages/GameStream'));
 const DevLogs = lazy(() => import('./Pages/DevLogs'));
+
 // const Game = lazy(() => import('./Pages/Game'));
 
 // Optional / future pages (can also be lazy-loaded when needed)
