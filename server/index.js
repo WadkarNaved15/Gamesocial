@@ -17,8 +17,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-console.log("Backend ",process.env.FRONTEND_URL);
-
 // Middleware
 app.use(express.json());
 app.use(
@@ -27,7 +25,6 @@ app.use(
       "http://localhost:5173",
       "https://localhost:5173",
       "https://xn--tlay-0ra.com",
-      "https://nc8xh8ks-5173.inc1.devtunnels.ms", // ✅ Add this
       process.env.FRONTEND_URL,
     ],
     credentials: true,
