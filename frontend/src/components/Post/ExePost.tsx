@@ -85,8 +85,8 @@ const ExePost: React.FC<ExePostProps> = ({
             <p className="text-gray-800 dark:text-gray-200">{description}</p>
           </div>
         )}
-        
-        <div className="flex justify-center relative overflow-hidden w-[70%] bg-gray-100 dark:bg-gray-700  h-[400px] rounded-xl">
+        <div className="w-full flex">
+        <div className="flex justify-center relative overflow-hidden w-[60%] bg-gray-100 dark:bg-gray-700  h-[400px] rounded-xl">
           <div className="flex flex-col items-center justify-center h-full space-y-4">
             {/* <button
               onClick={handleGameStream}
@@ -96,6 +96,16 @@ const ExePost: React.FC<ExePostProps> = ({
               {loading ? 'Loading...' : 'Play Game'}
             </button> */}
             {error && <p className="text-red-500 mt-2">{error}</p>}
+          </div>
+        </div>
+        <div
+          className="w-[40%] p-4 pl-6 flex flex-col justify-center"
+        >
+          <h2 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200">Game Details</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-2">
+            <span className="font-semibold">URL:</span> {gameUrl}
+          </p>
+          {/* Add more game details here if available */}
           </div>
         </div>
 
