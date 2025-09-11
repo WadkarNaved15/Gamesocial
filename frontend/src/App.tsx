@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { Suspense, lazy } from 'react';
 import CreatePostPage from './Pages/CreatePostPage';
+import GameShowcase from './Pages/GameShowcase';
 
 // Lazy-loaded pages
 const Home = lazy(() => import('./Pages/Home'));
@@ -37,6 +38,7 @@ function App() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/createpost" element={<CreatePostPage />} />
             <Route path="/devlogs" element={<DevLogs />} />
+            <Route path="/gameshow" element={<GameShowcase />} />
             {/*<Route path="/game" element={<Game />} />
             <Route path="/profile" element={<Profile />} />*/}
             <Route path="/editprofile" element={<EditProfilePage />} /> 
