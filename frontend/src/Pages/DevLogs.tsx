@@ -380,7 +380,7 @@ function App() {
              <div className="prose prose-invert max-w-none mt-4 mb-8 space-y-4">
                 <AutoResizeTextarea
                   value={pageData.italicQuote}
-                  
+                  className="text-xl italic text-slate-300 bg-transparent outline-none w-full"
                   onChange={(e) => handleChange("italicQuote", e)}
 
                   />
@@ -420,56 +420,74 @@ function App() {
               </div> 
 
               {/* Files */}
+              
              <div className="mb-8">
-                <h3 className="text-2xl font-bold text-white mb-6">Files</h3>
-                <div className="space-y-4">
-                  {pageData.files.map((file, index) => (
-                    <div key={file.id} className="bg-slate-700 rounded-lg p-4 flex justify-between">
-                      <AutoWidthInput                        
-                        value={file.title}
-                        spanClassName="absolute invisible whitespace-pre font-bold "
-                        className="bg-transparent outline-none font-bold text-gray-400"
-                        onChange={(e) => {
-                          const newFiles = [...pageData.files];
-                          newFiles[index].title = e.target.value;
-                          setPageData({ ...pageData, files: newFiles });
-                        }}
-                      />
-                    {/*  <input
-                        type="text"
-                        className="text-slate-400 bg-transparent outline-none"
-                        value={file.size}
-                        onChange={(e) => {
-                          const newFiles = [...pageData.files];
-                          newFiles[index].size = e.target.value;
-                          setPageData({ ...pageData, files: newFiles });
-                        }}
-                      />*/}
-                    </div>
-                  ))}
-                </div>
+  <h3 className="text-2xl font-bold text-white mb-6">Files</h3>
+  
+  {/* Upload Files */}
+  <div className="mb-4">
+    <input
+      type="file"
+      multiple
+      className="hidden"
+      id="file-upload"
+      onChange={(e) => {
+        if (!e.target.files) return;
+
+        const uploadedFiles = Array.from(e.target.files).map((file, idx) => ({
+          id: Date.now() + idx,
+          title: file.name,
+          size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`, // convert to MB
+        }));
+
+        setPageData((prev) => ({
+          ...prev,
+          files: [...prev.files, ...uploadedFiles],
+        }));
+      }}
+    />
+    <label
+      htmlFor="file-upload"
+      className="cursor-pointer bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded"
+    >
+      Upload Files
+    </label>
+  </div>
+  {/* File List */}
+               <div className="space-y-4">
+  {pageData.files.map((file) => (
+    <div
+      key={file.id}
+      className="bg-slate-700 rounded-lg p-4 flex justify-between items-center"
+    >
+      <span className="font-bold text-gray-300">{file.title}</span>
+      <span className="text-gray-400 text-sm">{file.size}</span>
+    </div>
+  ))}
+</div>
+
               </div> 
 
               {/* Purchase Section */}
-              {/* <div className="bg-slate-700 rounded-lg p-6">
+              <div className="bg-slate-700 rounded-lg p-6">
                 <h3 className="text-2xl font-bold text-white mb-4">
                   Get {pageData.gameInfoTitle}
                 </h3>
-                <div className="flex items-center space-x-4">
+                 <div className="flex items-center space-x-4">
                   <button type="button" className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded font-semibold">
                     Buy Now
                   </button>
                   <div className="text-white">
                     <input
                       type="text"
-                      className="text-2xl font-bold bg-transparent outline-none w-40"
+                      className="text-2xl font-bold bg-transparent outline-none w-[auto] text-white"
                       value={pageData.price}
                       onChange={(e) => handleChange("price", e)}
                     />
-                    <span className="text-slate-400 ml-2">or more</span>
+                    {/* <span className="text-slate-400 ml-2">or more</span> */}
                   </div>
                 </div>
-              </div>*/}
+              </div>
             </div> 
 
             {/* Sidebar */}
@@ -481,14 +499,51 @@ function App() {
                   value={pageData.gameInfoTitle}
                   onChange={(e) => handleChange("gameInfoTitle", e)}
                 />
-                <textarea
-                  className="text-slate-300 bg-transparent outline-none w-full mt-2"
+                <AutoResizeTextarea
                   value={pageData.gameInfoDescription}
-                  onChange={(e) => handleChange("gameInfoDescription", e)}
+                 className="text-slate-300 bg-transparent outline-none w-full mt-2"
+                 onChange={(e) => handleChange("gameInfoDescription", e)}
                 />
               </div>
 
-
+              {/* <div className="bg-slate-700 rounded-lg p-6 text-sm space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Status</span>
+                  <input
+                    type="text"
+                    className="text-orange-400 bg-transparent outline-none text-right"
+                    value={pageData.gameDetails.status}
+                    onChange={(e) => handleNestedChange("gameDetails", "status", e)}
+                  />
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Author</span>
+                  <input
+                    type="text"
+                    className="text-orange-400 bg-transparent outline-none text-right"
+                    value={pageData.gameDetails.author}
+                    onChange={(e) => handleNestedChange("gameDetails", "author", e)}
+                  />
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Genre</span>
+                  <input
+                    type="text"
+                    className="bg-transparent outline-none text-right"
+                    value={pageData.gameDetails.genre}
+                    onChange={(e) => handleNestedChange("gameDetails", "genre", e)}
+                  />
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Tags</span>
+                  <input
+                    type="text"
+                    className="bg-transparent outline-none text-right"
+                    value={pageData.gameDetails.tags}
+                    onChange={(e) => handleNestedChange("gameDetails", "tags", e)}
+                  />
+                </div>
+              </div> */}
             </div>
           </div>
         </div>
@@ -515,19 +570,11 @@ const AutoWidthInput: React.FC<AutoWidthInputProps> = ({
   padding = 20,
 }) => {
   const spanRef = useRef<HTMLSpanElement>(null);
-  const [width, setWidth] = useState<number | string>(minWidth);
+  const [width, setWidth] = useState(minWidth);
 
   useEffect(() => {
     if (spanRef.current) {
-      const textWidth = spanRef.current.offsetWidth + padding;
-
-      if (typeof minWidth === "number") {
-        // px-based logic
-        setWidth(Math.max(textWidth, minWidth));
-      } else {
-        // % or other string-based minWidth → keep string
-        setWidth(textWidth < 1 ? minWidth : textWidth);
-      }
+      setWidth(Math.max(spanRef.current.offsetWidth + padding, minWidth));
     }
   }, [value, padding, minWidth]);
 
@@ -556,23 +603,31 @@ const AutoWidthInput: React.FC<AutoWidthInputProps> = ({
 
                 
 
-const AutoResizeTextarea: React.FC<{
+interface AutoResizeTextareaProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-}> = ({ value, onChange }) => {
+  className?: string;
+}
+
+const AutoResizeTextarea: React.FC<AutoResizeTextareaProps> = ({
+  value,
+  onChange,
+  className = "",
+}) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = "auto"; // reset first
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + "px";
+      textareaRef.current.style.height = "auto"; // reset height
+      textareaRef.current.style.height =
+        textareaRef.current.scrollHeight + "px";
     }
   }, [value]);
 
   return (
     <textarea
       ref={textareaRef}
-      className="text-xl text-slate-300 bg-transparent outline-none w-full resize-none overflow-hidden"
+      className={`resize-none overflow-hidden ${className}`}
       value={value}
       onChange={onChange}
     />

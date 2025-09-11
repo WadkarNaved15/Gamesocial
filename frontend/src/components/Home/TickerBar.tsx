@@ -22,8 +22,8 @@ const TickerBar: React.FC = () => {
 
   return (
     <div
-      className="bg-gradient-to-b from-[#f54295] to-[#7a1f4b] 
-        border-b border-[#f54295]/30 overflow-hidden fixed 
+      className="bg-gradient-to-b from-gray-400 to-gray-800
+         overflow-hidden fixed 
         top-[50px] left-0 right-0 z-40 shadow-md shadow-black/30"
     >
       {/* Gradient overlay for edges */}
@@ -31,7 +31,7 @@ const TickerBar: React.FC = () => {
 
       <div className="relative flex items-center h-8">
         {/* Left BREAKING label */}
-        <div className="flex-shrink-0 bg-[#7a1f4b] px-4 h-full flex items-center border-r border-[#f54295]/50">
+        <div className="flex-shrink-0 bg-gray-500 px-4 h-full flex items-center border-r border-gray-500/50">
           <i className="fas fa-newspaper text-white mr-2"></i>
           <span className="text-white font-semibold text-sm">BREAKING</span>
         </div>
@@ -44,9 +44,9 @@ const TickerBar: React.FC = () => {
                 key={`${item.id}-${index}`}
                 className="flex items-center space-x-3 px-8"
               >
-                <i className={`fas ${item.icon} text-pink-200`}></i>
+                <i className={`fas ${item.icon} text-gray-200`}></i>
                 <span className="text-white text-sm">{item.text}</span>
-                <span className="text-pink-300 mx-4">•</span>
+                <span className="text-black mx-4">•</span>
               </div>
             ))}
           </div>

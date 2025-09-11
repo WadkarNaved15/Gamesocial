@@ -42,28 +42,28 @@ const ExePost: React.FC<ExePostProps> = ({
   };
 
   return (
-    <article
-      className="relative bg-white w-full border-gray-200 
-      dark:bg-black shadow-sm 
-      overflow-hidden transition-all duration-300 hover:shadow-md
-      rounded-xl
-      /* top bolt */
-      before:content-[''] before:absolute before:top-0 before:left-0 
-      before:h-[2px] before:w-32 
-      before:bg-gradient-to-r before:from-[#3D7A6E] before:via-teal-400 before:to-transparent
-      before:animate-shine
-      
-      /* left bolt */
-      after:content-[''] after:absolute after:top-0 after:left-0 
-      after:w-[0.75px] after:h-[40px]
-      after:bg-gradient-to-b after:from-[#3D7A6E] after:via-teal-400 after:to-transparent
-      after:animate-shine-vertical"
-    >
+<article
+  className="relative bg-white w-full border-gray-200 
+  dark:bg-black shadow-sm 
+  overflow-hidden transition-all duration-300 hover:shadow-md
+  /* top bolt */
+  before:content-[''] before:absolute before:top-0 before:left-0 
+  before:h-[2px] before:w-32 
+  before:bg-gradient-to-r before:from-gray-400 before:via-gray-600 before:to-transparent
+  before:animate-shine
+  
+  /* left bolt */
+  after:content-[''] after:absolute after:top-0 after:left-0 
+  after:w-[0.75px] after:h-[40px]
+  after:bg-gradient-to-b after:from-gray-400 after:via-gray-600 after:to-transparent
+  after:animate-shine-vertical"
+>
+
       {/* 🔗 Connector for top-left (joins top + left bolts) */}
-      <span className="absolute top-0 left-0 w-[2px] h-3 
+      {/* <span className="absolute top-0 left-0 w-[2px] h-3 
         bg-gradient-to-b from-[#3D7A6E] via-teal-400 to-transparent animate-shine-vertical"></span>
       <span className="absolute top-0 left-0 h-[2px] w-3 
-        bg-gradient-to-r from-[#3D7A6E] via-teal-400 to-transparent animate-shine"></span>
+        bg-gradient-to-r from-[#3D7A6E] via-teal-400 to-transparent animate-shine"></span> */}
 
       {/* ⚪ Bottom-right bolts */}
       <span className="absolute bottom-0 right-0 h-[0.75px] w-[40px] 
@@ -72,10 +72,10 @@ const ExePost: React.FC<ExePostProps> = ({
         bg-gradient-to-t from-gray-400 via-gray-600 to-transparent animate-shine-vertical" />
 
       {/* 🔗 Connector for bottom-right (joins bottom + right bolts) */}
-      <span className="absolute bottom-0 right-0 w-[2px] h-4 
+      {/* <span className="absolute bottom-0 right-0 w-[2px] h-4 
         bg-gradient-to-t from-gray-400 via-gray-600 to-transparent animate-shine-vertical"></span>
       <span className="absolute bottom-0 right-0 h-[2px] w-4 
-        bg-gradient-to-l from-gray-400 via-gray-600 to-transparent animate-shine"></span>
+        bg-gradient-to-l from-gray-400 via-gray-600 to-transparent animate-shine"></span> */}
 
       <div className="p-4">
         <PostHeader username={user.username} timestamp={timestamp} />
@@ -85,16 +85,16 @@ const ExePost: React.FC<ExePostProps> = ({
             <p className="text-gray-800 dark:text-gray-200">{description}</p>
           </div>
         )}
-
-        <div className="relative overflow-hidden bg-gray-100 dark:bg-gray-700 h-[400px] rounded-xl">
+        
+        <div className="flex justify-center relative overflow-hidden w-[70%] bg-gray-100 dark:bg-gray-700  h-[400px] rounded-xl">
           <div className="flex flex-col items-center justify-center h-full space-y-4">
-            <button
+            {/* <button
               onClick={handleGameStream}
               disabled={loading}
               className="px-6 py-3 bg-black text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-all"
             >
               {loading ? 'Loading...' : 'Play Game'}
-            </button>
+            </button> */}
             {error && <p className="text-red-500 mt-2">{error}</p>}
           </div>
         </div>
