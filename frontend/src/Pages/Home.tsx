@@ -19,6 +19,7 @@ import FeedbackModal from '../components/Home/Feedback';
 // Lazy-loaded components
 const Profile = lazy(() => import('../components/Home/Profile'));
 const Billboard = lazy(() => import('../components/Home/Billboard'));
+const Right = lazy(() => import('../components/Home/Right'));
 const AddPost = lazy(() => import('../components/Home/AddPost'));
 const Music = lazy(() => import('../components/Music'));
 const PostModal = lazy(() => import('../components/Home/NewPost'));
@@ -192,10 +193,10 @@ function Home() {
           </div>
 
           {/* Billboard */}
-          <div className="lg:col-span-4 hidden lg:block">
-            <div className="sticky top-24 h-[500px]">
+          <div className="lg:col-span-4 hidden lg:block h-full">
+            <div className="sticky top-24 h-[300px]">
               <Suspense fallback={null}>
-                <Billboard />
+                <Right />
               </Suspense>
             </div>
           </div>

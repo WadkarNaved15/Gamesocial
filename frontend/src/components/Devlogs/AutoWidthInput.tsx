@@ -4,10 +4,10 @@ import React, { useState, useEffect, useRef } from "react";
 interface AutoWidthInputProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  className?: string;
-  spanClassName?: string;
-  minWidth?: number | string;
-  padding?: number;
+  className?: string; // custom classes
+  spanClassName?: string; // custom classes for measuring span (for font consistency)
+  minWidth?: number; // optional minimum width
+  padding?: number; // optional padding to add
 }
 
 const AutoWidthInput: React.FC<AutoWidthInputProps> = ({
@@ -19,19 +19,11 @@ const AutoWidthInput: React.FC<AutoWidthInputProps> = ({
   padding = 20,
 }) => {
   const spanRef = useRef<HTMLSpanElement>(null);
-  const [width, setWidth] = useState<number | string>(minWidth);
+  const [width, setWidth] = useState(minWidth);
 
   useEffect(() => {
     if (spanRef.current) {
-      const textWidth = spanRef.current.offsetWidth + padding;
-
-      if (typeof minWidth === "number") {
-        // px-based logic
-        setWidth(Math.max(textWidth, minWidth));
-      } else {
-        // % or other string-based minWidth → keep string
-        setWidth(textWidth < 1 ? minWidth : textWidth);
-      }
+      setWidth(Math.max(spanRef.current.offsetWidth + padding, minWidth));
     }
   }, [value, padding, minWidth]);
 
@@ -54,6 +46,6 @@ const AutoWidthInput: React.FC<AutoWidthInputProps> = ({
       />
     </div>
   );
-};
+}
 
 export default AutoWidthInput;

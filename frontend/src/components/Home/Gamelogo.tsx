@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import SortableCard from "../Home/GameImage";
+import SortableCard from "./SortableCard";
 
 interface GameLogoCardProps {
   id: string;

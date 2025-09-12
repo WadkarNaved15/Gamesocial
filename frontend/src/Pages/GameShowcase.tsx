@@ -12,10 +12,10 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import GameLogoCard from "../components/Home/Gamelogo";
-import SortableCard from "../components/Home/GameImage";
+import SortableCard from "../components/Home/SortableCard";
 import { Heart, Twitter, Facebook } from "lucide-react";
-import AutoWidthInput from "../components/Home/AutoWidthInput";
-import AutoResizeTextarea from "../components/Home/AutoResizeTextarea";
+import AutoWidthInput from "../components/Devlogs/AutoWidthInput";
+import AutoResizeTextarea from "../components/Devlogs/AutoResizeTextarea";
 
 const SortablePage: React.FC = () => {
   const [cards, setCards] = useState([

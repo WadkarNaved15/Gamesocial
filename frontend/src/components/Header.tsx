@@ -20,11 +20,11 @@ export function Header() {
   const { user, logout } = useUser();
     const [scrollY, setScrollY] = useState(0);
 
-     useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  //    useEffect(() => {
+  //   const handleScroll = () => setScrollY(window.scrollY);
+  //   window.addEventListener("scroll", handleScroll);
+  //   return () => window.removeEventListener("scroll", handleScroll);
+  // }, []);
 
     const logoTranslateX = scrollY > 50 ? "calc(50vw - 68%)" : "0";
 
@@ -54,7 +54,7 @@ export function Header() {
            <div
               className="flex-shrink-0"
               style={{
-                transform: `translateX(${logoTranslateX})`,
+                transform: `translateX(calc(50vw - 68%))`,
                 transition: "transform 0.3s ease-out",
               }}
             >
