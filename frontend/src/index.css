@@ -170,8 +170,8 @@
   --left-space: 1fr;
 }
 
-* {
-  scrollbar-width: thin;
+/* * {
+  scrollbar-width: none;
   scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
 }
 
@@ -186,7 +186,7 @@
 *::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.06);
   border-radius: 3px;
-}
+} */
 
 html {
   scroll-behavior: auto !important;
@@ -541,3 +541,11 @@ body {
   border-radius: 3px;
 }
 
+/* Hide scrollbar but keep scroll */
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
