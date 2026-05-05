@@ -1,11 +1,42 @@
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
-
+import { DynamoDBClient, UpdateItemCommand ,GetItemCommand} from "@aws-sdk/client-dynamodb";
 const lambdaClient = new LambdaClient({
   region: process.env.AWS_REGION || "ap-south-1",
 });
 
 const LEASE_LAMBDA_NAME = process.env.LEASE_LAMBDA_NAME || "leaseGpuWorker";
 const RELEASE_LAMBDA_NAME = process.env.RELEASE_LAMBDA_NAME || "releaseGpuWorker";
+const WORKERS_TABLE = process.env.WORKERS_TABLE || "gpu_instances_workers";
+
+const dynamo = new DynamoDBClient({ region: process.env.AWS_REGION || "ap-south-1" });
+
+
+export async function claimWorkerInDynamo(workerId, leaseToken, leaseExpiresAt) {
+  const state = await dynamo.send(new GetItemCommand({
+  TableName: WORKERS_TABLE,
+  Key: { worker_id: { S: workerId } }
+}));
+
+if (!state.Item) {
+  throw new Error(`Worker ${workerId} not found in DynamoDB`);
+}
+
+console.log("Dynamo BEFORE claim:", state.Item);
+  await dynamo.send(new UpdateItemCommand({
+    TableName: WORKERS_TABLE,
+    Key: { worker_id: { S: workerId } },
+    UpdateExpression: "SET #s = :assigned, leaseToken = :token, leaseExpiresAt = :exp",
+    ConditionExpression: "attribute_not_exists(#s) OR #s = :idle",
+    ExpressionAttributeNames: { "#s": "status" },
+    ExpressionAttributeValues: {
+      ":assigned": { S: "ASSIGNED" },
+      ":idle":     { S: "IDLE" },
+      ":token":    { S: leaseToken },
+      ":exp":      { N: String(leaseExpiresAt) },
+    },
+  }));
+  // Throws ConditionalCheckFailedException if not IDLE — caller catches this
+}
 
 /**
  * Lease a GPU instance
