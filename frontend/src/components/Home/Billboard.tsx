@@ -16,7 +16,6 @@ type StaticFace = { type: "follow" } | { type: "reading" };
 type PocketFace = { type: "pocket"; pocket: Pocket };
 type FaceDescriptor = StaticFace | PocketFace;
 
-// Fisher-Yates shuffle — returns a new array
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -29,7 +28,6 @@ function shuffle<T>(arr: T[]): T[] {
 function buildFaces(pockets: Pocket[]): FaceDescriptor[] {
   const statics: FaceDescriptor[] = [{ type: "follow" }, { type: "reading" }];
   const pocketFaces: FaceDescriptor[] = pockets.map((p) => ({ type: "pocket", pocket: p }));
-  // Interleave: shuffle everything together so pockets appear between static faces
   return shuffle([...statics, ...pocketFaces]);
 }
 
@@ -44,7 +42,10 @@ const Billboard: React.FC = () => {
   const [faces, setFaces] = useState<FaceDescriptor[]>([{ type: "follow" }, { type: "reading" }]);
   const [loadingPockets, setLoadingPockets] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
+
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const userStoppedRef = useRef(false); // true = user clicked arrow, never auto-rotate again
+  const isHoveringRef = useRef(false);  // true = mouse is over the billboard
 
   useEffect(() => {
     setLoadingPockets(true);
@@ -53,51 +54,92 @@ const Billboard: React.FC = () => {
       .then((data) => {
         const fetched: Pocket[] = data.pockets || [];
         setPockets(fetched);
-        setFaces(buildFaces(fetched)); // shuffle once on load
+        setFaces(buildFaces(fetched));
       })
-      .catch(() => { })
+      .catch(() => {})
       .finally(() => setLoadingPockets(false));
   }, []);
 
   const totalFaces = faces.length;
   const activeFace = faces[activeIndex];
 
-  const next = useCallback(() => setActiveIndex((p) => (p + 1) % totalFaces), [totalFaces]);
-  const prev = useCallback(() => setActiveIndex((p) => (p - 1 + totalFaces) % totalFaces), [totalFaces]);
+  const next = useCallback(() => {
+    setActiveIndex((p) => (p + 1) % totalFaces);
+  }, [totalFaces]);
 
+  const prev = useCallback(() => {
+    setActiveIndex((p) => (p - 1 + totalFaces) % totalFaces);
+  }, [totalFaces]);
+
+  // ---------- interval helpers ----------
+  const clearAutoInterval = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+
+  const startAutoInterval = useCallback(() => {
+    clearAutoInterval();
+    intervalRef.current = setInterval(() => {
+      setActiveIndex((p) => (p + 1) % totalFaces);
+    }, 20000);
+  }, [totalFaces]);
+
+  // Start auto-rotation on mount and whenever totalFaces changes
   useEffect(() => {
-    intervalRef.current = setInterval(next, 20000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [next]);
+    if (userStoppedRef.current) return; // user already clicked an arrow, don't restart
+    startAutoInterval();
+    return () => clearAutoInterval();
+  }, [startAutoInterval]);
+
+  // ---------- mouse handlers ----------
+  const handleMouseEnter = () => {
+    isHoveringRef.current = true;
+    clearAutoInterval(); // pause while hovering
+  };
+
+  const handleMouseLeave = () => {
+    isHoveringRef.current = false;
+    if (!userStoppedRef.current) {
+      startAutoInterval(); // resume only if user hasn't clicked an arrow
+    }
+  };
+
+  // ---------- arrow handlers ----------
   const handleNext = () => {
-    stopAuto();   // ⛔ stop auto rotation
-    next();       // 👉 move to next face
+    userStoppedRef.current = true; // permanently stop auto-rotation
+    clearAutoInterval();
+    next();
   };
 
   const handlePrev = () => {
-    stopAuto();   // ⛔ stop auto rotation
-    prev();       // 👉 move to previous face
+    userStoppedRef.current = true; // permanently stop auto-rotation
+    clearAutoInterval();
+    prev();
   };
-
-  const stopAuto = () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  const resumeAuto = () => { intervalRef.current = setInterval(next, 15000); };
 
   return (
     <div
       className="flex flex-col h-full w-full dark:bg-[#191919] rounded-xl overflow-hidden"
-      onMouseEnter={stopAuto}
-      onMouseLeave={resumeAuto}
-      onWheel={stopAuto}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <div className="flex items-center justify-between px-2 py-3">
         <h2 className="text-lg font-bold dark:text-white capitalize">
           {activeFace ? faceLabel(activeFace) : ""}
         </h2>
         <div className="flex gap-2">
-          <button onClick={handlePrev} className="p-2 rounded-full bg-gray-100 dark:bg-[#252525] dark:text-white hover:bg-purple-600 hover:text-white">
+          <button
+            onClick={handlePrev}
+            className="p-2 rounded-full bg-gray-100 dark:bg-[#252525] dark:text-white hover:bg-purple-600 hover:text-white"
+          >
             <ArrowLeft size={20} />
           </button>
-          <button onClick={handleNext} className="p-2 rounded-full bg-gray-100 dark:bg-[#252525] dark:text-white hover:bg-purple-600 hover:text-white">
+          <button
+            onClick={handleNext}
+            className="p-2 rounded-full bg-gray-100 dark:bg-[#252525] dark:text-white hover:bg-purple-600 hover:text-white"
+          >
             <ArrowRight size={20} />
           </button>
         </div>
