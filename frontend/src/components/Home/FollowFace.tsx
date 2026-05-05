@@ -4,7 +4,7 @@ import { useUser } from "../../context/user";
 import FollowButton from "../FollowButton";
 import { useNavigate } from "react-router-dom";
 
-const FollowFace = ({ translateZ }: { translateZ: number }) => {
+const FollowFace = ({ translateZ, faceAngle }: { translateZ: number; faceAngle: number }) => {
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
   const { user } = useUser();
   const navigate = useNavigate();
@@ -14,14 +14,11 @@ const FollowFace = ({ translateZ }: { translateZ: number }) => {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    // If no user, we consider it "loaded" so we can show the login prompt
     if (!user?._id) {
       setLoaded(true);
       return;
     }
-
     if (fetchedRef.current && prevUserIdRef.current === user._id) return;
-
     prevUserIdRef.current = user._id;
     fetchedRef.current = true;
 
@@ -43,7 +40,7 @@ const FollowFace = ({ translateZ }: { translateZ: number }) => {
   return (
     <div
       className="absolute inset-0 face bg-[#F9FAFB] dark:bg-[#191919] text-gray-900 dark:text-white overflow-y-auto backface-hidden"
-      style={{ transform: `translateZ(${translateZ}px)` }}
+      style={{ transform: `rotateY(${faceAngle}deg) translateZ(${translateZ}px)` }}
     >
       <div className="h-full px-3 py-2 lg:px-4 lg:py-3 2xl:px-5 2xl:py-4 flex flex-col">
         <h3 className="text-[10px] 2xl:text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-4">
@@ -51,7 +48,6 @@ const FollowFace = ({ translateZ }: { translateZ: number }) => {
         </h3>
 
         {!user ? (
-          /* LOGIN PROMPT SECTION */
           <div className="flex flex-col items-center justify-center flex-grow space-y-4 pb-10">
             <div className="space-y-2">
               <p className="text-lg lg:text-xl font-bold text-gray-900 dark:text-gray-100 text-center px-6">
