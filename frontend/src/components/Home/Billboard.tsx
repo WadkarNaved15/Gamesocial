@@ -55,7 +55,7 @@ const Billboard: React.FC = () => {
         setPockets(fetched);
         setFaces(buildFaces(fetched)); // shuffle once on load
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoadingPockets(false));
   }, []);
 
@@ -66,9 +66,18 @@ const Billboard: React.FC = () => {
   const prev = useCallback(() => setActiveIndex((p) => (p - 1 + totalFaces) % totalFaces), [totalFaces]);
 
   useEffect(() => {
-    intervalRef.current = setInterval(next, 15000);
+    intervalRef.current = setInterval(next, 20000);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [next]);
+  const handleNext = () => {
+    stopAuto();   // ⛔ stop auto rotation
+    next();       // 👉 move to next face
+  };
+
+  const handlePrev = () => {
+    stopAuto();   // ⛔ stop auto rotation
+    prev();       // 👉 move to previous face
+  };
 
   const stopAuto = () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   const resumeAuto = () => { intervalRef.current = setInterval(next, 15000); };
@@ -85,10 +94,10 @@ const Billboard: React.FC = () => {
           {activeFace ? faceLabel(activeFace) : ""}
         </h2>
         <div className="flex gap-2">
-          <button onClick={prev} className="p-2 rounded-full bg-gray-100 dark:bg-[#252525] dark:text-white hover:bg-purple-600 hover:text-white">
+          <button onClick={handlePrev} className="p-2 rounded-full bg-gray-100 dark:bg-[#252525] dark:text-white hover:bg-purple-600 hover:text-white">
             <ArrowLeft size={20} />
           </button>
-          <button onClick={next} className="p-2 rounded-full bg-gray-100 dark:bg-[#252525] dark:text-white hover:bg-purple-600 hover:text-white">
+          <button onClick={handleNext} className="p-2 rounded-full bg-gray-100 dark:bg-[#252525] dark:text-white hover:bg-purple-600 hover:text-white">
             <ArrowRight size={20} />
           </button>
         </div>
