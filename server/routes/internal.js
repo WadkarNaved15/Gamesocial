@@ -38,9 +38,13 @@ router.post("/instance-ready", verifyInternalKey, async (req, res) => {
   try {
     // Find next waiting session (FIFO, queued first)
     const session = await GameSession.findOneAndUpdate(
-      { status: "waiting", leasing: { $ne: true } },
+      {
+  status: "waiting",
+  leasing: { $ne: true },
+  endedAt: null
+},
       { $set: { leasing: true, lastAllocationAttempt: new Date() } },
-      { sort: { queueType: -1, createdAt: 1 }, new: true }
+      { sort: { createdAt: 1 }, new: true }
     );
 
     if (!session) {

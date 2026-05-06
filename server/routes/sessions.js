@@ -29,6 +29,35 @@ const CONFIG = {
   RETRY_ATTEMPTS: 2,
 };
 
+
+async function getQueueData(session) {
+  if (session.queueType !== "queued") {
+    return {
+      queuePosition: null,
+      totalQueued: null,
+      estimatedWaitMinutes: null,
+    };
+  }
+
+  const queuePosition =
+    (await GameSession.countDocuments({
+      status: "waiting",
+      queueType: "queued",
+      createdAt: { $lt: session.createdAt },
+    })) + 1;
+
+  const totalQueued = await GameSession.countDocuments({
+    status: "waiting",
+    queueType: "queued",
+  });
+
+  return {
+    queuePosition,
+    totalQueued,
+    estimatedWaitMinutes: Math.ceil(queuePosition * 10),
+  };
+}
+
 /**
  * POST /api/sessions/start
  * ✅ FIXED: Queue ONLY when ASG at max
@@ -252,15 +281,42 @@ router.get("/:sessionId/events", verifyToken, async (req, res) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
  
+ const sendCurrentState = async () => {
+  const fresh = await GameSession.findById(sessionId).lean();
+
+  if (!fresh) return;
+
+  let queueData = {};
+
+  if (
+    fresh.status === "waiting" &&
+    fresh.queueType === "queued"
+  ) {
+    queueData = await getQueueData(fresh);
+  }
+
   send({
-    status: session.status,
-    phase: session.phase,
-    countdownStartsAt: session.countdownStartsAt,
+    status: fresh.status,
+    phase: fresh.phase,
+    countdownStartsAt: fresh.countdownStartsAt,
+    ...queueData,
   });
+};
+
+await sendCurrentState();
+
+const interval = setInterval(async () => {
+  try {
+    await sendCurrentState();
+  } catch (err) {
+    console.error("Queue SSE update error:", err);
+  }
+}, 5000);
  
   sessionStreams.set(sessionId.toString(), send);
  
   req.on("close", () => {
+    clearInterval(interval);
     sessionStreams.delete(sessionId.toString());
   });
 });

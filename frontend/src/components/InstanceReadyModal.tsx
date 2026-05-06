@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, X, Zap } from 'lucide-react';
+import { Play, X } from 'lucide-react';
 
 interface InstanceReadyModalProps {
   sessionId: string | null;
@@ -11,12 +11,8 @@ interface InstanceReadyModalProps {
 
 /**
  * InstanceReadyModal Component
- * ✅ ONLY shown for QUEUED users when instance becomes available
- * ✅ 30-second countdown modal
- * ✅ Two options: LAUNCH STREAM or CANCEL
- * ✅ If countdown expires, auto-cancel
- * ✅ Forces decision (modal backdrop, not dismissible)
- * ✅ RESPONSIVE: Works on mobile, tablet, and desktop
+ * Countdown modal when instance becomes available
+ * Matches the aesthetic of QueueNotification and InstanceStartingNotification
  */
 export const InstanceReadyModal: React.FC<InstanceReadyModalProps> = ({
   sessionId,
@@ -28,6 +24,19 @@ export const InstanceReadyModal: React.FC<InstanceReadyModalProps> = ({
   const [isLaunching, setIsLaunching] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [displayCountdown, setDisplayCountdown] = useState(countdown);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const check = () =>
+      setIsDark(document.documentElement.classList.contains("dark"));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     setDisplayCountdown(countdown);
@@ -36,7 +45,7 @@ export const InstanceReadyModal: React.FC<InstanceReadyModalProps> = ({
       setDisplayCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
-          onCancel(); // auto release instance
+          onCancel();
           return 0;
         }
         return prev - 1;
@@ -68,17 +77,25 @@ export const InstanceReadyModal: React.FC<InstanceReadyModalProps> = ({
 
   if (!isVisible || !sessionId) return null;
 
-  // Color coding for countdown urgency
+  const gradient = isDark
+    ? "linear-gradient(to bottom right, #3D7A6E, #000000)"
+    : "linear-gradient(to bottom right, #9ca3af, #374151)";
+
+  const bodyBg = isDark ? "#000000" : "#f3f4f6";
+  const borderColor = isDark
+    ? "rgba(255,255,255,0.07)"
+    : "rgba(0,0,0,0.1)";
+
   const getCountdownColor = () => {
-    if (displayCountdown > 15) return 'text-green-600 dark:text-green-400';
-    if (displayCountdown > 5) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
+    if (displayCountdown > 15) return '#10b981';
+    if (displayCountdown > 5) return '#f59e0b';
+    return '#ef4444';
   };
 
-  const getCountdownMessage = () => {
-    if (displayCountdown > 15) return '🚀 Get ready to stream...';
-    if (displayCountdown > 5) return '⚡ Almost there...';
-    return '💨 Hurry up!';
+  const getCountdownOpacity = () => {
+    if (displayCountdown > 15) return 'text-emerald-600 dark:text-emerald-400';
+    if (displayCountdown > 5) return 'text-amber-600 dark:text-amber-400';
+    return 'text-red-600 dark:text-red-400';
   };
 
   return (
@@ -86,96 +103,88 @@ export const InstanceReadyModal: React.FC<InstanceReadyModalProps> = ({
       {/* Modal Backdrop */}
       <div className="fixed inset-0 z-50 bg-black/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" />
 
-      {/* Modal Container - Responsive and scrollable if needed */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
-        <div className="w-full max-w-md rounded-3xl border border-gray-300 dark:border-gray-700/50 bg-gradient-to-br from-gray-100 via-gray-50 to-white dark:from-black dark:via-slate-900 dark:to-black shadow-2xl overflow-hidden my-auto">
+      {/* Modal Container */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div
+          style={{ background: bodyBg, border: `1px solid ${borderColor}` }}
+          className="w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden my-auto"
+        >
 
-          {/* Header - Responsive padding and text */}
-          <div className="px-4 sm:px-6 py-4 sm:py-6 text-center border-b border-gray-200/50 dark:border-gray-700/30 bg-gradient-to-r from-gray-200/50 to-gray-100/50 dark:from-gray-900/50 dark:to-black/50">
-            <div className="flex items-center justify-center gap-2 mb-2 sm:mb-3">
-              <div className="relative h-3 w-3 bg-green-500 rounded-full">
-                <div className="absolute inset-0 bg-green-500 rounded-full animate-pulse" />
-              </div>
-              <span className="text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 tracking-wide uppercase">
-                🎉 Instance Ready
-              </span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white leading-tight">
-              Your Game<br />is Ready!
+          {/* Header */}
+          <div
+            style={{ background: gradient }}
+            className="text-white px-5 py-5 sm:py-6 text-center border-b"
+            style={{ borderColor: borderColor }}
+          >
+            <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
+              Instance Ready
             </h2>
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">
-              ✨ An instance has been allocated for you
-            </p>
+            <p className="text-xs sm:text-sm text-white/60 mt-1">Your Rigzer rig is live</p>
           </div>
 
-          {/* Countdown Section - Responsive spacing and sizes */}
-          <div className="px-4 sm:px-6 py-6 sm:py-8 space-y-4 sm:space-y-6">
-            <div className="flex flex-col items-center gap-3 sm:gap-4">
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium">
+          {/* Countdown Section */}
+          <div className="px-5 py-6 sm:py-8 space-y-5">
+            <div className="flex flex-col items-center gap-4">
+              <p className="text-xs sm:text-sm text-white/60 font-medium">
                 Launching in
               </p>
 
-              {/* Circular Countdown - Responsive size */}
-              <div className="relative w-32 h-32 sm:w-40 sm:h-40 flex items-center justify-center">
+              {/* Circular Countdown */}
+              <div className="relative w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center">
                 {/* SVG Progress Circle */}
-                <svg className="absolute w-full h-full" style={{ transform: 'rotate(-90deg)' }}>
+                <svg
+                  className="absolute w-full h-full"
+                  style={{ transform: "rotate(-90deg)" }}
+                  viewBox="0 0 100 100"
+                >
                   {/* Background circle */}
                   <circle
-                    cx="50%"
-                    cy="50%"
-                    r="45%"
+                    cx="50"
+                    cy="50"
+                    r="40"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="2"
-                    className="text-gray-200 dark:text-gray-700"
+                    className="text-white/10 dark:text-white/15"
                   />
                   {/* Progress circle */}
                   <circle
-                    cx="50%"
-                    cy="50%"
-                    r="45%"
+                    cx="50"
+                    cy="50"
+                    r="40"
                     fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeDasharray={`${(displayCountdown / 30) * (2 * Math.PI * 70)} ${2 * Math.PI * 70}`}
-                    className={`transition-all duration-1000 ${getCountdownColor()}`}
+                    stroke={getCountdownColor()}
+                    strokeWidth="2.5"
+                    strokeDasharray={`${(displayCountdown / 30) * (2 * Math.PI * 40)} ${2 * Math.PI * 40}`}
+                    className="transition-all duration-1000"
                     strokeLinecap="round"
                   />
                 </svg>
 
-                {/* Center Number - Responsive sizing */}
+                {/* Center Number */}
                 <div className="relative text-center">
-                  <div className={`text-4xl sm:text-5xl font-black tabular-nums ${getCountdownColor()}`}>
+                  <div className={`text-4xl sm:text-5xl font-bold tabular-nums ${getCountdownOpacity()}`}>
                     {displayCountdown.toString().padStart(2, '0')}
                   </div>
-                  <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mt-1 uppercase tracking-wider">
-                    Seconds
+                  <div className="text-[10px] font-semibold text-white/50 mt-0.5 uppercase tracking-wider">
+                    seconds
                   </div>
                 </div>
               </div>
-
-              {/* Message */}
-              <p className="text-center text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium">
-                {getCountdownMessage()}
-              </p>
-            </div>
-
-            {/* Info Box - Responsive padding and text */}
-            <div className="p-2 sm:p-3 bg-gray-100 dark:bg-gray-800/20 border border-gray-200 dark:border-gray-700 rounded-lg">
-              <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-                📌 If you don't click "Launch" within {displayCountdown}s, the instance will be released to the next user.
-              </p>
             </div>
           </div>
 
-          {/* Action Buttons - Responsive padding and sizing */}
-          <div className="px-4 sm:px-6 py-4 sm:py-6 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-black dark:to-gray-900 border-t border-gray-200 dark:border-gray-700 space-y-2 sm:space-y-3">
-            {/* Launch Button - Primary */}
+          {/* Action Buttons */}
+          <div
+            className="px-5 pb-5 flex gap-2"
+            style={{ background: 'rgba(255,255,255,0.02)' }}
+          >
+            {/* Launch Button */}
             <button
               onClick={handleLaunch}
               disabled={isLaunching || displayCountdown === 0}
               className="
-                w-full
+                flex-1
                 bg-gradient-to-br
                 from-gray-600 to-gray-800
                 hover:from-gray-700 hover:to-gray-900
@@ -184,55 +193,47 @@ export const InstanceReadyModal: React.FC<InstanceReadyModalProps> = ({
                 dark:hover:from-gray-800 dark:hover:to-black
                 
                 text-white
-                py-3 sm:py-4 px-4 sm:px-6 rounded-xl
+                py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl
                 transition-all duration-300 transform
                 hover:scale-105 active:scale-95
                 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100
-                font-black text-base sm:text-lg
-                shadow-lg shadow-gray-600/40
-                flex items-center justify-center gap-2 sm:gap-3
+                font-bold text-sm sm:text-base
+                shadow-lg shadow-gray-600/30
+                flex items-center justify-center gap-2
               "
             >
-              <Play size={20} className="sm:w-6 sm:h-6" fill="currentColor" />
-              <span className="hidden xs:inline">LAUNCH STREAM</span>
-              <span className="xs:hidden">LAUNCH</span>
+              <Play size={16} className="sm:w-5 sm:h-5" fill="currentColor" />
+              <span>Launch</span>
             </button>
 
-            {/* Cancel Button - Destructive Secondary */}
+            {/* Cancel Button */}
             <button
               onClick={handleCancel}
               disabled={isCancelling || isLaunching}
               className="
-                w-full
+                flex-1
                 bg-gradient-to-br
-                from-red-500 to-red-600
-                hover:from-red-600 hover:to-red-700
+                from-gray-500 to-gray-600
+                hover:from-gray-600 hover:to-gray-700
                 
-                dark:from-red-600 dark:to-red-700
-                dark:hover:from-red-700 dark:hover:to-red-800
+                dark:from-gray-600 dark:to-gray-700
+                dark:hover:from-gray-700 dark:hover:to-gray-800
                 
                 text-white
-                py-2.5 sm:py-3 px-4 sm:px-6 rounded-xl
+                py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl
                 transition-all duration-300 transform
                 hover:scale-105 active:scale-95
                 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100
-                font-semibold text-sm sm:text-base
-                shadow-lg shadow-red-500/30
-                flex items-center justify-center gap-1.5 sm:gap-2
+                font-bold text-sm sm:text-base
+                shadow-lg shadow-gray-500/20
+                flex items-center justify-center gap-2
               "
             >
-              <X size={18} />
-              <span className="hidden xs:inline">Cancel & Leave</span>
-              <span className="xs:hidden">Cancel</span>
+              <X size={16} className="sm:w-5 sm:h-5" />
+              <span>Cancel</span>
             </button>
           </div>
 
-          {/* Footer Info - Responsive text size */}
-          <div className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gray-200 dark:bg-gray-900/50 text-center border-t border-gray-200 dark:border-gray-700">
-            <p className="text-xs text-gray-700 dark:text-gray-400">
-              ⚡ Instance allocated • Ready to stream
-            </p>
-          </div>
         </div>
       </div>
     </>

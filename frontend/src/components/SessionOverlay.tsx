@@ -19,18 +19,29 @@ export default function SessionOverlay() {
     queue.status === "waiting" && isQueued;
 
   // INSTANCE ASSIGNED BUT STARTING
-  const showInstanceStarting =
-    queue.status === "waiting" && !isQueued;
+const showInstanceStarting =
+  (
+    // direct scaling users
+    queue.status === "waiting" &&
+    !isQueued
+  ) ||
+  (
+    // after launch click
+    queue.status === "starting"
+  );
+
 
   // QUEUED USER GOT INSTANCE
   const showInstanceReady =
     queue.status === "allocation_ready";
 
   // DIRECT USER OR AFTER LAUNCH
-  const showAds =
-    queue.sessionId &&
-    queue.isDirectPlay &&
-    ["starting", "running"].includes(queue.status);
+const showAds =
+  queue.sessionId &&
+  (
+    queue.phase === "launching" ||
+    queue.status === "running"
+  );
 
   return createPortal(
     <>
