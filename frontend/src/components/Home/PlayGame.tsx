@@ -17,16 +17,16 @@ interface Ad {
 
 type SessionError = "failed" | "ended" | "stream_error" | null;
 
-const stepsMap: { [key: string]: string } = {
-  waiting: "Preparing Cloud Instance",
-  assigning: "Assigning Cloud Instance",
-  starting: "Initializing Session",
-  downloading: "Downloading Game",
-  launching: "Launching Game",
-  running: "Stream Ready",
-  failed: "Session Failed",
-  ended: "Session Ended",
-};
+// const stepsMap: { [key: string]: string } = {
+//   waiting: "Preparing Cloud Instance",
+//   assigning: "Assigning Cloud Instance",
+//   starting: "Initializing Session",
+//   downloading: "Downloading Game",
+//   launching: "Launching Game",
+//   running: "Stream Ready",
+//   failed: "Session Failed",
+//   ended: "Session Ended",
+// };
 
 const orderedSteps = [
   "waiting",
@@ -46,6 +46,7 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
   const [streamUrlError, setStreamUrlError] = useState(false);
   const [sessionError, setSessionError] = useState<SessionError>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [adCountdown, setAdCountdown] = useState(20);
 
   // Refs to avoid stale closures in SSE handler
   const fetchRetryCount = useRef(0);
@@ -149,6 +150,21 @@ localStorage.removeItem("rigzer_queue_session");
       .catch((err) => console.error("Failed to load ad:", err));
   }, [BACKEND_URL]);
 
+  useEffect(() => {
+  if (canSkip) return;
+
+  const interval = setInterval(() => {
+    setAdCountdown((prev) => {
+      if (prev <= 1) {
+        clearInterval(interval);
+        return 0;
+      }
+      return prev - 1;
+    });
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, [canSkip]);
   // SSE connection
   useEffect(() => {
     if (!sessionId) return;
@@ -394,10 +410,10 @@ localStorage.removeItem("rigzer_queue_session");
 
       {/* BOTTOM CONTROLS */}
       <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-white dark:from-black to-transparent">
-        <div className="max-w-7xl mx-auto flex items-end justify-between">
+        <div className="max-w-7xl mx-auto flex items-end justify-end">
 
           {/* PROGRESS */}
-          <div className="flex flex-col space-y-2 w-56 bg-white/50 dark:bg-black/20 backdrop-blur-sm p-4 rounded-xl border border-gray-200/50 dark:border-gray-800/50">
+          {/* <div className="flex flex-col space-y-2 w-56 bg-white/50 dark:bg-black/20 backdrop-blur-sm p-4 rounded-xl border border-gray-200/50 dark:border-gray-800/50">
             <div className="flex items-center space-x-2">
               {sessionStatus !== "running" && (
                 <div className="w-2.5 h-2.5 border-2 border-gray-400 dark:border-gray-500 border-t-gray-700 dark:border-t-gray-200 rounded-full animate-spin flex-shrink-0" />
@@ -420,11 +436,11 @@ localStorage.removeItem("rigzer_queue_session");
                 />
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* ACTION BUTTONS */}
           <div className="flex flex-col items-end gap-3">
-            {canSkip ? (
+            {canSkip && adCountdown === 0 ? (
               <>
                 <button
                   onClick={handleLaunch}
@@ -457,10 +473,15 @@ localStorage.removeItem("rigzer_queue_session");
                 )}
               </>
             ) : (
-              <div className="flex items-center space-x-3 bg-white/80 dark:bg-black/40 backdrop-blur-md px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-500 text-[10px] font-bold tracking-widest uppercase shadow-sm">
-                <div className="w-3 h-3 border-2 border-gray-300 dark:border-gray-700 border-t-gray-600 dark:border-t-gray-300 rounded-full animate-spin" />
-                <span>Preparing Session</span>
-              </div>
+                <div className="flex items-center space-x-3 bg-white/80 dark:bg-black/40 backdrop-blur-md px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-500 text-[10px] font-bold tracking-widest uppercase shadow-sm">
+                  <div className="w-3 h-3 border-2 border-gray-300 dark:border-gray-700 border-t-gray-600 dark:border-t-gray-300 rounded-full animate-spin" />
+
+                  <span>
+                    {canSkip
+                      ? `Launch Available in ${adCountdown}s`
+                      : "Preparing Session"}
+                  </span>
+                </div>
             )}
 
             <button
