@@ -2,7 +2,7 @@
 
 import React, { memo, useEffect, useRef, useState, useCallback } from "react";
 
-const POCKET_HEIGHT = 480;  
+const POCKET_HEIGHT = 480;
 
 interface User { username: string; avatar?: string; }
 interface PocketPostProps {
@@ -56,11 +56,11 @@ ${safeCode}
 const PocketPost: React.FC<PocketPostProps> = ({
   _id, user, brandName, tagline, compiledBundleUrl, onOpenDetails,
 }) => {
-  const postRef   = useRef<HTMLElement>(null);
+  const postRef = useRef<HTMLElement>(null);
   const viewStart = useRef<number | null>(null);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
-  const [srcdoc, setSrcdoc]     = useState<string | null>(null);
+  const [srcdoc, setSrcdoc] = useState<string | null>(null);
   const [fetchErr, setFetchErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,7 +69,7 @@ const PocketPost: React.FC<PocketPostProps> = ({
     setFetchErr(null);
     fetchBundleText(compiledBundleUrl)
       .then(code => { if (!cancelled) setSrcdoc(buildSrcdoc(code)); })
-      .catch(err  => { if (!cancelled) setFetchErr(String(err.message)); });
+      .catch(err => { if (!cancelled) setFetchErr(String(err.message)); });
     return () => { cancelled = true; };
   }, [compiledBundleUrl]);
 
@@ -81,7 +81,7 @@ const PocketPost: React.FC<PocketPostProps> = ({
       method: "POST", credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ event, seconds }),
-    }).catch(() => {});
+    }).catch(() => { });
   }, [BACKEND_URL, _id]);
 
   useEffect(() => {
@@ -104,41 +104,65 @@ const PocketPost: React.FC<PocketPostProps> = ({
       className="relative w-full border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-[#0f0f0f]"
     >
       <div
-        style={{ width: "100%", height: POCKET_HEIGHT, overflow: "hidden", position: "relative" }}
+        style={{
+          width: "100%",
+          height: POCKET_HEIGHT,
+          position: "relative",
+          backgroundImage: "url('/defaultBackground.jpeg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          overflow: "hidden",
+        }}
         onClick={() => onOpenDetails?.()}
       >
-        {!srcdoc && !fetchErr && (
-          <div style={{
-            width: "100%", height: "100%",
-            background: "linear-gradient(90deg,#1a1a1a 25%,#222 50%,#1a1a1a 75%)",
-            backgroundSize: "200% 100%",
-            animation: "shimmer 1.4s infinite",
-          }} />
-        )}
+        {/* 🔥 INNER FRAME */}
+        <div
+          style={{
+            position: "absolute",
+            inset: "12px",
+            borderRadius: "14px",
+            overflow: "hidden",
+            background: "#000",
+          }}
+        >
 
-        {fetchErr && (
-          <div style={{
-            width: "100%", height: "100%", background: "#0a0a0a",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexDirection: "column", gap: 8, padding: 20,
-          }}>
-            <p style={{ color: "#f87171", fontFamily: "monospace", fontSize: 12, textAlign: "center" }}>
-              Failed to load pocket<br/>
-              <span style={{ opacity: 0.4, fontSize: 10 }}>{fetchErr}</span>
-            </p>
-          </div>
-        )}
+          {!srcdoc && !fetchErr && (
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                background: "linear-gradient(90deg,#1a1a1a 25%,#222 50%,#1a1a1a 75%)",
+                backgroundSize: "200% 100%",
+                animation: "shimmer 1.4s infinite",
+              }}
+            />
+          )}
 
-        {srcdoc && (
-          <iframe
-            key={compiledBundleUrl}
-            title={`pocket-${_id}`}
-            srcDoc={srcdoc}          // ← capital D (React prop name)
-            sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
-            style={{ width: "100%", height: "100%", border: "none", display: "block" }}
-            referrerPolicy="no-referrer"
-          />
-        )}
+          {fetchErr && (
+            <div style={{
+              width: "100%", height: "100%", background: "#0a0a0a",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              Error
+            </div>
+          )}
+
+          {srcdoc && (
+            <iframe
+              key={compiledBundleUrl}
+              title={`pocket-${_id}`}
+              srcDoc={srcdoc}
+              sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+              style={{
+                width: "100%",
+                height: "100%",
+                border: "none",
+                display: "block",
+              }}
+            />
+          )}
+
+        </div>
       </div>
 
       {/* Footer */}
