@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from "react";
 import type { PostProps } from "../types/Post";
 import { useEffect, useRef } from "react";
 import { hasViewedPost,markPostViewed } from "../utils/viewTracker";
+import PostSkeleton from "./Home/PostSkeleton";
 // Lazy load post components
 const NormalPost = lazy(() => import("./Post/NormalPost"));
 const GamePost = lazy(() => import("./Post/GamePost"));
@@ -15,9 +16,7 @@ type PostWrapperProps = PostProps & {
 };
 
 
-const Fallback = () => (
-  <div className="w-full h-32 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
-);
+const Fallback = () => <PostSkeleton />;
 
 export const Post: React.FC<PostWrapperProps> = (props) => {
   const { type, _id } = props;

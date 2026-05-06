@@ -9,6 +9,7 @@ import { useSearchParams } from "react-router-dom";
 import { useFeed } from "../context/FeedContext";
 import Post from "../components/Post";
 import axios from "axios";
+import PostSkeleton from "../components/Home/PostSkeleton";
 import type { PostProps } from "../types/Post";
 import CircleLoader from "../components/Loader/CircleLoader";
 import { ArrowLeft } from "lucide-react";
@@ -234,8 +235,10 @@ function Home() {
           )}
 
           {loading && mainPosts.length === 0 && (
-            <div className="w-full flex justify-center mt-4">
-              <CircleLoader />
+            <div className="w-full mt-4 flex flex-col">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <PostSkeleton key={i} />
+              ))}
             </div>
           )}
 

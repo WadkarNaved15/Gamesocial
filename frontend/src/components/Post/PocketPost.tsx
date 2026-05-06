@@ -120,7 +120,7 @@ const PocketPost: React.FC<PocketPostProps> = ({
         {/* 🔥 INNER POCKET (slightly smaller → border visible) */}
         <div
           style={{
-            width: "97%",   // 🔥 KEY: reduce slightly
+            width: "97%",   // 🔥 KEY: reduce slight
             height: "98%",
             borderRadius: "12px",
             overflow: "hidden",
