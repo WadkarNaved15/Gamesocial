@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ChevronDown, Loader2, X } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 
 interface InstanceStartingNotificationProps {
   sessionId: string | null;
@@ -95,14 +95,24 @@ export const InstanceStartingNotification: React.FC<
 
           <div className="flex items-center gap-1.5">
             <button
-              onClick={handleCancel}
-              disabled={isCancelling}
-              className="p-1.5 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/15"
-              aria-label="Cancel"
-              title="Cancel"
-            >
-              <X size={16} className="text-white" />
-            </button>
+            onClick={handleCancel}
+            disabled={isCancelling}
+            className="
+              px-3 py-1
+              rounded-lg
+              text-xs font-medium
+              transition-all duration-200
+              disabled:opacity-50
+              disabled:cursor-not-allowed
+              bg-black/20 hover:bg-black/30
+              text-gray-200
+              border border-white/10
+            "
+            aria-label="Cancel"
+            title="Cancel"
+          >
+            {isCancelling ? "Cancelling..." : "Cancel"}
+          </button>
             <button
               onClick={() => onMinimize(true)}
               className="p-1.5 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 hover:bg-white/15"
