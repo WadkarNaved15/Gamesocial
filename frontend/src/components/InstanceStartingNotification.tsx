@@ -147,7 +147,7 @@ export const InstanceStartingNotification: React.FC<
           </div>
 
           <p className="text-xs text-white/40 text-center pt-1">
-            Usually takes 20–40 seconds
+            Usually takes 2–4 minutes
           </p>
         </div>
       </div>
