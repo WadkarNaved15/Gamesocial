@@ -111,16 +111,18 @@ const PocketPost: React.FC<PocketPostProps> = ({
           backgroundImage: "url('/defaultBackground.jpeg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
-          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
         onClick={() => onOpenDetails?.()}
       >
-        {/* 🔥 INNER FRAME */}
+        {/* 🔥 INNER POCKET (slightly smaller → border visible) */}
         <div
           style={{
-            position: "absolute",
-            inset: "12px",
-            borderRadius: "14px",
+            width: "97%",   // 🔥 KEY: reduce slightly
+            height: "98%",
+            borderRadius: "12px",
             overflow: "hidden",
             background: "#000",
           }}
