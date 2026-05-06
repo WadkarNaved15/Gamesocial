@@ -112,9 +112,8 @@ export const InstanceReadyModal: React.FC<InstanceReadyModalProps> = ({
 
           {/* Header */}
           <div
-            style={{ background: gradient }}
+            style={{ background: gradient ,borderColor: borderColor}}
             className="text-white px-5 py-5 sm:py-6 text-center border-b"
-            style={{ borderColor: borderColor }}
           >
             <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
               Instance Ready
