@@ -2,7 +2,7 @@
 
 import React, { memo, useEffect, useRef, useState, useCallback } from "react";
 
-const POCKET_HEIGHT = 480;
+const POCKET_HEIGHT = 550;
 
 interface User { username: string; avatar?: string; }
 interface PocketPostProps {
@@ -108,7 +108,7 @@ const PocketPost: React.FC<PocketPostProps> = ({
           width: "100%",
           height: POCKET_HEIGHT,
           position: "relative",
-          backgroundImage: "url('/defaultBackground.jpeg')",
+          // backgroundImage: "url('/defaultBackground.jpeg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           display: "flex",
@@ -120,11 +120,17 @@ const PocketPost: React.FC<PocketPostProps> = ({
         {/* 🔥 INNER POCKET (slightly smaller → border visible) */}
         <div
           style={{
-            width: "97%",   // 🔥 KEY: reduce slight
-            height: "98%",
-            borderRadius: "12px",
+            width: "100%",
+            height: "100%",
             overflow: "hidden",
             background: "#000",
+            position: "relative",
+            // custom curved corners
+            borderTopLeftRadius: "28px",
+            borderTopRightRadius: "48px",
+
+            borderBottomLeftRadius: "12px",
+            borderBottomRightRadius: "12px",
           }}
         >
 
@@ -162,21 +168,78 @@ const PocketPost: React.FC<PocketPostProps> = ({
                 display: "block",
               }}
             />
+
           )}
+          {/* Sticky Pocket Footer */}
+          <div
+            onClick={() => onOpenDetails?.()}
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: 0,
 
-        </div>
-      </div>
+              padding: "14px 16px",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
 
-      {/* Footer */}
-      <div className="px-4 py-3 flex items-center gap-3">
-        <img src={user.avatar || "/default_avatar.png"} alt={user.username}
-          className="h-8 w-8 rounded-full object-cover flex-shrink-0 cursor-pointer"
-          onClick={() => onOpenDetails?.()} />
+              background: "rgba(32, 30, 31, 0.96)",
 
-        <div className="flex flex-col flex-1 min-w-0 cursor-pointer" onClick={() => onOpenDetails?.()}>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-black text-sm text-black dark:text-white leading-tight truncate">{brandName}</span>
-            {tagline && <span className="text-xs text-gray-500 dark:text-zinc-500 truncate">{tagline}</span>}
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+            }}
+          >
+            <img
+              src={user.avatar || "/default_avatar.png"}
+              alt={user.username}
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "999px",
+                objectFit: "cover",
+                flexShrink: 0,
+                border: "2px solid rgba(255,255,255,0.15)",
+              }}
+            />
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                minWidth: 0,
+                flex: 1,
+              }}
+            >
+              <span
+                style={{
+                  color: "white",
+                  fontWeight: 800,
+                  fontSize: "14px",
+                  lineHeight: 1.1,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {brandName}
+              </span>
+
+              {tagline && (
+                <span
+                  style={{
+                    color: "rgba(255,255,255,0.72)",
+                    fontSize: "11px",
+                    marginTop: "3px",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {tagline}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>

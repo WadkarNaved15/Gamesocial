@@ -56,12 +56,13 @@ const Billboard: React.FC = () => {
         setPockets(fetched);
         setFaces(buildFaces(fetched));
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoadingPockets(false));
   }, []);
 
   const totalFaces = faces.length;
   const activeFace = faces[activeIndex];
+  const isPocketFace = activeFace?.type === "pocket";
 
   const next = useCallback(() => {
     setActiveIndex((p) => (p + 1) % totalFaces);
@@ -125,27 +126,36 @@ const Billboard: React.FC = () => {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="flex items-center justify-between px-2 py-3">
-        <h2 className="text-lg font-bold dark:text-white capitalize">
-          {activeFace ? faceLabel(activeFace) : ""}
-        </h2>
-        <div className="flex gap-2">
-          <button
-            onClick={handlePrev}
-            className="p-2 rounded-full bg-gray-100 dark:bg-[#252525] dark:text-white hover:bg-purple-600 hover:text-white"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <button
-            onClick={handleNext}
-            className="p-2 rounded-full bg-gray-100 dark:bg-[#252525] dark:text-white hover:bg-purple-600 hover:text-white"
-          >
-            <ArrowRight size={20} />
-          </button>
-        </div>
-      </div>
+      {!isPocketFace && (
+        <div className="flex items-center justify-between px-2 py-3">
+          <h2 className="text-lg font-bold dark:text-white capitalize">
+            {activeFace ? faceLabel(activeFace) : ""}
+          </h2>
 
-      <div className="flex-1 overflow-hidden border-t border-purple-600 dark:border-gray-200">
+          <div className="flex gap-2">
+            <button
+              onClick={handlePrev}
+              className="p-2 rounded-full bg-gray-100 dark:bg-[#252525] dark:text-white hover:bg-purple-600 hover:text-white"
+            >
+              <ArrowLeft size={20} />
+            </button>
+
+            <button
+              onClick={handleNext}
+              className="p-2 rounded-full bg-gray-100 dark:bg-[#252525] dark:text-white hover:bg-purple-600 hover:text-white"
+            >
+              <ArrowRight size={20} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div
+        className={`
+        flex-1 overflow-hidden
+        ${!isPocketFace ? "border-t border-purple-600 dark:border-gray-200" : ""}
+      `}
+      >
         <Suspense fallback={<div className="text-center text-gray-400 pt-10">Loading...</div>}>
           {loadingPockets ? (
             <div className="text-center text-gray-400 pt-10">Loading...</div>
