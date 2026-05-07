@@ -13,7 +13,7 @@ interface InstanceStartingNotificationProps {
 
 export const InstanceStartingNotification: React.FC<
   InstanceStartingNotificationProps
-> = ({ sessionId, isVisible, isMinimized, onMinimize, onCancel }) => {
+> = ({ sessionId, isVisible, isMinimized, onMinimize, onCancel ,status,phase}) => {
   const [isCancelling, setIsCancelling] = useState(false);
   const [isDark, setIsDark] = useState(false);
 
