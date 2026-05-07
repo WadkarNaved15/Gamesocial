@@ -65,6 +65,8 @@ const showAds =
           isMinimized={isQueueMinimized}
           onMinimize={setIsQueueMinimized}
           onCancel={cancelSession}
+          status={queue.status}
+          phase={queue.phase}
         />
       )}
 

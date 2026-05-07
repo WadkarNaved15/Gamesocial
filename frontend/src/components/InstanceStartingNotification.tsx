@@ -7,6 +7,8 @@ interface InstanceStartingNotificationProps {
   isMinimized: boolean;
   onMinimize: (val: boolean) => void;
   onCancel: () => Promise<void>;
+  status: "waiting" | "allocation_ready" | "starting" | "running" | "ended" | "failed";
+  phase: "countdown" | "downloading" | "launching" | null;
 }
 
 export const InstanceStartingNotification: React.FC<
@@ -51,6 +53,49 @@ export const InstanceStartingNotification: React.FC<
     ? "rgba(255,255,255,0.07)"
     : "rgba(0,0,0,0.1)";
 
+  const isTerminal = status === "failed" || status === "ended";
+
+  const headerTitle = isTerminal
+    ? status === "failed"
+      ? "Session Failed"
+      : "Session Ended"
+    : "Preparing Your Rig";
+
+    const headerSub = isTerminal
+      ? status === "failed"
+        ? "We couldn't prepare your session"
+        : "Your session has ended"
+      : phase === "downloading"
+        ? "Downloading game files"
+        : phase === "launching"
+        ? "Launching your game"
+        : "Preparing cloud environment";
+
+      if (isTerminal) {
+      return (
+        <div className="fixed bottom-6 right-24 z-40 w-80 max-w-[calc(100vw-32px)]">
+          <div className="rounded-2xl shadow-2xl overflow-hidden bg-black border border-white/10">
+            <div className="px-4 py-3 text-white flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-sm leading-tight">
+                  {status === "failed" ? "Session Failed" : "Session Ended"}
+                </h3>
+                <p className="text-xs text-white/60">{headerSub}</p>
+              </div>
+            </div>
+
+            <div className="px-4 py-3">
+              <p className="text-sm text-gray-300">
+                {status === "failed"
+                  ? "We could not prepare the session. Please try again."
+                  : "The session has finished."}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
   if (isMinimized) {
     return (
       <div
@@ -62,7 +107,7 @@ export const InstanceStartingNotification: React.FC<
           className="text-white px-3 py-2.5 rounded-2xl shadow-lg flex items-center gap-2"
         >
           <Loader2 className="animate-spin" size={14} />
-          <span className="font-semibold text-xs">Starting Instance</span>
+          <span className="font-semibold text-xs">{headerTitle}</span>
         </div>
       </div>
     );
@@ -84,11 +129,11 @@ export const InstanceStartingNotification: React.FC<
 
             <div>
               <h3 className="font-bold text-sm leading-tight">
-                Starting Instance
+                {headerTitle}
               </h3>
 
               <p className="text-xs text-white/60">
-                Preparing environment
+                Getting everything ready
               </p>
             </div>
           </div>
@@ -141,13 +186,13 @@ export const InstanceStartingNotification: React.FC<
               </p>
 
               <p className="text-sm font-semibold text-white">
-                Starting environment
+                {headerSub}
               </p>
             </div>
           </div>
 
           <p className="text-xs text-white/40 text-center pt-1">
-            Usually takes 2–4 minutes
+            This may take a few moments
           </p>
         </div>
       </div>
