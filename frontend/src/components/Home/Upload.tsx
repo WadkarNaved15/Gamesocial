@@ -17,7 +17,7 @@ export default function UploadBox({
           active:scale-[0.98] font-medium tracking-wide
         "
       >
-        <FaUpload className="mr-2 text-sky-500" />
+        <FaUpload className="mr-2 text-gray-200" />
         <span>Upload</span>
       </button>
     </div>
