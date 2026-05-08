@@ -18,41 +18,53 @@ export default function ProfileCover({
   const { unreadCount } = useNotification();
   const { user, logout } = useUser();
   // If user is NOT logged in → Show login prompt card
- if (!user) {
-    return (
-      <div className="max-w-3xl mx-auto">
-        <div
-          className="
-            border-[2px] border-[#E0E0E5] dark:border-gray-700 
-            bg-[#F9FAFB] dark:bg-[#191919] 
-            rounded-[0.5rem] p-8 text-center
-            shadow-sm
-          "
-        >
-          {/* Top Profile Icon */}
-          <div className="mx-auto w-16 h-16 bg-gray-200 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+if (!user) {
+  return (
+    <div className="max-w-3xl mx-auto">
+      <div
+        className="
+          relative overflow-visible shadow-sm transition-colors duration-200
+          border-[1px] border-[#E0E0E5] dark:border-white/10
+          bg-[#F9FAFB] dark:bg-[#191919]
+          rounded-t-[0.5rem]
+        "
+      >
+        {/* Content */}
+        <div className="px-4 pt-5 pb-5 text-center">
+          {/* Avatar */}
+          <div className="mx-auto w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center mb-3">
             <User className="h-8 w-8 text-gray-400 dark:text-gray-500" />
           </div>
 
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          <h4 className="text-base font-bold text-gray-900 dark:text-gray-100">
+            Welcome to Rigzer
+          </h4>
+
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
             Login to access further services
-          </h3>
-          
-          <button
-            onClick={() => navigate("/auth")}
-            className="
-              inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 
-              text-white font-medium text-sm px-4 py-1.5 rounded-full 
-              transition-colors duration-200 active:scale-95
-            "
-          >
-            <User className="h-4 w-4" /> {/* Profile icon inside button */}
-            Login / Sign Up
-          </button>
+          </p>
+
+          {/* Action */}
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={() => navigate("/auth")}
+              className="
+                inline-flex items-center gap-2
+                px-4 py-1.5 rounded-full
+                bg-blue-600 hover:bg-blue-700
+                text-white text-xs font-medium
+                transition-all active:scale-95
+              "
+            >
+              <User className="h-4 w-4" />
+              Login / Sign Up
+            </button>
+          </div>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
   // Dynamic values to match your schema
   const bannerUrl = user?.banner || 'https://fastly.picsum.photos/id/299/800/200.jpg?hmac=xMdRbjiNM_IogJDEgKIJ0GeCxZ8nwOGd5_Wf_ODZ94s';
   
@@ -75,7 +87,7 @@ export default function ProfileCover({
       <div
         className="
           relative overflow-visible shadow-sm transition-colors duration-200
-          border-[2px] border-[#E0E0E5s] dark:border-white/10
+          border-[2px] border-[#E0E0E5] dark:border-white/10
           bg-[#F9FAFB] dark:bg-[#191919] 
           rounded-t-[0.5rem]
         "
