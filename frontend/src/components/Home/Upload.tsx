@@ -11,7 +11,7 @@ export default function UploadBox({ onUploadClick }: { onUploadClick: () => void
           /* Light Mode */
           bg-[#F9FAFB] border-[#E0E0E5] text-gray-700 hover:bg-gray-100
           /* Dark Mode */
-          dark:bg-[#191919] dark:border-gray-700 dark:text-gray-200 dark:hover:bg-[#1e1e1e]
+          dark:bg-[#191919] dark:border-white/10 dark:text-gray-200 dark:hover:bg-[#1e1e1e]
           /* Interactive */
           active:scale-[0.98] font-medium tracking-wide
         "

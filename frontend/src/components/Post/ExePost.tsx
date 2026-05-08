@@ -90,7 +90,7 @@ const modelUrl =
       }}
       className="
     relative w-full 
-    border border-gray-200 dark:border-gray-700
+    border border-gray-200 dark:border-white/10
     bg-[#F9FAFB] dark:bg-[#191919]
     hover:bg-[#F7F9F9] dark:hover:bg-[#16181C]
     transition-colors duration-200

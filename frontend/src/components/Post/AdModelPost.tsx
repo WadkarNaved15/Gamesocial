@@ -83,7 +83,7 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
           if ((e.target as HTMLElement).closest('button')) return;
           onOpenDetails?.();
         }}
-        className="relative w-full border border-gray-200 dark:border-gray-700 bg-[#F9FAFB] dark:bg-[#191919] hover:bg-[#F7F9F9] dark:hover:bg-[#16181C] transition-colors duration-200 cursor-pointer"
+        className="relative w-full border border-gray-200 dark:border-white/10 bg-[#F9FAFB] dark:bg-[#191919] hover:bg-[#F7F9F9] dark:hover:bg-[#16181C] transition-colors duration-200 cursor-pointer"
       >
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
