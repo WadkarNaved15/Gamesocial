@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useEffect, useRef,useState } from "react";
+import React, { memo, useMemo, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PostHeader from "./PostHeader";
 import PostInteractions from "./PostInteractions";
@@ -25,9 +25,9 @@ const DevlogPost: React.FC<DevlogPostProps> = ({
   const postRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-  const {likesCount: localLikesCount,isLiked: localIsLiked,handleLike} = useLikes(_id,BACKEND_URL);
+  const { likesCount: localLikesCount, isLiked: localIsLiked, handleLike } = useLikes(_id, BACKEND_URL);
   const [isExpanded, setIsExpanded] = useState(false);
-   const {
+  const {
     isWishlisted: localIsWishlisted,
     handleWishlist
   } = useWishlist(_id, BACKEND_URL);
@@ -76,6 +76,10 @@ const DevlogPost: React.FC<DevlogPostProps> = ({
         <img
           src={user.avatar || "/default_avatar.png"}
           alt={user.username}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/profile/${user.username}`);
+          }}
           className="h-10 w-10 rounded-full object-cover"
         />
 
@@ -89,29 +93,28 @@ const DevlogPost: React.FC<DevlogPostProps> = ({
           />
 
           {description && (
-  <div className="mt-2 mb-4">
-    <p 
-      className={`text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${
-        !isExpanded ? "line-clamp-2" : ""
-      }`}
-    >
-      {description}
-    </p>
-    
-    {/* Only show button if description is long enough to need it */}
-    {description.length > 100 && ( 
-      <button
-        onClick={(e) => {
-          e.stopPropagation(); // Prevents opening post details when clicking the button
-          setIsExpanded(!isExpanded);
-        }}
-        className="text-sky-500 hover:text-sky-600 font-semibold text-sm mt-1 focus:outline-none"
-      >
-        {isExpanded ? "Show less" : "Show more"}
-      </button>
-    )}
-  </div>
-)}
+            <div className="mt-2 mb-4">
+              <p
+                className={`text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${!isExpanded ? "line-clamp-2" : ""
+                  }`}
+              >
+                {description}
+              </p>
+
+              {/* Only show button if description is long enough to need it */}
+              {description.length > 100 && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevents opening post details when clicking the button
+                    setIsExpanded(!isExpanded);
+                  }}
+                  className="text-sky-500 hover:text-sky-600 font-semibold text-sm mt-1 focus:outline-none"
+                >
+                  {isExpanded ? "Show less" : "Show more"}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* -------------------- DEVLOG PREVIEW -------------------- */}
           <div
@@ -159,7 +162,7 @@ const DevlogPost: React.FC<DevlogPostProps> = ({
               <PostInteractions
                 postId={_id}
                 likes={localLikesCount}
-                comments={commentsCount?? 0}
+                comments={commentsCount ?? 0}
                 isLiked={localIsLiked}
                 isWishlisted={localIsWishlisted}
                 onLike={handleLike}

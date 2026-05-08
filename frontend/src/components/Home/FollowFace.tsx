@@ -67,7 +67,11 @@ const FollowFace = ({ translateZ, faceAngle }: { translateZ: number; faceAngle: 
                 <div className="flex items-center gap-3">
                   <img
                     src={u.avatar || "/default_avatar.png"}
-                    className="w-9 h-9 lg:w-10 lg:h-10 2xl:w-12 2xl:h-12 rounded-full border border-gray-200 dark:border-white/10 object-cover"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/profile/${u.username}`);
+                    }}
+                    className="w-9 h-9 lg:w-10 lg:h-10 2xl:w-12 2xl:h-12 rounded-full border border-gray-200 dark:border-white/10 object-cover cursor-pointer"
                   />
                   <div className="min-w-0">
                     <h3 className="font-semibold truncate text-xs lg:text-sm 2xl:text-base w-24 lg:w-32 2xl:w-40 text-gray-900 dark:text-gray-100">

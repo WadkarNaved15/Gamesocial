@@ -5,13 +5,15 @@ import {
 } from "lucide-react";
 import { ExePostProps } from "../types/Post";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import CommentSection from "../components/Post/CommentSection";
-import { useState,useEffect} from "react";
+import { useState, useEffect } from "react";
 import "@google/model-viewer";
 
-const PostDetail = ({ post:initialPost, onClose }: { post: ExePostProps; onClose: () => void }) => {
+const PostDetail = ({ post: initialPost, onClose }: { post: ExePostProps; onClose: () => void }) => {
   const [post, setPost] = useState<ExePostProps>(initialPost);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
   const [activeIndex, setActiveIndex] = useState(0);
   // 🔹 fetch full model post
@@ -91,6 +93,10 @@ const PostDetail = ({ post:initialPost, onClose }: { post: ExePostProps; onClose
                       src={
                         post.user.avatar || avatarUrl
                       }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/profile/${post.user.username}`);
+                      }}
                       alt={post.user.username}
                       className="h-full w-full object-cover"
                     />

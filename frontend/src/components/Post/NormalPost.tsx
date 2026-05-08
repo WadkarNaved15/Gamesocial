@@ -1,5 +1,6 @@
 import React, { memo, useMemo, useEffect, useRef, useState } from "react";
 import PostHeader from "./PostHeader";
+import { useNavigate } from "react-router-dom";
 import PostInteractions from "./PostInteractions";
 import { useLikes } from "../../hooks/useLikes";
 import MediaViewer from "../Media/MediaViewer"
@@ -29,12 +30,13 @@ const NormalPost: React.FC<NormalPostProps> = ({
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const [viewerIndex, setViewerIndex] = useState(0);
   const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-  const {likesCount: localLikesCount,isLiked: localIsLiked,handleLike} = useLikes(_id,BACKEND_URL);
+    import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+  const navigate = useNavigate();
+  const { likesCount: localLikesCount, isLiked: localIsLiked, handleLike } = useLikes(_id, BACKEND_URL);
   const {
-  isWishlisted: localIsWishlisted,
-  handleWishlist
-} = useWishlist(_id, BACKEND_URL);
+    isWishlisted: localIsWishlisted,
+    handleWishlist
+  } = useWishlist(_id, BACKEND_URL);
 
   const assets = normalPost?.assets || [];
   const primaryVideoIndex = useMemo(() => {
@@ -139,6 +141,10 @@ const NormalPost: React.FC<NormalPostProps> = ({
         <img
           src={user.avatar || "/default_avatar.png"}
           alt={user.username}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/profile/${user.username}`);
+          }}
           className="h-10 w-10 rounded-full object-cover"
         />
 

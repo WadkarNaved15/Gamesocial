@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, memo } from "react";
 import axios from "axios";
 import { useUser } from "../../context/user";
+import { useNavigate } from "react-router-dom";
 import { Send, Link as LinkIcon, MessageSquare } from "lucide-react"; // Optional: npm install lucide-react
 import { useFeed } from "../../context/FeedContext";
 interface Comment {
@@ -30,6 +31,7 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache }: any) => {
   const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const urls = comment.text?.match(urlRegex);
+  const navigate = useNavigate();
   const { user } = useUser();
   const url = urls?.[0];
   const fetchedRef = useRef(false);
@@ -66,6 +68,10 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache }: any) => {
       <div className="flex-shrink-0">
         <img
           src={user?.avatar || "/default_avatar.png"}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/profile/${user?.username}`);
+          }}
           className="h-10 w-10 rounded-full object-cover"
         />
       </div>

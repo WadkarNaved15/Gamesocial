@@ -30,8 +30,8 @@ const ExePost: React.FC<ExePostProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [localCommentsCount, setLocalCommentsCount] = useState<number>(commentsCount ?? 0);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-  const {likesCount: localLikesCount,isLiked: localIsLiked,handleLike} = useLikes(_id,BACKEND_URL);
-   const {
+  const { likesCount: localLikesCount, isLiked: localIsLiked, handleLike } = useLikes(_id, BACKEND_URL);
+  const {
     isWishlisted: localIsWishlisted,
     handleWishlist
   } = useWishlist(_id, BACKEND_URL);
@@ -40,10 +40,10 @@ const ExePost: React.FC<ExePostProps> = ({
   let viewStartTime = useRef<number | null>(null);
   const asset = modelPost?.assets?.[0];
 
-const modelUrl =
-  asset?.optimization?.status === "completed"
-    ? asset.optimizedUrl
-    : asset?.originalUrl;
+  const modelUrl =
+    asset?.optimization?.status === "completed"
+      ? asset.optimizedUrl
+      : asset?.originalUrl;
   const price = modelPost?.price;
   const getRelativeTime = (date: string | Date) => {
     const now = new Date();
@@ -104,6 +104,10 @@ const modelUrl =
         <img
           src={user.avatar || "/default_avatar.png"}
           alt={user.username}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/profile/${user.username}`);
+          }}
           className="h-10 w-10 rounded-full object-cover mt-1"
         />
 

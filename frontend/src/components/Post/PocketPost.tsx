@@ -1,7 +1,7 @@
 // src/components/Post/PocketPost.tsx
 
 import React, { memo, useEffect, useRef, useState, useCallback } from "react";
-
+import { useNavigate } from "react-router-dom";
 const POCKET_HEIGHT = 550;
 
 interface User { username: string; avatar?: string; }
@@ -59,7 +59,7 @@ const PocketPost: React.FC<PocketPostProps> = ({
   const postRef = useRef<HTMLElement>(null);
   const viewStart = useRef<number | null>(null);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-
+  const navigate = useNavigate();
   const [srcdoc, setSrcdoc] = useState<string | null>(null);
   const [fetchErr, setFetchErr] = useState<string | null>(null);
 
@@ -193,6 +193,10 @@ const PocketPost: React.FC<PocketPostProps> = ({
             <img
               src={user.avatar || "/default_avatar.png"}
               alt={user.username}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/profile/${user.username}`);
+              }}
               style={{
                 width: "36px",
                 height: "36px",

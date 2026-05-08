@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Play, Gamepad2, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { useQueue } from '../../context/QueueContext';
 import { useUI } from '../../context/UIContext';
@@ -39,16 +40,16 @@ const GamePost: React.FC<GamePostProps> = ({
   const postRef = useRef(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
-  
-  
+
+
   let viewStartTime = useRef<number | null>(null);
 
   const { likesCount: localLikesCount, isLiked: localIsLiked, handleLike } = useLikes(_id, BACKEND_URL);
   const { isWishlisted: localIsWishlisted, handleWishlist } = useWishlist(_id, BACKEND_URL);
   const { setIsAdPlaying } = useUI();
-  
-  const { queue, startSession } = useQueue();
 
+  const { queue, startSession } = useQueue();
+  const navigate = useNavigate();
 
 
   // ✅ Check if ANY session exists (prevent starting new ones)
@@ -97,7 +98,7 @@ const GamePost: React.FC<GamePostProps> = ({
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ postId: _id })
-    }).catch(() => {});
+    }).catch(() => { });
   };
 
   const stopViewing = async () => {
@@ -109,7 +110,7 @@ const GamePost: React.FC<GamePostProps> = ({
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ postId: _id, duration })
-    }).catch(() => {});
+    }).catch(() => { });
   };
 
   const markViewed = async () => {
@@ -118,7 +119,7 @@ const GamePost: React.FC<GamePostProps> = ({
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ postId: _id })
-    }).catch(() => {});
+    }).catch(() => { });
   };
 
   useEffect(() => {
@@ -138,10 +139,10 @@ const GamePost: React.FC<GamePostProps> = ({
   }, []);
 
   useEffect(() => {
-  if (!queue.sessionId) {
-    setIsStarting(false);
-  }
-}, [queue.sessionId]);
+    if (!queue.sessionId) {
+      setIsStarting(false);
+    }
+  }, [queue.sessionId]);
 
   return (
     <>
@@ -158,6 +159,10 @@ const GamePost: React.FC<GamePostProps> = ({
           <img
             src={user.avatar || "/default_avatar.png"}
             alt={user.username}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/profile/${user.username}`);
+            }}
             className="h-10 w-10 rounded-full object-cover mt-1"
           />
 
@@ -172,9 +177,8 @@ const GamePost: React.FC<GamePostProps> = ({
             {description && (
               <div className="mt-2 mb-4">
                 <p
-                  className={`text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${
-                    !isExpanded ? "line-clamp-2" : ""
-                  }`}
+                  className={`text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${!isExpanded ? "line-clamp-2" : ""
+                    }`}
                 >
                   {description}
                 </p>
