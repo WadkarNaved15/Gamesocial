@@ -75,7 +75,7 @@ export default function ProfileCover({
       <div
         className="
           relative overflow-visible shadow-sm transition-colors duration-200
-          border-[2px] border-[#E0E0E5] dark:border-gray-700 
+          border-[2px] border-[#E0E0E5s] dark:border-[#374151]
           bg-[#F9FAFB] dark:bg-[#191919] 
           rounded-t-[0.5rem]
         "

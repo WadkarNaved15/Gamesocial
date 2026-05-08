@@ -127,7 +127,7 @@ const PocketPost: React.FC<PocketPostProps> = ({
             position: "relative",
             // custom curved corners
             borderTopLeftRadius: "28px",
-            borderTopRightRadius: "48px",
+            borderTopRightRadius: "28px",
 
             borderBottomLeftRadius: "12px",
             borderBottomRightRadius: "12px",
