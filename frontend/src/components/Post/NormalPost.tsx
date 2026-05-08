@@ -125,7 +125,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
       }}
       className="
   relative w-full
-  border border-gray-200 dark:border-[#374151]
+  border border-gray-200 dark:border-gray-700
   border-l-0 border-r-0
   sm:border-l sm:border-r
   bg-white dark:bg-[#191919]

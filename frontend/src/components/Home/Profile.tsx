@@ -75,7 +75,7 @@ export default function ProfileCover({
       <div
         className="
           relative overflow-visible shadow-sm transition-colors duration-200
-          border-[2px] border-[#E0E0E5s] dark:border-[#374151]
+          border-[1px] border-[#E0E0E5s] dark:border-gray-700
           bg-[#F9FAFB] dark:bg-[#191919] 
           rounded-t-[0.5rem]
         "
@@ -114,7 +114,7 @@ export default function ProfileCover({
           <h4 className="text-md font-bold text-gray-900 dark:text-gray-100">
             {user?.username || "John Developer"}
           </h4>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
+          <p className="text-gray-500 dark:text-gray-200 text-sm">
             {user?.bio || "Game Developer"}
           </p>
         </div>

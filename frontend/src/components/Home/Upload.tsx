@@ -7,7 +7,7 @@ export default function UploadBox({ onUploadClick }: { onUploadClick: () => void
         onClick={onUploadClick}
         className="
           min-w-full h-10 px-4 flex items-center justify-center 
-          rounded-lg border-[2px] transition-all duration-200
+          rounded-lg border-[1px] transition-all duration-200
           /* Light Mode */
           bg-[#F9FAFB] border-[#E0E0E5] text-gray-700 hover:bg-gray-100
           /* Dark Mode */
