@@ -80,7 +80,7 @@ export default function ProfileCover({
           rounded-t-[0.5rem]
         "
       >
-        {/* Cover Image */}
+        {/* Cover Image for profile */}
         <div className="relative rounded-t-[0.5rem]">
           <div
             className="w-full h-20 bg-cover bg-center rounded-t-[0.5rem]"
