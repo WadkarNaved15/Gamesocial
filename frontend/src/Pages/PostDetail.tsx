@@ -235,8 +235,6 @@ const PostDetail = ({ post: initialPost, onClose }: { post: ExePostProps; onClos
                     loading="eager"
                     style={{ width: "100%", height: "100%", backgroundColor: "transparent" }}
                   >
-                    {/* Visual Loading State */}
-                    <div slot="progress-bar" className="w-full h-1 bg-blue-500 animate-pulse" />
                     {/* @ts-ignore */}
                   </model-viewer>
 

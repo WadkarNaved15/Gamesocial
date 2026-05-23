@@ -202,16 +202,16 @@ const GamePost: React.FC<GamePostProps> = ({
               <div className="group relative rounded-2xl overflow-hidden border border-gray-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 mb-4">
                 <div className="absolute inset-0 bg-gradient-to-br from-sky-500/10 via-transparent to-purple-500/10 opacity-50" />
 
-                <div className="relative p-8 flex flex-col items-center justify-center text-center">
-                  <div className="w-16 h-16 bg-[#F9FAFB] dark:bg-[#191919] rounded-2xl shadow-xl flex items-center justify-center mb-4 border border-gray-100 dark:border-zinc-800 group-hover:scale-110 transition-transform duration-300">
+                <div className="relative p-6 flex flex-col items-start justify-start text-left w-full">
+                  {/* <div className="w-16 h-16 bg-[#F9FAFB] dark:bg-[#191919] rounded-2xl shadow-xl flex items-center justify-center mb-4 border border-gray-100 dark:border-zinc-800 group-hover:scale-110 transition-transform duration-300">
                     <Gamepad2 className="text-sky-500 w-8 h-8" />
-                  </div>
+                  </div> */}
 
-                  <h3 className="text-2xl font-black text-black dark:text-white tracking-tight">
+                  <h3 className="text-2xl font-black text-black dark:text-white tracking-tight mb-2">
                     {gamePost.gameName}
                   </h3>
 
-                  <div className="flex items-center gap-2 mt-1">
+                  {/* <div className="flex items-center gap-2 mt-1">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-200 dark:bg-zinc-800 px-2 py-0.5 rounded">
                       v{gamePost.version}
                     </span>
@@ -219,7 +219,7 @@ const GamePost: React.FC<GamePostProps> = ({
                       <Sparkles size={10} />
                       Instant Stream
                     </div>
-                  </div>
+                  </div> */}
 
                   {/* Status indicator while waiting */}
                   {hasActiveSession && queue.status === 'waiting' && (
