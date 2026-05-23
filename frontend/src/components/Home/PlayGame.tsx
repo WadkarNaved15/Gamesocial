@@ -1,4 +1,9 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import axios from "axios";
 import { Loader2, ChevronRight, XCircle, AlertTriangle } from "lucide-react";
 
@@ -16,6 +21,57 @@ interface Ad {
 }
 
 type SessionError = "failed" | "ended" | "stream_error" | null;
+
+const AdPlayer = React.memo(function AdPlayer({
+  ad,
+  onClick,
+}: {
+  ad: Ad;
+  onClick: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+
+    if (!video) return;
+
+    const tryPlay = async () => {
+      try {
+        await video.play();
+      } catch {}
+    };
+
+    tryPlay();
+
+    return () => {
+      video.pause();
+    };
+  }, []);
+
+  if (ad.mediaType === "video") {
+    return (
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        preload="auto"
+        className="w-full h-full object-contain cursor-pointer"
+        src={ad.mediaUrl}
+        onClick={onClick}
+      />
+    );
+  }
+
+  return (
+    <img
+      src={ad.mediaUrl}
+      className="w-full h-full object-contain cursor-pointer"
+      onClick={onClick}
+      alt="Advertisement"
+    />
+  );
+});
 
 // const stepsMap: { [key: string]: string } = {
 //   waiting: "Preparing Cloud Instance",
@@ -391,21 +447,10 @@ localStorage.removeItem("rigzer_queue_session");
 
       {/* AD CONTENT */}
       <div className="relative flex-grow flex items-center justify-center bg-gray-50 dark:bg-black">
-        {ad.mediaType === "video" ? (
-          <video
-            autoPlay muted loop playsInline
-            className="w-full h-full object-contain cursor-pointer"
-            src={ad.mediaUrl}
-            onClick={handleAdClick}
-          />
-        ) : (
-          <img
-            src={ad.mediaUrl}
-            className="w-full h-full object-contain cursor-pointer"
-            onClick={handleAdClick}
-            alt="Advertisement"
-          />
-        )}
+        <AdPlayer
+          ad={ad}
+          onClick={handleAdClick}
+        />
       </div>
 
       {/* BOTTOM CONTROLS */}
