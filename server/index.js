@@ -76,7 +76,6 @@ app.use((req, res, next) => {
 const corsWhitelist = [
   "http://localhost:5173",
   "https://localhost:5173",
-  "https://xn--tlay-0ra.com",
   "https://www.rigzer.com",
   "https://rigzer.com",
   "https://gamesocial-git-feature-asg-wadkar-naveds-projects-6bc20af1.vercel.app",
@@ -160,6 +159,12 @@ app.use("/api/pockets", pocketRoutes);
 // Admin routes (protected by your isAdmin middleware)
 app.use("/api/admin", adminRouter);
 
+
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "healthy",
+  });
+});
 // HTTP SERVER
 const server = http.createServer(app);
 
