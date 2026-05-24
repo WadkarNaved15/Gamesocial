@@ -160,11 +160,20 @@ app.use("/api/pockets", pocketRoutes);
 app.use("/api/admin", adminRouter);
 
 
-app.get("/health", (req, res) => {
+app.get("/health", async (req, res) => {
+  const mongoHealthy = mongoose.connection.readyState === 1;
+
+  if (!mongoHealthy) {
+    return res.status(500).json({
+      status: "unhealthy",
+    });
+  }
+
   res.status(200).json({
     status: "healthy",
   });
 });
+
 // HTTP SERVER
 const server = http.createServer(app);
 
