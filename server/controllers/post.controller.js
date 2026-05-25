@@ -1,6 +1,12 @@
 import AllPost from "../models/Allposts.js";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
+import s3 from "../s3.js";
 import { extractMetadataFromUrl } from "../services/modelMetaData.service.js";
 import { onPostCreated } from "../services/gorse.hooks.js";
+import Like from "../models/Like.js";
+import Comment from "../models/Comment.js";
+import Wishlist from "../models/Wishlist.js";
+import Notification from "../models/Notifications.js";
 function deriveBuildType(fileFormat) {
   if (fileFormat === "exe") return "executable";
   return "archive";
@@ -41,6 +47,7 @@ export const createPost = async (req, res) => {
           assets: assets.map((asset) => ({
             name: asset.name,
             url: asset.url,
+            key: asset.key,
             type: asset.type,
           })),
         },
@@ -338,5 +345,80 @@ export const createPost = async (req, res) => {
   } catch (err) {
     console.error("Create post error:", err);
     return res.status(500).json({ message: "Failed to create post" });
+  }
+};
+export const deletePost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+
+    const post = await AllPost.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({
+        message: "Post not found",
+      });
+    }
+
+    // ownership check
+    if (post.user.toString() !== req.user.id) {
+      return res.status(403).json({
+        message: "Unauthorized",
+      });
+    }
+
+    // =========================================
+    // DELETE S3 MEDIA
+    // =========================================
+
+    if (
+      post.type === "normal_post" &&
+      post.normalPost?.assets?.length
+    ) {
+      await Promise.all(
+        post.normalPost.assets.map(async (asset) => {
+          if (!asset.key) return;
+
+          try {
+            await s3.send(
+              new DeleteObjectCommand({
+                Bucket: process.env.AWS_BUCKET_NAME,
+                Key: asset.key,
+              })
+            );
+          } catch (err) {
+            console.error("S3 delete failed:", asset.key, err);
+          }
+        })
+      );
+    }
+
+    // =========================================
+    // DELETE RELATED DATA
+    // =========================================
+
+    await Promise.all([
+      Like.deleteMany({ post: postId }),
+      Comment.deleteMany({ post: postId }),
+      Wishlist.deleteMany({ post: postId }),
+      Notification.deleteMany({ postId }),
+    ]);
+
+    // =========================================
+    // DELETE POST
+    // =========================================
+
+    await AllPost.findByIdAndDelete(postId);
+
+    res.json({
+      success: true,
+      message: "Post deleted successfully",
+    });
+
+  } catch (err) {
+    console.error("Delete post error:", err);
+
+    res.status(500).json({
+      message: "Failed to delete post",
+    });
   }
 };

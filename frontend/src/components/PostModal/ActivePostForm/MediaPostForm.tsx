@@ -10,6 +10,7 @@ interface Asset {
   file: File;
   previewUrl: string;
   uploadedUrl?: string;
+  uploadedKey?: string;
   name: string;
   type: string; // "image" or "video"
   progress?: number;
@@ -57,7 +58,7 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
     e.target.value = "";
   };
 
-  const uploadAssetToS3 = async (asset: Asset, onProgress: (percent: number) => void): Promise<string> => {
+  const uploadAssetToS3 = async (asset: Asset, onProgress: (percent: number) => void): Promise<{ fileUrl: string; key: string }> => {
     // 1. Get the presigned URL
     const res = await fetch(`${BACKEND_URL}/api/upload/presigned-url`, {
       method: "POST",
@@ -71,7 +72,7 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
     });
 
     if (!res.ok) throw new Error("Failed to get upload URL");
-    const { uploadUrl, fileUrl } = await res.json();
+    const { uploadUrl, fileUrl, key } = await res.json();
 
     // 2. Wrap XHR in a Promise only for the part that actually needs a callback (progress tracking)
     return new Promise((resolve, reject) => {
@@ -87,7 +88,10 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
 
       xhr.onload = () => {
         if (xhr.status === 200) {
-          resolve(fileUrl);
+          resolve({
+            fileUrl,
+            key,
+          });
         } else {
           reject(new Error(`Upload failed with status ${xhr.status}`));
         }
@@ -145,11 +149,13 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
         updatedAssets[index].progress = 0;
         setAssets([...updatedAssets]);
         await new Promise(res => setTimeout(res, 100));
-        const uploadedUrl = await uploadAssetToS3(asset, (p) => {
+        const uploadedData = await uploadAssetToS3(asset, (p) => {
           updatedAssets[index].progress = p;
           setAssets([...updatedAssets]);
         });
-        updatedAssets[index].uploadedUrl = uploadedUrl;
+
+        updatedAssets[index].uploadedUrl = uploadedData.fileUrl;
+        updatedAssets[index].uploadedKey = uploadedData.key;
         updatedAssets[index].status = "done";
         setAssets([...updatedAssets]);
       }));
@@ -162,7 +168,7 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
         body: JSON.stringify({
           type: "normal_post",
           description,
-          assets: updatedAssets.map(a => ({ name: a.name, url: a.uploadedUrl, type: a.type })),
+          assets: updatedAssets.map(a => ({ name: a.name, url: a.uploadedUrl, key: a.uploadedKey, type: a.type })),
         }),
       });
       if (!response.ok) throw new Error();

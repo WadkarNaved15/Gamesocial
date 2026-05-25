@@ -2,7 +2,6 @@
 
 import express from "express";
 import PocketFeedEntry from "../models/PocketFeedEntry.js";
-
 const router = express.Router();
 
 router.get("/fetch_pockets", async (req, res) => {

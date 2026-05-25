@@ -7,13 +7,17 @@ interface PostHeaderProps {
   timestamp: string;
   type: 'normal_post' | 'model_post' | 'game_post' | 'devlog_post';
   price: number;
+  isOwner?: boolean;
+  onDelete?: () => void;
 }
 
 const PostHeader: React.FC<PostHeaderProps> = ({
   type,
   username,
   timestamp,
-  price
+  price,
+  isOwner,
+  onDelete
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -90,13 +94,61 @@ const PostHeader: React.FC<PostHeaderProps> = ({
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg z-20">
-              <button className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-                Report
-              </button>
-              <button className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+            <div
+              className="
+      absolute right-0 mt-2 w-48
+      bg-white dark:bg-gray-800
+      rounded-xl shadow-lg
+      border border-gray-200 dark:border-white/10
+      overflow-hidden z-20
+    "
+            >
+
+              {!isOwner && (
+                <button
+                  className="
+          block w-full text-left px-4 py-2.5 text-sm
+          text-gray-700 dark:text-gray-300
+          hover:bg-gray-100 dark:hover:bg-gray-700
+          transition-colors
+        "
+                >
+                  Report
+                </button>
+              )}
+
+              <button
+                className="
+        block w-full text-left px-4 py-2.5 text-sm
+        text-gray-700 dark:text-gray-300
+        hover:bg-gray-100 dark:hover:bg-gray-700
+        transition-colors
+      "
+              >
                 Copy link
               </button>
+
+              {isOwner && (
+                <>
+                  <div className="border-t border-gray-200 dark:border-white/10" />
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      onDelete?.();
+                    }}
+                    className="
+                    block w-full text-left px-4 py-2.5 text-sm
+                    text-red-500 hover:bg-red-50
+                    dark:hover:bg-red-500/10
+                    transition-colors
+                    "
+                  >
+                    Delete Post
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

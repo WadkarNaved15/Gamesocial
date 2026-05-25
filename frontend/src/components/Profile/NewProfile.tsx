@@ -410,6 +410,11 @@ const ProfilePage: React.FC = () => {
                   <Post
                     key={post._id}
                     {...post}
+                    onDeleteSuccess={(postId) => {
+                      setUserPosts((prev) =>
+                        prev.filter((p) => p._id !== postId)
+                      );
+                    }}
                     onOpenDetails={() =>
                       navigate(`/post/${post._id}`, {
                         state: { post }

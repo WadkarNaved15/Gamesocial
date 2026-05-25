@@ -13,6 +13,7 @@ const PocketPost = lazy(() => import("./Post/PocketPost"));   // ⭐ NEW
 
 type PostWrapperProps = PostProps & {
   onOpenDetails?: () => void;
+  onDeleteSuccess?: (postId: string) => void;
 };
 
 

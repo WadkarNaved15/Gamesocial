@@ -5,6 +5,7 @@ import { useQueue } from '../../context/QueueContext';
 import { useUI } from '../../context/UIContext';
 import { useLikes } from '../../hooks/useLikes';
 import { useWishlist } from '../../hooks/useWishlist';
+import { useUser } from "../../context/user";
 import PostHeader from './PostHeader';
 import PostInteractions from './PostInteractions';
 
@@ -40,7 +41,8 @@ const GamePost: React.FC<GamePostProps> = ({
   const postRef = useRef(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
-
+  const { user: currentUser } = useUser();
+  const isOwner = currentUser?._id === user._id;
 
   let viewStartTime = useRef<number | null>(null);
 
@@ -89,7 +91,9 @@ const GamePost: React.FC<GamePostProps> = ({
       setIsStarting(false);
     }
   };
-
+  const handleDelete = async (postId: string) => {
+    console.log("Deleting post", postId);
+  };
   // Analytics tracking
   const startViewing = async () => {
     viewStartTime.current = Date.now();
@@ -172,6 +176,8 @@ const GamePost: React.FC<GamePostProps> = ({
               username={user.username}
               timestamp={timestamp}
               price={gamePost?.price || 0}
+              isOwner={isOwner}
+              onDelete={() => handleDelete(_id)}
             />
 
             {description && (

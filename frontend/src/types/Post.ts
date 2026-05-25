@@ -123,6 +123,7 @@ interface CommonPostFields {
   description: string;
   media: string[];
   onOpenDetails?: () => void;
+  onDeleteSuccess?: (postId: string) => void;
   createdAt: string;
   updatedAt: string;
   disableInteractions?: boolean;

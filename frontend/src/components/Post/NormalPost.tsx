@@ -1,10 +1,13 @@
 import React, { memo, useMemo, useEffect, useRef, useState } from "react";
 import PostHeader from "./PostHeader";
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../../context/user";
 import PostInteractions from "./PostInteractions";
 import { useLikes } from "../../hooks/useLikes";
 import MediaViewer from "../Media/MediaViewer"
+import ConfirmDeleteModal from "../Home/ConfirmDeleteModal";
 import { useWishlist } from "../../hooks/useWishlist";
+import { toast } from "react-toastify";
 import type { NormalPostProps } from "../../types/Post";
 import { VideoPlaybackContext } from "../../context/VideoPlaybackContext";
 import { useContext } from "react";
@@ -18,6 +21,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
   isLiked,
   isWishlisted,
   onOpenDetails,
+  onDeleteSuccess,
   commentsCount,
   disableInteractions,
   normalPost,
@@ -26,9 +30,13 @@ const NormalPost: React.FC<NormalPostProps> = ({
   const { activeVideo, setActiveVideo } = useContext(VideoPlaybackContext);
   const postRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const { user: currentUser } = useUser();
+  const isOwner = currentUser?._id === user._id;
   const [viewerOpen, setViewerOpen] = useState(false);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const BACKEND_URL =
     import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
   const navigate = useNavigate();
@@ -68,6 +76,30 @@ const NormalPost: React.FC<NormalPostProps> = ({
     [createdAt]
   );
 
+  const handleDelete = async (postId: string) => {
+    try {
+      setIsDeleting(true);
+
+      // optimistic removal
+      onDeleteSuccess?.(postId);
+
+      await fetch(
+        `${BACKEND_URL}/api/allposts/${postId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      setDeleteOpen(false);
+      toast.success("Post deleted successfully");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete post please try again later");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     if (primaryVideoIndex === -1) return;
@@ -155,6 +187,8 @@ const NormalPost: React.FC<NormalPostProps> = ({
             timestamp={timestamp}
             price={0}
             type="normal_post"
+            isOwner={isOwner}
+            onDelete={() => setDeleteOpen(true)}
           />
 
           {description && (
@@ -277,6 +311,12 @@ const NormalPost: React.FC<NormalPostProps> = ({
 
         </div>
       </div>
+      <ConfirmDeleteModal
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => handleDelete(_id)}
+        loading={isDeleting}
+      />
     </article>
   );
 };

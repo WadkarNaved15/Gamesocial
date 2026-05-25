@@ -103,6 +103,7 @@ const NormalPostSchema = new mongoose.Schema(
       {
         name: String,
         url: String,
+        key: String,
         type: {
           type: String,
           enum: ["image", "video"],

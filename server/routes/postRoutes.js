@@ -10,7 +10,6 @@ import Like from "../models/Like.js";
 import optionalAuthMiddleware from "../middlewares/optionalAuthMiddleware.js";
 import redisClient from "../config/redis.js";
 import { getFeedPage } from "../services/feed.service.js";
-
 dotenv.config();
 
 const router = express.Router();
