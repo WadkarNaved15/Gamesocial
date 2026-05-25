@@ -7,6 +7,7 @@ import Like from "../models/Like.js";
 import Comment from "../models/Comment.js";
 import Wishlist from "../models/Wishlist.js";
 import Notification from "../models/Notifications.js";
+import { extractS3KeyFromUrl } from "../utils/extractS3Key.js";
 function deriveBuildType(fileFormat) {
   if (fileFormat === "exe") return "executable";
   return "archive";
@@ -52,7 +53,7 @@ export const createPost = async (req, res) => {
           })),
         },
       });
-      
+
       // ✅ GORSE: sync new post (fire-and-forget)
       onPostCreated(post);
 
@@ -332,7 +333,7 @@ export const createPost = async (req, res) => {
       });
       // ✅ GORSE: sync new post (fire-and-forget)
       onPostCreated(post);
-      
+
       return res.status(201).json({
         message: "Ad model post created successfully",
         post,
@@ -359,42 +360,65 @@ export const deletePost = async (req, res) => {
       });
     }
 
-    // ownership check
+    // =====================================================
+    // OWNERSHIP CHECK
+    // =====================================================
+
     if (post.user.toString() !== req.user.id) {
       return res.status(403).json({
         message: "Unauthorized",
       });
     }
 
-    // =========================================
-    // DELETE S3 MEDIA
-    // =========================================
+    // =====================================================
+    // COLLECT ALL S3 KEYS
+    // =====================================================
 
+    const keysToDelete = [];
+
+    // NORMAL POST
     if (
       post.type === "normal_post" &&
       post.normalPost?.assets?.length
     ) {
-      await Promise.all(
-        post.normalPost.assets.map(async (asset) => {
-          if (!asset.key) return;
+      for (const asset of post.normalPost.assets) {
 
-          try {
-            await s3.send(
-              new DeleteObjectCommand({
-                Bucket: process.env.AWS_BUCKET_NAME,
-                Key: asset.key,
-              })
-            );
-          } catch (err) {
-            console.error("S3 delete failed:", asset.key, err);
+        // NEW POSTS
+        if (asset.key) {
+          keysToDelete.push(asset.key);
+        }
+
+        // OLD POSTS
+        else if (asset.url) {
+          const extractedKey = extractS3KeyFromUrl(asset.url);
+
+          if (extractedKey) {
+            keysToDelete.push(extractedKey);
           }
-        })
+        }
+      }
+    }
+
+    // =====================================================
+    // DELETE S3 FILES
+    // =====================================================
+
+    if (keysToDelete.length > 0) {
+      await Promise.all(
+        keysToDelete.map((key) =>
+          s3.send(
+            new DeleteObjectCommand({
+              Bucket: process.env.AWS_BUCKET_NAME,
+              Key: key,
+            })
+          )
+        )
       );
     }
 
-    // =========================================
-    // DELETE RELATED DATA
-    // =========================================
+    // =====================================================
+    // DELETE RELATED COLLECTION DATA
+    // =====================================================
 
     await Promise.all([
       Like.deleteMany({ post: postId }),
@@ -403,9 +427,9 @@ export const deletePost = async (req, res) => {
       Notification.deleteMany({ postId }),
     ]);
 
-    // =========================================
+    // =====================================================
     // DELETE POST
-    // =========================================
+    // =====================================================
 
     await AllPost.findByIdAndDelete(postId);
 
