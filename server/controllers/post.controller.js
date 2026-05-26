@@ -409,6 +409,7 @@ export const deletePost = async (req, res) => {
       post.gamePost?.file
     ) {
 
+
       // NEW POSTS (with key stored)
       if (post.gamePost.file.key) {
         keysToDelete.push(post.gamePost.file.key);
@@ -436,6 +437,30 @@ export const deletePost = async (req, res) => {
         if (extractedKey) {
           keysToDelete.push(extractedKey);
         }
+      }
+    }
+
+        // =====================================================
+    // MODEL POST FILES
+    // =====================================================
+
+    if (
+      post.type === "model_post" &&
+      post.modelPost?.assets?.length
+    ) {
+
+      for (const asset of post.modelPost.assets) {
+
+        // ORIGINAL FILE
+        if (asset.originalKey) {
+          keysToDelete.push(asset.originalKey);
+        }
+
+        // OPTIMIZED FILE
+        if (asset.optimizedKey) {
+          keysToDelete.push(asset.optimizedKey);
+        }
+
       }
     }
     // =====================================================

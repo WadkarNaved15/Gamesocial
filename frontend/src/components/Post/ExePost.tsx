@@ -4,10 +4,13 @@ import { useWishlist } from '../../hooks/useWishlist';
 import PostHeader from "./PostHeader";
 import PostInteractions from "./PostInteractions";
 import CommentSection from "./CommentSection";
+import ConfirmDeleteModal from '../Home/ConfirmDeleteModal';
 import "@google/model-viewer";
 import type { ExePostProps } from "../../types/Post";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
+import {toast} from "react-toastify";
+import { useUser } from "../../context/user";
 const ExePost: React.FC<ExePostProps> = ({
   user,
   description,
@@ -16,6 +19,7 @@ const ExePost: React.FC<ExePostProps> = ({
   isWishlisted,
   // gameUrl,
   onOpenDetails,
+  onDeleteSuccess,
   createdAt,
   modelPost,
   detailed = false,
@@ -28,6 +32,10 @@ const ExePost: React.FC<ExePostProps> = ({
   const [showComments, setShowComments] = useState(false); // ✅ toggle comment section
   const postRef = useRef(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const { user: currentUser } = useUser();
+  const isOwner = currentUser?._id === user._id;
   const [localCommentsCount, setLocalCommentsCount] = useState<number>(commentsCount ?? 0);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
   const { likesCount: localLikesCount, isLiked: localIsLiked, handleLike } = useLikes(_id, BACKEND_URL);
@@ -45,6 +53,31 @@ const ExePost: React.FC<ExePostProps> = ({
       ? asset.optimizedUrl
       : asset?.originalUrl;
   const price = modelPost?.price;
+
+  const handleDelete = async (postId: string) => {
+    try {
+      setIsDeleting(true);
+
+      // optimistic removal
+      onDeleteSuccess?.(postId);
+
+      await fetch(
+        `${BACKEND_URL}/api/allposts/${postId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      setDeleteOpen(false);
+      toast.success("Post deleted successfully");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete post please try again later");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   const getRelativeTime = (date: string | Date) => {
     const now = new Date();
     const created = new Date(date);
@@ -121,6 +154,8 @@ const ExePost: React.FC<ExePostProps> = ({
             timestamp={timestamp}
             price={price ?? 0}
             type='model_post'
+            isOwner={isOwner}
+            onDelete={() => setDeleteOpen(true)}
           />
 
           {description && (
@@ -184,7 +219,12 @@ const ExePost: React.FC<ExePostProps> = ({
         </div>
 
       </div>
-
+      <ConfirmDeleteModal
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => handleDelete(_id)}
+        loading={isDeleting}
+      />
     </article>
   );
 };
