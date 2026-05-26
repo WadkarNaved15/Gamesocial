@@ -4,16 +4,24 @@ import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import session from "express-session";
+import { RedisStore } from "connect-redis";
+import dns from "dns";
 import passport from "passport";
 import "./passportConfig.js"
 
 import http from "http";
 import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { createClient } from "redis";
 import GameSession from "./models/GameSession.js";
 import fetch from "node-fetch";
 import { releaseInstance } from "./services/instanceAllocator.js";
 import { sessionStreams } from "./services/sessionStream.js";
 import { initializeSessionPubSub } from "./services/sessionPubSub.js";
+
+// ✅ Import your existing Redis client
+import redisClient from "./config/redis.js";
+import startCleanupWorker from "./services/sessionCleanupWorker.js";
 
 // ROUTES
 import modelUploadRouter from "./routes/compression.js";
@@ -56,11 +64,43 @@ import streamProxyRouter, { handleWsUpgrade } from "./routes/streamProxy.js";
 
 import adminRouter from "./routes/admin.js"
 
-
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// ============================================
+// REDIS CLIENT SETUP
+// ============================================
+// ✅ Use your existing redisClient for session store
+// Create a separate pub/sub client for Socket.IO adapter
+const redisIoPubClient = createClient({
+  username: "default",
+  password: process.env.REDIS_PASSWORD,
+  socket: {
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
+    tls: false,
+  },
+});
+
+const redisIoSubClient = createClient({
+  username: "default",
+  password: process.env.REDIS_PASSWORD,
+  socket: {
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
+    tls: false,
+  },
+});
+
+// Handle errors
+redisIoPubClient.on("error", (err) => console.error("❌ Redis IO Pub Client Error:", err));
+redisIoSubClient.on("error", (err) => console.error("❌ Redis IO Sub Client Error:", err));
+
+// ============================================
+// MIDDLEWARE
+// ============================================
 
 app.use((req, res, next) => {
   const host = req.headers.host?.split(":")[0];
@@ -106,14 +146,26 @@ app.set("trust proxy", 1);
 app.use(express.json({ limit: '200mb' }));
 app.use(express.urlencoded({ extended: true, limit: '200mb' }));
 
-
 app.use(cookieParser());
 app.use(deviceMiddleware)
+
+// ============================================
+// EXPRESS SESSION STORE (Redis-backed)
+// ============================================
+const redisStore = new RedisStore({ client: redisClient });
+
 app.use(
   session({
+    store: redisStore,
     secret: process.env.JWT_SECRET,
     resave: false,
     saveUninitialized: true,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: 'lax',
+    }
   })
 );
 
@@ -121,7 +173,9 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 
+// ============================================
 // ROUTES
+// ============================================
 app.use("/api/auth", authRoutes);
 app.use("/api/likes", likesRoutes);
 app.use("/api/posts", postRoutes);
@@ -141,7 +195,6 @@ app.use("/api/media/upload", chatMediaUpload);
 app.use("/api/wishlist", wishListRoutes);
 app.use("/api/gameRoutes", gameRoutes);
 app.use("/api/fetchpockets", pocketFetchRoutes);
-// app.use("/api/interactions", interactionRoutes);
 app.use("/api/feedback", feedBackRoutes);
 app.use("/api/recommend", recommendationRoutes);
 app.use("/api/compression", modelUploadRouter);
@@ -159,22 +212,35 @@ app.use("/api/pockets", pocketRoutes);
 // Admin routes (protected by your isAdmin middleware)
 app.use("/api/admin", adminRouter);
 
-
 app.get("/health", async (req, res) => {
   const mongoHealthy = mongoose.connection.readyState === 1;
+  let redisHealthy = false;
 
-  if (!mongoHealthy) {
+  try {
+    await redisClient.ping();
+    redisHealthy = true;
+  } catch (err) {
+    console.error("Redis health check failed:", err);
+  }
+
+  if (!mongoHealthy || !redisHealthy) {
     return res.status(500).json({
       status: "unhealthy",
+      mongo: mongoHealthy ? "healthy" : "unhealthy",
+      redis: redisHealthy ? "healthy" : "unhealthy",
     });
   }
 
   res.status(200).json({
     status: "healthy",
+    mongo: "healthy",
+    redis: "healthy",
   });
 });
 
-// HTTP SERVER
+// ============================================
+// HTTP SERVER & SOCKET.IO
+// ============================================
 const server = http.createServer(app);
 
 server.on("upgrade", (req, socket, head) => {
@@ -185,7 +251,7 @@ server.on("upgrade", (req, socket, head) => {
   }
 });
 
-// SOCKET.IO (Real-Time Chat)
+// SOCKET.IO (Real-Time Chat) with Redis Adapter
 const io = new Server(server, {
   cors: {
     origin: corsWhitelist,
@@ -193,24 +259,38 @@ const io = new Server(server, {
   },
 });
 
-let onlineUsers = new Map(); // userId => Set(socketId)
-app.use("/api/internal-notify", internalNotificationRoutes(io, onlineUsers));
+// Attach Redis adapter to Socket.IO
+// This makes io.to(chatId).emit() and room membership work across all backends
+io.adapter(createAdapter(redisIoPubClient, redisIoSubClient));
+
+app.use("/api/internal-notify", internalNotificationRoutes(io));
+
+// ============================================
+// SOCKET.IO EVENT HANDLERS
+// ============================================
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 
-  socket.on("join", (userId) => {
-    socket.userId = userId; // attach to socket for cleanup
-    if (!onlineUsers.has(userId)) {
-      onlineUsers.set(userId, new Set());
+  // Join user presence
+  socket.on("join", async (userId) => {
+      socket.userId = userId;
+      socket.join(`user-${userId}`);
+    
+    // Add to Redis presence set
+    try {
+      await redisClient.sAdd(`online-users`, userId);
+      const onlineUsers = await redisClient.sMembers(`online-users`);
+      
+      console.log("User joined:", userId);
+      
+      // Emit to everyone that this user is online
+      io.emit("user-online", userId);
+      
+      // Send full list to newly connected socket
+      socket.emit("online-users", onlineUsers);
+    } catch (err) {
+      console.error("Error adding user to presence:", err);
     }
-
-    onlineUsers.get(userId).add(socket.id);
-    console.log("User joined:", userId);
-    // 🔥 Emit to everyone that this user is online
-    io.emit("user-online", userId);
-
-    // 🔥 Send full list to newly connected socket
-    socket.emit("online-users", Array.from(onlineUsers.keys()));
   });
 
   // Join chat room
@@ -218,6 +298,7 @@ io.on("connection", (socket) => {
     socket.join(chatId);
     console.log("Joined chat room:", chatId);
   });
+
   // Leave chat room
   socket.on("leave_chat", (chatId) => {
     socket.leave(chatId);
@@ -227,7 +308,9 @@ io.on("connection", (socket) => {
   // Send Post
   socket.on("send_post", async (data) => {
     const { chatId, senderId, receiverId, postId } = data;
-    if (!chatId) {
+    let finalChatId = chatId;
+    
+    if (!finalChatId) {
       console.log("Creating new chat");
       const participants = [senderId, receiverId].sort();
 
@@ -236,10 +319,11 @@ io.on("connection", (socket) => {
         chat = await Chat.create({ participants });
       }
 
-      chatId = chat._id;
+      finalChatId = chat._id;
     }
+    
     const message = await Message.create({
-      chatId,
+      chatId: finalChatId,
       receiverId,
       senderId,
       messageType: "post",
@@ -248,7 +332,7 @@ io.on("connection", (socket) => {
 
     const messageData = {
       _id: message._id,
-      chatId,
+      chatId: finalChatId,
       senderId,
       receiverId,
       messageType: "post",
@@ -256,28 +340,33 @@ io.on("connection", (socket) => {
       createdAt: message.createdAt,
     };
 
-    // emit to chat room
-    io.to(chatId).emit("receive-message", messageData);
-    // ✅ 2. Badge update only if receiver not inside room
-    const roomSockets = io.sockets.adapter.rooms.get(chatId);
-    const receiverSockets = onlineUsers.get(receiverId);
-
-    if (receiverSockets) {
-      receiverSockets.forEach((socketId) => {
-        if (!roomSockets || !roomSockets.has(socketId)) {
-          io.to(socketId).emit("new-unread-message", {
-            senderId,
-            chatId,
-          });
-        }
-      });
+    // Emit to chat room (works across all backends via Redis adapter)
+    io.to(finalChatId).emit("receive-message", messageData);
+    
+    // Badge update only if receiver not inside room
+    try {
+      // Check if receiver is online in Redis
+      const receiverOnline = await redisClient.sIsMember(`online-users`, receiverId);
+      
+      if (receiverOnline) {
+        // Emit unread badge to receiver
+        // (Socket.IO will handle routing to correct sockets)
+        io.to(`user-${receiverId}`).emit("new-unread-message", {
+          senderId,
+          chatId: finalChatId,
+        });
+      }
+    } catch (err) {
+      console.error("Error checking receiver presence:", err);
     }
   });
 
-  // normal message
+  // Normal message
   socket.on("send-message", async (msg) => {
     let { chatId, senderId, receiverId, text, mediaUrl, mediaType } = msg;
-    if (!chatId) {
+    let finalChatId = chatId;
+    
+    if (!finalChatId) {
       console.log("Creating new chat");
       const participants = [senderId, receiverId].sort();
 
@@ -286,10 +375,11 @@ io.on("connection", (socket) => {
         chat = await Chat.create({ participants });
       }
 
-      chatId = chat._id;
+      finalChatId = chat._id;
     }
+    
     const message = await Message.create({
-      chatId,
+      chatId: finalChatId,
       senderId,
       receiverId,
       text,
@@ -300,7 +390,7 @@ io.on("connection", (socket) => {
 
     const messageData = {
       _id: message._id,
-      chatId,
+      chatId: finalChatId,
       senderId,
       receiverId,
       text,
@@ -309,105 +399,105 @@ io.on("connection", (socket) => {
       messageType: mediaUrl ? "media" : "text",
       createdAt: message.createdAt,
     };
-    // ✅ 1. Send message to active room
-    io.to(chatId).emit("receive-message", messageData);
-    // ✅ 2. Badge update only if receiver not inside room
-    const roomSockets = io.sockets.adapter.rooms.get(chatId);
-    const receiverSockets = onlineUsers.get(receiverId);
-    console.log("receiverSockets", receiverSockets);
-    if (receiverSockets) {
-      receiverSockets.forEach((socketId) => {
-        console.log("socketId of reveiverSockets", socketId);
-        if (!roomSockets || !roomSockets.has(socketId)) {
-          console.log("new-read message event fired for", socketId);
-          io.to(socketId).emit("new-unread-message", {
-            senderId,
-            chatId,
-          });
-        }
-      });
+    
+    // Send message to active room (works across all backends)
+    io.to(finalChatId).emit("receive-message", messageData);
+    
+    // Badge update only if receiver not inside room
+    try {
+      const receiverOnline = await redisClient.sIsMember(`online-users`, receiverId);
+      
+      if (receiverOnline) {
+        io.to(`user-${receiverId}`).emit("new-unread-message", {
+          senderId,
+          chatId: finalChatId,
+        });
+      }
+    } catch (err) {
+      console.error("Error checking receiver presence:", err);
     }
-
   });
 
-  socket.on("disconnect", () => {
+  // Disconnect
+  socket.on("disconnect", async () => {
     const userId = socket.userId;
     if (!userId) return;
 
-    const sockets = onlineUsers.get(userId);
-
-    if (!sockets) return;
-
-    sockets.delete(socket.id);
-
-    if (sockets.size === 0) {
-      onlineUsers.delete(userId);
-
-      // 🔥 Emit offline only if ALL devices disconnected
-      io.emit("user-offline", userId);
+    try {
+      // Check if this user has any other sockets connected
+      const sockets = await io.in(`user-${userId}`).fetchSockets();
+      
+      if (sockets.length === 0) {
+        // No more sockets for this user, remove from presence
+        await redisClient.sRem(`online-users`, userId);
+        io.emit("user-offline", userId);
+      }
+    } catch (err) {
+      console.error("Error on disconnect:", err);
     }
 
     console.log("Socket disconnected:", socket.id);
   });
-
 });
 
-
-// ✅ Replace with
+// ============================================
+// STARTUP & INITIALIZATION
+// ============================================
 (async () => {
   try {
-    // 1️⃣ Connect Mongo FIRST
+    //  Connect Redis clients (if not already connected)
+    console.log("Ensuring Redis clients are connected...");
+    
+    if (!redisClient.isOpen) {
+      console.log("Connecting main Redis client...");
+      // Your existing redis.js already connects, but this ensures it
+    }
+    
+    if (!redisIoPubClient.isOpen) {
+      await redisIoPubClient.connect();
+      console.log("✅ Redis IO Pub Client connected");
+    }
+    
+    if (!redisIoSubClient.isOpen) {
+      await redisIoSubClient.connect();
+      console.log("✅ Redis IO Sub Client connected");
+    }
+
+    dns.setServers(["1.1.1.1", "8.8.8.8"]);
+    //  Connect MongoDB
+    console.log("Connecting to MongoDB...");
     await mongoose.connect(process.env.MONGO_URI, {
-      maxPoolSize: 20,       // default is 5 — too low for 200 VUs
-      minPoolSize: 5,        // keep connections warm
+      maxPoolSize: 20,
+      minPoolSize: 5,
       serverSelectionTimeoutMS: 3000,
       socketTimeoutMS: 20000,
     });
-    console.log("MongoDB Connected");
+    console.log("✅ MongoDB Connected");
 
-    // 2️⃣ Initialize pubsub
+    //  Initialize PubSub for SSE
     await initializeSessionPubSub();
+    console.log("✅ Session PubSub initialized");
 
-    // 3️⃣ Start HTTP server
+    //  Start cleanup worker
+    startCleanupWorker();
+
+    //  Start HTTP server
     server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`[Backend ${process.env.INSTANCE_ID || 'default'}] 🚀 Server running on port ${PORT}`);
     });
 
-    // 4️⃣ Stale session cleanup
-    setInterval(async () => {
-      try {
-        const staleThreshold = new Date(Date.now() - 90_000);
-
-        const staleSessions = await GameSession.find({
-          status: { $in: ["waiting", "starting", "running"] },
-          lastHeartbeat: { $lt: staleThreshold },
-        }).lean();
-
-        for (const session of staleSessions) {
-          console.log(`[Cleanup] Stale session: ${session._id}`);
-
-          if (session.instanceIp) {
-            fetch(`http://${session.instanceIp}:4443/stop-session`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ session_id: session._id.toString() }),
-            }).catch(() => { });
-          }
-
-          await GameSession.findByIdAndUpdate(session._id, {
-            status: "ended",
-            endedAt: new Date(),
-            exitReason: "stale_abandoned",
-          });
-
-          if (session.instanceId && session.leaseToken) {
-            releaseInstance(session.instanceId, session.leaseToken).catch(() => { });
-          }
-        }
-      } catch (err) {
-        console.error("[Cleanup] Error:", err);
-      }
-    }, 60_000);
+    // 5️⃣ Graceful shutdown
+    process.on("SIGTERM", async () => {
+      console.log("SIGTERM received, shutting down gracefully...");
+      server.close();
+      await mongoose.disconnect();
+      await Promise.all([
+        redisClient.quit(),
+        redisIoPubClient.quit(),
+        redisIoSubClient.quit(),
+      ]).catch(() => { });
+      process.exit(0);
+    });
 
   } catch (err) {
     console.error("Startup failed:", err);
