@@ -5,9 +5,11 @@ import { useQueue } from '../../context/QueueContext';
 import { useUI } from '../../context/UIContext';
 import { useLikes } from '../../hooks/useLikes';
 import { useWishlist } from '../../hooks/useWishlist';
+import ConfirmDeleteModal from '../Home/ConfirmDeleteModal';
 import { useUser } from "../../context/user";
 import PostHeader from './PostHeader';
 import PostInteractions from './PostInteractions';
+import {toast} from "react-toastify";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -20,6 +22,7 @@ interface GamePostProps {
   isLiked: boolean;
   isWishlisted: boolean;
   onOpenDetails: () => void;
+  onDeleteSuccess: (postId: string) => void;
   disableInteractions: boolean;
   _id: string;
   gamePost: any;
@@ -34,6 +37,7 @@ const GamePost: React.FC<GamePostProps> = ({
   isLiked,
   isWishlisted,
   onOpenDetails,
+  onDeleteSuccess,
   disableInteractions,
   _id,
   gamePost,
@@ -41,6 +45,8 @@ const GamePost: React.FC<GamePostProps> = ({
   const postRef = useRef(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { user: currentUser } = useUser();
   const isOwner = currentUser?._id === user._id;
 
@@ -91,9 +97,30 @@ const GamePost: React.FC<GamePostProps> = ({
       setIsStarting(false);
     }
   };
-  const handleDelete = async (postId: string) => {
-    console.log("Deleting post", postId);
-  };
+    const handleDelete = async (postId: string) => {
+      try {
+        setIsDeleting(true);
+  
+        // optimistic removal
+        onDeleteSuccess?.(postId);
+  
+        await fetch(
+          `${BACKEND_URL}/api/allposts/${postId}`,
+          {
+            method: "DELETE",
+            credentials: "include",
+          }
+        );
+  
+        setDeleteOpen(false);
+        toast.success("Post deleted successfully");
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to delete post please try again later");
+      } finally {
+        setIsDeleting(false);
+      }
+    };
   // Analytics tracking
   const startViewing = async () => {
     viewStartTime.current = Date.now();
@@ -177,7 +204,7 @@ const GamePost: React.FC<GamePostProps> = ({
               timestamp={timestamp}
               price={gamePost?.price || 0}
               isOwner={isOwner}
-              onDelete={() => handleDelete(_id)}
+              onDelete={() => setDeleteOpen(true)}
             />
 
             {description && (
@@ -319,6 +346,12 @@ const GamePost: React.FC<GamePostProps> = ({
             )}
           </div>
         </div>
+        <ConfirmDeleteModal
+          open={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={() => handleDelete(_id)}
+          loading={isDeleting}
+        />
       </article>
     </>
   );

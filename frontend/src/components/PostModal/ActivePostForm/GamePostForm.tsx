@@ -23,9 +23,9 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel }) => {
   const [price, setPrice] = useState('');
 
   const [platform, setPlatform] = useState<'windows'>('windows');
-type BuildType = 'archive' | 'executable';
+  type BuildType = 'archive' | 'executable';
 
-const [buildType, setBuildType] = useState<BuildType>('archive');
+  const [buildType, setBuildType] = useState<BuildType>('archive');
 
   const [startPath, setStartPath] = useState('');
   const [engine, setEngine] = useState('');
@@ -45,34 +45,34 @@ const [buildType, setBuildType] = useState<BuildType>('archive');
 
   const ALLOWED_EXTENSIONS = ['7z', 'zip', 'exe'];
 
-function isValidBuildFile(file: File) {
-  const ext = file.name.split('.').pop()?.toLowerCase();
-  return ext && ALLOWED_EXTENSIONS.includes(ext);
-}
+  function isValidBuildFile(file: File) {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    return ext && ALLOWED_EXTENSIONS.includes(ext);
+  }
 
 
   /* ---------------- File Select ---------------- */
-const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  if (!isValidBuildFile(file)) {
-    setErrorMessage('Invalid build format. Only .7z, .zip, or .exe are allowed.');
-    return;
-  }
+    if (!isValidBuildFile(file)) {
+      setErrorMessage('Invalid build format. Only .7z, .zip, or .exe are allowed.');
+      return;
+    }
 
-setAsset({
-  id: crypto.randomUUID(),
-  file,
-  name: file.name,
-  size: file.size,
-  status: 'pending'
-});
+    setAsset({
+      id: crypto.randomUUID(),
+      file,
+      name: file.name,
+      size: file.size,
+      status: 'pending'
+    });
 
-setBuildType(buildTypeFromFile(file));
+    setBuildType(buildTypeFromFile(file));
 
-  e.target.value = '';
-};
+    e.target.value = '';
+  };
 
   /* ---------------- Upload ---------------- */
   const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB per chunk
@@ -80,7 +80,7 @@ setBuildType(buildTypeFromFile(file));
   const uploadGameToS3 = async (
     asset: GameAsset,
     onProgress: (p: number) => void
-  ): Promise<string> => {
+  ): Promise<{ fileUrl: string; key: string }> => {
     const startRes = await fetch(`${BACKEND_URL}/api/upload/game/start-multipart`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -125,22 +125,25 @@ setBuildType(buildTypeFromFile(file));
       body: JSON.stringify({ uploadId, key, parts: uploadedParts }),
     });
 
-    const { fileUrl } = await completeRes.json();
-    return fileUrl;
+    const { fileUrl, key: uploadedKey } = await completeRes.json();
+    return {
+      fileUrl,
+      key: uploadedKey,
+    };;
   };
 
   function getBuildFormat(fileName: string): '7z' | 'zip' | 'exe' {
-  const ext = fileName.split('.').pop()?.toLowerCase();
-  if (ext === '7z') return '7z';
-  if (ext === 'zip') return 'zip';
-  return 'exe';
-}
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    if (ext === '7z') return '7z';
+    if (ext === 'zip') return 'zip';
+    return 'exe';
+  }
 
-function buildTypeFromFile(file: File): BuildType {
-  return file.name.toLowerCase().endsWith('.exe')
-    ? 'executable'
-    : 'archive';
-}
+  function buildTypeFromFile(file: File): BuildType {
+    return file.name.toLowerCase().endsWith('.exe')
+      ? 'executable'
+      : 'archive';
+  }
 
 
   /* ---------------- Submit ---------------- */
@@ -153,12 +156,12 @@ function buildTypeFromFile(file: File): BuildType {
       asset.status = 'uploading';
       setAsset({ ...asset });
 
-      const uploadedUrl = await uploadGameToS3(asset, p => {
+      const { fileUrl, key } = await uploadGameToS3(asset, p => {
         asset.progress = p;
         setAsset({ ...asset });
       });
 
-      asset.uploadedUrl = uploadedUrl;
+      asset.uploadedUrl = fileUrl;
       asset.status = 'done';
       setAsset({ ...asset });
 
@@ -187,9 +190,10 @@ function buildTypeFromFile(file: File): BuildType {
             },
             file: {
               name: asset.name,
-              url: uploadedUrl,
+              key,
+              url: fileUrl,
               size: asset.size,
-              format: getBuildFormat(asset.name) // '7z' | 'zip' | 'exe'
+              format: getBuildFormat(asset.name)
             }
           }
         })
@@ -212,7 +216,7 @@ function buildTypeFromFile(file: File): BuildType {
   /* ---------------- UI ---------------- */
   return (
     <div className="w-full max-w-2xl mx-auto bg-white dark:bg-[#191919] min-h-[80vh] max-h-[90vh] rounded-2xl border border-gray-200 dark:border-zinc-800 flex flex-col overflow-hidden shadow-xl transition-colors duration-200">
-      
+
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800 sticky top-0 bg-white/80 dark:bg-[#191919]/80 backdrop-blur-md z-30">
         <div>
@@ -231,7 +235,7 @@ function buildTypeFromFile(file: File): BuildType {
       <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
         {errorMessage && (
           <div className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-xl text-red-600 dark:text-red-400 text-sm flex items-center justify-between animate-in fade-in">
-            <span className="flex items-center gap-2"><Info size={16}/> {errorMessage}</span>
+            <span className="flex items-center gap-2"><Info size={16} /> {errorMessage}</span>
             <X className="cursor-pointer" size={18} onClick={() => setErrorMessage(null)} />
           </div>
         )}
@@ -352,7 +356,7 @@ function buildTypeFromFile(file: File): BuildType {
                   <p className="text-[10px] text-gray-500 font-bold">{(asset.size / 1024 / 1024).toFixed(2)} MB</p>
                 </div>
                 {!isSubmitting && (
-                  <button 
+                  <button
                     onClick={() => setAsset(null)}
                     className="p-2 hover:bg-gray-200 dark:hover:bg-zinc-800 rounded-full transition-colors"
                   >
@@ -368,9 +372,9 @@ function buildTypeFromFile(file: File): BuildType {
                     <span className="text-sky-600 dark:text-sky-400">{asset.progress}%</span>
                   </div>
                   <div className="h-2 bg-gray-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-sky-500 transition-all duration-300 ease-out shadow-[0_0_8px_rgba(14,165,233,0.4)]" 
-                      style={{ width: `${asset.progress}%` }} 
+                    <div
+                      className="h-full bg-sky-500 transition-all duration-300 ease-out shadow-[0_0_8px_rgba(14,165,233,0.4)]"
+                      style={{ width: `${asset.progress}%` }}
                     />
                   </div>
                 </div>

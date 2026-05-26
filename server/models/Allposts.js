@@ -166,6 +166,7 @@ const GamePostSchema = new mongoose.Schema(
     },
     file: {
       name: { type: String, required: true },
+      key: { type: String, required: true },
       url: { type: String, required: true },
       size: { type: Number, required: true },
       format: {

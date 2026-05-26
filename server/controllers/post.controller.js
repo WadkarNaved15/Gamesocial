@@ -173,7 +173,7 @@ export const createPost = async (req, res) => {
 
       const buildType = deriveBuildType(file.format);
 
-      if (!gameName || !startPath || !file?.url || !file?.name || !file?.format) {
+      if (!gameName || !startPath || !file?.url || !file?.name || !file?.format || !file?.key) {
         return res.status(400).json({ message: "Missing required game fields" });
       }
 
@@ -215,6 +215,7 @@ export const createPost = async (req, res) => {
           },
           file: {
             name: file.name,
+            key: file.key,
             url: file.url,
             size: file.size,
             format: file.format,
@@ -399,6 +400,44 @@ export const deletePost = async (req, res) => {
       }
     }
 
+    // =====================================================
+    // GAME POST FILE
+    // =====================================================
+
+    if (
+      post.type === "game_post" &&
+      post.gamePost?.file
+    ) {
+
+      // NEW POSTS (with key stored)
+      if (post.gamePost.file.key) {
+        keysToDelete.push(post.gamePost.file.key);
+      }
+
+      // OLD POSTS (without key)
+      else if (post.gamePost.file.url) {
+
+        let extractedKey = null;
+
+        // OLD GAME URL FORMAT:
+        // "/games/builds/uuid-file.zip"
+
+        if (post.gamePost.file.url.startsWith("/")) {
+          extractedKey = post.gamePost.file.url.replace(/^\/+/, "");
+        }
+
+        // FULL CDN URL FORMAT
+        else {
+          extractedKey = extractS3KeyFromUrl(
+            post.gamePost.file.url
+          );
+        }
+
+        if (extractedKey) {
+          keysToDelete.push(extractedKey);
+        }
+      }
+    }
     // =====================================================
     // DELETE S3 FILES
     // =====================================================

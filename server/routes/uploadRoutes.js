@@ -24,6 +24,7 @@ router.post("/presigned-url", async (req, res) => {
     }
 
     if (fileType?.startsWith("image/") && fileSize > 5 * 1024 * 1024) {
+
       return res.status(400).json({ message: "Image too large" });
     }
 
@@ -139,6 +140,7 @@ router.post("/game/complete-multipart", async (req, res) => {
     await s3.send(command);
     res.json({
       success: true,
+      key,
       fileUrl: `/${key}`
     });
   } catch (err) {
