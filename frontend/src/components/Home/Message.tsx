@@ -52,6 +52,7 @@ const MessagingComponent = () => {
   const [currentChatId, setCurrentChatId] = useState(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useUser();
@@ -90,7 +91,7 @@ const MessagingComponent = () => {
   const uploadChatMediaToS3 = async (
     asset: UploadAsset,
     onProgress: (percent: number) => void
-  ): Promise<string> => {
+  ): Promise<{ fileUrl: string; key: string }> => {
     // 1️⃣ Get presigned URL
     const res = await fetch(`${BACKEND_URL}/api/upload/presigned-url`, {
       method: "POST",
@@ -107,7 +108,7 @@ const MessagingComponent = () => {
       throw new Error("Failed to get presigned URL");
     }
 
-    const { uploadUrl, fileUrl } = await res.json();
+    const { uploadUrl, fileUrl, key} = await res.json();
 
     // 2️⃣ Upload to S3 with REAL progress
     return new Promise((resolve, reject) => {
@@ -125,7 +126,10 @@ const MessagingComponent = () => {
 
       xhr.onload = () => {
         if (xhr.status === 200) {
-          resolve(fileUrl);
+           resolve({
+            fileUrl,
+            key,
+          });
         } else {
           reject(new Error(`Upload failed with status ${xhr.status}`));
         }
@@ -247,19 +251,39 @@ const MessagingComponent = () => {
     if (!socket || !currentUser) return;
     const handler = (msg: any) => {
       if (!currentUser) return;
-      if (msg.senderId === currentUser && !msg.tempId) return;
-      // 🔥 Assign chatId if first message
+
       if (!currentChatId) {
         setCurrentChatId(msg.chatId);
         socket.emit("join_chat", msg.chatId);
       }
-      const otherUserId =
-        msg.senderId === currentUser ? msg.receiverId : msg.senderId;
 
-      setConversations((prev) => ({
-        ...prev,
-        [otherUserId]: [...(prev[otherUserId] || []), msg],
-      }));
+      const otherUserId =
+        msg.senderId === currentUser
+          ? msg.receiverId
+          : msg.senderId;
+
+      setConversations((prev) => {
+        const existingMessages = prev[otherUserId] || [];
+
+        // Replace temp message with DB message
+        if (
+          msg.senderId === currentUser &&
+          msg.tempId
+        ) {
+          return {
+            ...prev,
+            [otherUserId]: existingMessages.map((m) =>
+              m.tempId === msg.tempId ? msg : m
+            ),
+          };
+        }
+
+        // Receiver side
+        return {
+          ...prev,
+          [otherUserId]: [...existingMessages, msg],
+        };
+      });
     };
 
 
@@ -269,6 +293,30 @@ const MessagingComponent = () => {
       socket.off("receive-message", handler);
     };
   }, [socket, currentUser, activeChat, currentChatId]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleMessageDeleted = ({ messageId }: any) => {
+      setConversations((prev) => {
+        const updated = { ...prev };
+
+        Object.keys(updated).forEach((userId) => {
+          updated[userId] = updated[userId].filter(
+            (msg) => msg._id !== messageId
+          );
+        });
+
+        return updated;
+      });
+    };
+
+    socket.on("message-deleted", handleMessageDeleted);
+
+    return () => {
+      socket.off("message-deleted", handleMessageDeleted);
+    };
+  }, [socket]);
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!socket || !currentUser) return;
     const file = e.target.files?.[0];
@@ -277,7 +325,7 @@ const MessagingComponent = () => {
     const toastId = toast.loading("Uploading... 0%");
 
     try {
-      const fileUrl = await uploadChatMediaToS3(
+      const { fileUrl, key } = await uploadChatMediaToS3(
         {
           file,
           type: file.type.startsWith("image")
@@ -300,20 +348,21 @@ const MessagingComponent = () => {
         isLoading: false,
         autoClose: 1200,
       });
-
+      const tempId = Date.now().toString();
       // Send chat message
       const newMessage = {
+        tempId,
         chatId: currentChatId,
         senderId: currentUser,
         receiverId: activeChat,
         text: "",
         mediaUrl: fileUrl,
+        mediaKey: key,
         mediaType: file.type.startsWith("image")
           ? "image"
           : file.type.startsWith("video")
             ? "video"
             : "misc",
-
         createdAt: new Date(),
       };
 
@@ -425,6 +474,16 @@ const MessagingComponent = () => {
     }));
 
     setMessage("");
+  };
+
+  const handleDeleteMessage = (messageId: string) => {
+    if (!socket) return;
+
+    socket.emit("delete-message", {
+      messageId,
+    });
+
+    setOpenMenuId(null);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -870,56 +929,128 @@ const MessagingComponent = () => {
                       {(conversations[activeChat] || []).map((msg) => (
                         <div
                           key={msg._id || msg.tempId || msg.id}
-                          className={`flex ${msg.senderId === currentUser ? "justify-end" : "justify-start"
+                          className={`flex ${msg.senderId === currentUser
+                            ? "justify-end"
+                            : "justify-start"
                             }`}
                         >
-                          <div
-                            className={`max-w-xs px-3 py-2 rounded-lg text-sm shadow-sm ${msg.senderId === currentUser
-                              ? "bg-gray-600 text-white"
-                              : "bg-gray-200 text-black"
-                              }`}
-                          >
+                          <div className="relative group max-w-xs">
 
-                            {/* IMAGE */}
-                            {msg.mediaType === "image" && (
-                              <img
-                                src={msg.mediaUrl}
-                                crossOrigin="anonymous"
-                                alt="media"
-                                className="rounded-lg max-w-full mb-2"
-                              />
+                            {msg.senderId === currentUser && msg._id && (
+                              <div className="absolute top-1 right-1 z-20">
+
+                                {/* Three dots button */}
+                                <button
+                                  onClick={() =>
+                                    setOpenMenuId(
+                                      openMenuId === (msg._id || msg.tempId)
+                                        ? null
+                                        : (msg._id || msg.tempId)
+                                    )
+                                  }
+                                  className="
+                                    opacity-0 group-hover:opacity-100
+                                    transition-opacity duration-200
+                                    text-white/70 hover:text-white
+                                  "
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="w-4 h-4"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <circle cx="10" cy="4" r="1.5" />
+                                    <circle cx="10" cy="10" r="1.5" />
+                                    <circle cx="10" cy="16" r="1.5" />
+                                  </svg>
+                                </button>
+
+                                {/* Dropdown */}
+                                {openMenuId === (msg._id || msg.tempId) && (
+                                  <div
+                                    className="
+                                      absolute right-0 mt-1
+                                      w-40 rounded-lg
+                                      bg-white dark:bg-gray-900
+                                      border border-gray-200 dark:border-gray-700
+                                      shadow-xl overflow-hidden
+                                    "
+                                  >
+                                    <button
+                                      onClick={() => handleDeleteMessage(msg._id)}
+                                      className="
+                                        w-full text-left px-4 py-2
+                                        text-sm text-red-500
+                                        hover:bg-red-50
+                                        dark:hover:bg-red-900/20
+                                        transition-colors
+                                      "
+                                    >
+                                      Delete Message
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             )}
 
-                            {/* VIDEO */}
-                            {msg.mediaType === "video" && (
-                              <video
-                                src={msg.mediaUrl}
-                                crossOrigin="anonymous"
-                                controls
-                                className="rounded-lg max-w-full mb-2"
-                              />
-                            )}
+                            {/* Actual Bubble */}
+                            <div
+                              className={`px-3 py-2 rounded-lg text-sm shadow-sm ${msg.senderId === currentUser
+                                ? "bg-gray-600 text-white"
+                                : "bg-gray-200 text-black"
+                                }`}
+                            >
+                              {/* IMAGE */}
+                              {msg.mediaType === "image" && (
+                                <img
+                                  src={msg.mediaUrl}
+                                  crossOrigin="anonymous"
+                                  alt="media"
+                                  className="rounded-lg max-w-full mb-2"
+                                />
+                              )}
 
-                            {/* TEXT */}
-                            {msg.text && <p>{msg.text}</p>}
-                            {/* POST */}
-                            {msg.messageType === "post" && (
-                              <SharedPostMessage
-                                postId={msg.sharedPostId}
-                                onOpenPost={(postId: string) => {
-                                  window.open(`/post/${postId}`, '_blank', 'noopener,noreferrer');
-                                }}
-                              />
-                            )}
-                            {/* TIME */}
-                            <p className="text-xs mt-1 text-gray-500">
-                              {new Date(msg.createdAt).toLocaleTimeString()}
-                            </p>
+                              {/* VIDEO */}
+                              {msg.mediaType === "video" && (
+                                <video
+                                  src={msg.mediaUrl}
+                                  crossOrigin="anonymous"
+                                  controls
+                                  className="rounded-lg max-w-full mb-2"
+                                />
+                              )}
+
+                              {/* TEXT */}
+                              {msg.text && <p>{msg.text}</p>}
+
+                              {/* POST */}
+                              {msg.messageType === "post" && (
+                                <SharedPostMessage
+                                  postId={msg.sharedPostId}
+                                  onOpenPost={(postId: string) => {
+                                    window.open(
+                                      `/post/${postId}`,
+                                      "_blank",
+                                      "noopener,noreferrer"
+                                    );
+                                  }}
+                                />
+                              )}
+
+                              {/* TIME */}
+                              <p
+                                className={`text-xs mt-1 ${msg.senderId === currentUser
+                                  ? "text-gray-200"
+                                  : "text-gray-500"
+                                  }`}
+                              >
+                                {new Date(msg.createdAt).toLocaleTimeString()}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       ))}
-
-
 
                       <div ref={messagesEndRef} />
                     </main>

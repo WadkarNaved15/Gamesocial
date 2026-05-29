@@ -25,6 +25,10 @@ const messageSchema = new mongoose.Schema(
 
     // media
     mediaUrl: { type: String, default: null },
+    mediaKey: {
+      type: String,
+      default: null,
+    },
     mediaType: { type: String, enum: ["image", "video", null], default: null },
 
     // 🔥 post sharing

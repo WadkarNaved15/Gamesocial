@@ -8,8 +8,9 @@ import { RedisStore } from "connect-redis";
 import dns from "dns";
 import passport from "passport";
 import "./passportConfig.js"
-
 import http from "http";
+import { DeleteObjectCommand } from "@aws-sdk/client-s3";
+import s3 from "./s3.js";
 import { Server } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
@@ -273,19 +274,19 @@ io.on("connection", (socket) => {
 
   // Join user presence
   socket.on("join", async (userId) => {
-      socket.userId = userId;
-      socket.join(`user-${userId}`);
-    
+    socket.userId = userId;
+    socket.join(`user-${userId}`);
+
     // Add to Redis presence set
     try {
       await redisClient.sAdd(`online-users`, userId);
       const onlineUsers = await redisClient.sMembers(`online-users`);
-      
+
       console.log("User joined:", userId);
-      
+
       // Emit to everyone that this user is online
       io.emit("user-online", userId);
-      
+
       // Send full list to newly connected socket
       socket.emit("online-users", onlineUsers);
     } catch (err) {
@@ -309,7 +310,7 @@ io.on("connection", (socket) => {
   socket.on("send_post", async (data) => {
     const { chatId, senderId, receiverId, postId } = data;
     let finalChatId = chatId;
-    
+
     if (!finalChatId) {
       console.log("Creating new chat");
       const participants = [senderId, receiverId].sort();
@@ -321,7 +322,7 @@ io.on("connection", (socket) => {
 
       finalChatId = chat._id;
     }
-    
+
     const message = await Message.create({
       chatId: finalChatId,
       receiverId,
@@ -342,12 +343,12 @@ io.on("connection", (socket) => {
 
     // Emit to chat room (works across all backends via Redis adapter)
     io.to(finalChatId).emit("receive-message", messageData);
-    
+
     // Badge update only if receiver not inside room
     try {
       // Check if receiver is online in Redis
       const receiverOnline = await redisClient.sIsMember(`online-users`, receiverId);
-      
+
       if (receiverOnline) {
         // Emit unread badge to receiver
         // (Socket.IO will handle routing to correct sockets)
@@ -363,9 +364,18 @@ io.on("connection", (socket) => {
 
   // Normal message
   socket.on("send-message", async (msg) => {
-    let { chatId, senderId, receiverId, text, mediaUrl, mediaType } = msg;
+    let {
+      chatId,
+      senderId,
+      receiverId,
+      text,
+      mediaUrl,
+      mediaKey,
+      mediaType,
+      tempId,
+    } = msg;
     let finalChatId = chatId;
-    
+
     if (!finalChatId) {
       console.log("Creating new chat");
       const participants = [senderId, receiverId].sort();
@@ -377,36 +387,39 @@ io.on("connection", (socket) => {
 
       finalChatId = chat._id;
     }
-    
+
     const message = await Message.create({
       chatId: finalChatId,
       senderId,
       receiverId,
       text,
       mediaUrl,
+      mediaKey,
       mediaType,
       messageType: mediaUrl ? "media" : "text"
     });
 
     const messageData = {
       _id: message._id,
+      tempId,
       chatId: finalChatId,
       senderId,
       receiverId,
       text,
       mediaUrl,
+      mediaKey,
       mediaType,
       messageType: mediaUrl ? "media" : "text",
       createdAt: message.createdAt,
     };
-    
+
     // Send message to active room (works across all backends)
     io.to(finalChatId).emit("receive-message", messageData);
-    
+
     // Badge update only if receiver not inside room
     try {
       const receiverOnline = await redisClient.sIsMember(`online-users`, receiverId);
-      
+
       if (receiverOnline) {
         io.to(`user-${receiverId}`).emit("new-unread-message", {
           senderId,
@@ -417,7 +430,43 @@ io.on("connection", (socket) => {
       console.error("Error checking receiver presence:", err);
     }
   });
+  // Deletion of message
+  socket.on("delete-message", async ({ messageId }) => {
+    try {
+      const message = await Message.findById(messageId);
 
+      if (!message) return;
+
+      // Security: only sender can delete
+      if (message.senderId.toString() !== socket.userId) {
+        console.log("Unauthorized delete attempt");
+        return;
+      }
+
+      // Delete media from S3
+      if (message.mediaKey) {
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: message.mediaKey,
+          })
+        );
+      }
+
+      const chatId = message.chatId;
+
+      await Message.findByIdAndDelete(messageId);
+
+      io.to(chatId.toString()).emit("message-deleted", {
+        messageId,
+        chatId,
+      });
+
+      console.log("Message deleted:", messageId);
+    } catch (err) {
+      console.error("Delete message error:", err);
+    }
+  });
   // Disconnect
   socket.on("disconnect", async () => {
     const userId = socket.userId;
@@ -426,7 +475,7 @@ io.on("connection", (socket) => {
     try {
       // Check if this user has any other sockets connected
       const sockets = await io.in(`user-${userId}`).fetchSockets();
-      
+
       if (sockets.length === 0) {
         // No more sockets for this user, remove from presence
         await redisClient.sRem(`online-users`, userId);
@@ -447,17 +496,17 @@ io.on("connection", (socket) => {
   try {
     //  Connect Redis clients (if not already connected)
     console.log("Ensuring Redis clients are connected...");
-    
+
     if (!redisClient.isOpen) {
       console.log("Connecting main Redis client...");
       // Your existing redis.js already connects, but this ensures it
     }
-    
+
     if (!redisIoPubClient.isOpen) {
       await redisIoPubClient.connect();
       console.log("✅ Redis IO Pub Client connected");
     }
-    
+
     if (!redisIoSubClient.isOpen) {
       await redisIoSubClient.connect();
       console.log("✅ Redis IO Sub Client connected");
