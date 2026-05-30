@@ -389,12 +389,12 @@ const ProfilePage: React.FC = () => {
 
       {/* Two Component Cards Section */}
       <div className="max-w-7xl mx-auto px-6 mt-12 pb-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative">
+        <div className="grid grid-cols-1 lg:grid-cols-[7.5fr_4.5fr] gap-8 relative">
 
           {/* MODEL POST → replace LEFT + RIGHT */}
           <>
             {/* LEFT COLUMN */}
-            <div className="lg:col-span-8 flex flex-col w-full">
+            <div className="flex flex-col w-full">
               {loadingPosts && (
                 <div className="text-gray-400">Loading your posts...</div>
               )}
@@ -437,7 +437,7 @@ const ProfilePage: React.FC = () => {
             </div>
 
             {/* RIGHT COLUMN — ONLY FOR NON-MODEL POSTS */}
-            <div className="lg:col-span-4 hidden lg:block">
+            <div className="hidden lg:block">
               <div className="sticky top-4">
                 {/* Match the background and border to your Hero/Socials cards */}
                 <div className="bg-white dark:bg-[#191919] rounded-3xl p-8 w-full border border-gray-200 dark:border-white/10 shadow-2xl flex flex-col max-h-[calc(100vh-40px)]">
