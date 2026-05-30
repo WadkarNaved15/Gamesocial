@@ -103,6 +103,81 @@ const PocketPost: React.FC<PocketPostProps> = ({
       ref={postRef}
       className="relative w-full border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-[#0f0f0f]"
     >
+      {/* Sticky Pocket Footer */}
+      <div
+        onClick={() => onOpenDetails?.()}
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+
+          padding: "14px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+
+          background: "rgba(32, 30, 31, 0.96)",
+
+          backdropFilter: "blur(6px)",
+          WebkitBackdropFilter: "blur(6px)",
+        }}
+      >
+        <img
+          src={user.avatar || "/default_avatar.png"}
+          alt={user.username}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/profile/${user.username}`);
+          }}
+          style={{
+            width: "36px",
+            height: "36px",
+            borderRadius: "999px",
+            objectFit: "cover",
+            flexShrink: 0,
+            border: "2px solid rgba(255,255,255,0.15)",
+          }}
+        />
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+            flex: 1,
+          }}
+        >
+          <span
+            style={{
+              color: "white",
+              fontWeight: 800,
+              fontSize: "14px",
+              lineHeight: 1.1,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {brandName}
+          </span>
+
+          {tagline && (
+            <span
+              style={{
+                color: "rgba(255,255,255,0.72)",
+                fontSize: "11px",
+                marginTop: "3px",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {tagline}
+            </span>
+          )}
+        </div>
+      </div>
       <div
         style={{
           width: "100%",
@@ -170,81 +245,6 @@ const PocketPost: React.FC<PocketPostProps> = ({
             />
 
           )}
-          {/* Sticky Pocket Footer */}
-          <div
-            onClick={() => onOpenDetails?.()}
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              bottom: 0,
-
-              padding: "14px 16px",
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-
-              background: "rgba(32, 30, 31, 0.96)",
-
-              backdropFilter: "blur(6px)",
-              WebkitBackdropFilter: "blur(6px)",
-            }}
-          >
-            <img
-              src={user.avatar || "/default_avatar.png"}
-              alt={user.username}
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/profile/${user.username}`);
-              }}
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "999px",
-                objectFit: "cover",
-                flexShrink: 0,
-                border: "2px solid rgba(255,255,255,0.15)",
-              }}
-            />
-
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                minWidth: 0,
-                flex: 1,
-              }}
-            >
-              <span
-                style={{
-                  color: "white",
-                  fontWeight: 800,
-                  fontSize: "14px",
-                  lineHeight: 1.1,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {brandName}
-              </span>
-
-              {tagline && (
-                <span
-                  style={{
-                    color: "rgba(255,255,255,0.72)",
-                    fontSize: "11px",
-                    marginTop: "3px",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {tagline}
-                </span>
-              )}
-            </div>
-          </div>
         </div>
       </div>
 
