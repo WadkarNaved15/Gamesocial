@@ -9,6 +9,7 @@ import { useUser } from "../../context/user";
 import { useChat } from "../../context/ChatContext";
 import { useUI } from "../../context/UIContext";
 import { useUsers } from "../../context/UsersContext";
+import MediaViewer from "../Media/MediaViewer";
 import { toast } from "react-toastify";
 import {
   MessageCircle,
@@ -53,6 +54,10 @@ const MessagingComponent = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [mediaViewer, setMediaViewer] = useState<{
+    url: string;
+    type: "image" | "video";
+  } | null>(null);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useUser();
@@ -108,7 +113,7 @@ const MessagingComponent = () => {
       throw new Error("Failed to get presigned URL");
     }
 
-    const { uploadUrl, fileUrl, key} = await res.json();
+    const { uploadUrl, fileUrl, key } = await res.json();
 
     // 2️⃣ Upload to S3 with REAL progress
     return new Promise((resolve, reject) => {
@@ -126,7 +131,7 @@ const MessagingComponent = () => {
 
       xhr.onload = () => {
         if (xhr.status === 200) {
-           resolve({
+          resolve({
             fileUrl,
             key,
           });
@@ -1003,22 +1008,58 @@ const MessagingComponent = () => {
                             >
                               {/* IMAGE */}
                               {msg.mediaType === "image" && (
-                                <img
-                                  src={msg.mediaUrl}
-                                  crossOrigin="anonymous"
-                                  alt="media"
-                                  className="rounded-lg max-w-full mb-2"
-                                />
+                                <div
+                                  className="
+                                  cursor-pointer
+                                  overflow-hidden
+                                  rounded-2xl
+                                  bg-black
+                                "
+                                  onClick={() =>
+                                    setMediaViewer({
+                                      url: msg.mediaUrl,
+                                      type: "image",
+                                    })
+                                  }
+                                >
+                                  <img
+                                    src={msg.mediaUrl}
+                                    crossOrigin="anonymous"
+                                    alt="media"
+                                    loading="lazy"
+                                    className="
+                                    w-full
+                                    max-w-[260px]
+                                    max-h-[320px]
+                                    object-cover
+                                    hover:scale-[1.02]
+                                    transition-transform
+                                  "
+                                  />
+                                </div>
                               )}
 
                               {/* VIDEO */}
                               {msg.mediaType === "video" && (
-                                <video
-                                  src={msg.mediaUrl}
-                                  crossOrigin="anonymous"
-                                  controls
-                                  className="rounded-lg max-w-full mb-2"
-                                />
+                                <div
+                                  className="
+                                  overflow-hidden
+                                  rounded-2xl
+                                  bg-black
+                                "
+                                >
+                                  <video
+                                    src={msg.mediaUrl}
+                                    crossOrigin="anonymous"
+                                    controls
+                                    preload="metadata"
+                                    className="
+                                      max-w-[260px]
+                                      max-h-[320px]
+                                      object-cover
+                                    "
+                                  />
+                                </div>
                               )}
 
                               {/* TEXT */}
@@ -1123,6 +1164,19 @@ const MessagingComponent = () => {
             </div>
           )}
         </div>
+
+      )}
+      {mediaViewer && (
+        <MediaViewer
+          assets={[
+            {
+              url: mediaViewer.url,
+              type: mediaViewer.type,
+            },
+          ]}
+          startIndex={0}
+          onClose={() => setMediaViewer(null)}
+        />
       )}
     </div>
   );
