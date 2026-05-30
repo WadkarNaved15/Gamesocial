@@ -160,7 +160,12 @@ const Billboard: React.FC = () => {
           {loadingPockets ? (
             <div className="text-center text-gray-400 pt-10">Loading...</div>
           ) : (
-            <Tower activeFaceIndex={activeIndex} faces={faces} />
+            <Tower
+              activeFaceIndex={activeIndex}
+              faces={faces}
+              onPrev={handlePrev}
+              onNext={handleNext}
+            />
           )}
         </Suspense>
       </div>

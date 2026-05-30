@@ -21,7 +21,9 @@ type FaceDescriptor = StaticFace | PocketFace;
 const Tower: React.FC<{
   activeFaceIndex: number;
   faces: FaceDescriptor[];
-}> = ({ activeFaceIndex, faces }) => {
+  onPrev?: () => void;
+  onNext?: () => void;
+}> = ({ activeFaceIndex, faces, onPrev, onNext }) => {
   const { articles } = usePublishedArticles();
   const cubeRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -123,7 +125,11 @@ const Tower: React.FC<{
               className="absolute inset-0 bg-[#F3F4F6] dark:bg-[#191919] overflow-y-auto backface-hidden"
               style={{ transform: faceTransform }}
             >
-              <PocketPost {...face.pocket} />
+              <PocketPost
+                {...face.pocket}
+                onPrev={onPrev}
+                onNext={onNext}
+              />
             </div>
           );
         })}

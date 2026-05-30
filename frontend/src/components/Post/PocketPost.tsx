@@ -2,6 +2,7 @@
 
 import React, { memo, useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 const POCKET_HEIGHT = 550;
 
 interface User { username: string; avatar?: string; }
@@ -10,6 +11,8 @@ interface PocketPostProps {
   likesCount?: number; isLiked?: boolean; commentsCount?: number;
   brandName: string; tagline?: string; compiledBundleUrl: string;
   onOpenDetails?: () => void; disableInteractions?: boolean;
+  onPrev?: () => void;
+  onNext?: () => void;
 }
 
 async function fetchBundleText(url: string): Promise<string> {
@@ -54,7 +57,7 @@ ${safeCode}
 }
 
 const PocketPost: React.FC<PocketPostProps> = ({
-  _id, user, brandName, tagline, compiledBundleUrl, onOpenDetails,
+  _id, user, brandName, tagline, compiledBundleUrl, onOpenDetails,onPrev, onNext
 }) => {
   const postRef = useRef<HTMLElement>(null);
   const viewStart = useRef<number | null>(null);
@@ -140,10 +143,10 @@ const PocketPost: React.FC<PocketPostProps> = ({
             style={{
               flexShrink: 0,
 
-              padding: "14px 16px",
+              padding: "10px 14px",
               display: "flex",
               alignItems: "center",
-              gap: "12px",
+              gap: "10px",
 
               background: "rgba(32, 30, 31, 0.96)",
               backdropFilter: "blur(6px)",
@@ -158,8 +161,8 @@ const PocketPost: React.FC<PocketPostProps> = ({
                 navigate(`/profile/${user.username}`);
               }}
               style={{
-                width: "36px",
-                height: "36px",
+                width: "30px",
+                height: "30px",
                 borderRadius: "999px",
                 objectFit: "cover",
                 flexShrink: 0,
@@ -204,12 +207,64 @@ const PocketPost: React.FC<PocketPostProps> = ({
                 </span>
               )}
             </div>
+
+            {/* Arrows */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                flexShrink: 0,
+              }}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPrev?.();
+                }}
+                style={{
+                  border: "none",
+                  background: "rgba(255,255,255,0.08)",
+                  color: "white",
+                  borderRadius: "999px",
+                  width: "28px",
+                  height: "28px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <ArrowLeft size={14} />
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNext?.();
+                }}
+                style={{
+                  border: "none",
+                  background: "rgba(255,255,255,0.08)",
+                  color: "white",
+                  borderRadius: "999px",
+                  width: "32px",
+                  height: "32px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <ArrowRight size={14} />
+              </button>
+            </div>
           </div>
 
           {!srcdoc && !fetchErr && (
             <div
               style={{
-                flex:1,
+                flex: 1,
                 width: "100%",
                 background: "linear-gradient(90deg,#1a1a1a 25%,#222 50%,#1a1a1a 75%)",
                 backgroundSize: "200% 100%",
@@ -220,7 +275,7 @@ const PocketPost: React.FC<PocketPostProps> = ({
 
           {fetchErr && (
             <div style={{
-              flex:1, width: "100%", background: "#0a0a0a",
+              flex: 1, width: "100%", background: "#0a0a0a",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               Error
@@ -234,7 +289,7 @@ const PocketPost: React.FC<PocketPostProps> = ({
               srcDoc={srcdoc}
               sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
               style={{
-                flex:1,
+                flex: 1,
                 width: "100%",
                 border: "none",
                 display: "block",
