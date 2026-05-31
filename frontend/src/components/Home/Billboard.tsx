@@ -132,19 +132,35 @@ const Billboard: React.FC = () => {
             {activeFace ? faceLabel(activeFace) : ""}
           </h2>
 
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={handlePrev}
-              className="p-2 rounded-full bg-gray-100 dark:bg-[#252525] dark:text-white hover:bg-purple-600 hover:text-white"
+              className="
+                w-7 h-7
+                flex items-center justify-center
+                rounded-full
+                bg-white/10
+                text-white
+                hover:bg-white/20
+                transition-colors
+              "
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={14} />
             </button>
 
             <button
               onClick={handleNext}
-              className="p-2 rounded-full bg-gray-100 dark:bg-[#252525] dark:text-white hover:bg-purple-600 hover:text-white"
+              className="
+                w-7 h-7
+                flex items-center justify-center
+                rounded-full
+                bg-white/10
+                text-white
+                hover:bg-white/20
+                transition-colors
+              "
             >
-              <ArrowRight size={20} />
+              <ArrowRight size={14} />
             </button>
           </div>
         </div>
