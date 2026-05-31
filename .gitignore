@@ -86,3 +86,41 @@ build/
 server/dist/
 project/build/
 server/temp
+
+
+# ========================
+# CodeDeploy Bundle
+# ========================
+deploy/backend/bundle/
+deploy/backend/*.zip
+
+deploy/gorse/bundle/
+deploy/gorse/*.zip
+
+# ========================
+# Temporary Deployment Files
+# ========================
+*.tar
+*.gz
+
+# ========================
+# PM2
+# ========================
+.pm2/
+
+# ========================
+# CodeDeploy logs (optional local)
+# ========================
+codedeploy-agent.log
+
+# ========================
+# AWS CLI Credentials (safety)
+# ========================
+.aws/
+
+# ========================
+# Terraform (future optional)
+# ========================
+.terraform/
+*.tfstate
+*.tfstate.backup

@@ -1,0 +1,57 @@
+name: Deploy Gorse
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "gorse/**"
+      - "deploy/gorse/**"
+      - ".github/workflows/deploy-gorse.yml"
+
+concurrency:
+  group: gorse-deployment
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build gorse bundle
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/rigzer-gorse-bundle /tmp/rigzer-gorse.zip
+          mkdir -p /tmp/rigzer-gorse-bundle/scripts
+
+          cp deploy/gorse/appspec.yml /tmp/rigzer-gorse-bundle/
+          cp deploy/gorse/docker-compose.yml /tmp/rigzer-gorse-bundle/
+          cp deploy/gorse/config.toml /tmp/rigzer-gorse-bundle/
+          cp deploy/gorse/scripts/* /tmp/rigzer-gorse-bundle/scripts/
+
+          cd /tmp/rigzer-gorse-bundle
+          zip -r /tmp/rigzer-gorse.zip .
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload revision
+        run: |
+          aws s3 cp /tmp/rigzer-gorse.zip s3://${{ secrets.DEPLOY_BUCKET }}/rigzer-gorse.zip
+
+      - name: Deploy
+        run: |
+          aws deploy create-deployment \
+            --application-name RigzerGorseApp \
+            --deployment-group-name RigzerGorseDG \
+            --s3-location bucket=${{ secrets.DEPLOY_BUCKET }},key=rigzer-gorse.zip,bundleType=zip

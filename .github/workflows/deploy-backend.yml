@@ -1,0 +1,69 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "server/**"
+      - "deploy/backend/**"
+      - ".github/workflows/deploy-backend.yml"
+
+concurrency:
+  group: backend-deployment
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build backend bundle
+        run: |
+          set -euo pipefail
+
+          rm -rf /tmp/rigzer-backend-bundle /tmp/rigzer-backend.zip
+          mkdir -p /tmp/rigzer-backend-bundle/scripts
+          mkdir -p /tmp/rigzer-backend-bundle/server
+          mkdir -p /tmp/rigzer-backend-bundle/nginx
+
+          cp deploy/backend/appspec.yml /tmp/rigzer-backend-bundle/
+          cp deploy/backend/scripts/* /tmp/rigzer-backend-bundle/scripts/
+          cp deploy/backend/nginx/rigzer-backend.conf /tmp/rigzer-backend-bundle/nginx/rigzer-backend.conf
+
+          rsync -a --delete \
+            --exclude node_modules \
+            --exclude .git \
+            --exclude .env \
+            --exclude .env.* \
+            server/ \
+            /tmp/rigzer-backend-bundle/server/
+
+          find /tmp/rigzer-backend-bundle -name ".env" -o -name ".env.*" -delete
+
+          cd /tmp/rigzer-backend-bundle
+          zip -r /tmp/rigzer-backend.zip .
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload revision
+        run: |
+          aws s3 cp /tmp/rigzer-backend.zip s3://${{ secrets.DEPLOY_BUCKET }}/rigzer-backend.zip
+
+      - name: Deploy
+        run: |
+          aws deploy create-deployment \
+            --application-name RigzerBackendApp \
+            --deployment-group-name RigzerBackendDG \
+            --s3-location bucket=${{ secrets.DEPLOY_BUCKET }},key=rigzer-backend.zip,bundleType=zip
