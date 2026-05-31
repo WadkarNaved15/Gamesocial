@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-
+import BillboardHeader from "../Billboard/BillboardHeader";
 const Tower = React.lazy(() => import("./Tower"));
 
 interface Pocket {
@@ -62,6 +62,20 @@ const Billboard: React.FC = () => {
 
   const totalFaces = faces.length;
   const activeFace = faces[activeIndex];
+  const headerData =
+    activeFace?.type === "pocket"
+      ? {
+        title: activeFace.pocket.brandName,
+        subtitle: activeFace.pocket.tagline,
+        avatar: activeFace.pocket.user.avatar,
+      }
+      : activeFace?.type === "follow"
+        ? {
+          title: "Follow",
+        }
+        : {
+          title: "Reading",
+        };
   const isPocketFace = activeFace?.type === "pocket";
 
   const next = useCallback(() => {
@@ -126,45 +140,15 @@ const Billboard: React.FC = () => {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {!isPocketFace && (
-        <div className="flex items-center justify-between px-2 py-3">
-          <h2 className="text-lg font-bold dark:text-white capitalize">
-            {activeFace ? faceLabel(activeFace) : ""}
-          </h2>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrev}
-              className="
-                w-7 h-7
-                flex items-center justify-center
-                rounded-full
-                bg-white/10
-                text-white
-                hover:bg-white/20
-                transition-colors
-              "
-            >
-              <ArrowLeft size={14} />
-            </button>
-
-            <button
-              onClick={handleNext}
-              className="
-                w-7 h-7
-                flex items-center justify-center
-                rounded-full
-                bg-white/10
-                text-white
-                hover:bg-white/20
-                transition-colors
-              "
-            >
-              <ArrowRight size={14} />
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="relative z-50">
+        <BillboardHeader
+          title={headerData.title}
+          subtitle={headerData.subtitle}
+          avatar={headerData.avatar}
+          onPrev={handlePrev}
+          onNext={handleNext}
+        />
+      </div>
 
       <div
         className={`
