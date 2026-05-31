@@ -111,7 +111,7 @@ const PocketPost: React.FC<PocketPostProps> = ({
           width: "100%",
           height: POCKET_HEIGHT,
           position: "relative",
-          background: "#1e1e1e",
+          background: "#191919",
           // backgroundImage: "url('/defaultBackground.jpeg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
@@ -127,7 +127,7 @@ const PocketPost: React.FC<PocketPostProps> = ({
             width: "100%",
             height: "100%",
             overflow: "hidden",
-            background: "#1e1e1e",
+            background: "#191919",
 
             display: "flex",
             flexDirection: "column",

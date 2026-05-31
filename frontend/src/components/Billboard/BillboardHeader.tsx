@@ -103,7 +103,7 @@ const BillboardHeader: React.FC<BillboardHeaderProps> = ({
                     alignItems: "center",
                     gap: "8px",
                     padding: "0 10px",
-                    background: "rgba(32,30,31,0.96)",
+                    background: "#191919",
                     flexShrink: 0,
                 }}
             >
