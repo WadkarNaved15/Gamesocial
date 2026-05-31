@@ -23,7 +23,7 @@ export function Header() {
   // Correctly type the state with the new User interface
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<User[]>([]);
-  const { isDark, toggleTheme } = useTheme();
+  useTheme();
   const [isScrolled, setIsScrolled] = useState(false);
   const navigate = useNavigate();
   // const [searchQuery, setSearchQuery] = useState("");
@@ -156,7 +156,7 @@ export function Header() {
               </div>
             </form>
 
-            <button
+            {/* <button
               onClick={toggleTheme}
               className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
               aria-label="Toggle Theme"
@@ -166,7 +166,7 @@ export function Header() {
               ) : (
                 <Moon className="h-5 w-5 text-gray-600 dark:text-white" />
               )}
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
