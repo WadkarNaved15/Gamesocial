@@ -132,14 +132,14 @@ const PocketPost: React.FC<PocketPostProps> = ({
             display: "flex",
             flexDirection: "column",
 
-            borderTopLeftRadius: "28px",
-            borderTopRightRadius: "28px",
+            // borderTopLeftRadius: "28px",
+            // borderTopRightRadius: "28px",
             borderBottomLeftRadius: "12px",
             borderBottomRightRadius: "12px",
           }}
         >
           {/* Pocket Header */}
-          <div
+          {/* <div
             onClick={() => onOpenDetails?.()}
             style={{
               flexShrink: 0,
@@ -207,10 +207,10 @@ const PocketPost: React.FC<PocketPostProps> = ({
                   {tagline}
                 </span>
               )}
-            </div>
+            </div> */}
 
             {/* Arrows */}
-            <div
+            {/* <div
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -260,7 +260,7 @@ const PocketPost: React.FC<PocketPostProps> = ({
                 <ArrowRight size={14} />
               </button>
             </div>
-          </div>
+          </div> */}
 
           {!srcdoc && !fetchErr && (
             <div
