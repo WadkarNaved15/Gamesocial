@@ -9,8 +9,9 @@ on:
       - "deploy/backend/**"
       - ".github/workflows/deploy-backend.yml"
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+concurrency:
+  group: backend-deployment
+  cancel-in-progress: true
 
 permissions:
   id-token: write
