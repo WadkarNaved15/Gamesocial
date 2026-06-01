@@ -256,7 +256,7 @@ const ProfilePage: React.FC = () => {
         </div>
 
         {/* Profile Hero Section */}
-        <div className="max-w-5xl px-4">
+        <div className="max-w-7xl px-4">
           <div className="flex flex-col md:flex-row justify-between items-stretch gap-6">
 
             {/* LEFT SIDE: Profile Card Section */}
@@ -311,11 +311,11 @@ const ProfilePage: React.FC = () => {
                 <div className="flex flex-col gap-4 w-full">
                   {/* X (Twitter) */}
                   <a href={profileUser?.socials?.twitter} className="group relative flex items-center justify-center w-full h-12 
-        /* Light Mode: Solid Grayish -> Darker Gray */
-        bg-gray-100 hover:bg-gray-200 border-gray-200 
-        /* Dark Mode: Translucent -> Light Gray */
-        dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/5 dark:hover:border-white/20 
-        rounded-2xl transition-all duration-300">
+          /* Light Mode: Solid Grayish -> Darker Gray */
+          bg-gray-100 hover:bg-gray-200 border-gray-200 
+          /* Dark Mode: Translucent -> Light Gray */
+          dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/5 dark:hover:border-white/20 
+          rounded-2xl transition-all duration-300">
                     <svg className="w-5 h-5 fill-gray-900 dark:fill-white group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
                       <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />
                     </svg>
