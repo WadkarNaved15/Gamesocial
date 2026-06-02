@@ -376,6 +376,18 @@ const PostSchema = new mongoose.Schema(
       min: 0,
       index: true,
     },
+    viewsCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      index: true,
+    },
+    uniqueViewsCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      index: true,
+    },
 
     normalPost: {
       type: NormalPostSchema,

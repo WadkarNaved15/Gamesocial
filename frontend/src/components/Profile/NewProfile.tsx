@@ -410,6 +410,7 @@ const ProfilePage: React.FC = () => {
                   <Post
                     key={post._id}
                     {...post}
+                    viewSource="profile"
                     onDeleteSuccess={(postId) => {
                       setUserPosts((prev) =>
                         prev.filter((p) => p._id !== postId)

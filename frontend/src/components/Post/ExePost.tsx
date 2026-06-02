@@ -14,6 +14,8 @@ import { useUser } from "../../context/user";
 const ExePost: React.FC<ExePostProps> = ({
   user,
   description,
+  viewsCount,
+  uniqueViewsCount,
   likesCount,
   isLiked,
   isWishlisted,
@@ -205,6 +207,7 @@ const ExePost: React.FC<ExePostProps> = ({
           {/* Post Interactions */}
           <PostInteractions
             postId={_id}
+            views={viewsCount}
             likes={localLikesCount}
             comments={commentsCount ?? 0}
             isLiked={localIsLiked}

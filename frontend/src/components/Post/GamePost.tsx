@@ -17,6 +17,8 @@ interface GamePostProps {
   user: any;
   description: string;
   createdAt: string;
+  viewsCount?: number;
+  uniqueViewsCount?: number;
   commentsCount: number;
   likesCount: number;
   isLiked: boolean;
@@ -32,6 +34,8 @@ const GamePost: React.FC<GamePostProps> = ({
   user,
   description,
   createdAt,
+  uniqueViewsCount,
+  viewsCount,
   commentsCount,
   likesCount,
   isLiked,
@@ -334,6 +338,7 @@ const GamePost: React.FC<GamePostProps> = ({
               <div onClick={(e) => e.stopPropagation()}>
                 <PostInteractions
                   postId={_id}
+                  views={viewsCount}
                   likes={localLikesCount}
                   comments={commentsCount ?? 0}
                   isLiked={localIsLiked}

@@ -127,6 +127,8 @@ interface CommonPostFields {
   createdAt: string;
   updatedAt: string;
   disableInteractions?: boolean;
+  viewsCount?: number;
+  uniqueViewsCount?: number; // add this
   likes?: number;
   likesCount?: number;
   isWishlisted?: boolean;
