@@ -191,10 +191,10 @@ const ProfilePage: React.FC = () => {
       </button>
 
       {/* Main Content - 75% width */}
-      <div className="mx-auto px-2 ">
+      <div className="max-w-7xl mx-auto px-4">
         {/* Header Section */}
         <div className="w-full pb-6 pt-4">
-          <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="grid grid-cols-[1fr_auto] items-end gap-6">
             <div className="flex flex-col">
               {/* Top Row: Name and Action Buttons */}
               <div className="flex items-center gap-5 flex-wrap">
@@ -388,13 +388,13 @@ const ProfilePage: React.FC = () => {
       </div>
 
       {/* Two Component Cards Section */}
-      <div className="max-w-7xl mx-auto px-6 mt-12 pb-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[7.5fr_4.5fr] gap-8 relative">
+      <div className="max-w-7xl mx-auto px-4 mt-12 pb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-8 items-start">
 
           {/* MODEL POST → replace LEFT + RIGHT */}
           <>
             {/* LEFT COLUMN */}
-            <div className="flex flex-col w-full">
+            <div className="min-w-0 flex flex-col">
               {loadingPosts && (
                 <div className="text-gray-400">Loading your posts...</div>
               )}
@@ -441,7 +441,7 @@ const ProfilePage: React.FC = () => {
             <div className="hidden lg:block">
               <div className="sticky top-4">
                 {/* Match the background and border to your Hero/Socials cards */}
-                <div className="bg-white dark:bg-[#191919] rounded-3xl p-8 w-full border border-gray-200 dark:border-white/10 shadow-2xl flex flex-col max-h-[calc(100vh-40px)]">
+                <div className="bg-white dark:bg-[#191919] rounded-3xl p-8 w-full border border-gray-200 dark:border-white/10 shadow-2xl flex flex-col max-h-fit">
                   {/* USER ARTICLES SECTION */}
                   <div className="mb-10">
                     <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500 mb-4">
