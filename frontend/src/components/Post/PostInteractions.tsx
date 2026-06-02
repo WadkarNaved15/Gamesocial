@@ -35,7 +35,6 @@ const PostInteractions: React.FC<PostInteractionsProps> = ({
 }) => {
   const { user } = useUser();
   const [shareOpen, setShareOpen] = useState(false);
-  console.log("Rendering PostInteractions for postId:", postId, { likes, comments, views, isLiked, isWishlisted });
 
   const currentUserId = user?._id;
 
