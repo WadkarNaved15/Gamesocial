@@ -1,5 +1,5 @@
 import React, { useState, useRef, ChangeEvent } from 'react';
-import { X, Upload, FileArchive, Laptop, Cpu, Database, Info } from 'lucide-react';
+import { X, Upload, FileArchive, Laptop, Cpu, Database, Info, Video } from 'lucide-react';
 
 interface PostModalProps {
   onCancel: () => void;
@@ -21,7 +21,10 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel }) => {
   const [version, setVersion] = useState('1.0.0');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
-
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const ALLOWED_VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov'];
   const [platform, setPlatform] = useState<'windows'>('windows');
   type BuildType = 'archive' | 'executable';
 
@@ -34,7 +37,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel }) => {
   const [ramGB, setRamGB] = useState('');
   const [cpuCores, setCpuCores] = useState('');
   const [requiresGPU, setRequiresGPU] = useState(false);
-
+  const [step, setStep] = useState<1 | 2>(1);
   const [asset, setAsset] = useState<GameAsset | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingMetadata, setIsSavingMetadata] = useState(false);
@@ -48,6 +51,11 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel }) => {
   function isValidBuildFile(file: File) {
     const ext = file.name.split('.').pop()?.toLowerCase();
     return ext && ALLOWED_EXTENSIONS.includes(ext);
+  }
+
+  function isValidVideoFile(file: File) {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    return ext && ALLOWED_VIDEO_EXTENSIONS.includes(ext);
   }
 
 
@@ -72,6 +80,29 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel }) => {
     setBuildType(buildTypeFromFile(file));
 
     e.target.value = '';
+  };
+
+  const handleVideoChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!isValidVideoFile(file)) {
+      setErrorMessage('Invalid video format. Only .mp4, .webm, or .mov are allowed.');
+      return;
+    }
+
+    // Clear previous preview if it exists
+    if (videoPreview) URL.revokeObjectURL(videoPreview);
+
+    setVideoFile(file);
+    setVideoPreview(URL.createObjectURL(file));
+    e.target.value = '';
+  };
+
+  const handleRemoveVideo = () => {
+    if (videoPreview) URL.revokeObjectURL(videoPreview);
+    setVideoFile(null);
+    setVideoPreview(null);
   };
 
   /* ---------------- Upload ---------------- */
@@ -155,18 +186,35 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel }) => {
     try {
       asset.status = 'uploading';
       setAsset({ ...asset });
-
+      console.log("Uploading game...");
       const { fileUrl, key } = await uploadGameToS3(asset, p => {
         asset.progress = p;
         setAsset({ ...asset });
       });
+      console.log("Game uploaded.");
+      // let videoDemoData = null;
+
+      // if (videoFile) {
+      //   console.log("Uploading video demo...");
+      //   const uploadedVideo = await uploadVideoDemoToS3(
+      //     videoFile,
+      //     () => { }
+      //   );
+      //   console.log("Video demo uploaded.", uploadedVideo);
+      //   videoDemoData = {
+      //     name: videoFile.name,
+      //     size: videoFile.size,
+      //     key: uploadedVideo.key,
+      //     url: uploadedVideo.fileUrl,
+      //   };
+      // }
 
       asset.uploadedUrl = fileUrl;
       asset.status = 'done';
       setAsset({ ...asset });
 
       setIsSavingMetadata(true);
-
+      console.log("Saving metadata...");
       const response = await fetch(`${BACKEND_URL}/api/allposts`, {
         method: 'POST',
         credentials: 'include',
@@ -194,13 +242,14 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel }) => {
               url: fileUrl,
               size: asset.size,
               format: getBuildFormat(asset.name)
-            }
+            },
+            // videoDemo: videoDemoData
           }
         })
       });
 
       const data = await response.json();
-
+      console.log("Post saved:", data);
       if (!response.ok) {
         throw new Error(data.message || 'An unexpected error occurred while saving the post');
       }
@@ -212,13 +261,70 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel }) => {
       setIsSubmitting(false);
     }
   };
+  //Video demo upload
+  const uploadVideoDemoToS3 = async (
+    file: File,
+    onProgress: (percent: number) => void
+  ): Promise<{ fileUrl: string; key: string }> => {
+    console.log("Uploading video demo...");
+    const res = await fetch(`${BACKEND_URL}/api/upload/presigned-url`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileType: file.type,
+        category: "media",
+        fileSize: file.size,
+      }),
+    });
 
+    if (!res.ok) {
+      throw new Error("Failed to get upload URL");
+    }
+
+    const { uploadUrl, fileUrl, key } = await res.json();
+    console.log("Video demo upload URL:", uploadUrl);
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.open("PUT", uploadUrl, true);
+      xhr.setRequestHeader("Content-Type", file.type);
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          onProgress(
+            Math.round((event.loaded / event.total) * 100)
+          );
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          resolve({
+            fileUrl,
+            key,
+          });
+        } else {
+          reject(
+            new Error(`Upload failed with status ${xhr.status}`)
+          );
+        }
+      };
+
+      xhr.onerror = () =>
+        reject(new Error("Network error during upload"));
+
+      xhr.send(file);
+    });
+  };
   /* ---------------- UI ---------------- */
   return (
     <div className="w-full max-w-2xl mx-auto bg-white dark:bg-[#191919] min-h-[80vh] max-h-[90vh] rounded-2xl border border-gray-200 dark:border-zinc-800 flex flex-col overflow-hidden shadow-xl transition-colors duration-200">
 
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800 sticky top-0 bg-white/80 dark:bg-[#191919]/80 backdrop-blur-md z-30">
+      {/* <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800 sticky top-0 bg-white/80 dark:bg-[#191919]/80 backdrop-blur-md z-30">
         <div>
           <h2 className="text-xl font-bold text-black dark:text-white">Upload Game</h2>
           <p className="text-xs text-gray-500 dark:text-zinc-500">Configure your build and system requirements</p>
@@ -230,170 +336,283 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel }) => {
         >
           {isSubmitting ? 'Publishing...' : 'Publish'}
         </button>
+      </div> */}
+      <div className="flex flex-col px-6 py-4 border-b border-gray-100 dark:border-zinc-800 sticky top-0 bg-white/80 dark:bg-[#191919]/80 backdrop-blur-md z-30">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-black dark:text-white">
+              Upload Game
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-zinc-500">
+              Configure your build and system requirements
+            </p>
+          </div>
+
+          {step === 2 && (
+            <button
+              onClick={handlePostSubmit}
+              disabled={!asset || !startPath || !gameName || isSubmitting}
+              className="bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-bold px-6 py-2 rounded-full"
+            >
+              {isSubmitting ? "Publishing..." : "Publish"}
+            </button>
+          )}
+        </div>
+
+        <div className="flex mt-4">
+          <button
+            onClick={() => setStep(1)}
+            className={`px-4 py-2 text-sm font-semibold border-b-2 transition ${step === 1
+              ? "border-sky-500 text-sky-500"
+              : "border-transparent text-gray-500"
+              }`}
+          >
+            Game Details
+          </button>
+
+          <button
+            onClick={() => setStep(2)}
+            className={`px-4 py-2 text-sm font-semibold border-b-2 transition ${step === 2
+              ? "border-sky-500 text-sky-500"
+              : "border-transparent text-gray-500"
+              }`}
+          >
+            Deployment Config
+          </button>
+        </div>
       </div>
-
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-        {errorMessage && (
-          <div className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-xl text-red-600 dark:text-red-400 text-sm flex items-center justify-between animate-in fade-in">
-            <span className="flex items-center gap-2"><Info size={16} /> {errorMessage}</span>
-            <X className="cursor-pointer" size={18} onClick={() => setErrorMessage(null)} />
-          </div>
-        )}
-
-        {/* Basic Information */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2 text-sky-500 font-semibold text-sm uppercase tracking-wider">
-            <Laptop size={16} />
-            <span>Game Details</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              placeholder="Game Name"
-              value={gameName}
-              onChange={e => setGameName(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-sky-500 outline-none transition-all"
-            />
-            <input
-              placeholder="Version (1.0.0)"
-              value={version}
-              onChange={e => setVersion(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-sky-500 outline-none transition-all"
-            />
-          </div>
-          <textarea
-            placeholder="Tell us about your game..."
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            className="w-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-sky-500 outline-none min-h-[100px] resize-none transition-all"
-          />
-        </section>
-
-        {/* Technical Configuration */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2 text-sky-500 font-semibold text-sm uppercase tracking-wider">
-            <Database size={16} />
-            <span>Deployment Config</span>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <select
-              value={platform}
-              onChange={e => setPlatform(e.target.value as any)}
-              className="bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-zinc-800 outline-none cursor-pointer hover:border-sky-500 transition-colors"
-            >
-              <option value="windows">Windows</option>
-              <option value="linux">Linux</option>
-            </select>
-            <select
-              value={buildType}
-              onChange={e => setBuildType(e.target.value as any)}
-              className="bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-zinc-800 outline-none cursor-pointer hover:border-sky-500 transition-colors"
-            >
-              <option value="windows_exe">Windows EXE</option>
-              <option value="windows_zip">Windows ZIP</option>
-              <option value="html5">HTML5</option>
-            </select>
-          </div>
-          <div className="space-y-1">
-            <input
-              placeholder="Executable path (e.g. Build/Game.exe)"
-              value={startPath}
-              onChange={e => setStartPath(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-sky-500/50 dark:border-sky-500/30 focus:ring-2 focus:ring-sky-500 outline-none transition-all font-mono text-sm"
-            />
-            <p className="px-1 text-[10px] text-gray-500 font-medium">Internal path to start the game after extraction</p>
-          </div>
-          <input
-            placeholder="Engine (Unity, Unreal, Godot...)"
-            value={engine}
-            onChange={e => setEngine(e.target.value)}
-            className="w-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-sky-500 outline-none transition-all"
-          />
-        </section>
-
-        {/* System Requirements */}
-        <section className="p-4 bg-gray-50 dark:bg-zinc-900/50 rounded-2xl border border-gray-100 dark:border-zinc-800 space-y-4">
-          <div className="flex items-center gap-2 text-gray-700 dark:text-zinc-300 font-bold text-sm">
-            <Cpu size={16} />
-            <span>Minimum System Requirements</span>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <input
-              type="number"
-              placeholder="RAM (GB)"
-              value={ramGB}
-              onChange={e => setRamGB(e.target.value)}
-              className="bg-white dark:bg-zinc-900 text-black dark:text-white p-2.5 rounded-lg border border-gray-200 dark:border-zinc-800 outline-none"
-            />
-            <input
-              type="number"
-              placeholder="CPU Cores"
-              value={cpuCores}
-              onChange={e => setCpuCores(e.target.value)}
-              className="bg-white dark:bg-zinc-900 text-black dark:text-white p-2.5 rounded-lg border border-gray-200 dark:border-zinc-800 outline-none"
-            />
-          </div>
-          <label className="flex items-center gap-3 cursor-pointer group w-fit">
-            <input
-              type="checkbox"
-              className="w-5 h-5 rounded border-gray-300 dark:border-zinc-700 text-sky-500 focus:ring-sky-500"
-              checked={requiresGPU}
-              onChange={e => setRequiresGPU(e.target.checked)}
-            />
-            <span className="text-sm font-medium text-gray-600 dark:text-zinc-400 group-hover:text-black dark:group-hover:text-white transition-colors">Dedicated GPU Required</span>
-          </label>
-        </section>
-
-        {/* File Upload Area */}
-        <div className="pt-2">
-          {asset ? (
-            <div className="p-4 bg-gray-50 dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 relative group">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-xl">
-                  <FileArchive size={24} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-black dark:text-white truncate">{asset.name}</p>
-                  <p className="text-[10px] text-gray-500 font-bold">{(asset.size / 1024 / 1024).toFixed(2)} MB</p>
-                </div>
-                {!isSubmitting && (
-                  <button
-                    onClick={() => setAsset(null)}
-                    className="p-2 hover:bg-gray-200 dark:hover:bg-zinc-800 rounded-full transition-colors"
-                  >
-                    <X size={18} className="text-gray-400" />
-                  </button>
-                )}
-              </div>
-
-              {asset.status === 'uploading' && (
-                <div className="mt-4 space-y-2">
-                  <div className="flex justify-between text-[10px] font-black uppercase tracking-tighter">
-                    <span className="text-sky-600 dark:text-sky-400">Uploading Build</span>
-                    <span className="text-sky-600 dark:text-sky-400">{asset.progress}%</span>
-                  </div>
-                  <div className="h-2 bg-gray-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-sky-500 transition-all duration-300 ease-out shadow-[0_0_8px_rgba(14,165,233,0.4)]"
-                      style={{ width: `${asset.progress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl py-12 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900/30 transition-all group"
-            >
-              <div className="p-4 rounded-full bg-sky-50 dark:bg-sky-900/20 text-sky-500 group-hover:scale-110 transition-transform duration-300">
-                <Upload size={32} />
-              </div>
-              <div className="text-center">
-                <p className="text-gray-900 dark:text-white font-bold">Upload Game Build</p>
-                <p className="text-xs text-gray-500 mt-1">Accepts .zip, .7z, .exe, .apk (Max 5GB)</p>
-              </div>
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+          {errorMessage && (
+            <div className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-xl text-red-600 dark:text-red-400 text-sm flex items-center justify-between animate-in fade-in">
+              <span className="flex items-center gap-2"><Info size={16} /> {errorMessage}</span>
+              <X className="cursor-pointer" size={18} onClick={() => setErrorMessage(null)} />
             </div>
           )}
+          {step === 1 && (
+            <>
+              {/* Basic Information */}
+              <section className="space-y-4">
+                <div className="flex items-center gap-2 text-sky-500 font-semibold text-sm uppercase tracking-wider">
+                  <Laptop size={16} />
+                  <span>Game Details</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input
+                    placeholder="Game Name"
+                    value={gameName}
+                    onChange={e => setGameName(e.target.value)}
+                    className="w-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-sky-500 outline-none transition-all"
+                  />
+                  <input
+                    placeholder="Version (1.0.0)"
+                    value={version}
+                    onChange={e => setVersion(e.target.value)}
+                    className="w-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-sky-500 outline-none transition-all"
+                  />
+                </div>
+                <textarea
+                  placeholder="Tell us about your game..."
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-sky-500 outline-none min-h-[100px] resize-none transition-all"
+                />
+              </section>
+              {/* Video Upload */}
+              {/* Video Demo Attachment */}
+              <section className="space-y-4">
+                <div className="flex items-center gap-2 text-sky-500 font-semibold text-sm uppercase tracking-wider">
+                  <Video size={16} />
+                  <span>Gameplay Video Demo</span>
+                </div>
+
+                {videoPreview ? (
+                  <div className="p-4 bg-gray-50 dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 relative group">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1 max-w-[240px] aspect-video rounded-xl overflow-hidden bg-black border border-gray-200 dark:border-zinc-800">
+                        <video
+                          src={videoPreview}
+                          controls
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0 pt-1">
+                        <p className="text-sm font-bold text-black dark:text-white truncate">{videoFile?.name}</p>
+                        <p className="text-[10px] text-gray-500 font-bold mt-0.5">
+                          {videoFile ? (videoFile.size / 1024 / 1024).toFixed(2) : 0} MB
+                        </p>
+                        <span className="inline-block mt-2 text-[10px] bg-emerald-500/10 text-emerald-500 font-black uppercase tracking-wider px-2 py-0.5 rounded-md">
+                          Ready to attach
+                        </span>
+                      </div>
+                      {!isSubmitting && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveVideo}
+                          className="p-2 hover:bg-gray-200 dark:hover:bg-zinc-800 rounded-full transition-colors"
+                        >
+                          <X size={18} className="text-gray-400" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => videoInputRef.current?.click()}
+                    className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl py-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900/30 transition-all group"
+                  >
+                    <div className="p-3 rounded-full bg-sky-50 dark:bg-sky-900/20 text-sky-500 group-hover:scale-105 transition-transform duration-300">
+                      <Upload size={20} />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-gray-900 dark:text-white text-sm font-bold">Upload Gameplay Clip</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">Accepts .mp4, .webm, .mov (Max 100MB)</p>
+                    </div>
+                  </div>
+                )}
+
+                <input
+                  ref={videoInputRef}
+                  type="file"
+                  hidden
+                  accept="video/mp4,video/webm,video/quicktime"
+                  onChange={handleVideoChange}
+                />
+              </section>
+              {/* File Upload Area */}
+              <div className="pt-2">
+                {asset ? (
+                  <div className="p-4 bg-gray-50 dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 relative group">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-xl">
+                        <FileArchive size={24} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-black dark:text-white truncate">{asset.name}</p>
+                        <p className="text-[10px] text-gray-500 font-bold">{(asset.size / 1024 / 1024).toFixed(2)} MB</p>
+                      </div>
+                      {!isSubmitting && (
+                        <button
+                          onClick={() => setAsset(null)}
+                          className="p-2 hover:bg-gray-200 dark:hover:bg-zinc-800 rounded-full transition-colors"
+                        >
+                          <X size={18} className="text-gray-400" />
+                        </button>
+                      )}
+                    </div>
+
+                    {asset.status === 'uploading' && (
+                      <div className="mt-4 space-y-2">
+                        <div className="flex justify-between text-[10px] font-black uppercase tracking-tighter">
+                          <span className="text-sky-600 dark:text-sky-400">Uploading Build</span>
+                          <span className="text-sky-600 dark:text-sky-400">{asset.progress}%</span>
+                        </div>
+                        <div className="h-2 bg-gray-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-sky-500 transition-all duration-300 ease-out shadow-[0_0_8px_rgba(14,165,233,0.4)]"
+                            style={{ width: `${asset.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl py-12 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900/30 transition-all group"
+                  >
+                    <div className="p-4 rounded-full bg-sky-50 dark:bg-sky-900/20 text-sky-500 group-hover:scale-110 transition-transform duration-300">
+                      <Upload size={32} />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-gray-900 dark:text-white font-bold">Upload Game Build</p>
+                      <p className="text-xs text-gray-500 mt-1">Accepts .zip, .7z, .exe, .apk (Max 5GB)</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              {/* Technical Configuration */}
+              <section className="space-y-4">
+                <div className="flex items-center gap-2 text-sky-500 font-semibold text-sm uppercase tracking-wider">
+                  <Database size={16} />
+                  <span>Deployment Config</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <select
+                    value={platform}
+                    onChange={e => setPlatform(e.target.value as any)}
+                    className="bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-zinc-800 outline-none cursor-pointer hover:border-sky-500 transition-colors"
+                  >
+                    <option value="windows">Windows</option>
+                    <option value="linux">Linux</option>
+                  </select>
+                  <select
+                    value={buildType}
+                    onChange={e => setBuildType(e.target.value as any)}
+                    className="bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-zinc-800 outline-none cursor-pointer hover:border-sky-500 transition-colors"
+                  >
+                    <option value="windows_exe">Windows EXE</option>
+                    <option value="windows_zip">Windows ZIP</option>
+                    <option value="html5">HTML5</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <input
+                    placeholder="Executable path (e.g. Build/Game.exe)"
+                    value={startPath}
+                    onChange={e => setStartPath(e.target.value)}
+                    className="w-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-sky-500/50 dark:border-sky-500/30 focus:ring-2 focus:ring-sky-500 outline-none transition-all font-mono text-sm"
+                  />
+                  <p className="px-1 text-[10px] text-gray-500 font-medium">Internal path to start the game after extraction</p>
+                </div>
+                <input
+                  placeholder="Engine (Unity, Unreal, Godot...)"
+                  value={engine}
+                  onChange={e => setEngine(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-sky-500 outline-none transition-all"
+                />
+              </section>
+
+              {/* System Requirements */}
+              <section className="p-4 bg-gray-50 dark:bg-zinc-900/50 rounded-2xl border border-gray-100 dark:border-zinc-800 space-y-4">
+                <div className="flex items-center gap-2 text-gray-700 dark:text-zinc-300 font-bold text-sm">
+                  <Cpu size={16} />
+                  <span>Minimum System Requirements</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <input
+                    type="number"
+                    placeholder="RAM (GB)"
+                    value={ramGB}
+                    onChange={e => setRamGB(e.target.value)}
+                    className="bg-white dark:bg-zinc-900 text-black dark:text-white p-2.5 rounded-lg border border-gray-200 dark:border-zinc-800 outline-none"
+                  />
+                  <input
+                    type="number"
+                    placeholder="CPU Cores"
+                    value={cpuCores}
+                    onChange={e => setCpuCores(e.target.value)}
+                    className="bg-white dark:bg-zinc-900 text-black dark:text-white p-2.5 rounded-lg border border-gray-200 dark:border-zinc-800 outline-none"
+                  />
+                </div>
+                <label className="flex items-center gap-3 cursor-pointer group w-fit">
+                  <input
+                    type="checkbox"
+                    className="w-5 h-5 rounded border-gray-300 dark:border-zinc-700 text-sky-500 focus:ring-sky-500"
+                    checked={requiresGPU}
+                    onChange={e => setRequiresGPU(e.target.checked)}
+                  />
+                  <span className="text-sm font-medium text-gray-600 dark:text-zinc-400 group-hover:text-black dark:group-hover:text-white transition-colors">Dedicated GPU Required</span>
+                </label>
+              </section>
+            </>
+          )}
+
         </div>
       </div>
 

@@ -159,6 +159,12 @@ const GamePostSchema = new mongoose.Schema(
       required: true,
       min: [0, "Price cannot be negative"],
     },
+    videoDemo: {
+      name: String,
+      key: String,
+      url: String,
+      size: Number,
+    },
     systemRequirements: {
       ramGB: { type: Number, min: 1 },
       cpuCores: { type: Number, min: 1 },
