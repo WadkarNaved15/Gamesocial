@@ -256,7 +256,7 @@ const ProfilePage: React.FC = () => {
         </div>
 
         {/* Profile Hero Section */}
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-stretch gap-6">
 
             {/* LEFT SIDE: Profile Card Section */}
