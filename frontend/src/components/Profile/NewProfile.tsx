@@ -193,8 +193,8 @@ const ProfilePage: React.FC = () => {
       {/* Main Content - 75% width */}
       <div className="mx-auto px-2 ">
         {/* Header Section */}
-        <div className="w-full dark:border-white/10 dark:bg-[#191919] pb-4 pt-4">
-          <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="w-full pb-6 pt-4">
+          <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex flex-col">
               {/* Top Row: Name and Action Buttons */}
               <div className="flex items-center gap-5 flex-wrap">
@@ -249,14 +249,14 @@ const ProfilePage: React.FC = () => {
               )}
             </div>
 
-            <div className="md:mr-20 lg:mr-8">
+            <div className="shrink-0">
               <FollowersList userId={profileUser ? profileUser._id : ''} />
             </div>
           </div>
         </div>
 
         {/* Profile Hero Section */}
-        <div className="max-w-7xl px-4">
+        <div className="max-w-7xl mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-stretch gap-6">
 
             {/* LEFT SIDE: Profile Card Section */}
