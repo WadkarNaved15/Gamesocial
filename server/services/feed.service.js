@@ -36,7 +36,7 @@ async function getGorsePostIds(userId, limit, offset) {
 // ── Shared projection — one place to update if schema changes ─────────────────
 
 const POST_PROJECTION = {
-  _id: 1, user: 1, description: 1, type: 1,
+  _id: 1, user: 1, description: 1, type: 1, viewsCount: 1, uniqueViewsCount: 1,
   likesCount: 1, commentsCount: 1, createdAt: 1,
   "modelPost.price": 1,
   "modelPost.assets.originalUrl": 1,

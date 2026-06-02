@@ -1,91 +1,121 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useEffect, useRef } from "react";
 import type { PostProps } from "../types/Post";
-import { useEffect, useRef } from "react";
-import { hasViewedPost,markPostViewed } from "../utils/viewTracker";
+import { hasViewedPost, markPostViewed } from "../utils/viewTracker";
 import PostSkeleton from "./Home/PostSkeleton";
-// Lazy load post components
+
 const NormalPost = lazy(() => import("./Post/NormalPost"));
 const GamePost = lazy(() => import("./Post/GamePost"));
 const ExePost = lazy(() => import("./Post/ExePost"));
 const DevlogPost = lazy(() => import("./Post/DevlogPost"));
-const AdModelPost = lazy(() => import("./Post/AdModelPost")); // ⭐ NEW
-const PocketPost = lazy(() => import("./Post/PocketPost"));   // ⭐ NEW
+const AdModelPost = lazy(() => import("./Post/AdModelPost"));
+const PocketPost = lazy(() => import("./Post/PocketPost"));
 
 type PostWrapperProps = PostProps & {
   onOpenDetails?: () => void;
   onDeleteSuccess?: (postId: string) => void;
+  viewSource?: "feed" | "profile" | "search" | "other";
 };
-
 
 const Fallback = () => <PostSkeleton />;
 
 export const Post: React.FC<PostWrapperProps> = (props) => {
-  const { type, _id } = props;
+  const { type, _id, viewSource } = props;
   const postRef = useRef<HTMLDivElement | null>(null);
-  
+
   useEffect(() => {
-  if (!postRef.current) return;
+  if (viewSource !== "feed") return;
 
-  let timer: NodeJS.Timeout | null = null;
-  let isVisible = false;
+  const el = postRef.current;
+  if (!el) return;
 
-  const BACKEND_URL =
-    import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+  // existing observer logic...
+}, [_id, viewSource]);
 
-  const sendView = async () => {
-    try {
-      await fetch(`${BACKEND_URL}/api/feedback/view`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ postId: _id }),
-      });
-    } catch {}
-  };
+  useEffect(() => {
+    const el = postRef.current;
+    if (!el) return;
 
-  const observer = new IntersectionObserver(
-    (entries) => {
-      const entry = entries[0];
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let isVisible = false;
+    let hasSent = false;
 
-      // 🔥 GLOBAL GUARD (most important)
-      if (hasViewedPost(_id)) return;
+    const BACKEND_URL =
+      import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
-      if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
-        isVisible = true;
-
-        if (!timer) {
-          timer = setTimeout(() => {
-            if (!isVisible || hasViewedPost(_id)) return;
-
-            // ✅ mark BEFORE sending (prevents race conditions)
-            markPostViewed(_id);
-
-            sendView();
-            timer = null; // ✅ add this
-          }, 1500); // slightly safer than 1000ms
-        }
-      } else {
-        isVisible = false;
-
-        if (timer) {
-          clearTimeout(timer);
-          timer = null;
-        }
+    const sendView = async () => {
+      try {
+        await fetch(`${BACKEND_URL}/api/posts/${_id}/view`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            source: "feed",
+            deviceType: /Mobi|Android/i.test(navigator.userAgent)
+              ? "mobile"
+              : "desktop",
+            watchTimeMs: 3000,
+          }),
+        });
+      } catch {
+        // ignore network errors here
       }
-    },
-    {
-      threshold: [0.7],
-    }
-  );
+    };
 
-  observer.observe(postRef.current);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        const visibleEnough = entry.isIntersecting && entry.intersectionRatio >= 0.6;
 
-  return () => {
-    observer.disconnect();
-    if (timer) clearTimeout(timer);
-  };
-}, [_id]);
-  
+        if (hasViewedPost(_id) || hasSent) return;
+
+        if (visibleEnough && document.visibilityState === "visible") {
+          isVisible = true;
+
+          if (!timer) {
+            timer = setTimeout(() => {
+              if (!isVisible || document.visibilityState !== "visible") return;
+              if (hasViewedPost(_id) || hasSent) return;
+
+              hasSent = true;
+              markPostViewed(_id);
+              sendView();
+              timer = null;
+            }, 3000);
+          }
+        } else {
+          isVisible = false;
+
+          if (timer) {
+            clearTimeout(timer);
+            timer = null;
+          }
+        }
+      },
+      {
+        threshold: [0.6],
+      }
+    );
+
+    observer.observe(el);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible" && timer) {
+        clearTimeout(timer);
+        timer = null;
+        isVisible = false;
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (timer) clearTimeout(timer);
+    };
+  }, [_id]);
 
   const RenderedPost = (() => {
     switch (type) {
@@ -95,10 +125,10 @@ export const Post: React.FC<PostWrapperProps> = (props) => {
         return ExePost as React.ComponentType<PostWrapperProps>;
       case "devlog_post":
         return DevlogPost as React.ComponentType<PostWrapperProps>;
-      case "ad_model_post":                                          // ⭐ NEW
-        return AdModelPost as React.ComponentType<PostWrapperProps>; // ⭐ NEW
-      case "pocket_update":                                           // ⭐ NEW
-        return PocketPost as React.ComponentType<PostWrapperProps>; // ⭐ NEW
+      case "ad_model_post":
+        return AdModelPost as React.ComponentType<PostWrapperProps>;
+      case "pocket_update":
+        return PocketPost as React.ComponentType<PostWrapperProps>;
       default:
         return NormalPost as React.ComponentType<PostWrapperProps>;
     }

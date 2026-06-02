@@ -202,6 +202,7 @@ function Home() {
             <Post
               key={post._id}
               {...post}
+              viewSource="search"
               onOpenDetails={() =>
                 navigate(`/post/${post._id}`, {
                   state: { post }
@@ -222,6 +223,7 @@ function Home() {
                 <Post
                   key={post._id}
                   {...post}
+                  viewSource="feed"
                   onOpenDetails={() =>
                     navigate(`/post/${post._id}`, {
                       state: {

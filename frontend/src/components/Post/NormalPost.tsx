@@ -17,6 +17,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
   _id,
   user,
   description,
+  viewsCount,
   likesCount,
   isLiked,
   isWishlisted,
@@ -291,6 +292,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
             <div onClick={(e) => e.stopPropagation()}>
               <PostInteractions
                 postId={_id}
+                views={viewsCount}
                 likes={localLikesCount}
                 comments={commentsCount ?? 0}
                 isLiked={localIsLiked}

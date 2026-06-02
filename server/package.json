@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "cleanup-worker": "node services/sessionCleanupWorker.js"
+    "cleanup-worker": "node worker/sessionCleanupWorker.js",
+    "notification-worker": "node notification-worker/worker.js",
+    "view-worker": "node worker/postView.worker.js"
+
   },
   "keywords": [],
   "author": "",

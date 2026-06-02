@@ -10,6 +10,8 @@ import Like from "../models/Like.js";
 import optionalAuthMiddleware from "../middlewares/optionalAuthMiddleware.js";
 import redisClient from "../config/redis.js";
 import { getFeedPage } from "../services/feed.service.js";
+import { trackPostView } from "../controllers/postView.controller.js";
+import verifyToken from "../middlewares/authMiddleware.js";
 dotenv.config();
 
 const router = express.Router();
@@ -149,5 +151,7 @@ router.get("/:postId", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch post" });
   }
 });
+
+router.post("/:postId/view", verifyToken, trackPostView);
 
 export default router;

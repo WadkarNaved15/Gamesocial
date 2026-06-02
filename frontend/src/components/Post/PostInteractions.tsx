@@ -1,14 +1,13 @@
-import React, { useState, memo } from 'react';
-import { Heart, MessageCircle, Share2, Bookmark } from 'lucide-react';
-import CommentSection from './CommentSection';
+import React, { useState, memo } from "react";
+import { Heart, MessageCircle, Share2, Bookmark, Eye } from "lucide-react";
 import { useUser } from "../../context/user";
 import ShareActionModal from "../Home/ShareActionModal";
-
 
 interface PostInteractionsProps {
   postId: string;
   likes: number;
   comments: number;
+  views?: number;
   isLiked?: boolean;
   isWishlisted?: boolean;
   onLike?: () => void;
@@ -17,47 +16,46 @@ interface PostInteractionsProps {
   onShare?: () => void;
 }
 
+const formatCount = (n: number) => {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return `${n}`;
+};
+
 const PostInteractions: React.FC<PostInteractionsProps> = ({
   likes,
   comments,
+  views = 0,
   isLiked = false,
   isWishlisted = false,
   onLike,
   onWishlist,
   onCommentToggle,
-  postId
+  postId,
 }) => {
   const { user } = useUser();
-  const [showComments, setShowComments] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [shareModalOpen, setShareModalOpen] = useState(false);
-  if (!user) {
-    console.log("User not found");
-  }
+  console.log("Rendering PostInteractions for postId:", postId, { likes, comments, views, isLiked, isWishlisted });
+
   const currentUserId = user?._id;
 
   return (
     <div className="mt-4">
-      {/* Buttons Row */}
-      <div className="flex justify-between items-center">
-        <div className="flex space-x-4">
-
-          {/* ❤️ Like */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
           <button
             onClick={onLike}
-            className={`flex items-center transition-colors ${isLiked
-              ? "text-red-500"
-              : "text-gray-500 dark:text-gray-400 hover:text-red-400"
-              }`}
+            className={`flex items-center transition-colors ${
+              isLiked
+                ? "text-red-500"
+                : "text-gray-500 dark:text-gray-400 hover:text-red-400"
+            }`}
             aria-label="Like post"
           >
-            <Heart
-              className={`h-5 w-5 mr-1 ${isLiked ? "fill-red-500" : ""}`}
-            />
+            <Heart className={`h-5 w-5 mr-1 ${isLiked ? "fill-red-500" : ""}`} />
             <span>{likes}</span>
           </button>
 
-          {/* 💬 Comment */}
           <button
             onClick={onCommentToggle}
             className="flex items-center text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-colors"
@@ -67,31 +65,35 @@ const PostInteractions: React.FC<PostInteractionsProps> = ({
             <span>{comments}</span>
           </button>
 
-          {/* ⭐ Wishlist */}
           <button
             onClick={onWishlist}
-            className={`flex items-center transition-colors ${isWishlisted
-              ? "text-yellow-500"
-              : "text-gray-500 dark:text-gray-400 hover:text-yellow-400"
-              }`}
+            className={`flex items-center transition-colors ${
+              isWishlisted
+                ? "text-yellow-500"
+                : "text-gray-500 dark:text-gray-400 hover:text-yellow-400"
+            }`}
             aria-label="Add to wishlist"
           >
             <Bookmark
-              className={`h-5 w-5 mr-1 ${isWishlisted ? "fill-yellow-500" : ""
-                }`}
+              className={`h-5 w-5 mr-1 ${isWishlisted ? "fill-yellow-500" : ""}`}
             />
           </button>
 
-          {/* 🔗 Share */}
           <button
             className="flex items-center text-gray-500 dark:text-gray-400 hover:text-green-500 transition-colors"
             onClick={() => setShareOpen(true)}
+            aria-label="Share post"
           >
             <Share2 className="h-5 w-5" />
           </button>
+        </div>
 
+        <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-sm">
+          <Eye className="h-4 w-4" />
+          <span>{formatCount(views)}</span>
         </div>
       </div>
+
       {shareOpen && currentUserId && (
         <ShareActionModal
           postId={postId}
@@ -99,14 +101,6 @@ const PostInteractions: React.FC<PostInteractionsProps> = ({
           onClose={() => setShareOpen(false)}
         />
       )}
-
-
-      {/* Comment Section */}
-      {/* {showComments && (
-        <div className="mt-3">
-          <CommentSection postId={postId} BACKEND_URL={BACKEND_URL} />
-        </div>
-      )} */}
     </div>
   );
 };
