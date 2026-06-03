@@ -10,6 +10,8 @@ import { useUser } from "../../context/user";
 import PostHeader from './PostHeader';
 import PostInteractions from './PostInteractions';
 import {toast} from "react-toastify";
+import { getStreamEligibility } from "../../utils/streamEligibility";
+import type { StreamEligibility } from "../../utils/streamEligibility";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -54,6 +56,15 @@ const GamePost: React.FC<GamePostProps> = ({
   const { user: currentUser } = useUser();
   const isOwner = currentUser?._id === user._id;
 
+  const [eligibility, setEligibility] = useState<StreamEligibility>({
+    checked: false,
+    allowed: false,
+    reasons: [],
+    speedMbps: null,
+    testMs: null,
+  });
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
+
   let viewStartTime = useRef<number | null>(null);
 
   const { likesCount: localLikesCount, isLiked: localIsLiked, handleLike } = useLikes(_id, BACKEND_URL);
@@ -63,9 +74,20 @@ const GamePost: React.FC<GamePostProps> = ({
   const { queue, startSession } = useQueue();
   const navigate = useNavigate();
 
+  
+
 
   // ✅ Check if ANY session exists (prevent starting new ones)
   const hasActiveSession = queue.sessionId !== null && ['waiting', 'allocation_ready', 'starting', 'running'].includes(queue.status);
+
+  const playDisabled = checkingEligibility || isStarting || hasActiveSession;
+
+  const playReason =
+    eligibility.checked && !eligibility.allowed
+      ? eligibility.reasons[0]
+      : hasActiveSession
+        ? "Complete or cancel current session first."
+        : "";
 
   const getRelativeTime = (date: string | Date) => {
     const now = new Date();
@@ -88,17 +110,31 @@ const GamePost: React.FC<GamePostProps> = ({
   const timestamp = useMemo(() => getRelativeTime(createdAt), [createdAt]);
 
   const handleStartGame = async () => {
-    if (isStarting || hasActiveSession) return;
-    setIsStarting(true);
+    if (isStarting || hasActiveSession || checkingEligibility) return;
+
+    setCheckingEligibility(true);
 
     try {
+      const result = await getStreamEligibility();
+      setEligibility(result);
+
+      if (!result.allowed) {
+        return;
+      }
+
+      setIsStarting(true);
+
       const sessionId = await startSession(_id);
       if (sessionId) {
         setIsAdPlaying(true);
+      } else {
+        setIsStarting(false);
       }
     } catch (err) {
       console.error("Failed to start game:", err);
-      setIsStarting(false);
+      toast.error("Could not verify your device or internet.");
+    } finally {
+      setCheckingEligibility(false);
     }
   };
     const handleDelete = async (postId: string) => {
@@ -172,6 +208,7 @@ const GamePost: React.FC<GamePostProps> = ({
     if (postRef.current) observer.observe(postRef.current);
     return () => observer.disconnect();
   }, []);
+
 
   useEffect(() => {
     if (!queue.sessionId) {
@@ -254,32 +291,34 @@ const GamePost: React.FC<GamePostProps> = ({
                         e.stopPropagation();
                         handleStartGame();
                       }}
-                      disabled={isStarting || hasActiveSession}
-                      title={hasActiveSession ? "Complete or cancel current session first" : ""}
+                      disabled={playDisabled}
+                      title={playReason}
                       style={{
-                        background: hasActiveSession
+                        background: playDisabled
                           ? "linear-gradient(to bottom right, #52525b, #18181b)"
                           : "linear-gradient(to bottom right, #3D7A6E, #000000)",
                       }}
                       className="
-                      text-white px-3 py-2.5 rounded-2xl
-                      shadow-lg hover:shadow-xl
-                      transition-all hover:scale-105
-                      flex items-center gap-2 shrink-0
-                      active:scale-[0.98]
-                      disabled:opacity-50 disabled:cursor-not-allowed
-                    "
+                        text-white px-3 py-2.5 rounded-2xl
+                        shadow-lg hover:shadow-xl
+                        transition-all hover:scale-105
+                        flex items-center gap-2 shrink-0
+                        active:scale-[0.98]
+                        disabled:opacity-50 disabled:cursor-not-allowed
+                      "
                     >
                       <Users size={14} />
-
                       <span className="font-semibold text-xs">
-                        {isStarting
-                          ? "Starting..."
-                          : hasActiveSession
-                            ? "Busy"
-                            : "Play Now"}
+                        {checkingEligibility
+                          ? "Checking..."
+                          : isStarting
+                            ? "Starting..."
+                            : hasActiveSession
+                              ? "Busy"
+                              : eligibility.checked && !eligibility.allowed
+                                ? "Unavailable"
+                                : "Play Now"}
                       </span>
-
                       <div className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
@@ -288,6 +327,32 @@ const GamePost: React.FC<GamePostProps> = ({
 
                     {/* Game Name */}
                   </div>
+
+                  {eligibility.checked && !eligibility.allowed && eligibility.reasons.length > 0 && (
+                  <div className="mt-4 w-full rounded-xl border border-amber-400/30 bg-amber-500/10 p-3">
+                    <div className="flex items-start gap-2 text-amber-700 dark:text-amber-300">
+                      <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                      <div className="text-xs leading-5">
+                        {eligibility.reasons.some((r) =>
+                          r.includes("Mobile support is coming soon")
+                        ) ? (
+                          <p className="font-semibold">
+                            Mobile support is coming soon. Please use a laptop or desktop.
+                          </p>
+                        ) : (
+                          <>
+                            <p className="font-semibold">You cannot play this stream yet:</p>
+                            <ul className="mt-1 list-disc pl-4 space-y-1">
+                              {eligibility.reasons.map((reason) => (
+                                <li key={reason}>{reason}</li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                   {/* <div className="flex items-center gap-2 mt-1">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-200 dark:bg-zinc-800 px-2 py-0.5 rounded">
