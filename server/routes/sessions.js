@@ -574,6 +574,8 @@ router.post("/complete", async (req, res) => {
       duration_seconds,
     } = req.body;
 
+    console.log("[Session Complete] Payload:", req.body);
+
     const session = await GameSession.findById(session_id);
     if (!session) {
       return res.status(404).json({ error: "Session not found" });
@@ -820,10 +822,20 @@ async function finalizeDemoConsumption(session, reason = "user_exit", exitSecond
   if (shouldConsume) {
     demo.status = "consumed";
     demo.consumedAt = now;
-    demo.consumedReason = "min_playtime_reached";
-  } else {
-    demo.status = reason === "user_cancelled" ? "cancelled" : "expired";
-  }
+    if (totalSeconds >= DEMO_CONFIG.MIN_ACTIVE_SECONDS) {
+      demo.status = "consumed";
+      demo.consumedAt = now;
+      demo.consumedReason = "min_playtime_reached";
+    } else {
+      demo.status =
+        reason === "user_cancelled"
+          ? "cancelled"
+          : "expired";
+
+      demo.consumedReason = "user_exit_before_threshold";
+    }
+}
+  
 
   await demo.save();
 }
