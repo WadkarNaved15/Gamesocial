@@ -10,7 +10,7 @@ import { useUser } from "../../context/user";
 import PostHeader from './PostHeader';
 import PostInteractions from './PostInteractions';
 import {toast} from "react-toastify";
-import { watchStreamEligibility  } from "../../utils/streamEligibility";
+import { getStreamEligibility } from "../../utils/streamEligibility";
 import type { StreamEligibility } from "../../utils/streamEligibility";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
@@ -56,15 +56,14 @@ const GamePost: React.FC<GamePostProps> = ({
   const { user: currentUser } = useUser();
   const isOwner = currentUser?._id === user._id;
 
-const [eligibility, setEligibility] = useState<StreamEligibility>({
-  checked: false,
-  allowed: false,
-  reasons: [],
-  speedMbps: null,
-  testMs: null,
-  retryable: false,
-  lastCheckedAt: null,
-});
+  const [eligibility, setEligibility] = useState<StreamEligibility>({
+    checked: false,
+    allowed: false,
+    reasons: [],
+    speedMbps: null,
+    testMs: null,
+  });
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
 
   let viewStartTime = useRef<number | null>(null);
 
@@ -81,17 +80,14 @@ const [eligibility, setEligibility] = useState<StreamEligibility>({
   // ✅ Check if ANY session exists (prevent starting new ones)
   const hasActiveSession = queue.sessionId !== null && ['waiting', 'allocation_ready', 'starting', 'running'].includes(queue.status);
 
-  const playDisabled =
-  !eligibility.checked ||
-  !eligibility.allowed ||
-  isStarting ||
-  hasActiveSession;
+  const playDisabled = checkingEligibility || isStarting || hasActiveSession;
 
-  const playReason = !eligibility.checked
-  ? "Checking device and internet..."
-  : hasActiveSession
-    ? "Complete or cancel current session first."
-    : eligibility.reasons[0] || "";
+  const playReason =
+    eligibility.checked && !eligibility.allowed
+      ? eligibility.reasons[0]
+      : hasActiveSession
+        ? "Complete or cancel current session first."
+        : "";
 
   const getRelativeTime = (date: string | Date) => {
     const now = new Date();
@@ -114,17 +110,31 @@ const [eligibility, setEligibility] = useState<StreamEligibility>({
   const timestamp = useMemo(() => getRelativeTime(createdAt), [createdAt]);
 
   const handleStartGame = async () => {
-    if (isStarting || hasActiveSession) return;
-    setIsStarting(true);
+    if (isStarting || hasActiveSession || checkingEligibility) return;
+
+    setCheckingEligibility(true);
 
     try {
+      const result = await getStreamEligibility();
+      setEligibility(result);
+
+      if (!result.allowed) {
+        return;
+      }
+
+      setIsStarting(true);
+
       const sessionId = await startSession(_id);
       if (sessionId) {
         setIsAdPlaying(true);
+      } else {
+        setIsStarting(false);
       }
     } catch (err) {
       console.error("Failed to start game:", err);
-      setIsStarting(false);
+      toast.error("Could not verify your device or internet.");
+    } finally {
+      setCheckingEligibility(false);
     }
   };
     const handleDelete = async (postId: string) => {
@@ -199,10 +209,6 @@ const [eligibility, setEligibility] = useState<StreamEligibility>({
     return () => observer.disconnect();
   }, []);
 
-useEffect(() => {
-  const stop = watchStreamEligibility(setEligibility);
-  return stop;
-}, []);
 
   useEffect(() => {
     if (!queue.sessionId) {
@@ -303,13 +309,13 @@ useEffect(() => {
                     >
                       <Users size={14} />
                       <span className="font-semibold text-xs">
-                        {!eligibility.checked
+                        {checkingEligibility
                           ? "Checking..."
                           : isStarting
                             ? "Starting..."
                             : hasActiveSession
                               ? "Busy"
-                              : playDisabled
+                              : eligibility.checked && !eligibility.allowed
                                 ? "Unavailable"
                                 : "Play Now"}
                       </span>
@@ -322,17 +328,27 @@ useEffect(() => {
                     {/* Game Name */}
                   </div>
 
-                  {playDisabled && eligibility.checked && eligibility.reasons.length > 0 && (
+                  {eligibility.checked && !eligibility.allowed && eligibility.reasons.length > 0 && (
                   <div className="mt-4 w-full rounded-xl border border-amber-400/30 bg-amber-500/10 p-3">
                     <div className="flex items-start gap-2 text-amber-700 dark:text-amber-300">
                       <AlertCircle size={16} className="mt-0.5 shrink-0" />
                       <div className="text-xs leading-5">
-                        <p className="font-semibold">You cannot play this stream yet:</p>
-                        <ul className="mt-1 list-disc pl-4 space-y-1">
-                          {eligibility.reasons.map((reason) => (
-                            <li key={reason}>{reason}</li>
-                          ))}
-                        </ul>
+                        {eligibility.reasons.some((r) =>
+                          r.includes("Mobile support is coming soon")
+                        ) ? (
+                          <p className="font-semibold">
+                            Mobile support is coming soon. Please use a laptop or desktop.
+                          </p>
+                        ) : (
+                          <>
+                            <p className="font-semibold">You cannot play this stream yet:</p>
+                            <ul className="mt-1 list-disc pl-4 space-y-1">
+                              {eligibility.reasons.map((reason) => (
+                                <li key={reason}>{reason}</li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
