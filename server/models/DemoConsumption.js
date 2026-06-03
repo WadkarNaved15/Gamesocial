@@ -73,6 +73,7 @@ const demoConsumptionSchema = new mongoose.Schema(
       type: String,
       enum: [
         "min_playtime_reached",
+        "user_exit_before_threshold",
         "manual_admin_mark",
         "purchase_granted",
         "forced_consumption",
