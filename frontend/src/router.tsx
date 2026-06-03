@@ -31,6 +31,7 @@ import ModelViewer from "./components/ModelViewer";
 import GamePost from "./components/Home/GamePost";
 import Recommendations from "./components/Recommendations";
 import RecommendationPosts from "./components/Home/RecommendationPost";
+import AdsPage from "./Pages/ads/AdsPage";
 
 export const router = createBrowserRouter([
   {
@@ -69,6 +70,8 @@ export const router = createBrowserRouter([
   { path: "/puck", element: <Puck /> },
   { path: "/recommendations", element: <Recommendations /> },
   { path: "/recommendationsposts", element: <RecommendationPosts /> },
+
+    { path: "/ads", element: <AdsPage/> },
 
   // ── Admin routes ───────────────────────────────────────────────────────────
   // AdminRoute checks:  not logged in → /login?next=…  |  not admin → 403 page
