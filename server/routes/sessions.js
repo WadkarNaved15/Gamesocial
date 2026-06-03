@@ -4,7 +4,7 @@ import fetch from "node-fetch";
 import crypto from "crypto";
 import { body, validationResult } from "express-validator";
 import { publishSessionEvent } from "../services/sessionPubSub.js";
-
+import DemoConsumption from "../models/DemoConsumption.js";
 import AllPost from "../models/Allposts.js";
 import GameSession from "../models/GameSession.js";
 import {
@@ -21,12 +21,17 @@ const router = express.Router();
 const metrics = new SessionMetrics();
 
 const CONFIG = {
-  DEFAULT_DURATION: 600,
-  FREE_GAME_DURATION: 1800,
-  PAID_GAME_DURATION: 3600,
+  DEFAULT_DURATION: 600,      // 10 min
+  FREE_GAME_DURATION: 600,    // 10 min
+  PAID_GAME_DURATION: 600,    // 10 min
   MAX_CONCURRENT_SESSIONS: 3,
   INSTANCE_TIMEOUT: 10000,
   RETRY_ATTEMPTS: 2,
+};
+
+const DEMO_CONFIG = {
+  MIN_ACTIVE_SECONDS: 60,   // consume demo after 60s of healthy play
+  HEARTBEAT_GRACE_SECONDS: 25, // allow short disconnect gaps
 };
 
 
@@ -79,6 +84,18 @@ router.post(
 
       const userId = req.user.id;
       const { gamePostId } = req.body;
+
+      const alreadyUsed = await DemoConsumption.findOne({
+        user: userId,
+        gamePost: gamePostId,
+        status: "consumed",
+      }).lean();
+
+      if (alreadyUsed) {
+        return res.status(403).json({
+          error: "Demo already consumed for this game",
+        });
+      }
 
       // ✅ Check concurrent session limit
       const activeSessions = await GameSession.countDocuments({
@@ -366,21 +383,27 @@ router.post("/:sessionId/heartbeat", verifyToken, async (req, res) => {
 router.post("/heartbeat-by-token/:token", async (req, res) => {
   try {
     const { token } = req.params;
-    console.log("Heartbeat from stream",token)
+    console.log("Heartbeat from stream", token);
 
     const cached = await cacheService.get(`stream:${token}`);
-
     if (!cached) {
       return res.sendStatus(404);
     }
 
-    await GameSession.findByIdAndUpdate(
-      cached.sessionId,
-      {
-        lastHeartbeat: new Date(),
-        $unset: { disconnectDeadline: "" }
-      }
-    );
+    const session = await GameSession.findById(cached.sessionId);
+    if (!session) {
+      return res.sendStatus(404);
+    }
+
+    const now = new Date();
+
+    await GameSession.findByIdAndUpdate(session._id, {
+      lastHeartbeat: now,
+      $unset: { disconnectDeadline: "" },
+    });
+
+    await startOrTouchDemoConsumption(session, now);
+
     res.sendStatus(200);
   } catch (err) {
     console.error("Heartbeat by token error:", err);
@@ -570,6 +593,12 @@ router.post("/complete", async (req, res) => {
 
       await GameSession.findByIdAndUpdate(session_id, updates);
 
+      await finalizeDemoConsumption(
+        session,
+        exit_reason || "user_exit",
+        duration_seconds
+      );
+
             // Release instance
       if (session.instanceId && session.leaseToken) {
         try {
@@ -656,6 +685,12 @@ router.post("/violation", async (req, res) => {
 
     await GameSession.findByIdAndUpdate(session_id, updates);
 
+    await finalizeDemoConsumption(
+      session,
+      violation || "violation",
+      duration_seconds
+    );
+
     // Release instance
     if (session.instanceId && session.leaseToken) {
       try {
@@ -698,6 +733,100 @@ router.post("/violation", async (req, res) => {
 });
 
 /* ================= HELPERS ================= */
+
+async function startOrTouchDemoConsumption(session, now = new Date()) {
+  const existing = await DemoConsumption.findOne({
+    user: session.user,
+    gamePost: session.gamePost,
+  });
+
+  // If already consumed, keep blocking future demo starts
+  if (existing?.status === "consumed") {
+    return existing;
+  }
+
+  // First heartbeat from instance UI = demo has actually started
+  if (!existing) {
+    return DemoConsumption.create({
+      user: session.user,
+      gamePost: session.gamePost,
+      gameSession: session._id,
+      status: "active",
+      startedAt: now,
+      firstHeartbeatAt: now,
+      lastHeartbeatAt: now,
+      connectedSeconds: 0,
+      graceSecondsUsed: 0,
+      metadata: {
+        hostId: session.instanceId || null,
+        appId: session.gamePost?.toString?.() || null,
+        instanceId: session.instanceId || null,
+        region: session.instanceRegion || null,
+      },
+    });
+  }
+
+  // Existing active demo: just refresh heartbeat
+  if (existing.status === "active") {
+    const last = existing.lastHeartbeatAt || existing.firstHeartbeatAt || existing.startedAt;
+    const deltaSeconds = Math.max(0, Math.floor((now - last) / 1000));
+
+    // Only count time inside grace window
+    if (deltaSeconds <= DEMO_CONFIG.HEARTBEAT_GRACE_SECONDS) {
+      existing.connectedSeconds += deltaSeconds;
+      existing.lastHeartbeatAt = now;
+
+      if (!existing.firstHeartbeatAt) {
+        existing.firstHeartbeatAt = now;
+      }
+
+      if (!existing.gameSession) {
+        existing.gameSession = session._id;
+      }
+
+      await existing.save();
+    } else {
+      // Treat as expired due to long disconnect
+      existing.status = "expired";
+      existing.endedAt = now;
+      await existing.save();
+    }
+  }
+
+  return existing;
+}
+
+async function finalizeDemoConsumption(session, reason = "user_exit", exitSeconds = null) {
+  const demo = await DemoConsumption.findOne({
+    user: session.user,
+    gamePost: session.gamePost,
+  });
+
+  if (!demo) return;
+
+  const now = new Date();
+
+  // Use accumulated heartbeat-based playtime
+  const totalSeconds = Math.max(
+    demo.connectedSeconds || 0,
+    exitSeconds || 0
+  );
+
+  const shouldConsume = totalSeconds >= DEMO_CONFIG.MIN_ACTIVE_SECONDS;
+
+  demo.endedAt = now;
+  demo.connectedSeconds = totalSeconds;
+
+  if (shouldConsume) {
+    demo.status = "consumed";
+    demo.consumedAt = now;
+    demo.consumedReason = "min_playtime_reached";
+  } else {
+    demo.status = reason === "user_cancelled" ? "cancelled" : "expired";
+  }
+
+  await demo.save();
+}
 
 function calculateSessionDuration(game) {
   if (game.price === 0) return CONFIG.FREE_GAME_DURATION;
