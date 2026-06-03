@@ -239,6 +239,31 @@ app.get("/health", async (req, res) => {
   });
 });
 
+
+app.get("/stream-speed-test", (req, res) => {
+  try {
+    const bytes = Math.min(
+      parseInt(req.query.bytes || "1048576", 10),
+      5 * 1024 * 1024
+    ); // max 5 MB
+
+    const payload = Buffer.alloc(bytes, "a");
+
+    res.set({
+      "Content-Type": "application/octet-stream",
+      "Content-Length": payload.length,
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+    });
+
+    return res.status(200).send(payload);
+  } catch (err) {
+    console.error("stream-speed-test error:", err);
+    return res.status(500).json({ message: "Speed test failed" });
+  }
+});
+
 // ============================================
 // HTTP SERVER & SOCKET.IO
 // ============================================
