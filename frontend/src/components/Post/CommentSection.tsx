@@ -2,16 +2,21 @@ import React, { useState, useEffect, useRef, memo } from "react";
 import axios from "axios";
 import { useUser } from "../../context/user";
 import { useNavigate } from "react-router-dom";
-import { Send, Link as LinkIcon, MessageSquare } from "lucide-react"; // Optional: npm install lucide-react
+import { Send, Link as LinkIcon, MessageSquare  ,Gamepad2} from "lucide-react"; // Optional: npm install lucide-react
 import { useFeed } from "../../context/FeedContext";
 interface Comment {
   _id: string;
   postId: string;
   text: string;
-  user?: { username: string };
   createdAt: string;
-}
 
+  user?: {
+    username: string;
+    avatar?: string;
+  };
+
+  hasPlayedDemo?: boolean;
+}
 interface LinkPreview {
   title?: string;
   description?: string;
@@ -32,7 +37,6 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache }: any) => {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const urls = comment.text?.match(urlRegex);
   const navigate = useNavigate();
-  const { user } = useUser();
   const url = urls?.[0];
   const fetchedRef = useRef(false);
 
@@ -67,10 +71,10 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache }: any) => {
       {/* Avatar Placeholder */}
       <div className="flex-shrink-0">
         <img
-          src={user?.avatar || "/default_avatar.png"}
+          src={comment.user?.avatar || "/default_avatar.png"}
           onClick={(e) => {
             e.stopPropagation();
-            navigate(`/profile/${user?.username}`);
+            navigate(`/profile/${comment.user?.username}`);
           }}
           className="h-10 w-10 rounded-full object-cover"
         />
@@ -79,9 +83,29 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache }: any) => {
       <div className="flex-grow">
         <div className="bg-gray-50 dark:bg-zinc-900 rounded-2xl px-4 py-3 shadow-sm border border-gray-100 dark:border-zinc-800">
           <div className="flex justify-between items-center mb-1">
-            <span className="font-bold text-sm text-gray-900 dark:text-gray-100">
-              {comment.user?.username || "Anonymous"}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm text-gray-900 dark:text-gray-100">
+                {comment.user?.username || "Anonymous"}
+              </span>
+
+              {comment.hasPlayedDemo && (
+                <span
+                  className="
+                    inline-flex items-center gap-1
+                    px-2 py-0.5
+                    rounded-full
+                    text-[10px]
+                    font-semibold
+                    bg-emerald-500/10
+                    text-emerald-600
+                    dark:text-emerald-400
+                  "
+                >
+                  <Gamepad2 size={12} />
+                  Played
+                </span>
+              )}
+            </div>
             <span className="text-[11px] text-gray-400 font-medium">
               {new Date(comment.createdAt).toLocaleDateString()}
             </span>
@@ -205,7 +229,10 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
       postId,
       text: newComment,
       createdAt: new Date().toISOString(),
-      user: { username: user?.username || "You" }
+      user: {
+        username: user?.username || "You",
+        avatar: user?.avatar,
+      },
     };
 
     setComments(prev => [tempComment, ...prev]);

@@ -55,6 +55,9 @@ const GamePost: React.FC<GamePostProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const { user: currentUser } = useUser();
   const isOwner = currentUser?._id === user._id;
+  const hasPlayedDemo =
+    gamePost?.demoConsumed === true;
+
 
   const [eligibility, setEligibility] = useState<StreamEligibility>({
     checked: false,
@@ -285,45 +288,64 @@ const GamePost: React.FC<GamePostProps> = ({
                     <h3 className="text-2xl font-black text-black dark:text-white tracking-tight leading-none">
                       {gamePost.gameName}
                     </h3>
-                    {/* Queue Badge */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStartGame();
-                      }}
-                      disabled={playDisabled}
-                      title={playReason}
-                      style={{
-                        background: playDisabled
-                          ? "linear-gradient(to bottom right, #52525b, #18181b)"
-                          : "linear-gradient(to bottom right, #3D7A6E, #000000)",
-                      }}
-                      className="
-                        text-white px-3 py-2.5 rounded-2xl
-                        shadow-lg hover:shadow-xl
-                        transition-all hover:scale-105
-                        flex items-center gap-2 shrink-0
-                        active:scale-[0.98]
-                        disabled:opacity-50 disabled:cursor-not-allowed
-                      "
-                    >
-                      <Users size={14} />
-                      <span className="font-semibold text-xs">
-                        {checkingEligibility
-                          ? "Checking..."
-                          : isStarting
-                            ? "Starting..."
-                            : hasActiveSession
-                              ? "Busy"
-                              : eligibility.checked && !eligibility.allowed
-                                ? "Unavailable"
-                                : "Play Now"}
-                      </span>
-                      <div className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-                      </div>
-                    </button>
+                    {hasPlayedDemo ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenDetails?.();
+                        }}
+                        className="
+                          text-white px-3 py-2.5 rounded-2xl
+                          bg-emerald-600
+                          flex items-center gap-2 shrink-0
+                          shadow-lg hover:bg-emerald-700
+                        "
+                      >
+                        <Gamepad2 size={14} />
+                        <span className="font-semibold text-xs">
+                          Played Demo
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartGame();
+                        }}
+                        disabled={playDisabled}
+                        title={playReason}
+                        style={{
+                          background: playDisabled
+                            ? "linear-gradient(to bottom right, #52525b, #18181b)"
+                            : "linear-gradient(to bottom right, #3D7A6E, #000000)",
+                        }}
+                        className="
+                          text-white px-3 py-2.5 rounded-2xl
+                          shadow-lg hover:shadow-xl
+                          transition-all hover:scale-105
+                          flex items-center gap-2 shrink-0
+                          active:scale-[0.98]
+                          disabled:opacity-50 disabled:cursor-not-allowed
+                        "
+                      >
+                        <Users size={14} />
+                        <span className="font-semibold text-xs">
+                          {checkingEligibility
+                            ? "Checking..."
+                            : isStarting
+                              ? "Starting..."
+                              : hasActiveSession
+                                ? "Busy"
+                                : eligibility.checked && !eligibility.allowed
+                                  ? "Unavailable"
+                                  : "Play Now"}
+                        </span>
+                        <div className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+                        </div>
+                      </button>
+                      )}
 
                     {/* Game Name */}
                   </div>
