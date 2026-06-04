@@ -106,7 +106,13 @@ const ProfilePage: React.FC = () => {
     try {
       const res = await axios.get(
         `${BACKEND_URL}/api/posts/user_posts/${fetchId}`,
-        { params: { cursor: cursorParam, limit: 10 } }
+        {
+          params: {
+            cursor: cursorParam,
+            limit: 10,
+          },
+          withCredentials: true,
+        }
       );
       if (activeFetchIdRef.current !== fetchId) return;
       setUserPosts((prev) =>
@@ -139,7 +145,10 @@ const ProfilePage: React.FC = () => {
     const fetchArticles = async () => {
       try {
         const res = await axios.get(
-          `${BACKEND_URL}/api/articles/published/user/${fetchId}`
+          `${BACKEND_URL}/api/articles/published/user/${fetchId}`,
+          {
+            withCredentials: true,
+          }
         );
         if (activeArticleFetchIdRef.current !== fetchId) return; // stale guard
         setUserArticles(res.data);

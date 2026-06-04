@@ -8,6 +8,7 @@ import AllPost from "../models/Allposts.js";
 import { sendEventToQueue } from "../utils/sendEventToQueue.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import { insertFeedback, fireAndForget } from "../services/gorse.client.js";
+import DemoConsumption from "../models/DemoConsumption.js";
 
 const router = express.Router();
 
@@ -72,6 +73,14 @@ router.post("/", authMiddleware, commentLimiter, async (req, res) => {
       .populate("user", "username avatar")
       .lean();
 
+    const hasPlayedDemo = await DemoConsumption.exists({
+      user: userId,
+      gamePost: postId,
+      status: "consumed",
+    });
+
+    populatedComment.hasPlayedDemo = !!hasPlayedDemo;
+
     res.status(201).json({
       comment: populatedComment,
       commentsCount: post.commentsCount,
@@ -105,6 +114,26 @@ router.get("/", async (req, res) => {
       .sort({ _id: -1 })
       .limit(parsedLimit)
       .lean();
+
+    const playedUsers = await DemoConsumption.find({
+      gamePost: postId,
+      status: "consumed",
+      user: {
+        $in: comments.map(c => c.user._id)
+      }
+    })
+    .select("user")
+    .lean();
+
+    const playedSet = new Set(
+      playedUsers.map(p => p.user.toString())
+    );
+
+    comments.forEach(comment => {
+      comment.hasPlayedDemo = playedSet.has(
+        comment.user._id.toString()
+      );
+    });
 
     const nextCursor = comments.length > 0 ? comments[comments.length - 1]._id : null;
     res.json({ comments, nextCursor });

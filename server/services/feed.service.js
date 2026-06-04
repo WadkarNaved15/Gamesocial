@@ -19,6 +19,8 @@ import {
   recordServed,
   fireAndForget,
 } from "./gorse.client.js";
+import DemoConsumption from "../models/DemoConsumption.js";
+import { enrichDemoConsumed } from "../utils/enrichDemoConsumed.js";
 
 // Drop this low — if Gorse can't respond in 400ms, chronological is fine.
 // A 2000ms timeout holds 200 VUs hostage for 2 full seconds each.
@@ -272,6 +274,8 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
   // ── Build nextCursor ──────────────────────────────────────────────────────────
   const last = merged[merged.length - 1];
   const nextCursor = `${last._cursorType}:${last._cursorVal}`;
+
+  await enrichDemoConsumed(merged, userId);
 
   const posts = merged.map(({ _sortKey, _cursorType, _cursorVal, ...rest }) => rest);
 
