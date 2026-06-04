@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import AdsNavbar from "../../components/ads/adsNavbar";
+import AdsNavbar from "../../components/ads/AdsNavbar";
 import AdsSidebar from "../../components/ads/AdsSidebar";
 import CampaignPanel from "../../components/ads/CampaignPanel";
 import AdGroupPanel from "../../components/ads/AdGroupPanel";
