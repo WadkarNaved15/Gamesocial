@@ -74,7 +74,6 @@ router.get("/fetch_posts", optionalAuthMiddleware, async (req, res) => {
 // Search via Meilisearch — pocket entries indexed separately if desired.
 router.get("/filter_posts",optionalAuthMiddleware, async (req, res) => {
   try {
-      console.log(" FILTER POSTS ROUTE HIT");
     const { query, cursor, limit = 10 } = req.query;
 
     if (!query || query.trim() === "") {
@@ -122,12 +121,8 @@ router.get("/filter_posts",optionalAuthMiddleware, async (req, res) => {
 // Profile page — AllPost only (pocket entries are brand-owned, not user posts).
 router.get("/user_posts/:userId",optionalAuthMiddleware, async (req, res) => {
   try {
-      console.log("USER POSTS ROUTE HIT");
     const { userId } = req.params;
     const { cursor, limit = 10 } = req.query;
-
-    console.log("req.user =", req.user);
-console.log("auth user id =", req.user?._id?.toString());
 
     const query = {
       user: userId,
@@ -159,7 +154,6 @@ console.log("auth user id =", req.user?._id?.toString());
 // ── GET /api/posts/:postId ────────────────────────────────────────────────────
 router.get("/:postId",optionalAuthMiddleware, async (req, res) => {
   try {
-      console.log(" POST ROUTE HIT");
     const post = await Post.findById(req.params.postId)
       .populate("user", "username avatar")
       .lean();
