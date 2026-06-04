@@ -3,6 +3,7 @@ import AdsNavbar from "../../components/ads/AdsNavbar";
 import AdsSidebar from "../../components/ads/AdsSidebar";
 import CampaignPanel from "../../components/ads/CampaignPanel";
 import AdGroupPanel from "../../components/ads/AdGroupPanel";
+import AdsComposerPage from "../../components/ads/AdsComposerPage";
 import type { AdGroup } from "../../types/ads";
 const createDefaultAdGroup = (id: number): AdGroup => ({
     id,
@@ -86,6 +87,9 @@ export default function AdsPage() {
                                 />
                             )}
                         </>
+                    )}
+                    {activeTab === "composer" && (
+                        <AdsComposerPage />
                     )}
                 </div>
 
