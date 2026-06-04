@@ -36,7 +36,7 @@ export default function AdsPage() {
         createDefaultAdGroup(1),
     ]);
 
-    const [activeAdGroup, setActiveAdGroup] = useState(1);
+    const [activeAdGroup, setActiveAdGroup] = useState<number | null>(null);
     const selectedAdGroup = adGroups.find(g => g.id === activeAdGroup);
     const addAdGroup = () => {
         const newGroup = createDefaultAdGroup(adGroups.length + 1);
@@ -60,13 +60,14 @@ export default function AdsPage() {
                     activeAdGroup={activeAdGroup}
                     setActiveAdGroup={setActiveAdGroup}
                     addAdGroup={addAdGroup}
+                    resetAdGroup={() => setActiveAdGroup(null)}
                 />
 
                 {/* RIGHT PANEL WRAPPER (IMPORTANT FIX) */}
                 <div className="flex-1">
                     {activeTab === "campaigns" && (
                         <>
-                            {selectedAdGroup ? (
+                            {activeAdGroup !== null && selectedAdGroup ? (
                                 <AdGroupPanel
                                     adGroup={selectedAdGroup}
                                     updateAdGroup={(updated) => {
