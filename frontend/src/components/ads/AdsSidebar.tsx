@@ -12,13 +12,15 @@ export default function AdsSidebar({
   activeAdGroup,
   setActiveAdGroup,
   addAdGroup,
+  resetAdGroup,
 }: {
   activeTab: string;
   campaignName: string;
   adGroups: AdGroup[];
-  activeAdGroup: number;
+  activeAdGroup: number | null;
   setActiveAdGroup: (id: number) => void;
   addAdGroup: () => void;
+  resetAdGroup: () => void;
 }) {
   return (
     <div className="w-[320px] border-r border-gray-200 dark:border-white/10 p-4">
@@ -28,7 +30,9 @@ export default function AdsSidebar({
         <div className="space-y-4">
 
           {/* CAMPAIGN NAME (AUTO GENERATED + CLICKABLE) */}
-          <button className="w-full text-left px-3 py-2 rounded-lg bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition">
+          <button className="w-full text-left px-3 py-2 rounded-lg bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition"
+           onClick={resetAdGroup}
+          >
             <div className="text-xs text-gray-500">Campaign</div>
             <div className="text-sm font-semibold text-gray-900 dark:text-white">
               {campaignName}
