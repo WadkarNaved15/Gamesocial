@@ -23,8 +23,6 @@ export async function enrichDemoConsumed(posts, userId) {
     consumptions.map(c => c.gamePost.toString())
   );
 
-  console.log("Consumptions:", consumptions);
-
   for (const post of posts) {
     if (post.type === "game_post" && post.gamePost) {
       post.gamePost.demoConsumed =
