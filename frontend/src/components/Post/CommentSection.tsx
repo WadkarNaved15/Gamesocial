@@ -90,19 +90,25 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache }: any) => {
 
               {comment.hasPlayedDemo && (
                 <span
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #3D7A6E 0%, #23473f 45%, #000000 100%)",
+                  }}
                   className="
-                    inline-flex items-center gap-1
-                    px-2 py-0.5
+                    inline-flex items-center gap-1.5
+                    px-2.5 py-1
                     rounded-full
                     text-[10px]
-                    font-semibold
-                    bg-emerald-500/10
-                    text-emerald-600
-                    dark:text-emerald-400
+                    font-black
+                    uppercase
+                    tracking-wide
+                    text-white
+                    shadow-lg
+                    border border-emerald-400/20
                   "
                 >
-                  <Gamepad2 size={12} />
-                  Played
+                  <Gamepad2 size={11} />
+                  Verified Player
                 </span>
               )}
             </div>

@@ -30,7 +30,7 @@ const CONFIG = {
 };
 
 const DEMO_CONFIG = {
-  MIN_ACTIVE_SECONDS: 60,   // consume demo after 60s of healthy play
+  MIN_ACTIVE_SECONDS: 180,   // consume demo after 180s of healthy play
   HEARTBEAT_GRACE_SECONDS: 25, // allow short disconnect gaps
 };
 
@@ -788,9 +788,8 @@ async function startOrTouchDemoConsumption(session, now = new Date()) {
 
       await existing.save();
     } else {
-      // Treat as expired due to long disconnect
-      existing.status = "expired";
-      existing.endedAt = now;
+      existing.graceSecondsUsed += deltaSeconds;
+      existing.lastHeartbeatAt = now;
       await existing.save();
     }
   }
@@ -819,21 +818,17 @@ async function finalizeDemoConsumption(session, reason = "user_exit", exitSecond
   demo.endedAt = now;
   demo.connectedSeconds = totalSeconds;
 
-  if (shouldConsume) {
-    demo.status = "consumed";
-    demo.consumedAt = now;
-    if (totalSeconds >= DEMO_CONFIG.MIN_ACTIVE_SECONDS) {
-      demo.status = "consumed";
-      demo.consumedAt = now;
-      demo.consumedReason = "min_playtime_reached";
-    } else {
-      demo.status =
-        reason === "user_cancelled"
-          ? "cancelled"
-          : "expired";
+if (shouldConsume) {
+  demo.status = "consumed";
+  demo.consumedAt = now;
+  demo.consumedReason = "min_playtime_reached";
+} else {
+  demo.status =
+    reason === "user_cancelled"
+      ? "cancelled"
+      : "expired";
 
-      demo.consumedReason = "user_exit_before_threshold";
-    }
+  demo.consumedReason = "user_exit_before_threshold";
 }
   
 

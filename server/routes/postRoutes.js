@@ -12,6 +12,7 @@ import redisClient from "../config/redis.js";
 import { getFeedPage } from "../services/feed.service.js";
 import { trackPostView } from "../controllers/postView.controller.js";
 import verifyToken from "../middlewares/authMiddleware.js";
+import { enrichDemoConsumed } from "../utils/enrichDemoConsumed.js";
 dotenv.config();
 
 const router = express.Router();
@@ -71,8 +72,9 @@ router.get("/fetch_posts", optionalAuthMiddleware, async (req, res) => {
 
 // ── GET /api/posts/filter_posts ──────────────────────────────────────────────
 // Search via Meilisearch — pocket entries indexed separately if desired.
-router.get("/filter_posts", async (req, res) => {
+router.get("/filter_posts",optionalAuthMiddleware, async (req, res) => {
   try {
+      console.log(" FILTER POSTS ROUTE HIT");
     const { query, cursor, limit = 10 } = req.query;
 
     if (!query || query.trim() === "") {
@@ -96,6 +98,11 @@ router.get("/filter_posts", async (req, res) => {
       .limit(Number(limit))
       .lean();
 
+    await enrichDemoConsumed(
+      posts,
+      req.user?._id?.toString()
+    );
+
     const nextCursor =
       posts.length === Number(limit)
         ? posts[posts.length - 1]._id
@@ -113,10 +120,14 @@ router.get("/filter_posts", async (req, res) => {
 
 // ── GET /api/posts/user_posts/:userId ────────────────────────────────────────
 // Profile page — AllPost only (pocket entries are brand-owned, not user posts).
-router.get("/user_posts/:userId", async (req, res) => {
+router.get("/user_posts/:userId",optionalAuthMiddleware, async (req, res) => {
   try {
+      console.log("USER POSTS ROUTE HIT");
     const { userId } = req.params;
     const { cursor, limit = 10 } = req.query;
+
+    console.log("req.user =", req.user);
+console.log("auth user id =", req.user?._id?.toString());
 
     const query = {
       user: userId,
@@ -130,6 +141,11 @@ router.get("/user_posts/:userId", async (req, res) => {
       .limit(Number(limit))
       .lean();
 
+    await enrichDemoConsumed(
+      posts,
+      req.user?._id?.toString()
+    );
+
     res.status(200).json({
       posts,
       nextCursor: posts.length ? posts[posts.length - 1]._id : null,
@@ -141,16 +157,25 @@ router.get("/user_posts/:userId", async (req, res) => {
 });
 
 // ── GET /api/posts/:postId ────────────────────────────────────────────────────
-router.get("/:postId", async (req, res) => {
+router.get("/:postId",optionalAuthMiddleware, async (req, res) => {
   try {
+      console.log(" POST ROUTE HIT");
     const post = await Post.findById(req.params.postId)
-      .populate("user", "username avatar");
+      .populate("user", "username avatar")
+      .lean();
     if (!post) return res.status(404).json({ deleted: true });
+    if (post) {
+      await enrichDemoConsumed(
+        [post],
+        req.user?._id?.toString()
+      );
+    }
     res.json(post);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch post" });
   }
 });
+
 
 router.post("/:postId/view", verifyToken, trackPostView);
 

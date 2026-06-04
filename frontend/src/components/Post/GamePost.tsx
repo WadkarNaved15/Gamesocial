@@ -294,16 +294,23 @@ const GamePost: React.FC<GamePostProps> = ({
                           e.stopPropagation();
                           onOpenDetails?.();
                         }}
+                        style={{
+                          background: playDisabled
+                            ? "linear-gradient(to bottom right, #52525b, #18181b)"
+                            : "linear-gradient(to bottom right, #3D7A6E, #000000)",
+                        }}
                         className="
                           text-white px-3 py-2.5 rounded-2xl
-                          bg-emerald-600
+                          shadow-lg hover:shadow-xl
+                          transition-all hover:scale-105
                           flex items-center gap-2 shrink-0
-                          shadow-lg hover:bg-emerald-700
+                          active:scale-[0.98]
+                          disabled:opacity-50 disabled:cursor-not-allowed
                         "
                       >
                         <Gamepad2 size={14} />
                         <span className="font-semibold text-xs">
-                          Played Demo
+                          Demo Played
                         </span>
                       </button>
                     ) : (
