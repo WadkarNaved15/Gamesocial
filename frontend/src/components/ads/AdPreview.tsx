@@ -1,7 +1,7 @@
 import React from "react";
 // Imported More / Menu icons to give it an authentic social feed look
 import { Globe, MoreHorizontal, MessageSquare, Heart, Share2 } from "lucide-react";
-
+import AdPreviewFrame from "./AdPreviewFrame";
 interface AdPreviewProps {
   ad: {
     pageName?: string;
@@ -12,53 +12,9 @@ interface AdPreviewProps {
     description?: string;
   };
 }
-
-/**
- * Enterprise-Grade Browser & Content Preview Frame
- * Replaces the clunky fixed HTML laptop with an authentic, scalable browser window wrapper.
- */
-export function AdPreviewFrame({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="w-full max-w-2xl mx-auto border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden bg-white dark:bg-[#0f0f0f] shadow-xl">
-      
-      {/* PROFESSIONAL BROWSER CHROME HEADER */}
-      <div className="bg-gray-50 dark:bg-[#1a1a1a] border-b border-gray-200 dark:border-white/10 px-4 py-3 flex items-center justify-between gap-4 select-none">
-        
-        {/* Window Control Window Pins */}
-        <div className="flex items-center gap-1.5 w-16">
-          <div className="w-3 h-3 rounded-full bg-red-400 dark:bg-red-500/30"></div>
-          <div className="w-3 h-3 rounded-full bg-yellow-400 dark:bg-yellow-500/30"></div>
-          <div className="w-3 h-3 rounded-full bg-green-400 dark:bg-green-500/30"></div>
-        </div>
-
-        {/* Fake URL Bar to mimic Desktop Delivery Context */}
-        <div className="flex-1 max-w-md bg-white dark:bg-[#0f0f0f] border border-gray-200 dark:border-white/5 rounded-lg px-3 py-1 text-center text-xs text-gray-400 dark:text-gray-500 truncate font-mono tracking-wide shadow-inner">
-          https://www.socialplatform.com/feed/preview
-        </div>
-
-        {/* Balance layout spacer */}
-        <div className="w-16 text-right text-[10px] font-bold uppercase tracking-wider text-gray-400">
-          DESKTOP
-        </div>
-      </div>
-
-      {/* Screen Canvas Area */}
-      <div className="bg-gray-100 dark:bg-[#121212] p-6 min-h-[450px] flex items-center justify-center">
-        <div className="w-full max-w-[500px]">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * High-Fidelity Ad Feed Mock Card
- * Styled strictly to mirror enterprise ad networks (Meta / LinkedIn format)
- */
 export default function AdPreview({ ad }: AdPreviewProps) {
   return (
-    <AdPreviewFrame>
+
       <div className="bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-white/10 rounded-xl shadow-sm overflow-hidden text-gray-900 dark:text-white font-sans">
         
         {/* FEED HEADER */}
@@ -142,6 +98,5 @@ export default function AdPreview({ ad }: AdPreviewProps) {
         </div>
 
       </div>
-    </AdPreviewFrame>
   );
 }
