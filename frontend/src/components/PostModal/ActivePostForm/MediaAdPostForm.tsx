@@ -1,0 +1,530 @@
+import React, { useState, useRef, ChangeEvent, useEffect } from "react";
+import { Upload, Image as ImageIcon, Video, ArrowLeft, X, Palette, Sparkles, Clock, Flame, MousePointerClick } from "lucide-react";
+
+type MediaType = "image" | "video";
+
+type MediaAsset = {
+  type: MediaType;
+  file: File;
+  url: string;
+  name: string;
+};
+
+interface MediaAdPostFormProps {
+  onCancel: () => void;
+  onBack?: () => void;
+}
+
+const PRESET_ACCENTS = [
+  { name: "Default Dark", hex: "#18181b", text: "#ffffff" },
+  { name: "Cyber Neon", hex: "#6366f1", text: "#ffffff" },
+  { name: "Royal Amethyst", hex: "#8b5cf6", text: "#ffffff" },
+  { name: "Electric Emerald", hex: "#10b981", text: "#ffffff" },
+  { name: "Sunset Crimson", hex: "#ef4444", text: "#ffffff" },
+  { name: "Gold Premium", hex: "#f59e0b", text: "#000000" },
+];
+
+const hexToRgb = (hex: string): string | null => {
+  const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return r ? `${parseInt(r[1], 16)}, ${parseInt(r[2], 16)}, ${parseInt(r[3], 16)}` : null;
+};
+
+const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) => {
+  // ───────────── STATE ─────────────
+  const [brandName, setBrandName] = useState("");
+  const [description, setDescription] = useState("");
+  const [ctaText, setCtaText] = useState("");
+  const [ctaLink, setCtaLink] = useState("");
+
+  const [accentColor, setAccentColor] = useState("#6366f1"); // Cyber Neon default for scroll impact
+  const [useGlowEffect, setUseGlowEffect] = useState(true);
+  const [cardLayoutTheme, setCardLayoutTheme] = useState<"glass" | "gradient" | "minimal">("glass");
+
+  const [asset, setAsset] = useState<MediaAsset | null>(null);
+  const [logo, setLogo] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+
+  const [activeTab, setActiveTab] = useState<"media" | "brand" | "theme" | "cta">("media");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ───────────── SCROLL-STOPPER ENGINE STATES ─────────────
+  const [urgencyMode, setUrgencyMode] = useState<"none" | "countdown" | "scarcity">("countdown");
+  const [scarcityCount, setScarcityCount] = useState(15);
+  const [countdownMinutes, setCountdownMinutes] = useState(10);
+  const [timeLeft, setTimeLeft] = useState({ mins: 10, secs: 0 });
+  const [interactiveTilt, setInteractiveTilt] = useState(true);
+
+  const previewCardRef = useRef<HTMLDivElement>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // ───────────── DYNAMIC COUNTDOWN LOGIC ─────────────
+  useEffect(() => {
+    setTimeLeft({ mins: countdownMinutes, secs: 0 });
+  }, [countdownMinutes]);
+
+  useEffect(() => {
+    if (urgencyMode !== "countdown") return;
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev.mins === 0 && prev.secs === 0) {
+          return { mins: countdownMinutes, secs: 0 }; // Loop demo gracefully
+        }
+        if (prev.secs === 0) {
+          return { mins: prev.mins - 1, secs: 59 };
+        }
+        return { mins: prev.mins, secs: prev.secs - 1 };
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [urgencyMode, countdownMinutes]);
+
+  // ───────────── MOUSE PARALLAX TILT INTERRUPT ─────────────
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!interactiveTilt || !previewCardRef.current) return;
+    const card = previewCardRef.current;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const xc = rect.width / 2;
+    const yc = rect.height / 2;
+
+    const angleX = (yc - y) / 18;
+    const angleY = (x - xc) / 18;
+
+    card.style.transform = `perspective(1000px) rotateX(${angleX}deg) rotateY(${angleY}deg)`;
+  };
+
+  const handleMouseLeave = () => {
+    if (!previewCardRef.current) return;
+    previewCardRef.current.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg)`;
+  };
+
+  // ───────────── HANDLERS ─────────────
+  const handleMedia = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const isVideo = file.type.startsWith("video");
+    setAsset({
+      type: isVideo ? "video" : "image",
+      file,
+      url: URL.createObjectURL(file),
+      name: file.name,
+    });
+    e.target.value = "";
+  };
+
+  const handleLogo = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    setLogo(URL.createObjectURL(file));
+    e.target.value = "";
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    const payload = {
+      brandName,
+      description,
+      ctaText,
+      ctaLink,
+      accentColor,
+      useGlowEffect,
+      cardLayoutTheme,
+      urgencyMode,
+      scarcityCount,
+      countdownMinutes,
+      type: "media_sponsored_ad"
+    };
+
+    setTimeout(() => {
+      setIsSubmitting(false);
+      onCancel();
+    }, 1500);
+  };
+
+  const rgbAccent = hexToRgb(accentColor) || "24, 24, 27";
+
+  const getDynamicCardStyles = (): React.CSSProperties => {
+    const baseGlow = useGlowEffect ? `0 20px 50px rgba(${rgbAccent}, 0.28)` : "0 12px 40px rgba(0, 0, 0, 0.3)";
+
+    if (cardLayoutTheme === "glass") {
+      return {
+        background: `linear-gradient(135deg, rgba(24, 24, 27, 0.92) 0%, rgba(15, 15, 18, 0.96) 100%)`,
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        border: `1px solid rgba(${rgbAccent}, 0.28)`,
+        boxShadow: `${baseGlow}, inset 0 1px 1px rgba(255, 255, 255, 0.1)`,
+      };
+    }
+    if (cardLayoutTheme === "gradient") {
+      return {
+        background: `linear-gradient(145deg, rgba(${rgbAccent}, 0.15) 0%, rgba(10, 10, 12, 0.98) 60%)`,
+        border: `1px solid rgba(${rgbAccent}, 0.4)`,
+        boxShadow: `${baseGlow}, inset 0 1px 2px rgba(${rgbAccent}, 0.2)`,
+      };
+    }
+    return {
+      background: "#09090b",
+      border: `1px solid rgba(255, 255, 255, 0.08)`,
+      boxShadow: baseGlow,
+    };
+  };
+
+  return (
+    <div className="w-full max-w-3xl mx-auto flex flex-col rounded-2xl overflow-hidden border border-gray-200 dark:border-zinc-800 shadow-xl bg-white dark:bg-[#191919]">
+
+      {/* ── Form Header ─── */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-zinc-800 bg-white/80 dark:bg-[#191919]/80 backdrop-blur-md sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <button onClick={onBack} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+              <ArrowLeft size={18} className="text-gray-600 dark:text-gray-400" />
+            </button>
+          )}
+          <div>
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-base font-bold text-black dark:text-white leading-tight">Premium Media Ad Builder</h2>
+              <span className="bg-indigo-500/10 text-indigo-500 text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">Scroll Stopper v2.5</span>
+            </div>
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">High Engagement Conversion Engine</p>
+          </div>
+        </div>
+        <button
+          onClick={handleSubmit}
+          disabled={!asset || isSubmitting}
+          className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 text-white font-bold px-5 py-1.5 rounded-full text-sm transition shadow-sm flex items-center gap-1.5"
+        >
+          {isSubmitting ? "Processing..." : "Publish Premium Ad"}
+        </button>
+      </div>
+
+      {/* ── Tab Nav ─── */}
+      <div className="flex border-b border-gray-100 dark:border-zinc-800 px-4 bg-white dark:bg-[#191919] overflow-x-auto [scrollbar-width:none]">
+        {(["media", "brand", "theme", "cta"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px shrink-0 ${activeTab === tab
+                ? "border-indigo-500 text-indigo-500"
+                : "border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-col flex-1">
+        <div className="p-4 flex flex-col gap-4">
+
+          {/* ── MEDIA TAB ─── */}
+          {activeTab === "media" && (
+            <div className="flex flex-col gap-4">
+              {asset ? (
+                <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-zinc-800 bg-zinc-900 h-[360px] flex items-center justify-center">
+                  {asset.type === "video" ? (
+                    <video src={asset.url} autoPlay muted loop className="w-full h-full object-contain" />
+                  ) : (
+                    <img src={asset.url} alt="Uploaded preview" className="w-full h-full object-contain" />
+                  )}
+                  <button
+                    onClick={() => setAsset(null)}
+                    className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-sm rounded-full text-white hover:bg-black/80 transition"
+                  >
+                    <X size={14} />
+                  </button>
+                  <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-lg text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                    {asset.type === "video" ? <Video size={10} /> : <ImageIcon size={10} />}
+                    <span className="truncate max-w-[180px]">{asset.name}</span>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => mediaInputRef.current?.click()}
+                  className="border-2 border-dashed border-indigo-200 dark:border-indigo-900/40 rounded-xl py-16 flex flex-col items-center gap-3 cursor-pointer hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 transition-all group"
+                >
+                  <div className="p-4 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-400 group-hover:scale-110 transition-transform">
+                    <Upload size={28} />
+                  </div>
+                  <p className="text-gray-500 dark:text-gray-400 font-medium text-sm">Upload creative media payload</p>
+                  <p className="text-gray-400 dark:text-gray-600 text-xs">High-definition 16:9 or 1:1 Videos/Images</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "brand" && (
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
+                  Brand Identity Header Title
+                </label>
+                <input
+                  type="text"
+                  placeholder="Your verified project, studio or brand title"
+                  className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none text-black dark:text-white focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+                  value={brandName}
+                  onChange={(e) => setBrandName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
+                  High-Conversion Ad Script Caption
+                </label>
+                <textarea
+                  placeholder="Draft copy that prompts an instant interaction hook..."
+                  className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl p-3 outline-none text-black dark:text-white resize-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition min-h-[90px]"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
+                  Brand Icon Avatar
+                </label>
+                {logo ? (
+                  <div className="flex items-center gap-3">
+                    <img src={logo} alt="Logo" className="w-14 h-14 rounded-full object-cover border-2 border-indigo-500" />
+                    <button onClick={() => { setLogo(null); setLogoFile(null); }} className="text-xs text-red-400 hover:text-red-500 font-semibold">
+                      Replace Icon
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => logoInputRef.current?.click()}
+                    className="border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-xl py-8 flex flex-col items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900/50 transition group"
+                  >
+                    <div className="p-3 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-400 group-hover:scale-110 transition-transform">
+                      <ImageIcon size={22} />
+                    </div>
+                    <p className="text-xs text-gray-400 font-medium">Upload graphic transparent logo asset</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "theme" && (
+            <div className="flex flex-col gap-5">
+              <div>
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 block flex items-center gap-1">
+                  <Palette size={12} className="text-indigo-500" /> Accent Aura Hue Selection
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {PRESET_ACCENTS.map((preset) => (
+                    <button
+                      key={preset.hex}
+                      type="button"
+                      onClick={() => setAccentColor(preset.hex)}
+                      className={`p-2.5 rounded-xl text-xs font-semibold transition-all border text-center relative flex flex-col items-center gap-1.5 ${accentColor === preset.hex
+                          ? "border-white bg-zinc-900 shadow-md scale-105"
+                          : "border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50"
+                        }`}
+                    >
+                      <span className="w-4 h-4 rounded-full shadow-inner block" style={{ backgroundColor: preset.hex }} />
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-full">{preset.name}</span>
+                      {accentColor === preset.hex && (
+                        <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-3 flex items-center gap-3 bg-gray-50 dark:bg-zinc-900/40 p-3 rounded-xl border border-gray-100 dark:border-zinc-800">
+                  <input
+                    type="color"
+                    value={accentColor}
+                    onChange={(e) => setAccentColor(e.target.value)}
+                    className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-black dark:text-white">Fine-tune Ambient Color</p>
+                    <p className="text-[10px] text-gray-400">Match exactly with your visual art guidelines</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 block">
+                  Feed Isolation Archetype
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["glass", "gradient", "minimal"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setCardLayoutTheme(mode)}
+                      className={`p-3 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all text-center ${cardLayoutTheme === mode
+                          ? "bg-indigo-500 border-indigo-500 text-white shadow-md shadow-indigo-500/20 scale-[1.02]"
+                          : "bg-gray-50 dark:bg-zinc-900/70 border-gray-200 dark:border-zinc-800 text-gray-400"
+                        }`}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-zinc-900/50 border border-gray-200 dark:border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={16} className="text-amber-400" />
+                  <div>
+                    <p className="text-xs font-bold text-black dark:text-white">Inject Ambient Neon Backdrop Glow</p>
+                    <p className="text-[10px] text-gray-400">Creates depth shadows to isolate item from typical feed arrays</p>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={useGlowEffect}
+                  onChange={(e) => setUseGlowEffect(e.target.checked)}
+                  className="w-4 h-4 text-indigo-600 border-zinc-700 bg-zinc-900 rounded focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+          )}
+
+          {activeTab === "cta" && (
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
+                  Action Link Interactive Button Label
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., CLAIM ACCESS, DISCOVER NOW, JOIN PREORDER"
+                  className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none text-black dark:text-white focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+                  value={ctaText}
+                  onChange={(e) => setCtaText(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
+                  Target Redirection Destination Link
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://yourbrand.io/exclusive-landing"
+                  className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none text-black dark:text-white focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+                  value={ctaLink}
+                  onChange={(e) => setCtaLink(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ── LIVE PREVIEW PANEL (VERTICAL ALIGNED WITH PARALLAX INTERRUPT) ── */}
+          <div className="mt-4 border-t border-gray-100 dark:border-zinc-800 pt-6">
+            <div className="mb-3 flex items-center gap-1.5 text-[10px] uppercase font-black tracking-widest text-gray-400 dark:text-zinc-500">
+              <MousePointerClick size={12} /> Live Device Canvas (Hover or Move Cursor to simulate 3D feed disruption)
+            </div>
+
+            <div className="relative w-full overflow-hidden p-6 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-zinc-800 rounded-2xl flex flex-col items-center justify-center">
+
+              {/* DISRUPTIVE CONTAINER WRAPPER WITH PARALLAX STYLES */}
+              <div
+                ref={previewCardRef}
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+                className="w-full max-w-full rounded-2xl overflow-hidden transition-all duration-150 ease-out p-0.5 group select-none"
+                style={{
+                  ...getDynamicCardStyles(),
+                  transformStyle: "preserve-3d"
+                }}
+              >
+                {/* ADVANCED HEAD BANNER */}
+                <div className="flex justify-between items-center px-4 pt-4 pb-3" style={{ transform: "translateZ(20px)" }}>
+                  <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 shadow-sm">
+                    {logo ? (
+                      <img src={logo} alt="Avatar" className="w-6 h-6 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black bg-indigo-500 text-white">
+                        {(brandName || "A").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-white text-xs font-bold tracking-wide drop-shadow-sm">
+                      {brandName || "Brand Identity"}
+                    </span>
+                  </div>
+
+                  {/* HIGH ACCENT GLOW BADGE */}
+                  <span
+                    className="text-[9px] font-black uppercase tracking-widest px-3 py-1 text-white border rounded-full transition-colors"
+                    style={{
+                      backgroundColor: `rgba(${rgbAccent}, 0.25)`,
+                      borderColor: accentColor,
+                      boxShadow: `0 0 12px rgba(${rgbAccent}, 0.4)`
+                    }}
+                  >
+                    ✦ Sponsored ✦
+                  </span>
+                </div>
+
+                {/* VISUAL PAYLOAD BLOCK */}
+                <div className="h-[400px] bg-zinc-950 flex items-center justify-center relative overflow-hidden border-y border-white/5">
+                  {asset ? (
+                    asset.type === "video" ? (
+                      <video src={asset.url} autoPlay muted loop className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700" />
+                    ) : (
+                      <img src={asset.url} alt="Creative" className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700" />
+                    )
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-30 bg-gradient-to-tr from-zinc-900 to-zinc-950">
+                      <Sparkles size={32} style={{ color: accentColor }} className="animate-spin [animation-duration:8s]" />
+                      <span className="text-white text-[10px] font-bold uppercase tracking-widest">Aura Medium Canvas Preview</span>
+                    </div>
+                  )}
+
+                  {/* PREMIUM OVERLAY SHADOW GRADIENT TO STAND OUT */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
+                </div>
+
+                {/* PREMIUM GLOW-ALIGNED TEXT LABELS */}
+                <div className="p-4 space-y-3" style={{ transform: "translateZ(25px)" }}>
+                  {description ? (
+                    <p className="text-sm leading-relaxed font-light text-zinc-100 tracking-wide drop-shadow-sm">
+                      {description}
+                    </p>
+                  ) : (
+                    <p className="text-sm italic font-light text-zinc-600 tracking-wide">
+                      Draft your ad copy layout here...
+                    </p>
+                  )}
+
+                  {ctaText && (
+                    <button
+                      className="w-full py-3 transition text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-xl transform active:scale-[0.99] hover:brightness-110 flex items-center justify-center gap-1"
+                      style={{
+                        backgroundColor: accentColor,
+                        boxShadow: useGlowEffect ? `0 6px 20px rgba(${rgbAccent}, 0.4)` : "none",
+                        color: PRESET_ACCENTS.find(p => p.hex === accentColor)?.text || "#ffffff"
+                      }}
+                    >
+                      <span>{ctaText}</span>
+                      <span className="opacity-50 text-sm">→</span>
+                    </button>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Hidden File Inputs */}
+      <input ref={mediaInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleMedia} />
+      <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogo} />
+    </div>
+  );
+};
+
+export default MediaAdPostForm;
