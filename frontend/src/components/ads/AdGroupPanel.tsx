@@ -52,6 +52,7 @@ export default function AdGroupPanel({
         l.toLowerCase().includes(languageQuery.toLowerCase())
       )
       : [];
+      
   return (
     <div className="flex-1 p-6 space-y-6">
 
@@ -68,11 +69,12 @@ export default function AdGroupPanel({
           Configure Ad Group Settings
         </h2>
 
-        {/* TWO-COLUMN LAYOUT MATCHING CAMPAIGN PANEL */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-stretch">
+        {/* CHANGED FROM GRID TO VERTICAL FLEX LAYOUT */}
+        <div className="flex flex-col gap-6">
 
-          {/* LEFT COLUMN: CORE PARAMETERS (BUDGET & TIMING) */}
-          <div className="md:col-span-2 flex flex-col gap-4">
+          {/* SECTION 1: CORE PARAMETERS (BUDGET & TIMING) */}
+          {/* Adjusted to grid-cols-2 on wider screens so budget and schedule sit nicely together horizontally, or keep space-y-4 for absolute stack */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             {/* Ad Group Identity Box */}
             <div className="p-4 bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-white/10 rounded-xl shadow-sm space-y-3.5">
@@ -131,8 +133,8 @@ export default function AdGroupPanel({
 
           </div>
 
-          {/* RIGHT COLUMN: TARGETING DEMOGRAPHICS (MATCHES EXPANDED OVERVIEW LOOK) */}
-          <div className="md:col-span-3 p-6 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1e1e1e] flex flex-col justify-between shadow-sm space-y-5">
+          {/* SECTION 2: TARGETING DEMOGRAPHICS (STCKED BELOW CORE PARAMETERS) */}
+          <div className="p-6 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1e1e1e] shadow-sm space-y-5">
 
             <div className="flex flex-col space-y-5 h-full">
 

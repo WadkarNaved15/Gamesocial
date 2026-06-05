@@ -3,7 +3,8 @@ import AdsNavbar from "../../components/ads/AdsNavbar";
 import AdsSidebar from "../../components/ads/AdsSidebar";
 import CampaignPanel from "../../components/ads/CampaignPanel";
 import AdGroupPanel from "../../components/ads/AdGroupPanel";
-import AdsComposerPage from "../../components/ads/AdsComposerPage";
+import AdModelPostForm from "../../components/PostModal/ActivePostForm/AdModelPostForm";
+import ComposerSidebar from "../../components/ads/ComposerSidebar";
 import type { AdGroup } from "../../types/ads";
 const createDefaultAdGroup = (id: number): AdGroup => ({
     id,
@@ -38,6 +39,7 @@ export default function AdsPage() {
     ]);
 
     const [activeAdGroup, setActiveAdGroup] = useState<number | null>(null);
+    const [activeComposerType, setActiveComposerType] = useState<string | null>(null);
     const selectedAdGroup = adGroups.find(g => g.id === activeAdGroup);
     const addAdGroup = () => {
         const newGroup = createDefaultAdGroup(adGroups.length + 1);
@@ -54,17 +56,28 @@ export default function AdsPage() {
             <div className="flex flex-1">
 
                 {/* LEFT SIDEBAR */}
-                <AdsSidebar
-                    activeTab={activeTab}
-                    campaignName={campaignName}
-                    adGroups={adGroups}
-                    activeAdGroup={activeAdGroup}
-                    setActiveAdGroup={setActiveAdGroup}
-                    addAdGroup={addAdGroup}
-                    resetAdGroup={() => setActiveAdGroup(null)}
-                />
+                {/* LEFT SIDEBAR (SWITCH BASED ON TAB) */}
+                {activeTab === "campaigns" && (
+                    <AdsSidebar
+                        activeTab={activeTab}
+                        campaignName={campaignName}
+                        adGroups={adGroups}
+                        activeAdGroup={activeAdGroup}
+                        setActiveAdGroup={setActiveAdGroup}
+                        addAdGroup={addAdGroup}
+                        resetAdGroup={() => setActiveAdGroup(null)}
+                    />
+                )}
+
+                {activeTab === "composer" && (
+                    <ComposerSidebar
+                        activeComposerType={activeComposerType}
+                        setActiveComposerType={setActiveComposerType}
+                    />
+                )}
 
                 {/* RIGHT PANEL WRAPPER (IMPORTANT FIX) */}
+                {/* RIGHT PANEL */}
                 <div className="flex-1">
                     {activeTab === "campaigns" && (
                         <>
@@ -88,8 +101,26 @@ export default function AdsPage() {
                             )}
                         </>
                     )}
+
                     {activeTab === "composer" && (
-                        <AdsComposerPage />
+                        <div className="p-6">
+                            {activeComposerType === null && (
+                                <div className="text-gray-400 text-sm">
+                                    Select a Composer type to begin
+                                </div>
+                            )}
+
+                            {activeComposerType === "3d" && (
+                                <div className="flex justify-center w-full">
+                                    <AdModelPostForm
+                                        onCancel={() => setActiveComposerType(null)}
+                                        onBack={() => setActiveComposerType(null)}
+                                    />
+                                </div>
+                            )}
+                            {activeComposerType === "feed" && <div>Feed Ads Builder UI</div>}
+                            {activeComposerType === "preroll" && <div>Pre Roll Ads Builder UI</div>}
+                        </div>
                     )}
                 </div>
 
