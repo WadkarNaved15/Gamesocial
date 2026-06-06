@@ -662,14 +662,14 @@ function CreatorCard({ creator, isSelected, onSelect }: { creator: Creator; isSe
       className={`bg-white/5 border rounded-2xl p-4 cursor-pointer transition-all flex flex-col gap-2.5
         ${isSelected ? "border-teal-600/40 bg-teal-900/10" : "border-white/9 hover:border-teal-600/[0.28]"}`}>
       <div className="flex items-center gap-2.5">
-        <img src={creator.avatar || "/default_avatar.png"} alt={creator.username}
+        <img src={creator?.avatar || "/default_avatar.png"} alt={creator?.username}
           className="w-9 h-9 rounded-full border border-teal-600/[0.28] object-cover" />
         <div className="flex-1 min-w-0">
-          <div className="font-bold text-[13px] text-white/92 truncate">{creator.username}</div>
-          <div className="text-[11px] text-white/45 truncate">{creator.email}</div>
+          <div className="font-bold text-[13px] text-white/92 truncate">{creator?.username}</div>
+          <div className="text-[11px] text-white/45 truncate">{creator?.email}</div>
         </div>
       </div>
-      <div className="text-[11px] text-white/25">{fmtDate(creator.createdAt)}</div>
+      <div className="text-[11px] text-white/25">{fmtDate(creator?.createdAt)}</div>
     </div>
   );
 }
@@ -741,12 +741,12 @@ function AuditLogPanel({ creatorId, gameId, externalLogs, externalLoading }: Aud
 
   const pages = Math.ceil(total / LIMIT);
 
-  const getAdminName = (a: AuditLog["admin"]) => typeof a === "object" ? a.username : String(a);
+  const getAdminName = (a: AuditLog["admin"]) => typeof a === "object" ? a?.username : String(a);
   const getGameName = (g: AuditLog["gamePost"]) => {
-    if (typeof g === "object" && g !== null) return g["gamePost.gameName"] || g.gameName || "—";
+    if (typeof g === "object" && g !== null) return g["gamePost.gameName"] || g?.gameName || "—";
     return "—";
   };
-  const getCreatorName = (c: AuditLog["creator"]) => typeof c === "object" ? c.username : String(c);
+  const getCreatorName = (c: AuditLog["creator"]) => typeof c === "object" ? c?.username : String(c);
 
   const actionOptions = [
     { value: "", label: "All Actions" },
@@ -897,7 +897,7 @@ function CreatorActionsPanel({ creator, onActionSuccess, showToast }: { creator:
       {modal && (
         <Modal title={modal === "gift" ? "Gift Credits — All Games" : "Deduct Credits — All Games"} onClose={() => setModal(null)}>
           <div className="text-[12px] text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-2 mb-3">
-            ⚠ This will apply to every game under <strong>{creator.username}</strong>.
+            ⚠ This will apply to every game under <strong>{creator?.username}</strong>.
           </div>
           <div className="flex flex-col gap-2.5 mb-4">
             <Input value={amount} onChange={e => setAmount(e.target.value)} placeholder="Credits amount" />
@@ -1187,12 +1187,12 @@ export default function CreditOperationsCenter() {
           <div className="flex flex-col gap-5">
             {creatorDetail ? (
               <div className="bg-gradient-to-br from-teal-900/25 to-black/60 border border-teal-600/[0.28] backdrop-blur-2xl rounded-2xl p-5 flex flex-wrap items-center gap-4">
-                <img src={selectedCreator.avatar || "/default_avatar.png"} alt={selectedCreator.username}
+                <img src={selectedCreator?.avatar || "/default_avatar.png"} alt={selectedCreator?.username}
                   className="w-12 h-12 rounded-full border-2 border-teal-600/30 object-cover shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-extrabold text-[16px] text-white/92">{selectedCreator.username}</div>
-                  <div className="text-[12px] text-white/45">{selectedCreator.email}</div>
-                  <div className="text-[11px] text-white/25">Joined {fmtDate(selectedCreator.createdAt)}</div>
+                  <div className="font-extrabold text-[16px] text-white/92">{selectedCreator?.username}</div>
+                  <div className="text-[12px] text-white/45">{selectedCreator?.email}</div>
+                  <div className="text-[11px] text-white/25">Joined {fmtDate(selectedCreator?.createdAt)}</div>
                 </div>
                 {summary && (
                   <div className="flex gap-2 flex-wrap">

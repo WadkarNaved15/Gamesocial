@@ -417,9 +417,13 @@ router.post("/heartbeat-by-token/:token", async (req, res) => {
         );
       }
 
-      const playTimeMs =
-        Date.now() -
-        new Date(session.startedAt).getTime();
+      
+      const freshSession =
+  await GameSession.findById(session._id)
+    .select("billing.billedPlayTimeMs");
+
+const playTimeMs =
+  freshSession?.billing?.billedPlayTimeMs || 0;
 
       await recordSessionAnalytics(
         session.gamePost,
@@ -431,7 +435,7 @@ router.post("/heartbeat-by-token/:token", async (req, res) => {
       await finalizeDemoConsumption(
         session,
         "credits_exhausted",
-        Math.floor(playTimeMs / 1000)
+        Math.ceil(playTimeMs / 1000)
       );
 
       return res.status(410).json({
@@ -574,16 +578,20 @@ router.post("/running", async (req, res) => {
       );
 
       await AllPost.updateOne(
-          {
-            _id: session.gamePost,
-          },
-          {
-            $inc: {
-              "gamePost.gameMetrics.totalSessions": 1,
-              "gamePost.gameMetrics.uniquePlayers": 1,
-            },
-          }
-        );
+  {
+    _id: session.gamePost,
+    "gamePost.gameMetrics.sessionCounted": { $ne: session._id }
+  },
+  {
+    $inc: {
+      "gamePost.gameMetrics.totalSessions": 1,
+      "gamePost.gameMetrics.uniquePlayers": 1,
+    },
+    $set: {
+      "gamePost.gameMetrics.sessionCounted": session._id
+    }
+  }
+);
       console.log(`[Running] Session ${session_id} is now streaming`);
 
       // Notify SSE clients
@@ -638,7 +646,9 @@ router.post("/complete", async (req, res) => {
     console.log(`[Session Complete] Completing session ${session_id} with reason ${exit_reason} and duration ${duration_seconds}s`);
 
     if (session.status !== "ended") {
-      const playTimeMs = (Number(duration_seconds) || 0) * 1000;
+      
+      const playTimeMs =
+        session?.billing?.billedPlayTimeMs || 0;
       console.log(`[Session Complete] Ending session ${session_id} with reason ${exit_reason}`);
       
       const updates = {
@@ -660,7 +670,7 @@ router.post("/complete", async (req, res) => {
       await finalizeDemoConsumption(
         session,
         exit_reason || "user_exit",
-        duration_seconds
+        Math.ceil(playTimeMs / 1000)
       );
 
             // Release instance
@@ -731,7 +741,7 @@ router.post("/violation", async (req, res) => {
       return res.status(400).json({ error: "session_id required" });
     }
 
-    const session = await GameSession.findById(session_id);
+    const session = await GameSession.findById(session_id);;
     if (!session) {
       return res.status(404).json({ error: "Session not found" });
     }
@@ -747,7 +757,8 @@ router.post("/violation", async (req, res) => {
       exitCode: exit_code
     };
 
-    const playTimeMs = (Number(duration_seconds) || 0) * 1000;
+    const playTimeMs =
+    session?.billing?.billedPlayTimeMs || 0;
     
     await GameSession.findByIdAndUpdate(session_id, updates);
 
@@ -761,7 +772,7 @@ router.post("/violation", async (req, res) => {
     await finalizeDemoConsumption(
       session,
       violation || "violation",
-      duration_seconds
+      Math.ceil(playTimeMs / 1000)
     );
 
     // Release instance
