@@ -35,7 +35,6 @@ async function processViewMessage(message) {
     source = "other",
     deviceType = "other",
     watchTimeMs = 0,
-    isUnique = false,
     viewedAt = new Date().toISOString(),
   } = payload;
 
@@ -43,9 +42,20 @@ async function processViewMessage(message) {
     throw new Error("Invalid payload: postId and viewerId are required");
   }
 
+  const alreadyViewed = await PostViewEvent.exists({
+  post: postId,
+  viewer: viewerId,
+});
+
+const isUnique = !alreadyViewed;
+
+  const dateKey = new Date(viewedAt).toISOString().split("T")[0];
+  const watchTime = Number(watchTimeMs) || 0;
+
   const safeSource = normalizeValue(source, ALLOWED_SOURCES, "other");
   const safeDeviceType = normalizeValue(deviceType, ALLOWED_DEVICE_TYPES, "other");
 
+  // ── 1. AllPost counters ──────────────────────────────────────────────────
   await AllPost.updateOne(
     { _id: postId },
     {
@@ -56,35 +66,102 @@ async function processViewMessage(message) {
     }
   );
 
+  // ── 2. Raw event log ─────────────────────────────────────────────────────
   await PostViewEvent.create({
     post: postId,
     viewer: viewerId,
     source: safeSource,
     deviceType: safeDeviceType,
-    watchTimeMs: Number(watchTimeMs) || 0,
+    watchTimeMs: watchTime,
     isUnique: Boolean(isUnique),
     viewedAt: new Date(viewedAt),
   });
 
-  const analyticsUpdate = {
-    $inc: {
-      totalViews: 1,
-      totalWatchTimeMs: Number(watchTimeMs) || 0,
-      ...(isUnique ? { uniqueViews: 1 } : {}),
-    },
-    $set: {
-      lastViewedAt: new Date(viewedAt),
-    },
-  };
-
-  analyticsUpdate.$inc[`viewsBySource.${safeSource}`] = 1;
-  analyticsUpdate.$inc[`viewsByDevice.${safeDeviceType}`] = 1;
-
-  await PostAnalytics.findOneAndUpdate(
+  // ── 3. PostAnalytics top-level + lifetime ────────────────────────────────
+  //
+  // FIX: Previously avgWatchTimeMs was computed from the pre-update
+  // `analytics` variable (stale). Now we do a second targeted $set after
+  // the increment so we always use the freshest totals.
+  //
+  const updated = await PostAnalytics.findOneAndUpdate(
     { post: postId },
-    analyticsUpdate,
-    { upsert: true, new: true }
+    {
+      $inc: {
+        totalViews: 1,
+        totalWatchTimeMs: watchTime,
+        ...(isUnique ? { uniqueViews: 1 } : {}),
+        [`viewsBySource.${safeSource}`]: 1,
+        [`viewsByDevice.${safeDeviceType}`]: 1,
+
+        // lifetime block mirrors top-level counters
+        "lifetime.views": 1,
+        "lifetime.watchTimeMs": watchTime,
+        ...(isUnique ? { "lifetime.uniqueViews": 1 } : {}),
+      },
+      $set: { lastViewedAt: new Date(viewedAt) },
+      $setOnInsert: { dailyStats: [] },
+    },
+    { upsert: true, new: true }   // `new: true` → returns UPDATED document
   );
+
+  // ── 4. Recalculate avgWatchTimeMs from the freshly-updated totals ────────
+  //
+  // FIX: `updated` is the post-increment document so the division is correct.
+  //
+  const newAvg =
+    updated.totalViews > 0
+      ? Math.round(updated.totalWatchTimeMs / updated.totalViews)
+      : 0;
+
+  await PostAnalytics.updateOne(
+    { post: postId },
+    {
+      $set: {
+        avgWatchTimeMs: newAvg,
+        "lifetime.avgWatchTimeMs": newAvg,
+      },
+    }
+  );
+
+  // ── 5. dailyStats upsert ─────────────────────────────────────────────────
+  const dailyResult = await PostAnalytics.updateOne(
+    { post: postId, "dailyStats.date": dateKey },
+    {
+      $inc: {
+        "dailyStats.$.views": 1,
+        "dailyStats.$.watchTimeMs": watchTime,
+        ...(isUnique ? { "dailyStats.$.uniqueViews": 1 } : {}),
+      },
+    }
+  );
+
+  if (dailyResult.modifiedCount === 0) {
+    // Guard: only push if the date doesn't exist yet (avoids duplicates
+    // under high concurrency — worst case we get two entries for the same
+    // day, which the analytics route can handle by summing).
+    await PostAnalytics.updateOne(
+      {
+        post: postId,
+        "dailyStats.date": { $ne: dateKey },
+      },
+      {
+        $push: {
+          dailyStats: {
+            date: dateKey,
+            views: 1,
+            uniqueViews: isUnique ? 1 : 0,
+            watchTimeMs: watchTime,
+            likes: 0,
+            comments: 0,
+            demoConsumptions: 0,
+            sessions: 0,
+            sessionPlayTimeMs: 0,
+            uniquePlayers: 0,
+          },
+        },
+      }
+    );
+  }
 }
 
 async function deleteSqsMessage(receiptHandle) {

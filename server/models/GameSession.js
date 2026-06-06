@@ -187,6 +187,7 @@ GameSessionSchema.index({ status: 1, expiresAt: 1 });
 GameSessionSchema.index({ status: 1, lastHeartbeat: 1 });
 GameSessionSchema.index({ status: 1, createdAt: 1 }); // ✅ NEW: For FIFO queue
 GameSessionSchema.index({ createdAt: 1, status: 1 }); // ✅ NEW: For age detection
+GameSessionSchema.index({ gamePost: 1, user: 1, status: 1 });
 
 // ✅ STATICS - Helper methods
 GameSessionSchema.statics.findExpiredSessions = function () {

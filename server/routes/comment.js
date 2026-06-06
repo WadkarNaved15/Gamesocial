@@ -9,6 +9,11 @@ import { sendEventToQueue } from "../utils/sendEventToQueue.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import { insertFeedback, fireAndForget } from "../services/gorse.client.js";
 import DemoConsumption from "../models/DemoConsumption.js";
+import PostAnalytics from "../models/postAnalytics.js";
+import {
+  onCommentAdded,
+  onCommentRemoved,
+} from "../services/analyticsEvents.js";
 
 const router = express.Router();
 
@@ -52,6 +57,8 @@ router.post("/", authMiddleware, commentLimiter, async (req, res) => {
       await Comment.deleteOne({ _id: comment._id });
       return res.status(404).json({ message: "Post not found" });
     }
+
+    await onCommentAdded(postId, userId);
 
     if (post.user.toString() !== userId) {
       sendEventToQueue({
@@ -162,6 +169,8 @@ router.delete("/:id", authMiddleware, async (req, res) => {
 
     await Comment.deleteOne({ _id: comment._id });
     await AllPost.findByIdAndUpdate(comment.post, { $inc: { commentsCount: -1 } });
+
+    await onCommentRemoved(comment.post, userId);
 
     res.json({ message: "Comment deleted" });
 
