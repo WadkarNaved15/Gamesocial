@@ -2,6 +2,7 @@ import React, { useState, useRef, ChangeEvent } from 'react';
 import { X, Image as ImageIcon, Upload, Palette, ArrowLeft } from 'lucide-react';
 import '@google/model-viewer';
 import type { AdModelPostFormProps, AdAsset } from "../../../types/Post";
+import { useUser } from "../../../context/user";
 import ImageRegionSelector, { CropRegion } from './Imageregionselector';
 
 const PRESET_COLORS = [
@@ -15,14 +16,14 @@ const hexToRgb = (hex: string): string | null => {
 };
 
 const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) => {
+  const { user } = useUser();
   const [description, setDescription] = useState('');
-  const [brandName, setBrandName] = useState('');
   const [asset, setAsset] = useState<AdAsset | null>(null);
   const [bgColor, setBgColor] = useState('transparent');
   const [bgImage, setBgImage] = useState<string | null>(null);
+  const brandName = user?.username || "Guest";
+  const logoImage = user?.avatar || "/default_avatar.png";
   const [bgImageFile, setBgImageFile] = useState<File | null>(null);
-  const [logoImage, setLogoImage] = useState<string | null>(null);
-  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [bgImagePosition, setBgImagePosition] = useState<string>('50% 50%');
   const [bgImageSize, setBgImageSize] = useState<string>('cover');
   const [bgFocal, setBgFocal] = useState<{ x: number; y: number }>({ x: 0.5, y: 0.5 });
@@ -61,14 +62,6 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
     setBgImagePosition('50% 50%');
     setBgImageSize('cover');
     setBgZoom(1);
-    e.target.value = '';
-  };
-
-  const handleLogo = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLogoFile(file);
-    setLogoImage(URL.createObjectURL(file));
     e.target.value = '';
   };
 
@@ -129,10 +122,6 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
       }
 
       let logoUrl: string | undefined;
-      if (logoFile) {
-        const { fileUrl } = await uploadToS3(logoFile, 'media');
-        logoUrl = fileUrl;
-      }
 
       setIsSavingMetadata(true);
       const response = await fetch(`${BACKEND_URL}/api/allposts`, {
@@ -141,12 +130,14 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
         body: JSON.stringify({
           type: 'ad_model_post', description,
           adModelPost: {
-            brandName, bgMode, overlayOpacity,
+            brandName: user?.username, 
+            bgMode, 
+            overlayOpacity,
             bgColor: bgMode === 'color' ? bgColor : undefined,
             bgImageUrl: bgMode === 'image' ? bgImageUrl : undefined,
             bgImagePosition: bgMode === 'image' ? bgImagePosition : undefined,
             bgImageSize: bgMode === 'image' ? bgImageSize : undefined,
-            logoUrl,
+            logoUrl:user?.avatar,
             asset: { name: asset.name, originalUrl: modelUrl, originalKey: mKey },
           },
         }),
@@ -176,18 +167,18 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
 
   const glassCardStyle: React.CSSProperties = isImage
     ? {
-        backgroundImage: `url(${bgImage})`,
-        backgroundSize: bgImageSize,
-        backgroundPosition: bgImagePosition,
-        backgroundRepeat: 'no-repeat',
-        border: '1px solid rgba(255,255,255,0.18)',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)',
-      }
+      backgroundImage: `url(${bgImage})`,
+      backgroundSize: bgImageSize,
+      backgroundPosition: bgImagePosition,
+      backgroundRepeat: 'no-repeat',
+      border: '1px solid rgba(255,255,255,0.18)',
+      boxShadow: '0 8px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)',
+    }
     : {
-        background: `rgba(0,0,0,${overlayOpacity / 100})`,
-        border: `1px solid rgba(${accentRgb},0.3)`,
-        boxShadow: `0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)`,
-      };
+      background: `rgba(0,0,0,${overlayOpacity / 100})`,
+      border: `1px solid rgba(${accentRgb},0.3)`,
+      boxShadow: `0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)`,
+    };
 
   const glassPillStyle: React.CSSProperties = {
     background: 'rgba(255,255,255,0.12)',
@@ -211,15 +202,15 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
     boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
   };
 
-const getContrastText = (hex: string) => {
-  const r = parseInt(hex.substring(1, 3), 16);
-  const g = parseInt(hex.substring(3, 5), 16);
-  const b = parseInt(hex.substring(5, 7), 16);
+  const getContrastText = (hex: string) => {
+    const r = parseInt(hex.substring(1, 3), 16);
+    const g = parseInt(hex.substring(3, 5), 16);
+    const b = parseInt(hex.substring(5, 7), 16);
 
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b);
 
-  return luminance > 186 ? "#000000" : "#ffffff";
-};
+    return luminance > 186 ? "#000000" : "#ffffff";
+  };
 
   return (
     <div className="w-full max-w-3xl mx-auto flex flex-col rounded-2xl overflow-hidden border border-gray-200 dark:border-zinc-800 shadow-lg bg-white dark:bg-[#191919]">
@@ -293,27 +284,39 @@ const getContrastText = (hex: string) => {
         {/* ── BRAND tab ─── */}
         {activeTab === 'brand' && (
           <div className="p-4 flex flex-col gap-4">
+
+            {/* PROFILE IDENTITY (LOCKED) */}
             <div>
-              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">Brand / Creator Name</label>
-              <input type="text" placeholder="Your brand or studio name"
-                className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none text-black dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
-                value={brandName} onChange={(e) => setBrandName(e.target.value)} />
+              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
+                Brand Identity (From Profile)
+              </label>
+
+              <div className="flex items-center gap-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3">
+                <img
+                  src={user?.avatar || "/default_avatar.png"}
+                  className="w-10 h-10 rounded-full object-cover border border-indigo-500"
+                />
+
+                <span className="text-sm font-semibold text-black dark:text-white">
+                  {user?.username || "Guest"}
+                </span>
+              </div>
             </div>
+
+            {/* MODEL DESCRIPTION ONLY */}
             <div>
-              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">Logo / Icon</label>
-              {logoImage ? (
-                <div className="flex items-center gap-3">
-                  <img src={logoImage} alt="Logo" className="w-14 h-14 rounded-full object-cover border-2 border-indigo-200 dark:border-indigo-700" />
-                  <button onClick={() => { setLogoImage(null); setLogoFile(null); }} className="text-xs text-red-400 hover:text-red-500 font-semibold">Remove</button>
-                </div>
-              ) : (
-                <div onClick={() => logoInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-xl py-8 flex flex-col items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900/50 transition group">
-                  <div className="p-3 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-400 group-hover:scale-110 transition-transform"><ImageIcon size={22} /></div>
-                  <p className="text-xs text-gray-400 font-medium">Upload logo or brand icon</p>
-                </div>
-              )}
+              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
+                Description
+              </label>
+
+              <textarea
+                placeholder="Optional caption..."
+                className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl p-3 outline-none text-black dark:text-white resize-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition min-h-[90px]"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
             </div>
+
           </div>
         )}
 
@@ -472,7 +475,7 @@ const getContrastText = (hex: string) => {
                       </div>
                     )}
                     <span className="text-gray-700 dark:text-gray-300 text-xs font-bold tracking-wide">
-                      {brandName || 'Brand Name'}
+                      {user?.username || 'Brand Name'}
                     </span>
                   </div>
                   <div className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest text-gray-400"
@@ -518,14 +521,7 @@ const getContrastText = (hex: string) => {
                 <div className="relative z-10">
                   <div className="flex items-center justify-between px-4 pt-4 pb-1">
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={glassPillStyle}>
-                      {logoImage ? (
-                        <img src={logoImage} alt="Logo" className="w-6 h-6 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-black"
-                          style={accentRgb ? { background: `rgba(${accentRgb},0.35)`, color: bgColor } : { background: 'rgba(255,255,255,0.2)', color: 'white' }}>
-                          {(brandName || 'B').charAt(0).toUpperCase()}
-                        </div>
-                      )}
+                      <img src={user?.avatar || "/default_avatar.png"} />
                       <span className="text-white text-xs font-bold tracking-wide drop-shadow-sm">{brandName || 'Brand Name'}</span>
                     </div>
                     <div className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest" style={glassAdBadgeStyle}>Ad</div>
@@ -549,36 +545,36 @@ const getContrastText = (hex: string) => {
                       style={{ background: isImage ? 'linear-gradient(to top, rgba(0,0,0,0.3), transparent)' : `linear-gradient(to top, rgba(${accentRgb ?? '0,0,0'},0.12), transparent)` }} />
                   </div>
                   <div className="h-0.5 w-full"
-                    style={{ background: accentRgb
-                      ? `linear-gradient(90deg, transparent, rgba(${accentRgb},0.6), rgba(${accentRgb},0.3), transparent)`
-                      : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.12), transparent)'
+                    style={{
+                      background: accentRgb
+                        ? `linear-gradient(90deg, transparent, rgba(${accentRgb},0.6), rgba(${accentRgb},0.3), transparent)`
+                        : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.12), transparent)'
                     }} />
                 </div>
               </div>
               {/* Description sits outside the overflow-hidden card — matches AdModelPost */}
-{description && (
-  <div className="px-4 pb-3">
-    <p
-      className={`text-sm leading-relaxed font-light tracking-wide ${
-        isTransparent || bgMode === "image"
-          ? "text-black dark:text-white"
-          : ""
-      }`}
-      style={{
-        color:
-          bgMode === "color" && bgColor !== "transparent"
-            ? getContrastText(bgColor)
-            : undefined,
-        textShadow:
-          bgMode === "image"
-            ? "0 1px 2px rgba(0,0,0,0.6)"
-            : "none",
-      }}
-    >
-      {description}
-    </p>
-  </div>
-)}
+              {description && (
+                <div className="px-4 pb-3">
+                  <p
+                    className={`text-sm leading-relaxed font-light tracking-wide ${isTransparent || bgMode === "image"
+                      ? "text-black dark:text-white"
+                      : ""
+                      }`}
+                    style={{
+                      color:
+                        bgMode === "color" && bgColor !== "transparent"
+                          ? getContrastText(bgColor)
+                          : undefined,
+                      textShadow:
+                        bgMode === "image"
+                          ? "0 1px 2px rgba(0,0,0,0.6)"
+                          : "none",
+                    }}
+                  >
+                    {description}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -605,7 +601,6 @@ const getContrastText = (hex: string) => {
 
       <input ref={modelInputRef} type="file" accept=".glb" className="hidden" onChange={handleModelFile} />
       <input ref={bgImageInputRef} type="file" accept="image/*" className="hidden" onChange={handleBgImage} />
-      <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogo} />
     </div>
   );
 };

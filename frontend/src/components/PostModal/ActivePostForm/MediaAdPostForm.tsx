@@ -1,5 +1,6 @@
 import React, { useState, useRef, ChangeEvent, useEffect } from "react";
 import { Upload, Image as ImageIcon, Video, ArrowLeft, X, Palette, Sparkles, Clock, Flame, MousePointerClick } from "lucide-react";
+import { useUser } from "../../../context/user";
 
 type MediaType = "image" | "video";
 
@@ -31,7 +32,6 @@ const hexToRgb = (hex: string): string | null => {
 
 const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) => {
   // ───────────── STATE ─────────────
-  const [brandName, setBrandName] = useState("");
   const [description, setDescription] = useState("");
   const [ctaText, setCtaText] = useState("");
   const [ctaLink, setCtaLink] = useState("");
@@ -41,8 +41,6 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
   const [cardLayoutTheme, setCardLayoutTheme] = useState<"glass" | "gradient" | "minimal">("glass");
 
   const [asset, setAsset] = useState<MediaAsset | null>(null);
-  const [logo, setLogo] = useState<string | null>(null);
-  const [logoFile, setLogoFile] = useState<File | null>(null);
 
   const [activeTab, setActiveTab] = useState<"media" | "brand" | "theme" | "cta">("media");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,7 +51,9 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
   const [countdownMinutes, setCountdownMinutes] = useState(10);
   const [timeLeft, setTimeLeft] = useState({ mins: 10, secs: 0 });
   const [interactiveTilt, setInteractiveTilt] = useState(true);
-
+  const { user } = useUser();
+  const brandName = user?.username || "Guest Brand";
+  const logo = user?.avatar || "/default_avatar.png";
   const previewCardRef = useRef<HTMLDivElement>(null);
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -114,21 +114,13 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
     });
     e.target.value = "";
   };
-
-  const handleLogo = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLogoFile(file);
-    setLogo(URL.createObjectURL(file));
-    e.target.value = "";
-  };
-
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     const payload = {
-      brandName,
+      brandName: user?.username,
+      brandLogo: user?.avatar,
       description,
       ctaText,
       ctaLink,
@@ -210,8 +202,8 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px shrink-0 ${activeTab === tab
-                ? "border-indigo-500 text-indigo-500"
-                : "border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              ? "border-indigo-500 text-indigo-500"
+              : "border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               }`}
           >
             {tab}
@@ -260,23 +252,30 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
 
           {activeTab === "brand" && (
             <div className="flex flex-col gap-4">
+
+              {/* Brand Name (READ ONLY) */}
               <div>
                 <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
-                  Brand Identity Header Title
+                  Brand Identity (From Profile)
                 </label>
-                <input
-                  type="text"
-                  placeholder="Your verified project, studio or brand title"
-                  className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none text-black dark:text-white focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
-                  value={brandName}
-                  onChange={(e) => setBrandName(e.target.value)}
-                />
+
+                <div className="w-full flex items-center gap-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3">
+                  <img
+                    src={user?.avatar || "/default_avatar.png"}
+                    className="w-8 h-8 rounded-full object-cover border border-indigo-500"
+                  />
+                  <span className="text-sm font-semibold text-black dark:text-white">
+                    {user?.username || "Guest Brand"}
+                  </span>
+                </div>
               </div>
 
+              {/* Caption stays editable */}
               <div>
                 <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
                   High-Conversion Ad Script Caption
                 </label>
+
                 <textarea
                   placeholder="Draft copy that prompts an instant interaction hook..."
                   className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl p-3 outline-none text-black dark:text-white resize-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition min-h-[90px]"
@@ -285,29 +284,6 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
-                  Brand Icon Avatar
-                </label>
-                {logo ? (
-                  <div className="flex items-center gap-3">
-                    <img src={logo} alt="Logo" className="w-14 h-14 rounded-full object-cover border-2 border-indigo-500" />
-                    <button onClick={() => { setLogo(null); setLogoFile(null); }} className="text-xs text-red-400 hover:text-red-500 font-semibold">
-                      Replace Icon
-                    </button>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => logoInputRef.current?.click()}
-                    className="border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-xl py-8 flex flex-col items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900/50 transition group"
-                  >
-                    <div className="p-3 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-400 group-hover:scale-110 transition-transform">
-                      <ImageIcon size={22} />
-                    </div>
-                    <p className="text-xs text-gray-400 font-medium">Upload graphic transparent logo asset</p>
-                  </div>
-                )}
-              </div>
             </div>
           )}
 
@@ -324,8 +300,8 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
                       type="button"
                       onClick={() => setAccentColor(preset.hex)}
                       className={`p-2.5 rounded-xl text-xs font-semibold transition-all border text-center relative flex flex-col items-center gap-1.5 ${accentColor === preset.hex
-                          ? "border-white bg-zinc-900 shadow-md scale-105"
-                          : "border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50"
+                        ? "border-white bg-zinc-900 shadow-md scale-105"
+                        : "border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50"
                         }`}
                     >
                       <span className="w-4 h-4 rounded-full shadow-inner block" style={{ backgroundColor: preset.hex }} />
@@ -362,8 +338,8 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
                       type="button"
                       onClick={() => setCardLayoutTheme(mode)}
                       className={`p-3 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all text-center ${cardLayoutTheme === mode
-                          ? "bg-indigo-500 border-indigo-500 text-white shadow-md shadow-indigo-500/20 scale-[1.02]"
-                          : "bg-gray-50 dark:bg-zinc-900/70 border-gray-200 dark:border-zinc-800 text-gray-400"
+                        ? "bg-indigo-500 border-indigo-500 text-white shadow-md shadow-indigo-500/20 scale-[1.02]"
+                        : "bg-gray-50 dark:bg-zinc-900/70 border-gray-200 dark:border-zinc-800 text-gray-400"
                         }`}
                     >
                       {mode}
@@ -442,15 +418,9 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
                 {/* ADVANCED HEAD BANNER */}
                 <div className="flex justify-between items-center px-4 pt-4 pb-3" style={{ transform: "translateZ(20px)" }}>
                   <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 shadow-sm">
-                    {logo ? (
-                      <img src={logo} alt="Avatar" className="w-6 h-6 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black bg-indigo-500 text-white">
-                        {(brandName || "A").charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                    <img src={user?.avatar || "/default_avatar.png"} />
                     <span className="text-white text-xs font-bold tracking-wide drop-shadow-sm">
-                      {brandName || "Brand Identity"}
+                      {user?.username || "Brand Identity"}
                     </span>
                   </div>
 
@@ -522,7 +492,6 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
 
       {/* Hidden File Inputs */}
       <input ref={mediaInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleMedia} />
-      <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogo} />
     </div>
   );
 };
