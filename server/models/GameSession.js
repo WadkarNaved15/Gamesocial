@@ -143,9 +143,10 @@ const GameSessionSchema = new mongoose.Schema(
         "crash",                // Instance crashed
         "error",                // Generic error
         "user_abandoned",       // User closed browser before launch
-        "countdown_expired",    // ✅ NEW: User didn't click launch in time
-        "user_cancelled",       // ✅ NEW: User clicked cancel in modal
+        "countdown_expired",    // User didn't click launch in time
+        "user_cancelled",       // User clicked cancel in modal
         "stale_abandoned",      // Cleanup job found abandoned session
+        "credits_exhausted",    // Session ended due to credit exhaustion
       ],
     },
 
@@ -174,6 +175,25 @@ const GameSessionSchema = new mongoose.Schema(
         default: 0,
       },
     },
+    billing: {
+      creditsConsumed: {
+        type: Number,
+        default: 0,
+      },
+
+      billedPlayTimeMs: {
+        type: Number,
+        default: 0,
+      },
+      processing: {
+        type: Boolean,
+        default: false,
+      },
+      lastBillingAt: {
+        type: Date,
+        default: null,
+      },
+    },
   },
   { 
     timestamps: true,
@@ -187,7 +207,12 @@ GameSessionSchema.index({ status: 1, expiresAt: 1 });
 GameSessionSchema.index({ status: 1, lastHeartbeat: 1 });
 GameSessionSchema.index({ status: 1, createdAt: 1 }); // ✅ NEW: For FIFO queue
 GameSessionSchema.index({ createdAt: 1, status: 1 }); // ✅ NEW: For age detection
-
+GameSessionSchema.index({ gamePost: 1, user: 1, status: 1 });
+GameSessionSchema.index({
+  status: 1,
+  "billing.processing": 1,
+  "billing.lastBillingAt": 1,
+});
 // ✅ STATICS - Helper methods
 GameSessionSchema.statics.findExpiredSessions = function () {
   return this.find({

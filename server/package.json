@@ -8,7 +8,8 @@
     "dev": "nodemon index.js",
     "cleanup-worker": "node worker/sessionCleanupWorker.js",
     "notification-worker": "node notification-worker/worker.js",
-    "view-worker": "node worker/postView.worker.js"
+    "view-worker": "node worker/postView.worker.js",
+    "analytics-worker": "node worker/analyticsWorker.js"
 
   },
   "keywords": [],

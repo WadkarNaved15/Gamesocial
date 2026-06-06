@@ -61,7 +61,9 @@ import canvasRoutes from "./routes/canvasRoutes.js";
 import sessionRoutes from "./routes/sessions.js";
 import internalRoutes from "./routes/internal.js";
 import pocketRoutes from "./routes/pocket.js";
+import analyticsRoutes from "./routes/analytics.js";
 import streamProxyRouter, { handleWsUpgrade } from "./routes/streamProxy.js";
+import adminCreditsRoutes from "./routes/adminCredits.js";
 
 import adminRouter from "./routes/admin.js"
 
@@ -209,9 +211,11 @@ app.use("/api/canvas", canvasRoutes);
 app.use("/api/sessions", sessionRoutes);
 app.use("/api/internal", internalRoutes);
 app.use("/api/pockets", pocketRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 // Admin routes (protected by your isAdmin middleware)
 app.use("/api/admin", adminRouter);
+app.use("/api/admin/credits", adminCreditsRoutes);
 
 app.get("/health", async (req, res) => {
   const mongoHealthy = mongoose.connection.readyState === 1;

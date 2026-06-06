@@ -25,6 +25,9 @@ import VerifyEmail from "./Pages/VerifyEmail";
 import ResetPassword from "./Pages/ResetPassword";
 import NotificationsPage from "./Pages/NotificationsPage";
 import PublisherForm from "./Pages/PublisherForm";
+import Analytics from "./Pages/Analytics";
+import CreditOperations from "./Pages/CreditOperations";
+
 
 // Components as pages
 import ModelViewer from "./components/ModelViewer";
@@ -71,7 +74,9 @@ export const router = createBrowserRouter([
   { path: "/recommendations", element: <Recommendations /> },
   { path: "/recommendationsposts", element: <RecommendationPosts /> },
 
-    { path: "/ads", element: <AdsPage/> },
+  { path: "/analytics", element: <Analytics /> },
+
+  { path: "/ads", element: <AdsPage/> },
 
   // ── Admin routes ───────────────────────────────────────────────────────────
   // AdminRoute checks:  not logged in → /login?next=…  |  not admin → 403 page
@@ -82,6 +87,14 @@ export const router = createBrowserRouter([
     element: (
       <AdminRoute>
         <AdminPocketDashboard />
+      </AdminRoute>
+    ),
+  },
+  {
+    path: "/admin/credits",
+    element: (
+      <AdminRoute>
+        <CreditOperations />
       </AdminRoute>
     ),
   },

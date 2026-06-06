@@ -5,6 +5,11 @@ import { sendEventToQueue } from "../utils/sendEventToQueue.js";
 import AllPost from "../models/Allposts.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import { insertFeedback, deleteFeedback, fireAndForget } from "../services/gorse.client.js";
+import PostAnalytics from "../models/postAnalytics.js";
+import {
+  onLikeAdded,
+  onLikeRemoved,
+} from "../services/analyticsEvents.js";
 
 const router = express.Router();
 
@@ -35,6 +40,8 @@ router.post("/", authMiddleware, async (req, res) => {
         timestamp: Date.now(),
       }).catch(console.error);
     }
+
+    await onLikeAdded(postId, userId);
 
     // ✅ Gorse: record like feedback (fire-and-forget — never blocks response)
     fireAndForget(() =>
@@ -69,6 +76,12 @@ router.delete("/", authMiddleware, async (req, res) => {
       { $inc: { likesCount: -1 } },
       { new: true }
     );
+
+    if (!updatedPost) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    await onLikeRemoved(postId, userId);
 
     // ✅ Gorse: remove like feedback so the model knows the user unliked
     fireAndForget(() =>
