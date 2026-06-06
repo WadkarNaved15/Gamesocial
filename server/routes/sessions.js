@@ -17,6 +17,7 @@ import { SessionMetrics } from "../services/sessionMetrics.js";
 import { sessionStreams } from "../services/sessionStream.js";
 import { callController } from "../services/controllerService.js";
 import PostAnalytics from "../models/postAnalytics.js";
+import { processBilling } from "../services/creditBilling.js";
 
 const router = express.Router();
 const metrics = new SessionMetrics();
@@ -57,6 +58,8 @@ router.post(
 
       const userId = req.user.id;
       const { gamePostId } = req.body;
+
+      
 
       const alreadyUsed = await DemoConsumption.findOne({
         user: userId,
@@ -105,6 +108,16 @@ router.post(
       }
 
       const game = post.gamePost;
+
+      if (
+        game.creditBudget?.status !== "active" ||
+        (game.creditBudget?.remainingCredits ?? 0) <= 0
+      ) {
+        return res.status(403).json({
+          error: "Credits exhausted",
+        });
+      }
+      
       const maxDurationSeconds = calculateSessionDuration(game);
 
       let queueType = "direct";
@@ -375,7 +388,57 @@ router.post("/heartbeat-by-token/:token", async (req, res) => {
       $unset: { disconnectDeadline: "" },
     });
 
+    const billingResult =
+      await processBilling(
+        session._id
+      );
+
     await startOrTouchDemoConsumption(session, now);
+
+    if (billingResult?.exhausted) {
+
+      await GameSession.findByIdAndUpdate(
+        session._id,
+        {
+          status: "ended",
+          endedAt: new Date(),
+          exitReason:
+            "credits_exhausted",
+        }
+      );
+
+      if (
+        session.instanceId &&
+        session.leaseToken
+      ) {
+        await releaseInstance(
+          session.instanceId,
+          session.leaseToken
+        );
+      }
+
+      const playTimeMs =
+        Date.now() -
+        new Date(session.startedAt).getTime();
+
+      await recordSessionAnalytics(
+        session.gamePost,
+        session._id,
+        playTimeMs,
+        session.user.toString()
+      );
+
+      await finalizeDemoConsumption(
+        session,
+        "credits_exhausted",
+        Math.floor(playTimeMs / 1000)
+      );
+
+      return res.status(410).json({
+        error: "credits_exhausted",
+      });
+    }
+
 
     res.sendStatus(200);
   } catch (err) {
@@ -497,12 +560,30 @@ router.post("/running", async (req, res) => {
 
     // If already running avoid duplicate updates
     if (session.status !== "running") {
-      await GameSession.findByIdAndUpdate(session_id, {
-        status: "running",
-        phase: null,
-        startedAt: new Date()
-      });
+      const now = new Date();
 
+      await GameSession.findByIdAndUpdate(
+        session_id,
+        {
+          status: "running",
+          phase: null,
+          startedAt: now,
+
+          "billing.lastBillingAt": now,
+        }
+      );
+
+      await AllPost.updateOne(
+          {
+            _id: session.gamePost,
+          },
+          {
+            $inc: {
+              "gamePost.gameMetrics.totalSessions": 1,
+              "gamePost.gameMetrics.uniquePlayers": 1,
+            },
+          }
+        );
       console.log(`[Running] Session ${session_id} is now streaming`);
 
       // Notify SSE clients
@@ -769,29 +850,16 @@ async function recordSessionAnalytics(gamePostId, sessionId, playTimeMs, userId)
     $set: { "metrics.totalPlayTime": playTimeMs },
   });
  
-  // ── 2. Determine if this is a new unique player or a repeat player ────────
-    const previousSessions = await GameSession.exists({
-    gamePost: gamePostId,
-    user: userId,
-    status: "ended",
-    _id: { $ne: sessionId },
-  });
-
-  const isNewPlayer = !previousSessions;
- 
-  // ── 3. Update PostAnalytics top-level lifetime block ─────────────────────
   await PostAnalytics.findOneAndUpdate(
     { post: gamePostId },
     {
       $inc: {
         "lifetime.sessions": 1,
         "lifetime.sessionPlayTimeMs": playTimeMs,
-        ...(isNewPlayer
-          ? { "lifetime.uniquePlayers": 1 }
-          : { "lifetime.repeatPlayers": 1 }),
+        "lifetime.uniquePlayers": 1,
       },
     },
-    { upsert: true, new: true }
+    { upsert: true }
   );
  
   // ── 4. Update dailyStats ──────────────────────────────────────────────────
@@ -801,7 +869,7 @@ async function recordSessionAnalytics(gamePostId, sessionId, playTimeMs, userId)
       $inc: {
         "dailyStats.$.sessions": 1,
         "dailyStats.$.sessionPlayTimeMs": playTimeMs,
-        ...(isNewPlayer ? { "dailyStats.$.uniquePlayers": 1 } : {}),
+        "dailyStats.$.uniquePlayers": 1,
       },
     }
   );
@@ -821,7 +889,7 @@ async function recordSessionAnalytics(gamePostId, sessionId, playTimeMs, userId)
             demoConsumptions: 0,
             sessions: 1,
             sessionPlayTimeMs: playTimeMs,
-            uniquePlayers: isNewPlayer ? 1 : 0,
+            uniquePlayers: 1,
           },
         },
       }

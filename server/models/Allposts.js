@@ -181,6 +181,77 @@ const GamePostSchema = new mongoose.Schema(
         required: true,
       },
     },
+    gameMetrics: {
+      totalSessions: {
+        type: Number,
+        default: 0,
+      },
+
+      totalSessionTimeMs: {
+        type: Number,
+        default: 0,
+      },
+
+      uniquePlayers: {
+        type: Number,
+        default: 0,
+      },
+    },
+
+    creditBudget: {
+      purchasedCredits: {
+        type: Number,
+        default: 0,
+      },
+
+      giftedCredits: {
+        type: Number,
+        default: 0,
+      },
+
+      deductedCredits: {
+        type: Number,
+        default: 0,
+      },
+
+      usedCredits: {
+        type: Number,
+        default: 0,
+      },
+
+      remainingCredits: {
+        type: Number,
+        default: 0,
+      },
+
+      status: {
+        type: String,
+        enum: [
+          "active",
+          "low_credits",
+          "exhausted",
+        ],
+        default: "active",
+      },
+
+      exhaustedAt: {
+        type: Date,
+        default: null,
+      },
+      lastCreditPurchaseAt: {
+        type: Date,
+        default: null,
+      },
+    },
+    visibility: {
+      type: String,
+      enum: [
+        "active",
+        "hidden",
+        "credit_exhausted",
+      ],
+      default: "active",
+    },
     verification: {
       status: {
         type: String,
