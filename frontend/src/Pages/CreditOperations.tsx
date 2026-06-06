@@ -108,7 +108,7 @@ interface Alert {
 const BASE =
   `${import.meta.env.VITE_BACKEND_URL}/api/admin/credits`;
 
-  console.log(BASE);
+
 
 async function apiFetch<T>(
   path: string,
@@ -742,16 +742,33 @@ function AuditLogPanel({ creatorId, gameId, externalLogs, externalLoading }: Aud
   const pages = Math.ceil(total / LIMIT);
 
   const getAdminName = (a: AuditLog["admin"]) => typeof a === "object" ? a?.username : String(a);
-  const getGameName = (g: AuditLog["gamePost"]) => {
-    if (typeof g === "object" && g !== null) return g["gamePost.gameName"] || g?.gameName || "—";
+const getGameName = (
+  g: any
+) => {
+
+
+  if (!g) {
     return "—";
-  };
+  }
+
+  if (typeof g === "string") {
+    return g;
+  }
+
+  return (
+    g?.gamePost?.gameName ||
+    g?.gameName ||
+    "—"
+  );
+};
   const getCreatorName = (c: AuditLog["creator"]) => typeof c === "object" ? c?.username : String(c);
 
   const actionOptions = [
     { value: "", label: "All Actions" },
     ...["gift","deduct","set_balance","consumption","purchase","hide","unhide","reactivate","refund"].map(a => ({ value: a, label: pillMap[a]?.label || a })),
   ];
+
+  
 
   return (
     <div className="bg-white/5 border border-white/9 rounded-2xl overflow-hidden">
@@ -787,21 +804,34 @@ function AuditLogPanel({ creatorId, gameId, externalLogs, externalLoading }: Aud
                 </tr>
               </thead>
               <tbody>
-                {logs.map((l, i) => (
+                {logs.map((l, i) => {
+  return (
                   <tr key={l._id} className={`border-b border-white/4 ${i % 2 ? "bg-white/[0.01]" : ""}`}>
                     <td className="px-3 py-2 text-white/25 whitespace-nowrap">{fmtTime(l.createdAt)}</td>
                     <td className="px-3 py-2 text-teal-400 font-semibold">{getAdminName(l.admin)}</td>
                     <td className="px-3 py-2"><Pill status={l.action} /></td>
                     <td className="px-3 py-2 text-white/92">{getGameName(l.gamePost)}</td>
                     <td className="px-3 py-2 text-white/45">{getCreatorName(l.creator)}</td>
-                    <td className={`px-3 py-2 font-bold ${l.credits > 0 ? "text-green-400" : "text-red-400"}`}>
-                      {l.credits > 0 ? "+" : ""}{fmtNum(l.credits)}
-                    </td>
+                    <td
+                        className={`px-3 py-2 font-bold ${
+                          l.action === "consumption" ||
+                          l.action === "deduct"
+                            ? "text-red-400"
+                            : "text-green-400"
+                        }`}
+                      >
+                        {l.action === "consumption" ||
+                        l.action === "deduct"
+                          ? "-"
+                          : "+"}
+                        {fmtNum(l.credits)}
+                      </td>
                     <td className="px-3 py-2 text-white/45">{fmtNum(l.previousBalance)}</td>
                     <td className="px-3 py-2 text-white/92 font-semibold">{fmtNum(l.newBalance)}</td>
                     <td className="px-3 py-2 text-white/25 max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap">{l.reason || "—"}</td>
-                  </tr>
-                ))}
+                  </tr>          
+                  );
+})}
                 {logs.length === 0 && (
                   <tr><td colSpan={9} className="px-3 py-8 text-center text-white/25">No audit logs.</td></tr>
                 )}

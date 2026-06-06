@@ -167,6 +167,10 @@ const GameSessionSchema = new mongoose.Schema(
       platform: String,
       gpuRequired: Boolean,
     },
+    auditRecorded: {
+      type: Boolean,
+      default: false,
+    },
 
     // ✅ METRICS
     metrics: {

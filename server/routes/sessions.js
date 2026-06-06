@@ -18,6 +18,7 @@ import { sessionStreams } from "../services/sessionStream.js";
 import { callController } from "../services/controllerService.js";
 import PostAnalytics from "../models/postAnalytics.js";
 import { processBilling } from "../services/creditBilling.js";
+import CreditAudit from "../models/CreditAudit.js";
 
 const router = express.Router();
 const metrics = new SessionMetrics();
@@ -110,7 +111,7 @@ router.post(
       const game = post.gamePost;
 
       if (
-        game.creditBudget?.status !== "active" ||
+        game.creditBudget?.status === "exhausted" ||
         (game.creditBudget?.remainingCredits ?? 0) <= 0
       ) {
         return res.status(403).json({
@@ -425,6 +426,10 @@ router.post("/heartbeat-by-token/:token", async (req, res) => {
 const playTimeMs =
   freshSession?.billing?.billedPlayTimeMs || 0;
 
+if (session.billing?.creditsConsumed > 0) {
+  await createConsumptionAudit(session);
+}
+
       await recordSessionAnalytics(
         session.gamePost,
         session._id,
@@ -577,22 +582,18 @@ router.post("/running", async (req, res) => {
         }
       );
 
-      await AllPost.updateOne(
+await AllPost.updateOne(
   {
     _id: session.gamePost,
-    "gamePost.gameMetrics.sessionCounted": { $ne: session._id }
   },
   {
     $inc: {
       "gamePost.gameMetrics.totalSessions": 1,
       "gamePost.gameMetrics.uniquePlayers": 1,
     },
-    $set: {
-      "gamePost.gameMetrics.sessionCounted": session._id
-    }
   }
 );
-      console.log(`[Running] Session ${session_id} is now streaming`);
+  console.log(`[Running] Session ${session_id} is now streaming`);
 
       // Notify SSE clients
       const send = sessionStreams.get(session_id.toString());
@@ -650,6 +651,10 @@ router.post("/complete", async (req, res) => {
       const playTimeMs =
         session?.billing?.billedPlayTimeMs || 0;
       console.log(`[Session Complete] Ending session ${session_id} with reason ${exit_reason}`);
+
+if (session.billing?.creditsConsumed > 0) {
+  await createConsumptionAudit(session);
+}
       
       const updates = {
         status: "ended",
@@ -760,6 +765,9 @@ router.post("/violation", async (req, res) => {
     const playTimeMs =
     session?.billing?.billedPlayTimeMs || 0;
     
+if (session.billing?.creditsConsumed > 0) {
+  await createConsumptionAudit(session);
+}
     await GameSession.findByIdAndUpdate(session_id, updates);
 
     await recordSessionAnalytics(
@@ -1034,6 +1042,54 @@ async function finalizeDemoConsumption(session, reason = "user_exit", exitSecond
   }
  
   await demo.save();
+}
+
+async function createConsumptionAudit(session) {
+  if (
+    session.auditRecorded ||
+    session.billing?.creditsConsumed <= 0
+  ) {
+    return;
+  }
+
+  const post = await AllPost.findById(
+    session.gamePost
+  ).select(
+    "user gamePost.creditBudget.remainingCredits"
+  );
+
+  if (!post) return;
+
+  await CreditAudit.create({
+    gamePost: session.gamePost,
+    creator: post.user,
+
+    action: "consumption",
+
+    credits: -session.billing.creditsConsumed,
+
+    previousBalance:
+      post.gamePost.creditBudget.remainingCredits +
+      session.billing.creditsConsumed,
+
+    newBalance:
+      post.gamePost.creditBudget.remainingCredits,
+
+    reason: `Session ${session._id}`,
+
+    metadata: {
+      sessionId: session._id.toString(),
+    },
+  });
+
+  await GameSession.updateOne(
+    { _id: session._id },
+    {
+      $set: {
+        auditRecorded: true,
+      },
+    }
+  );
 }
 
 function calculateSessionDuration(game) {
