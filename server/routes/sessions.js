@@ -19,6 +19,17 @@ import { callController } from "../services/controllerService.js";
 import PostAnalytics from "../models/postAnalytics.js";
 import { processBilling } from "../services/creditBilling.js";
 import CreditAudit from "../models/CreditAudit.js";
+import {
+  getQueueData,
+  finalizeSession,
+  recordSessionAnalytics,
+  recordDemoConsumptionAnalytics,
+  startOrTouchDemoConsumption,
+  finalizeDemoConsumption,
+  createConsumptionAudit,
+  calculateSessionDuration,
+  determineCleanupPolicy
+} from "../helper/session.js";
 
 const router = express.Router();
 const metrics = new SessionMetrics();
@@ -398,16 +409,6 @@ router.post("/heartbeat-by-token/:token", async (req, res) => {
 
     if (billingResult?.exhausted) {
 
-      await GameSession.findByIdAndUpdate(
-        session._id,
-        {
-          status: "ended",
-          endedAt: new Date(),
-          exitReason:
-            "credits_exhausted",
-        }
-      );
-
       if (
         session.instanceId &&
         session.leaseToken
@@ -418,29 +419,9 @@ router.post("/heartbeat-by-token/:token", async (req, res) => {
         );
       }
 
-      
-      const freshSession =
-  await GameSession.findById(session._id)
-    .select("billing.billedPlayTimeMs");
-
-const playTimeMs =
-  freshSession?.billing?.billedPlayTimeMs || 0;
-
-if (session.billing?.creditsConsumed > 0) {
-  await createConsumptionAudit(session);
-}
-
-      await recordSessionAnalytics(
-        session.gamePost,
-        session._id,
-        playTimeMs,
-        session.user.toString()
-      );
-
-      await finalizeDemoConsumption(
+      await finalizeSession(
         session,
-        "credits_exhausted",
-        Math.ceil(playTimeMs / 1000)
+        "credits_exhausted"
       );
 
       return res.status(410).json({
@@ -498,13 +479,11 @@ router.post("/:sessionId/cancel", verifyToken, async (req, res) => {
 
     console.log(`[Session Cancel] User cancelled session ${sessionId} with reason ${reason}`);
  
-    const updates = {
-      status: "ended",
-      endedAt: new Date(),
-      exitReason: reason,
-    };
- 
-    await GameSession.findByIdAndUpdate(sessionId, updates);
+    await finalizeSession(
+      session,
+      reason
+    );
+
  
     const send = sessionStreams.get(sessionId.toString());
     if (send) send({ status: "ended", reason });
@@ -582,14 +561,23 @@ router.post("/running", async (req, res) => {
         }
       );
 
+const existingSession =
+  await GameSession.exists({
+    gamePost: session.gamePost,
+    user: session.user,
+    _id: { $ne: session._id }
+  });
+
 await AllPost.updateOne(
-  {
-    _id: session.gamePost,
-  },
+  { _id: session.gamePost },
   {
     $inc: {
       "gamePost.gameMetrics.totalSessions": 1,
-      "gamePost.gameMetrics.uniquePlayers": 1,
+      ...(existingSession
+        ? {}
+        : {
+            "gamePost.gameMetrics.uniquePlayers": 1
+          }),
     },
   }
 );
@@ -651,31 +639,11 @@ router.post("/complete", async (req, res) => {
       const playTimeMs =
         session?.billing?.billedPlayTimeMs || 0;
       console.log(`[Session Complete] Ending session ${session_id} with reason ${exit_reason}`);
-
-if (session.billing?.creditsConsumed > 0) {
-  await createConsumptionAudit(session);
-}
       
-      const updates = {
-        status: "ended",
-        endedAt: new Date(),
-        exitReason: exit_reason || "user_exit",
-        exitCode: exit_code,
-      };
 
-      await GameSession.findByIdAndUpdate(session_id, updates);
-
-      await recordSessionAnalytics(
-        session.gamePost,
-        session_id,
-        playTimeMs,
-        session.user.toString()
-      );
-
-      await finalizeDemoConsumption(
+      await finalizeSession(
         session,
-        exit_reason || "user_exit",
-        Math.ceil(playTimeMs / 1000)
+        exit_reason || "user_exit"
       );
 
             // Release instance
@@ -755,32 +723,10 @@ router.post("/violation", async (req, res) => {
       `[Session Violation] Session ${session_id} violation: ${violation}`
     );
 
-    const updates = {
-      status: "ended",
-      endedAt: new Date(),
-      exitReason: violation || "violation",
-      exitCode: exit_code
-    };
 
-    const playTimeMs =
-    session?.billing?.billedPlayTimeMs || 0;
-    
-if (session.billing?.creditsConsumed > 0) {
-  await createConsumptionAudit(session);
-}
-    await GameSession.findByIdAndUpdate(session_id, updates);
-
-    await recordSessionAnalytics(
-      session.gamePost,
-      session_id,
-      playTimeMs,
-      session.user.toString()
-    );
-
-    await finalizeDemoConsumption(
+    await finalizeSession(
       session,
-      violation || "violation",
-      Math.ceil(playTimeMs / 1000)
+      violation || "violation"
     );
 
     // Release instance
@@ -824,289 +770,6 @@ if (session.billing?.creditsConsumed > 0) {
   }
 });
 
-/* ================= HELPERS ================= */
 
-
-async function getQueueData(session) {
-  if (session.queueType !== "queued") {
-    return { queuePosition: null, totalQueued: null, estimatedWaitMinutes: null };
-  }
- 
-  const queuePosition =
-    (await GameSession.countDocuments({
-      status: "waiting",
-      queueType: "queued",
-      createdAt: { $lt: session.createdAt },
-    })) + 1;
- 
-  const totalQueued = await GameSession.countDocuments({
-    status: "waiting",
-    queueType: "queued",
-  });
- 
-  return {
-    queuePosition,
-    totalQueued,
-    estimatedWaitMinutes:
-      Math.ceil(
-        queuePosition *
-        avgSessionDuration
-      ),
-  };
-}
-
-
-async function recordSessionAnalytics(gamePostId, sessionId, playTimeMs, userId) {
-  const postIdStr = gamePostId.toString();
-  const dateKey = new Date().toISOString().split("T")[0];
- 
-  // ── 1. Write totalPlayTime into the GameSession itself ───────────────────
-  //
-  // FIX: This was never done anywhere. metrics.totalPlayTime stayed 0
-  // because nothing wrote to it when the session ended.
-  //
-  await GameSession.findByIdAndUpdate(sessionId, {
-    $set: { "metrics.totalPlayTime": playTimeMs },
-  });
- 
-  await PostAnalytics.findOneAndUpdate(
-    { post: gamePostId },
-    {
-      $inc: {
-        "lifetime.sessions": 1,
-        "lifetime.sessionPlayTimeMs": playTimeMs,
-        "lifetime.uniquePlayers": 1,
-      },
-    },
-    { upsert: true }
-  );
- 
-  // ── 4. Update dailyStats ──────────────────────────────────────────────────
-  const dailyResult = await PostAnalytics.updateOne(
-    { post: gamePostId, "dailyStats.date": dateKey },
-    {
-      $inc: {
-        "dailyStats.$.sessions": 1,
-        "dailyStats.$.sessionPlayTimeMs": playTimeMs,
-        "dailyStats.$.uniquePlayers": 1,
-      },
-    }
-  );
- 
-  if (dailyResult.matchedCount === 0) {
-    await PostAnalytics.updateOne(
-      { post: gamePostId, "dailyStats.date": { $ne: dateKey } },
-      {
-        $push: {
-          dailyStats: {
-            date: dateKey,
-            views: 0,
-            uniqueViews: 0,
-            watchTimeMs: 0,
-            likes: 0,
-            comments: 0,
-            demoConsumptions: 0,
-            sessions: 1,
-            sessionPlayTimeMs: playTimeMs,
-            uniquePlayers: 1,
-          },
-        },
-      }
-    );
-  }
-}
- 
-/**
- * Called when a DemoConsumption is marked "consumed".
- *
- * FIX: The original `finalizeDemoConsumption` referenced `gamePostId` and
- * `dateKey` which were never defined in that scope, causing a ReferenceError
- * that was silently swallowed — meaning demoConsumptions was never written.
- *
- * @param {string|ObjectId} gamePostId
- */
-async function recordDemoConsumptionAnalytics(gamePostId) {
-  const dateKey = new Date().toISOString().split("T")[0];
- 
-  // lifetime increment
-  await PostAnalytics.findOneAndUpdate(
-    { post: gamePostId },
-    { $inc: { "lifetime.demoConsumptions": 1 } },
-    { upsert: true }
-  );
- 
-  // dailyStats increment
-  const dailyResult = await PostAnalytics.updateOne(
-    { post: gamePostId, "dailyStats.date": dateKey },
-    { $inc: { "dailyStats.$.demoConsumptions": 1 } }
-  );
- 
-  if (dailyResult.matchedCount === 0) {
-    await PostAnalytics.updateOne(
-      { post: gamePostId, "dailyStats.date": { $ne: dateKey } },
-      {
-        $push: {
-          dailyStats: {
-            date: dateKey,
-            views: 0,
-            uniqueViews: 0,
-            watchTimeMs: 0,
-            likes: 0,
-            comments: 0,
-            demoConsumptions: 1,
-            sessions: 0,
-            sessionPlayTimeMs: 0,
-            uniquePlayers: 0,
-          },
-        },
-      }
-    );
-  }
-}
- 
-// ─── DEMO CONSUMPTION LOGIC ──────────────────────────────────────────────────
- 
-async function startOrTouchDemoConsumption(session, now = new Date()) {
-  const existing = await DemoConsumption.findOne({
-    user: session.user,
-    gamePost: session.gamePost,
-  });
- 
-  if (existing?.status === "consumed") return existing;
- 
-  if (!existing) {
-    return DemoConsumption.create({
-      user: session.user,
-      gamePost: session.gamePost,
-      gameSession: session._id,
-      status: "active",
-      startedAt: now,
-      firstHeartbeatAt: now,
-      lastHeartbeatAt: now,
-      connectedSeconds: 0,
-      graceSecondsUsed: 0,
-      metadata: {
-        hostId: session.instanceId || null,
-        appId: session.gamePost?.toString?.() || null,
-        instanceId: session.instanceId || null,
-        region: session.instanceRegion || null,
-      },
-    });
-  }
- 
-  if (existing.status === "active") {
-    const last = existing.lastHeartbeatAt || existing.firstHeartbeatAt || existing.startedAt;
-    const deltaSeconds = Math.max(0, Math.floor((now - last) / 1000));
- 
-    if (deltaSeconds <= DEMO_CONFIG.HEARTBEAT_GRACE_SECONDS) {
-      existing.connectedSeconds += deltaSeconds;
-      existing.lastHeartbeatAt = now;
-      if (!existing.firstHeartbeatAt) existing.firstHeartbeatAt = now;
-      if (!existing.gameSession) existing.gameSession = session._id;
-      await existing.save();
-    } else {
-      existing.graceSecondsUsed += deltaSeconds;
-      existing.lastHeartbeatAt = now;
-      await existing.save();
-    }
-  }
- 
-  return existing;
-}
- 
-async function finalizeDemoConsumption(session, reason = "user_exit", exitSeconds = null) {
-  const demo = await DemoConsumption.findOne({
-    user: session.user,
-    gamePost: session.gamePost,
-  });
- 
-  if (!demo) return;
- 
-  const now = new Date();
-  const totalSeconds = Math.max(demo.connectedSeconds || 0, exitSeconds || 0);
-  const shouldConsume = totalSeconds >= DEMO_CONFIG.MIN_ACTIVE_SECONDS;
- 
-  demo.endedAt = now;
-  demo.connectedSeconds = totalSeconds;
- 
-  if (shouldConsume) {
-    demo.status = "consumed";
-    demo.consumedAt = now;
-    demo.consumedReason = "min_playtime_reached";
- 
-    // FIX: Write analytics — was broken before due to undefined variables
-    await recordDemoConsumptionAnalytics(session.gamePost);
-  } else {
-    demo.status = reason === "user_cancelled" ? "cancelled" : "expired";
-    demo.consumedReason = "user_exit_before_threshold";
-  }
- 
-  await demo.save();
-}
-
-async function createConsumptionAudit(session) {
-  if (
-    session.auditRecorded ||
-    session.billing?.creditsConsumed <= 0
-  ) {
-    return;
-  }
-
-  const post = await AllPost.findById(
-    session.gamePost
-  ).select(
-    "user gamePost.creditBudget.remainingCredits"
-  );
-
-  if (!post) return;
-
-  await CreditAudit.create({
-    gamePost: session.gamePost,
-    creator: post.user,
-
-    action: "consumption",
-
-    credits: -session.billing.creditsConsumed,
-
-    previousBalance:
-      post.gamePost.creditBudget.remainingCredits +
-      session.billing.creditsConsumed,
-
-    newBalance:
-      post.gamePost.creditBudget.remainingCredits,
-
-    reason: `Session ${session._id}`,
-
-    metadata: {
-      sessionId: session._id.toString(),
-    },
-  });
-
-  await GameSession.updateOne(
-    { _id: session._id },
-    {
-      $set: {
-        auditRecorded: true,
-      },
-    }
-  );
-}
-
-function calculateSessionDuration(game) {
-  if (game.price === 0) return CONFIG.FREE_GAME_DURATION;
-  if (game.price > 0) return CONFIG.PAID_GAME_DURATION;
-  return CONFIG.DEFAULT_DURATION;
-}
-
-function determineCleanupPolicy(game) {
-  const isLargeGame = game.file?.size > 1024 * 1024 * 1024;
-  return {
-    on_normal_exit: true,
-    on_violation: true,
-    on_timeout: true,
-    delete_game_files: isLargeGame,
-    shared_build: false,
-  };
-}
 
 export default router;

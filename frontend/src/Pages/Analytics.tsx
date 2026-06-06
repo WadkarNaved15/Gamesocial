@@ -89,6 +89,7 @@ interface LifetimeBlock {
   retentionRate?: number;
   vertices?: number;
   triangles?: number;
+  developerCreditsBurned?: number;
 }
 interface CreatorAsset {
   _id: string;
@@ -123,6 +124,7 @@ interface CreatorAsset {
   conversionRate?: number;
   totalSessions?: number;
   totalSessionTime?: number;
+  developerCreditsBurned?: number;
 }
 interface AnalyticsPortfolio {
   totalViews: number;

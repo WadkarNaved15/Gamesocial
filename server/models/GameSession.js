@@ -171,6 +171,10 @@ const GameSessionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    analyticsProcessed: {
+      type: Boolean,
+      default: false,
+    },
 
     // ✅ METRICS
     metrics: {
