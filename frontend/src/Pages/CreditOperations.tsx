@@ -662,7 +662,7 @@ function CreatorCard({ creator, isSelected, onSelect }: { creator: Creator; isSe
       className={`bg-white/5 border rounded-2xl p-4 cursor-pointer transition-all flex flex-col gap-2.5
         ${isSelected ? "border-teal-600/40 bg-teal-900/10" : "border-white/9 hover:border-teal-600/[0.28]"}`}>
       <div className="flex items-center gap-2.5">
-        <img src={creator.avatar || `https://i.pravatar.cc/48?u=${creator._id}`} alt={creator.username}
+        <img src={creator.avatar || "/default_avatar.png"} alt={creator.username}
           className="w-9 h-9 rounded-full border border-teal-600/[0.28] object-cover" />
         <div className="flex-1 min-w-0">
           <div className="font-bold text-[13px] text-white/92 truncate">{creator.username}</div>
@@ -1187,7 +1187,7 @@ export default function CreditOperationsCenter() {
           <div className="flex flex-col gap-5">
             {creatorDetail ? (
               <div className="bg-gradient-to-br from-teal-900/25 to-black/60 border border-teal-600/[0.28] backdrop-blur-2xl rounded-2xl p-5 flex flex-wrap items-center gap-4">
-                <img src={selectedCreator.avatar || `https://i.pravatar.cc/48?u=${selectedCreator._id}`} alt={selectedCreator.username}
+                <img src={selectedCreator.avatar || "/default_avatar.png"} alt={selectedCreator.username}
                   className="w-12 h-12 rounded-full border-2 border-teal-600/30 object-cover shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="font-extrabold text-[16px] text-white/92">{selectedCreator.username}</div>
