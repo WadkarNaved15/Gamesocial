@@ -418,7 +418,7 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
                 {/* ADVANCED HEAD BANNER */}
                 <div className="flex justify-between items-center px-4 pt-4 pb-3" style={{ transform: "translateZ(20px)" }}>
                   <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 shadow-sm">
-                    <img src={user?.avatar || "/default_avatar.png"} />
+                    <img src={user?.avatar || "/default_avatar.png"} className="w-8 h-8 rounded-full object-cover"/>
                     <span className="text-white text-xs font-bold tracking-wide drop-shadow-sm">
                       {user?.username || "Brand Identity"}
                     </span>

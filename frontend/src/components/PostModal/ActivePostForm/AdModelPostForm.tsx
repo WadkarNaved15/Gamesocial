@@ -294,7 +294,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
               <div className="flex items-center gap-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3">
                 <img
                   src={user?.avatar || "/default_avatar.png"}
-                  className="w-10 h-10 rounded-full object-cover border border-indigo-500"
+                  className="w-10 h-10 rounded-full object-cover"
                 />
 
                 <span className="text-sm font-semibold text-black dark:text-white">
