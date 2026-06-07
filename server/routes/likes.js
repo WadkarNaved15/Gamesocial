@@ -41,7 +41,11 @@ router.post("/", authMiddleware, async (req, res) => {
       }).catch(console.error);
     }
 
-    await onLikeAdded(postId, userId);
+    try {
+        await onLikeAdded(postId);
+      } catch (err) {
+        console.error("Like analytics failed:", err);
+      }
 
     // ✅ Gorse: record like feedback (fire-and-forget — never blocks response)
     fireAndForget(() =>
@@ -81,7 +85,11 @@ router.delete("/", authMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    await onLikeRemoved(postId, userId);
+      try {
+    await onLikeRemoved(postId);
+      } catch (err) {
+        console.error("Unlike analytics failed:", err);
+      }
 
     // ✅ Gorse: remove like feedback so the model knows the user unliked
     fireAndForget(() =>

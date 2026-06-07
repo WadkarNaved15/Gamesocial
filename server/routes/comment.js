@@ -58,7 +58,11 @@ router.post("/", authMiddleware, commentLimiter, async (req, res) => {
       return res.status(404).json({ message: "Post not found" });
     }
 
+    try {
     await onCommentAdded(postId, userId);
+  } catch (err) {
+    console.error("Comment analytics failed:", err);
+  }
 
     if (post.user.toString() !== userId) {
       sendEventToQueue({
@@ -170,7 +174,11 @@ router.delete("/:id", authMiddleware, async (req, res) => {
     await Comment.deleteOne({ _id: comment._id });
     await AllPost.findByIdAndUpdate(comment.post, { $inc: { commentsCount: -1 } });
 
-    await onCommentRemoved(comment.post, userId);
+    try {
+      await onCommentRemoved(comment.post);
+    } catch (err) {
+      console.error("Comment removal analytics failed:", err);
+    }
 
     res.json({ message: "Comment deleted" });
 
