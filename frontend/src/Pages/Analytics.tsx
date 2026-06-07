@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import axios from "axios";
+import { Play, Gamepad2, Sparkles, Loader2, AlertCircle, Users } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
-//  DESIGN TOKENS  (teal/grey — matches QueueNotification)
+//  DESIGN TOKENS
 // ─────────────────────────────────────────────────────────────
 const T = {
   bg:             "#0d0d0d",
@@ -183,25 +184,14 @@ function getRangeKey(r: DateRange): "7d" | "30d" | "90d" {
   return "7d";
 }
 
-function getChartArr(
-  asset: CreatorAsset,
-  metric: keyof CreatorAsset["charts"],
-  range: DateRange
-): number[] {
+function getChartArr(asset: CreatorAsset, metric: keyof CreatorAsset["charts"], range: DateRange): number[] {
   const chart = asset.charts[metric];
-
   if (!chart) return [];
-
   const key = getRangeKey(range);
-
-  const arr: number[] = (chart[key] ?? []).map(
-    (v) => Number(v) || 0
-  );
-
-  return range === "Today"
-    ? arr.slice(-1)
-    : arr;
+  const arr: number[] = (chart[key] ?? []).map((v) => Number(v) || 0);
+  return range === "Today" ? arr.slice(-1) : arr;
 }
+
 function getPeriod(asset: CreatorAsset, range: DateRange): AnalyticsPeriod {
   if (range === "Today")        return asset.today;
   if (range === "Last 7 Days")  return asset.last7Days;
@@ -223,15 +213,11 @@ function getPeriod(asset: CreatorAsset, range: DateRange): AnalyticsPeriod {
 
 function makeDateLabels(arr: number[], range: DateRange): string[] {
   if (range === "Today") return ["Today"];
-  if (range === "Last 7 Days") {
-    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    return arr.map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (arr.length - 1 - i));
-      return days[d.getDay()];
-    });
-  }
-  return arr.map((_, i) => String(i + 1));
+  return arr.map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (arr.length - 1 - i));
+    return `${d.getDate()}/${d.getMonth() + 1}`;
+  });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -327,7 +313,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  KPI CARD  (simple, no sparkbars)
+//  KPI CARD
 // ─────────────────────────────────────────────────────────────
 interface KpiProps {
   icon: string;
@@ -364,6 +350,310 @@ function MetricRow({ label, value, positive }: { label: string; value: string; p
       <span style={{ fontSize: 13, fontWeight: 600, color: positive === true ? T.success : positive === false ? T.negative : T.textPrimary }}>{value}</span>
     </div>
   );
+}
+
+// ─────────────────────────────────────────────────────────────
+//  MINI PROGRESS BAR
+// ─────────────────────────────────────────────────────────────
+function MiniProgressBar({ value, max, color = T.tealLight, height = 4 }: { value: number; max: number; color?: string; height?: number }) {
+  const pctVal = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+  return (
+    <div style={{ width: "100%", height, background: "rgba(255,255,255,0.07)", borderRadius: height / 2, overflow: "hidden" }}>
+      <div style={{ width: `${pctVal}%`, height: "100%", background: color, borderRadius: height / 2, transition: "width 0.8s cubic-bezier(0.16,1,0.3,1)" }} />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+//  RADIAL GAUGE
+// ─────────────────────────────────────────────────────────────
+function RadialGauge({ value, max, label, color = T.tealLight, size = 72 }: { value: number; max: number; label: string; color?: string; size?: number }) {
+  const r = size / 2 - 6;
+  const circ = 2 * Math.PI * r;
+  const pctVal = max > 0 ? Math.min(1, value / max) : 0;
+  const dash = pctVal * circ;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={5} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r}
+          fill="none" stroke={color} strokeWidth={5}
+          strokeDasharray={`${dash} ${circ - dash}`}
+          strokeLinecap="round"
+          style={{ transition: "stroke-dasharray 1s cubic-bezier(0.16,1,0.3,1)" }}
+        />
+      </svg>
+      <span style={{ fontSize: 9, color: T.textTertiary, textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "center", marginTop: -4 }}>{label}</span>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TODAY ACTIVITY CARD  (replaces single-point charts)
+// ─────────────────────────────────────────────────────────────
+interface TodayMetricRowProps {
+  icon: string;
+  label: string;
+  value: string;
+  rawValue: number;
+  compValue: number; // 7d avg for comparison
+  color?: string;
+}
+function TodayMetricRow({ icon, label, value, rawValue, compValue, color = T.tealLight }: TodayMetricRowProps) {
+  const avgDay = compValue / 7;
+  const ratio = avgDay > 0 ? rawValue / avgDay : 0;
+  const isAbove = ratio > 1.1;
+  const isBelow = ratio < 0.9 && avgDay > 0;
+  const indicatorColor = isAbove ? T.success : isBelow ? T.negative : T.textTertiary;
+  const indicatorText = isAbove ? `+${Math.round((ratio - 1) * 100)}% vs avg` : isBelow ? `${Math.round((ratio - 1) * 100)}% vs avg` : "On pace";
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: `1px solid ${T.border}` }}>
+      <div style={{ width: 30, height: 30, borderRadius: 8, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <i className={`ti ${icon}`} style={{ fontSize: 13, color }} aria-hidden="true" />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+          <span style={{ fontSize: 11, color: T.textSecondary }}>{label}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: T.textPrimary }}>{value}</span>
+        </div>
+        <MiniProgressBar value={rawValue} max={Math.max(rawValue, avgDay * 1.5, 1)} color={color} height={3} />
+      </div>
+      {avgDay > 0 && (
+        <span style={{ fontSize: 9, color: indicatorColor, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0, minWidth: 72, textAlign: "right" }}>{indicatorText}</span>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+//  TODAY ACTIVITY PANEL
+// ─────────────────────────────────────────────────────────────
+function TodayActivityPanel({ asset, cfg }: { asset: CreatorAsset; cfg: AssetCfg }) {
+  const t = asset.today;
+  const w7 = asset.last7Days;
+  const isGame = asset.type === "game";
+  const hasDemos = (asset.lifetime.demoConsumptions ?? 0) > 0;
+
+  return (
+    <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "16px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+        <div style={{ width: 6, height: 6, borderRadius: "50%", background: T.success, boxShadow: `0 0 6px ${T.success}` }} />
+        <span style={{ fontSize: 10, color: T.textSecondary }}>Live today · {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}</span>
+      </div>
+      <div>
+        <TodayMetricRow icon="ti-eye"            label="Views"      value={fmt(t.views)}       rawValue={t.views}       compValue={w7.views}       color={cfg.color} />
+        <TodayMetricRow icon="ti-users"          label="Unique"     value={fmt(t.uniqueViews)} rawValue={t.uniqueViews} compValue={w7.uniqueViews} color={cfg.color} />
+        <TodayMetricRow icon="ti-heart"          label="Likes"      value={fmt(t.likes)}       rawValue={t.likes}       compValue={w7.likes}       color={T.warning} />
+        <TodayMetricRow icon="ti-message-circle" label="Comments"   value={fmt(t.comments)}    rawValue={t.comments}    compValue={w7.comments}    color="#4a6e8a" />
+        <TodayMetricRow icon="ti-clock"          label="Watch time" value={fmtMs(t.watchTimeMs)} rawValue={t.watchTimeMs} compValue={w7.watchTimeMs} color={cfg.color} />
+        {hasDemos && (
+          <TodayMetricRow icon="ti-player-play"  label="Demo plays" value={fmt(t.demoConsumptions)} rawValue={t.demoConsumptions} compValue={w7.demoConsumptions} color={T.success} />
+        )}
+        {isGame && (asset.lifetime.sessions ?? 0) > 0 && (
+          <TodayMetricRow icon="ti-device-gamepad-2" label="Sessions" value={fmt(t.sessions ?? 0)} rawValue={t.sessions ?? 0} compValue={w7.sessions ?? 0} color={cfg.color} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+//  LIFETIME VISUAL PANEL  (replaces single-point charts)
+// ─────────────────────────────────────────────────────────────
+function LifetimeVisualPanel({ asset, cfg }: { asset: CreatorAsset; cfg: AssetCfg }) {
+  const lt = asset.lifetime;
+  const isGame = asset.type === "game";
+  const hasDemos = (lt.demoConsumptions ?? 0) > 0 && lt.uniqueViews > 0;
+  const hasSessions = isGame && (lt.sessions ?? 0) > 0;
+
+  const engRate = lt.engagementRate;
+  const likeRate = safeDiv(lt.likes, lt.views) * 100;
+  const commentRate = safeDiv(lt.comments, lt.views) * 100;
+  const demoConv = safeDiv(lt.demoConsumptions ?? 0, lt.uniqueViews) * 100;
+  const retentionRate = lt.retentionRate ?? 0;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+      {/* Audience summary */}
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "16px" }}>
+        <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em", color: "rgba(255,255,255,0.22)", marginBottom: 12 }}>Audience</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {[
+            { label: "Total Views", value: fmt(lt.views), icon: "ti-eye", color: cfg.color },
+            { label: "Unique Views", value: fmt(lt.uniqueViews), icon: "ti-users", color: cfg.color },
+            { label: "Avg Watch Time", value: fmtMs(lt.avgWatchTimeMs), icon: "ti-clock", color: T.tealLight },
+            { label: "Total Watch Time", value: fmtMs(lt.watchTimeMs), icon: "ti-player-play", color: T.tealLight },
+          ].map(({ label, value, icon, color }) => (
+            <div key={label} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "12px 14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
+                <i className={`ti ${icon}`} style={{ fontSize: 11, color }} aria-hidden="true" />
+                <span style={{ fontSize: 9, color: T.textTertiary, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
+              </div>
+              <p style={{ fontSize: 16, fontWeight: 700, color: T.textPrimary }}>{value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Engagement rates with gauges */}
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "16px" }}>
+        <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em", color: "rgba(255,255,255,0.22)", marginBottom: 12 }}>Engagement</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+            <RadialGauge value={engRate} max={20} label="Engagement" color={cfg.color} />
+            <p style={{ fontSize: 14, fontWeight: 700, color: T.textPrimary, marginTop: -2 }}>{engRate.toFixed(1)}%</p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+            <RadialGauge value={likeRate} max={20} label="Like Rate" color={T.warning} />
+            <p style={{ fontSize: 14, fontWeight: 700, color: T.textPrimary, marginTop: -2 }}>{likeRate.toFixed(2)}%</p>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+            <RadialGauge value={commentRate} max={5} label="Comment Rate" color="#4a6e8a" />
+            <p style={{ fontSize: 14, fontWeight: 700, color: T.textPrimary, marginTop: -2 }}>{commentRate.toFixed(2)}%</p>
+          </div>
+        </div>
+        {/* Bars */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[
+            { label: "Engagement rate", value: engRate, max: 20, color: cfg.color, display: `${engRate.toFixed(1)}%` },
+            { label: "Like rate", value: likeRate, max: 20, color: T.warning, display: `${likeRate.toFixed(2)}%` },
+            { label: "Comment rate", value: commentRate, max: 5, color: "#4a6e8a", display: `${commentRate.toFixed(2)}%` },
+          ].map(m => (
+            <div key={m.label}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                <span style={{ fontSize: 10, color: T.textSecondary }}>{m.label}</span>
+                <span style={{ fontSize: 10, fontWeight: 600, color: T.textPrimary }}>{m.display}</span>
+              </div>
+              <MiniProgressBar value={m.value} max={m.max} color={m.color} height={4} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Game performance */}
+      {hasSessions && (
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "16px" }}>
+          <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em", color: "rgba(255,255,255,0.22)", marginBottom: 12 }}>Game Performance</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+            {[
+              { label: "Sessions", value: fmt(lt.sessions!), icon: "ti-device-gamepad-2", color: cfg.color },
+              { label: "Unique Players", value: fmt(lt.uniquePlayers ?? 0), icon: "ti-users", color: cfg.color },
+              { label: "Avg Session", value: fmtMs(lt.avgSessionDurationMs ?? 0), icon: "ti-clock", color: T.tealLight },
+              { label: "Play / User", value: fmtMs(lt.avgPlayTimePerUserMs ?? 0), icon: "ti-player-play", color: T.tealLight },
+            ].map(({ label, value, icon, color }) => (
+              <div key={label} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "12px 14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
+                  <i className={`ti ${icon}`} style={{ fontSize: 11, color }} aria-hidden="true" />
+                  <span style={{ fontSize: 9, color: T.textTertiary, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
+                </div>
+                <p style={{ fontSize: 16, fontWeight: 700, color: T.textPrimary }}>{value}</p>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                <span style={{ fontSize: 10, color: T.textSecondary }}>Retention rate</span>
+                <span style={{ fontSize: 10, fontWeight: 600, color: retentionRate >= 25 ? T.success : T.negative }}>{retentionRate.toFixed(1)}%</span>
+              </div>
+              <MiniProgressBar value={retentionRate} max={100} color={retentionRate >= 25 ? T.success : T.negative} height={4} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Demo conversion if available */}
+      {hasDemos && (
+        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "16px" }}>
+          <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em", color: "rgba(255,255,255,0.22)", marginBottom: 12 }}>Demo conversion</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <RadialGauge value={demoConv} max={50} label="Conv. Rate" color={T.success} size={80} />
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 22, fontWeight: 700, color: T.textPrimary, letterSpacing: "-0.02em" }}>{demoConv.toFixed(1)}%</p>
+              <p style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>{fmt(lt.demoConsumptions!)} plays from {fmt(lt.uniqueViews)} uniques</p>
+              <div style={{ marginTop: 8 }}>
+                <MiniProgressBar value={demoConv} max={50} color={T.success} height={5} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+//  INSIGHT CARD
+// ─────────────────────────────────────────────────────────────
+interface InsightCardProps {
+  icon: string;
+  title: string;
+  body: string;
+  sentiment: "positive" | "warning" | "neutral";
+}
+function InsightCard({ icon, title, body, sentiment }: InsightCardProps) {
+  const color = sentiment === "positive" ? T.success : sentiment === "warning" ? T.negative : T.textSecondary;
+  const bg = sentiment === "positive" ? "rgba(91,191,170,0.06)" : sentiment === "warning" ? "rgba(201,96,96,0.06)" : "rgba(255,255,255,0.03)";
+  const border = sentiment === "positive" ? "rgba(91,191,170,0.18)" : sentiment === "warning" ? "rgba(201,96,96,0.18)" : T.border;
+  return (
+    <div style={{ background: bg, border: `1px solid ${border}`, borderRadius: 10, padding: "14px 16px", display: "flex", gap: 12 }}>
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <i className={`ti ${icon}`} style={{ fontSize: 14, color }} aria-hidden="true" />
+      </div>
+      <div>
+        <p style={{ fontSize: 12, fontWeight: 600, color: T.textPrimary, marginBottom: 3 }}>{title}</p>
+        <p style={{ fontSize: 11, color: T.textSecondary, lineHeight: 1.5 }}>{body}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ASSET INSIGHTS  (generated from analytics)
+// ─────────────────────────────────────────────────────────────
+function generateAssetInsights(asset: CreatorAsset): InsightCardProps[] {
+  const lt = asset.lifetime;
+  const gi = asset.growthIndicators;
+  const insights: InsightCardProps[] = [];
+
+  const engRate = lt.engagementRate;
+  const likeRate = safeDiv(lt.likes, lt.views) * 100;
+  const watchAvg = lt.avgWatchTimeMs;
+  const demoConv = safeDiv(lt.demoConsumptions ?? 0, lt.uniqueViews) * 100;
+  const retention = lt.retentionRate ?? 0;
+
+  if (gi.weekOverWeekGrowth > 15) {
+    insights.push({ icon: "ti-trending-up", title: "Strong week-over-week growth", body: `Views grew ${gi.weekOverWeekGrowth.toFixed(1)}% this week — momentum is accelerating.`, sentiment: "positive" });
+  } else if (gi.weekOverWeekGrowth < -15) {
+    insights.push({ icon: "ti-trending-down", title: "Views declining this week", body: `Week-over-week growth is at ${gi.weekOverWeekGrowth.toFixed(1)}%. Consider refreshing your content strategy.`, sentiment: "warning" });
+  }
+
+  if (engRate >= 8) {
+    insights.push({ icon: "ti-heart", title: "High engagement rate", body: `${engRate.toFixed(1)}% engagement rate is well above the typical 3–5% benchmark for platform content.`, sentiment: "positive" });
+  } else if (engRate < 2) {
+    insights.push({ icon: "ti-alert-triangle", title: "Low engagement rate", body: `At ${engRate.toFixed(1)}%, engagement is below average. Try more interactive or compelling presentation.`, sentiment: "warning" });
+  }
+
+  if (likeRate >= 10) {
+    insights.push({ icon: "ti-thumb-up", title: "Exceptional like rate", body: `${likeRate.toFixed(1)}% of viewers liked this — a strong signal of content-audience fit.`, sentiment: "positive" });
+  }
+
+  if (watchAvg > 60000) {
+    insights.push({ icon: "ti-clock", title: "Strong watch time retention", body: `Average viewers watch for ${fmtMs(watchAvg)} — indicating compelling, well-paced content.`, sentiment: "positive" });
+  }
+
+  if (demoConv >= 15 && (lt.demoConsumptions ?? 0) > 0) {
+    insights.push({ icon: "ti-player-play", title: "High demo conversion", body: `${demoConv.toFixed(1)}% of unique viewers play the demo — significantly above the 5–10% typical range.`, sentiment: "positive" });
+  } else if (demoConv > 0 && demoConv < 5) {
+    insights.push({ icon: "ti-player-play", title: "Low demo conversion", body: `Only ${demoConv.toFixed(1)}% of viewers try the demo. Consider more prominent CTAs or a teaser moment.`, sentiment: "warning" });
+  }
+
+
+
+  return insights.slice(0, 4);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -412,7 +702,7 @@ function LineChart({
 }
 
 // ─────────────────────────────────────────────────────────────
-//  MULTI-LINE CHART  (views + likes + comments)
+//  MULTI-LINE CHART
 // ─────────────────────────────────────────────────────────────
 function MultiLineChart({
   views, likes, comments, labels, height = 190,
@@ -467,7 +757,7 @@ function MultiLineChart({
 }
 
 // ─────────────────────────────────────────────────────────────
-//  BAR CHART  (portfolio breakdown)
+//  BAR CHART
 // ─────────────────────────────────────────────────────────────
 function BarChart({
   labels, data, colors, height = 160,
@@ -642,7 +932,6 @@ function PortfolioOverview({
   const totalDemo     = lt?.totalDemoConsumptions ?? assets.reduce((s, a) => s + (a.lifetime.demoConsumptions || 0), 0);
   const totalSessions = lt?.totalSessions ?? assets.reduce((s, a) => s + (a.lifetime.sessions || 0), 0);
 
-  // Period totals
   const periodTotals = useMemo(() => assets.reduce((acc, a) => {
     const p = getPeriod(a, dateRange);
     acc.views    += p.views    || 0;
@@ -654,7 +943,6 @@ function PortfolioOverview({
   }, { views: 0, likes: 0, comments: 0, demo: 0, sessions: 0 }), [assets, dateRange]);
 
   const sortedByViews = [...assets].sort((a, b) => (b.lifetime.views || 0) - (a.lifetime.views || 0));
-  const sortedByEng   = [...assets].sort((a, b) => (b.lifetime.engagementRate || 0) - (a.lifetime.engagementRate || 0));
   const sortedByConv  = [...assets]
     .filter(a => (a.lifetime.demoConsumptions || 0) > 0)
     .sort((a, b) => safeDiv(b.lifetime.demoConsumptions!, b.lifetime.uniqueViews) - safeDiv(a.lifetime.demoConsumptions!, a.lifetime.uniqueViews));
@@ -785,55 +1073,37 @@ function AssetAnalytics({ asset, dateRange }: { asset: CreatorAsset; dateRange: 
   const stats  = getPeriod(asset, dateRange);
   const gi     = asset.growthIndicators ?? { weekOverWeekGrowth: 0, monthOverMonthGrowth: 0, trend: "stable" as const };
 
-  // Chart data — all via getChartArr to avoid any key mismatches
-  const vArr =
-  dateRange === "Lifetime"
-    ? [asset.lifetime.views]
-    : getChartArr(asset, "views", dateRange);
-  const lArr   = dateRange === "Lifetime"
-    ? [asset.lifetime.likes]
-    : getChartArr(asset, "likes",            dateRange);
-  const cArr   = dateRange === "Lifetime"
-    ? [asset.lifetime.comments]
-    : getChartArr(asset, "comments",         dateRange);
-  const dArr   = dateRange === "Lifetime"
-    ? [asset.lifetime.demoConsumptions]
-    : getChartArr(asset, "demoConsumptions", dateRange);
-  const sArr   = dateRange === "Lifetime"
-    ? [asset.lifetime.sessions]
-    : getChartArr(asset, "sessions",         dateRange);
-  const wArr   = dateRange === "Lifetime"
-    ? [asset.lifetime.watchTimeMs]
-    : getChartArr(asset, "watchTime",        dateRange);
-  const labels = makeDateLabels(vArr, dateRange);
+  const isToday    = dateRange === "Today";
+  const isLifetime = dateRange === "Lifetime";
+  const isTimeSeries = !isToday && !isLifetime;
 
-  const repeatRatio  = safeDiv(lt.views, lt.uniqueViews, 1);
+  // Chart data only for time-series ranges
+  const vArr = isTimeSeries ? getChartArr(asset, "views",            dateRange) : [];
+  const lArr = isTimeSeries ? getChartArr(asset, "likes",            dateRange) : [];
+  const cArr = isTimeSeries ? getChartArr(asset, "comments",         dateRange) : [];
+  const dArr = isTimeSeries ? getChartArr(asset, "demoConsumptions", dateRange) : [];
+  const sArr = isTimeSeries ? getChartArr(asset, "sessions",         dateRange) : [];
+  const wArr = isTimeSeries ? getChartArr(asset, "watchTime",        dateRange) : [];
+  const labels = isTimeSeries ? makeDateLabels(vArr, dateRange) : [];
+
   const likeRate     = safeDiv(lt.likes, lt.views, 0);
   const commentRate  = safeDiv(lt.comments, lt.views, 0);
   const demoConvRate = safeDiv(lt.demoConsumptions ?? 0, lt.uniqueViews, 0);
 
-  const isGame  = asset.type === "game";
-  const hasDemos = (lt.demoConsumptions ?? 0) > 0 && lt.uniqueViews > 0;
+  const isGame      = asset.type === "game";
+  const hasDemos    = (lt.demoConsumptions ?? 0) > 0 && lt.uniqueViews > 0;
   const hasSessions = isGame && (lt.sessions ?? 0) > 0;
 
   const trendColor  = gi.trend === "up" ? T.success : gi.trend === "down" ? T.negative : T.textTertiary;
   const trendArrow  = gi.trend === "up" ? "↑" : gi.trend === "down" ? "↓" : "→";
-  const rangeLabel  = dateRange === "Today" ? "today" : dateRange.toLowerCase();
+  const rangeLabel  = isToday ? "today" : dateRange.toLowerCase();
 
-  const vTotal = vArr.reduce<number>(
-    (a, b) => a + (b ?? 0),
-    0
-  );
+  const vTotal = vArr.reduce<number>((a, b) => a + (b ?? 0), 0);
+  const dTotal = dArr.reduce<number>((a, b) => a + (b ?? 0), 0);
+  const sTotal = sArr.reduce<number>((a, b) => a + (b ?? 0), 0);
 
-  const dTotal = dArr.reduce<number>(
-    (a, b) => a + (b ?? 0),
-    0
-  );
+  const insights = useMemo(() => generateAssetInsights(asset), [asset._id]);
 
-  const sTotal = sArr.reduce<number>(
-    (a, b) => a + (b ?? 0),
-    0
-  );
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
 
@@ -872,35 +1142,55 @@ function AssetAnalytics({ asset, dateRange }: { asset: CreatorAsset; dateRange: 
         </div>
       </section>
 
-      {/* Views trend chart */}
-      <section>
-        <SectionLabel>Views trend — {rangeLabel}</SectionLabel>
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "16px" }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 18, fontWeight: 700, color: T.textPrimary }}>{fmt(vTotal)}</span>
-            <span style={{ fontSize: 11, color: T.textSecondary }}>views {rangeLabel}</span>
-            <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 600, color: trendColor }}>{trendArrow} {Math.abs(gi.weekOverWeekGrowth).toFixed(1)}% WoW</span>
+      {/* TODAY — activity panel instead of charts */}
+      {isToday && (
+        <section>
+          <SectionLabel>Today's activity vs 7-day average</SectionLabel>
+          <TodayActivityPanel asset={asset} cfg={cfg} />
+        </section>
+      )}
+
+      {/* LIFETIME — visual panels instead of charts */}
+      {isLifetime && (
+        <section>
+          <SectionLabel>Lifetime performance breakdown</SectionLabel>
+          <LifetimeVisualPanel asset={asset} cfg={cfg} />
+        </section>
+      )}
+
+      {/* TIME SERIES — views trend chart */}
+      {isTimeSeries && (
+        <section>
+          <SectionLabel>Views trend — {rangeLabel}</SectionLabel>
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "16px" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: T.textPrimary }}>{fmt(vTotal)}</span>
+              <span style={{ fontSize: 11, color: T.textSecondary }}>views {rangeLabel}</span>
+              <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 600, color: trendColor }}>{trendArrow} {Math.abs(gi.weekOverWeekGrowth).toFixed(1)}% WoW</span>
+            </div>
+            {vArr.length > 0 && vArr.some(v => v > 0)
+              ? <LineChart data={vArr} color={cfg.color} labels={labels} name="Views" height={170} />
+              : <div style={{ height: 170, display: "flex", alignItems: "center", justifyContent: "center", color: T.textTertiary, fontSize: 12 }}>No view data for this period</div>
+            }
           </div>
-          {vArr.length > 0 && vArr.some(v => v > 0)
-            ? <LineChart data={vArr} color={cfg.color} labels={labels} name="Views" height={170} />
-            : <div style={{ height: 170, display: "flex", alignItems: "center", justifyContent: "center", color: T.textTertiary, fontSize: 12 }}>No view data for this period</div>
-          }
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* Engagement chart */}
-      <section>
-        <SectionLabel>Engagement — {rangeLabel}</SectionLabel>
-        <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "16px" }}>
-          {vArr.length > 0
-            ? <MultiLineChart views={vArr} likes={lArr} comments={cArr} labels={labels} height={190} />
-            : <div style={{ height: 190, display: "flex", alignItems: "center", justifyContent: "center", color: T.textTertiary, fontSize: 12 }}>No engagement data for this period</div>
-          }
-        </div>
-      </section>
+      {/* TIME SERIES — engagement chart */}
+      {isTimeSeries && (
+        <section>
+          <SectionLabel>Engagement — {rangeLabel}</SectionLabel>
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "16px" }}>
+            {vArr.length > 0
+              ? <MultiLineChart views={vArr} likes={lArr} comments={cArr} labels={labels} height={190} />
+              : <div style={{ height: 190, display: "flex", alignItems: "center", justifyContent: "center", color: T.textTertiary, fontSize: 12 }}>No engagement data for this period</div>
+            }
+          </div>
+        </section>
+      )}
 
-      {/* Watch time chart */}
-      {wArr.length > 0 && wArr.some(v => (v ?? 0) > 0) && (
+      {/* TIME SERIES — watch time chart */}
+      {isTimeSeries && wArr.length > 0 && wArr.some(v => (v ?? 0) > 0) && (
         <section>
           <SectionLabel>Watch time — {rangeLabel}</SectionLabel>
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "16px" }}>
@@ -913,9 +1203,8 @@ function AssetAnalytics({ asset, dateRange }: { asset: CreatorAsset; dateRange: 
         </section>
       )}
 
-      {/* Demo chart */}
-      {isGame && dArr.length > 0 && dArr.some(v => (v ?? 0) > 0) && (
-        
+      {/* TIME SERIES — demo chart */}
+      {isTimeSeries && isGame && dArr.length > 0 && dArr.some(v => (v ?? 0) > 0) && (
         <section>
           <SectionLabel>Demo plays — {rangeLabel}</SectionLabel>
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "16px" }}>
@@ -928,8 +1217,8 @@ function AssetAnalytics({ asset, dateRange }: { asset: CreatorAsset; dateRange: 
         </section>
       )}
 
-      {/* Sessions chart */}
-      {hasSessions && sArr.length > 0 && sArr.some(v => (v ?? 0) > 0) && (
+      {/* TIME SERIES — sessions chart */}
+      {isTimeSeries && hasSessions && sArr.length > 0 && sArr.some(v => (v ?? 0) > 0) && (
         <section>
           <SectionLabel>Game sessions — {rangeLabel}</SectionLabel>
           <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "16px" }}>
@@ -942,13 +1231,21 @@ function AssetAnalytics({ asset, dateRange }: { asset: CreatorAsset; dateRange: 
         </section>
       )}
 
-      {/* Lifetime engagement table */}
+      {/* Lifetime engagement visual KPIs + table */}
       <section>
         <SectionLabel>Lifetime engagement</SectionLabel>
+        {/* Visual KPI row */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 8, marginBottom: 10 }}>
+          <KpiCard icon="ti-chart-pie"        rawValue={Math.round(lt.engagementRate * 10)}  displayFn={v => (v / 10).toFixed(1) + "%"} label="Engagement rate" accent={cfg.color} />
+          <KpiCard icon="ti-clock"            rawValue={lt.avgWatchTimeMs}                   displayFn={fmtMs}                          label="Avg watch time"  accent={cfg.color} />
+          {hasDemos && <KpiCard icon="ti-player-play" rawValue={Math.round(demoConvRate * 1000)} displayFn={v => (v / 10).toFixed(1) + "%"} label="Demo conv. rate" accent={T.success} />}
+          {hasSessions && <KpiCard icon="ti-users"    rawValue={lt.retentionRate ?? 0}           displayFn={v => Math.round(v) + "%"}       label="Retention rate"  accent={T.success} />}
+        </div>
+        {/* Detailed table */}
         <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "2px 14px 6px" }}>
           <MetricRow label="Total views"     value={fmt(lt.views)}                                   />
           <MetricRow label="Unique views"    value={fmt(lt.uniqueViews)}                             />
-          <MetricRow label="Repeat interest" value={`${repeatRatio.toFixed(2)}×`}                   positive={repeatRatio >= 1.8} />
+
           <MetricRow label="Like rate"       value={`${(likeRate * 100).toFixed(2)}%`}              positive={likeRate >= 0.08} />
           <MetricRow label="Comment rate"    value={`${(commentRate * 100).toFixed(2)}%`}           positive={commentRate >= 0.02} />
           <MetricRow label="Engagement rate" value={`${lt.engagementRate.toFixed(2)}%`}             positive={lt.engagementRate >= 3} />
@@ -969,7 +1266,6 @@ function AssetAnalytics({ asset, dateRange }: { asset: CreatorAsset; dateRange: 
               <MetricRow label="Retention rate"        value={`${(lt.retentionRate ?? 0).toFixed(1)}%`} positive={(lt.retentionRate ?? 0) >= 25} />
               <MetricRow label="Avg session length"    value={fmtMs(lt.avgSessionDurationMs ?? 0)} />
               <MetricRow label="Avg play time / user"  value={fmtMs(lt.avgPlayTimePerUserMs ?? 0)} />
-              <MetricRow label="Sessions / player"     value={safeDiv(lt.sessions ?? 0, lt.uniquePlayers ?? 0, 1).toFixed(1)} positive={safeDiv(lt.sessions ?? 0, lt.uniquePlayers ?? 0, 1) >= 2} />
             </>
           )}
           {asset.type === "3d_ad" && (lt.vertices ?? 0) > 0 && (
@@ -1003,18 +1299,56 @@ function AssetAnalytics({ asset, dateRange }: { asset: CreatorAsset; dateRange: 
       {isGame && hasDemos && (
         <section>
           <SectionLabel>Conversion funnel</SectionLabel>
-          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "16px 20px" }}>
+          <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "20px 24px" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
-              <div style={{ width: "75%", background: "rgba(61,122,110,0.15)", border: "1px solid rgba(61,122,110,0.3)", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
-                <p style={{ fontSize: 9, color: T.textTertiary, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 3 }}>Unique views</p>
-                <p style={{ fontSize: 18, fontWeight: 700, color: T.textPrimary }}>{fmt(lt.uniqueViews)}</p>
+              {/* Views */}
+              <div style={{ width: "80%", background: "rgba(61,122,110,0.12)", border: "1px solid rgba(61,122,110,0.28)", borderRadius: 10, padding: "14px 16px", textAlign: "center" }}>
+                <p style={{ fontSize: 9, color: T.textTertiary, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 }}>Total views</p>
+                <p style={{ fontSize: 22, fontWeight: 700, color: T.textPrimary, letterSpacing: "-0.02em" }}>{fmt(lt.views)}</p>
               </div>
-              <div style={{ padding: "6px 0", fontSize: 13, fontWeight: 700, color: T.tealLight }}>{(demoConvRate * 100).toFixed(1)}% →</div>
-              <div style={{ width: `${Math.max(25, Math.round(demoConvRate * 75))}%`, background: "rgba(61,122,110,0.25)", border: "1px solid rgba(61,122,110,0.45)", borderRadius: 8, padding: "10px 12px", textAlign: "center" }}>
-                <p style={{ fontSize: 9, color: T.textTertiary, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 3 }}>Demo plays</p>
-                <p style={{ fontSize: 18, fontWeight: 700, color: T.textPrimary }}>{fmt(lt.demoConsumptions!)}</p>
+
+              {/* Step: views → unique */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0" }}>
+                <div style={{ width: 1, height: 12, background: "rgba(61,122,110,0.3)" }} />
+                <span style={{ fontSize: 10, fontWeight: 600, color: T.textSecondary, padding: "2px 8px", background: "rgba(61,122,110,0.08)", borderRadius: 6, border: "1px solid rgba(61,122,110,0.18)" }}>
+                  {pct(safeDiv(lt.uniqueViews, lt.views))} unique
+                </span>
+                <div style={{ width: 1, height: 12, background: "rgba(61,122,110,0.3)" }} />
+              </div>
+
+              {/* Unique views */}
+              <div style={{ width: `${Math.max(50, Math.round(safeDiv(lt.uniqueViews, lt.views) * 80))}%`, background: "rgba(61,122,110,0.18)", border: "1px solid rgba(61,122,110,0.36)", borderRadius: 10, padding: "14px 16px", textAlign: "center" }}>
+                <p style={{ fontSize: 9, color: T.textTertiary, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 }}>Unique views</p>
+                <p style={{ fontSize: 20, fontWeight: 700, color: T.textPrimary, letterSpacing: "-0.02em" }}>{fmt(lt.uniqueViews)}</p>
+              </div>
+
+              {/* Step: unique → demo */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0" }}>
+                <div style={{ width: 1, height: 12, background: "rgba(61,122,110,0.3)" }} />
+                <span style={{ fontSize: 10, fontWeight: 600, color: T.tealLight, padding: "2px 8px", background: "rgba(61,122,110,0.12)", borderRadius: 6, border: "1px solid rgba(61,122,110,0.28)" }}>
+                  {(demoConvRate * 100).toFixed(1)}% demo conv.
+                </span>
+                <div style={{ width: 1, height: 12, background: "rgba(61,122,110,0.3)" }} />
+              </div>
+
+              {/* Demo plays */}
+              <div style={{ width: `${Math.max(24, Math.round(demoConvRate * 80))}%`, background: "rgba(61,122,110,0.28)", border: "1px solid rgba(61,122,110,0.5)", borderRadius: 10, padding: "14px 16px", textAlign: "center" }}>
+                <p style={{ fontSize: 9, color: T.textTertiary, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 }}>Demo plays</p>
+                <p style={{ fontSize: 20, fontWeight: 700, color: T.textPrimary, letterSpacing: "-0.02em" }}>{fmt(lt.demoConsumptions!)}</p>
               </div>
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* Insights */}
+      {insights.length > 0 && (
+        <section>
+          <SectionLabel>Insights</SectionLabel>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {insights.map((ins, i) => (
+              <InsightCard key={i} {...ins} />
+            ))}
           </div>
         </section>
       )}
@@ -1054,7 +1388,7 @@ function PanelSkeleton() {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  HELPERS  (empty defaults for normalisation)
+//  DEFAULTS
 // ─────────────────────────────────────────────────────────────
 function emptyPeriod(): AnalyticsPeriod {
   return { views: 0, uniqueViews: 0, watchTimeMs: 0, likes: 0, comments: 0, demoConsumptions: 0, sessions: 0, sessionPlayTimeMs: 0, uniquePlayers: 0 };
@@ -1069,13 +1403,13 @@ function emptyChart(): MultiRangeChart {
 export default function RigzerPortfolioAnalytics() {
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
-  const [assets,       setAssets]       = useState<CreatorAsset[]>([]);
-  const [portfolio,    setPortfolio]    = useState<AnalyticsPortfolio | null>(null);
-  const [apiLoading,   setApiLoading]   = useState(true);
-  const [activeId,     setActiveId]     = useState<string | null>(null);
-  const [dateRange,    setDateRange]    = useState<DateRange>("Last 7 Days");
-  const [sideCollapsed,setSideCollapsed]= useState(false);
-  const [transitioning,setTransitioning]= useState(false);
+  const [assets,        setAssets]        = useState<CreatorAsset[]>([]);
+  const [portfolio,     setPortfolio]     = useState<AnalyticsPortfolio | null>(null);
+  const [apiLoading,    setApiLoading]    = useState(true);
+  const [activeId,      setActiveId]      = useState<string | null>(null);
+  const [dateRange,     setDateRange]     = useState<DateRange>("Last 7 Days");
+  const [sideCollapsed, setSideCollapsed] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
 
   const activeAsset = assets.find(a => a._id === activeId) ?? null;
 
@@ -1090,7 +1424,6 @@ export default function RigzerPortfolioAnalytics() {
       try {
         setApiLoading(true);
         const { data } = await axios.get(`${BACKEND_URL}/api/analytics/creator`, { withCredentials: true });
-        console.log("Fetched analytics data:", data);
 
         const normalised: CreatorAsset[] = (data.assets || []).map((a: any): CreatorAsset => ({
           _id:         String(a._id),
@@ -1117,24 +1450,24 @@ export default function RigzerPortfolioAnalytics() {
           growthIndicators: a.growthIndicators ?? { weekOverWeekGrowth: 0, monthOverMonthGrowth: 0, trend: "stable" },
 
           lifetime: {
-            views:               Number(a.lifetime?.views)              || Number(a.totalViews)       || 0,
-            uniqueViews:         Number(a.lifetime?.uniqueViews)        || Number(a.uniqueViews)      || 0,
-            watchTimeMs:         Number(a.lifetime?.watchTimeMs)        || 0,
-            avgWatchTimeMs:      Number(a.lifetime?.avgWatchTimeMs)     || 0,
-            likes:               Number(a.lifetime?.likes)              || Number(a.likes)            || 0,
-            comments:            Number(a.lifetime?.comments)           || Number(a.comments)         || 0,
-            engagementRate:      Number(a.lifetime?.engagementRate)     || 0,
-            demoConsumptions:    Number(a.lifetime?.demoConsumptions)   || Number(a.demoConsumption)  || 0,
-            demoConversionRate:  Number(a.lifetime?.demoConversionRate) || 0,
-            sessions:            Number(a.lifetime?.sessions)           || Number(a.totalSessions)    || 0,
-            sessionPlayTimeMs:   Number(a.lifetime?.sessionPlayTimeMs)  || Number(a.totalSessionTime) || 0,
-            avgSessionDurationMs:Number(a.lifetime?.avgSessionDurationMs) || 0,
-            avgPlayTimePerUserMs:Number(a.lifetime?.avgPlayTimePerUserMs)  || 0,
-            uniquePlayers:       Number(a.lifetime?.uniquePlayers)      || 0,
-            repeatPlayers:       Number(a.lifetime?.repeatPlayers)      || 0,
-            retentionRate:       Number(a.lifetime?.retentionRate)      || 0,
-            vertices:            Number(a.lifetime?.vertices)           || Number(a.vertices)         || 0,
-            triangles:           Number(a.lifetime?.triangles)          || Number(a.triangles)        || 0,
+            views:                Number(a.lifetime?.views)               || Number(a.totalViews)       || 0,
+            uniqueViews:          Number(a.lifetime?.uniqueViews)         || Number(a.uniqueViews)      || 0,
+            watchTimeMs:          Number(a.lifetime?.watchTimeMs)         || 0,
+            avgWatchTimeMs:       Number(a.lifetime?.avgWatchTimeMs)      || 0,
+            likes:                Number(a.lifetime?.likes)               || Number(a.likes)            || 0,
+            comments:             Number(a.lifetime?.comments)            || Number(a.comments)         || 0,
+            engagementRate:       Number(a.lifetime?.engagementRate)      || 0,
+            demoConsumptions:     Number(a.lifetime?.demoConsumptions)    || Number(a.demoConsumption)  || 0,
+            demoConversionRate:   Number(a.lifetime?.demoConversionRate)  || 0,
+            sessions:             Number(a.lifetime?.sessions)            || Number(a.totalSessions)    || 0,
+            sessionPlayTimeMs:    Number(a.lifetime?.sessionPlayTimeMs)   || Number(a.totalSessionTime) || 0,
+            avgSessionDurationMs: Number(a.lifetime?.avgSessionDurationMs)|| 0,
+            avgPlayTimePerUserMs: Number(a.lifetime?.avgPlayTimePerUserMs) || 0,
+            uniquePlayers:        Number(a.lifetime?.uniquePlayers)       || 0,
+            repeatPlayers:        Number(a.lifetime?.repeatPlayers)       || 0,
+            retentionRate:        Number(a.lifetime?.retentionRate)       || 0,
+            vertices:             Number(a.lifetime?.vertices)            || Number(a.vertices)         || 0,
+            triangles:            Number(a.lifetime?.triangles)           || Number(a.triangles)        || 0,
           },
 
           totalViews:      Number(a.totalViews)      || 0,
@@ -1146,8 +1479,6 @@ export default function RigzerPortfolioAnalytics() {
           totalSessions:   Number(a.totalSessions)   || 0,
           totalSessionTime:Number(a.totalSessionTime)|| 0,
         }));
-
-        console.log("Normalised assets:", normalised);
 
         setAssets(normalised);
         setActiveId(normalised.length > 0 ? normalised[0]._id : null);
