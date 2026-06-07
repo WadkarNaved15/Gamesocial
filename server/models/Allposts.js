@@ -397,6 +397,81 @@ const AdModelPostSchema = new mongoose.Schema(
   },
   { _id: false }
 );
+/* ======================================================
+   AD MEDIA POST SCHEMA  ⭐ NEW
+====================================================== */
+const MediaAdAssetSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+
+    type: {
+      type: String,
+      enum: ["image", "video"],
+      required: true,
+    },
+
+    url: { type: String, required: true },
+    key: { type: String, required: true },
+
+    sizeMB: Number,
+  },
+  { _id: false }
+);
+
+const MediaAdPostSchema = new mongoose.Schema(
+  {
+    brandName: {
+      type: String,
+      trim: true,
+      maxlength: 80,
+      required: true,
+    },
+
+    brandLogo: {
+      type: String,
+      default: null,
+    },
+
+    description: {
+      type: String,
+      default: "",
+      maxlength: 2000,
+    },
+
+    ctaText: {
+      type: String,
+      default: "",
+      maxlength: 60,
+    },
+
+    ctaLink: {
+      type: String,
+      default: "",
+    },
+
+    asset: {
+      type: MediaAdAssetSchema,
+      required: true,
+    },
+
+    style: {
+      accentColor: { type: String, default: "#6366f1" },
+      useGlowEffect: { type: Boolean, default: true },
+
+      cardLayoutTheme: {
+        type: String,
+        enum: ["glass", "gradient", "minimal"],
+        default: "glass",
+      },
+    },
+
+    performance: {
+      clicks: { type: Number, default: 0 },
+      impressions: { type: Number, default: 0 },
+    },
+  },
+  { timestamps: true }
+);
 
 /* ====================================================== */
 
@@ -429,7 +504,8 @@ const PostSchema = new mongoose.Schema(
         "game_post",
         "canvas_article",
         "devlog_post",
-        "ad_model_post", // ⭐ NEW
+        "ad_model_post",
+        "media_ad_post",  // ⭐ NEW
       ],
       required: true,
     },
@@ -477,6 +553,11 @@ const PostSchema = new mongoose.Schema(
 
     adModelPost: {           // ⭐ NEW
       type: AdModelPostSchema,
+      default: null,
+    },
+
+    mediaAdPost: {
+      type: MediaAdPostSchema,
       default: null,
     },
 

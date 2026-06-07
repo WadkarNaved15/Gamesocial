@@ -1,7 +1,7 @@
 import React, { useState, useRef, ChangeEvent, useEffect } from "react";
 import { Upload, Image as ImageIcon, Video, ArrowLeft, X, Palette, Sparkles, Clock, Flame, MousePointerClick } from "lucide-react";
 import { useUser } from "../../../context/user";
-
+import MediaAdPostCard from "../../ads/MediaAdPostCard";
 type MediaType = "image" | "video";
 
 type MediaAsset = {
@@ -35,21 +35,19 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
   const [description, setDescription] = useState("");
   const [ctaText, setCtaText] = useState("");
   const [ctaLink, setCtaLink] = useState("");
-
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
   const [accentColor, setAccentColor] = useState("#6366f1"); // Cyber Neon default for scroll impact
   const [useGlowEffect, setUseGlowEffect] = useState(true);
   const [cardLayoutTheme, setCardLayoutTheme] = useState<"glass" | "gradient" | "minimal">("glass");
-
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSavingMetadata, setIsSavingMetadata] = useState(false);
   const [asset, setAsset] = useState<MediaAsset | null>(null);
 
   const [activeTab, setActiveTab] = useState<"media" | "brand" | "theme" | "cta">("media");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ───────────── SCROLL-STOPPER ENGINE STATES ─────────────
-  const [urgencyMode, setUrgencyMode] = useState<"none" | "countdown" | "scarcity">("countdown");
-  const [scarcityCount, setScarcityCount] = useState(15);
-  const [countdownMinutes, setCountdownMinutes] = useState(10);
-  const [timeLeft, setTimeLeft] = useState({ mins: 10, secs: 0 });
   const [interactiveTilt, setInteractiveTilt] = useState(true);
   const { user } = useUser();
   const brandName = user?.username || "Guest Brand";
@@ -58,26 +56,6 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  // ───────────── DYNAMIC COUNTDOWN LOGIC ─────────────
-  useEffect(() => {
-    setTimeLeft({ mins: countdownMinutes, secs: 0 });
-  }, [countdownMinutes]);
-
-  useEffect(() => {
-    if (urgencyMode !== "countdown") return;
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.mins === 0 && prev.secs === 0) {
-          return { mins: countdownMinutes, secs: 0 }; // Loop demo gracefully
-        }
-        if (prev.secs === 0) {
-          return { mins: prev.mins - 1, secs: 59 };
-        }
-        return { mins: prev.mins, secs: prev.secs - 1 };
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [urgencyMode, countdownMinutes]);
 
   // ───────────── MOUSE PARALLAX TILT INTERRUPT ─────────────
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -90,8 +68,8 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
     const xc = rect.width / 2;
     const yc = rect.height / 2;
 
-    const angleX = (yc - y) / 18;
-    const angleY = (x - xc) / 18;
+    const angleX = (yc - y) / 25;
+    const angleY = (x - xc) / 25;
 
     card.style.transform = `perspective(1000px) rotateX(${angleX}deg) rotateY(${angleY}deg)`;
   };
@@ -114,29 +92,106 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
     });
     e.target.value = "";
   };
+
+  const uploadAssetToS3 = async (
+    file: File,
+    onProgress: (p: number) => void
+  ) => {
+    const res = await fetch(`${BACKEND_URL}/api/upload/presigned-url`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileType: file.type,
+        category: "media",
+        fileSize: file.size,
+      }),
+    });
+
+    const { uploadUrl, fileUrl, key } = await res.json();
+
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", uploadUrl, true);
+      xhr.setRequestHeader("Content-Type", file.type);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          onProgress(percent);
+        }
+      };
+
+      xhr.onload = () => resolve();
+      xhr.onerror = reject;
+      xhr.send(file);
+    });
+
+    return { fileUrl, key };
+  };
+
   const handleSubmit = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || !asset) return;
+
     setIsSubmitting(true);
+    setIsUploading(true);
+    setUploadProgress(0);
 
-    const payload = {
-      brandName: user?.username,
-      brandLogo: user?.avatar,
-      description,
-      ctaText,
-      ctaLink,
-      accentColor,
-      useGlowEffect,
-      cardLayoutTheme,
-      urgencyMode,
-      scarcityCount,
-      countdownMinutes,
-      type: "media_sponsored_ad"
-    };
+    try {
+      // ───────────── PHASE 1: Upload to S3 ─────────────
+      const uploaded = await uploadAssetToS3(asset.file, (p) => {
+        setUploadProgress(p);
+      });
 
-    setTimeout(() => {
-      setIsSubmitting(false);
+      setIsUploading(false);
+      setIsSavingMetadata(true);
+
+      // ───────────── PHASE 2: Save to MongoDB ─────────────
+      const payload = {
+        type: "media_ad_post",
+        description,
+
+        mediaAdPost: {
+          brandName: user?.username || "Guest Brand",
+          brandLogo: user?.avatar || null,
+
+          description,
+          ctaText,
+          ctaLink,
+
+          asset: {
+            name: asset.name,
+            type: asset.type,
+            url: uploaded.fileUrl,
+            key: uploaded.key,
+          },
+
+          style: {
+            accentColor,
+            useGlowEffect,
+            cardLayoutTheme,
+          },
+        },
+      };
+
+      const res = await fetch(`${BACKEND_URL}/api/allposts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Failed to create post");
+
       onCancel();
-    }, 1500);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSubmitting(false);
+      setIsUploading(false);
+      setIsSavingMetadata(false);
+      setUploadProgress(0);
+    }
   };
 
   const rgbAccent = hexToRgb(accentColor) || "24, 24, 27";
@@ -402,94 +457,45 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
               <MousePointerClick size={12} /> Live Device Canvas (Hover or Move Cursor to simulate 3D feed disruption)
             </div>
 
-            <div className="relative w-full overflow-hidden p-6 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-zinc-800 rounded-2xl flex flex-col items-center justify-center">
-
-              {/* DISRUPTIVE CONTAINER WRAPPER WITH PARALLAX STYLES */}
-              <div
-                ref={previewCardRef}
-                onMouseMove={handleMouseMove}
-                onMouseLeave={handleMouseLeave}
-                className="w-full max-w-full rounded-2xl overflow-hidden transition-all duration-150 ease-out p-0.5 group select-none"
-                style={{
-                  ...getDynamicCardStyles(),
-                  transformStyle: "preserve-3d"
-                }}
-              >
-                {/* ADVANCED HEAD BANNER */}
-                <div className="flex justify-between items-center px-4 pt-4 pb-3" style={{ transform: "translateZ(20px)" }}>
-                  <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 shadow-sm">
-                    <img src={user?.avatar || "/default_avatar.png"} className="w-8 h-8 rounded-full object-cover"/>
-                    <span className="text-white text-xs font-bold tracking-wide drop-shadow-sm">
-                      {user?.username || "Brand Identity"}
-                    </span>
-                  </div>
-
-                  {/* HIGH ACCENT GLOW BADGE */}
-                  <span
-                    className="text-[9px] font-black uppercase tracking-widest px-3 py-1 text-white border rounded-full transition-colors"
-                    style={{
-                      backgroundColor: `rgba(${rgbAccent}, 0.25)`,
-                      borderColor: accentColor,
-                      boxShadow: `0 0 12px rgba(${rgbAccent}, 0.4)`
-                    }}
-                  >
-                    ✦ Sponsored ✦
-                  </span>
-                </div>
-
-                {/* VISUAL PAYLOAD BLOCK */}
-                <div className="h-[400px] bg-zinc-950 flex items-center justify-center relative overflow-hidden border-y border-white/5">
-                  {asset ? (
-                    asset.type === "video" ? (
-                      <video src={asset.url} autoPlay muted loop className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700" />
-                    ) : (
-                      <img src={asset.url} alt="Creative" className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700" />
-                    )
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-30 bg-gradient-to-tr from-zinc-900 to-zinc-950">
-                      <Sparkles size={32} style={{ color: accentColor }} className="animate-spin [animation-duration:8s]" />
-                      <span className="text-white text-[10px] font-bold uppercase tracking-widest">Aura Medium Canvas Preview</span>
-                    </div>
-                  )}
-
-                  {/* PREMIUM OVERLAY SHADOW GRADIENT TO STAND OUT */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
-                </div>
-
-                {/* PREMIUM GLOW-ALIGNED TEXT LABELS */}
-                <div className="p-4 space-y-3" style={{ transform: "translateZ(25px)" }}>
-                  {description ? (
-                    <p className="text-sm leading-relaxed font-light text-zinc-100 tracking-wide drop-shadow-sm">
-                      {description}
-                    </p>
-                  ) : (
-                    <p className="text-sm italic font-light text-zinc-600 tracking-wide">
-                      Draft your ad copy layout here...
-                    </p>
-                  )}
-
-                  {ctaText && (
-                    <button
-                      className="w-full py-3 transition text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-xl transform active:scale-[0.99] hover:brightness-110 flex items-center justify-center gap-1"
-                      style={{
-                        backgroundColor: accentColor,
-                        boxShadow: useGlowEffect ? `0 6px 20px rgba(${rgbAccent}, 0.4)` : "none",
-                        color: PRESET_ACCENTS.find(p => p.hex === accentColor)?.text || "#ffffff"
-                      }}
-                    >
-                      <span>{ctaText}</span>
-                      <span className="opacity-50 text-sm">→</span>
-                    </button>
-                  )}
-                </div>
-
-              </div>
+            <div className="relative w-full overflow-hidden p-4 bg-gray-50 dark:bg-[#121212] border border-gray-200 dark:border-zinc-800 rounded-2xl flex flex-col items-center justify-center">
+              <MediaAdPostCard
+                brandName={brandName}
+                brandLogo={logo}
+                description={description}
+                ctaText={ctaText}
+                ctaLink={ctaLink}
+                asset={asset}
+                accentColor={accentColor}
+                useGlowEffect={useGlowEffect}
+                cardLayoutTheme={cardLayoutTheme}
+                rgbAccent={rgbAccent}
+                interactiveTilt={true}
+              />
             </div>
           </div>
 
         </div>
       </div>
+      {isUploading && (
+        <div className="p-3 rounded-xl border bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 dark:text-indigo-400 text-sm">
+          <div className="flex justify-between mb-2">
+            <span>Uploading media...</span>
+            <span>{uploadProgress}%</span>
+          </div>
 
+          <div className="h-2 bg-gray-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-indigo-500 transition-all"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+      {isSavingMetadata && (
+        <div className="p-3 rounded-xl border border-amber-200 dark:border-amber-900/30 bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400 text-sm animate-pulse">
+          Finalizing post & saving to database...
+        </div>
+      )}
       {/* Hidden File Inputs */}
       <input ref={mediaInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleMedia} />
     </div>

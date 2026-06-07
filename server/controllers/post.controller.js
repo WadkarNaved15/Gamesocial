@@ -228,13 +228,13 @@ export const createPost = async (req, res) => {
         },
       });
 
+      // ✅ GORSE: sync new post (fire-and-forget)
+      onPostCreated(post);
       return res.status(201).json({
         message: "Game post created successfully",
         post,
       });
     }
-    // ✅ GORSE: sync new post (fire-and-forget)
-    onPostCreated(post);
 
     /* ======================================================
        AD MODEL POST  ⭐ NEW
@@ -341,6 +341,84 @@ export const createPost = async (req, res) => {
       });
     }
 
+    /* ======================================================
+       MEDIA AD POST
+    ====================================================== */
+    if (type === "media_ad_post") {
+      const { description, mediaAdPost } = req.body;
+
+      if (!mediaAdPost) {
+        return res.status(400).json({
+          message: "mediaAdPost data is required",
+        });
+      }
+
+      const {
+        brandName,
+        brandLogo,
+        ctaText,
+        ctaLink,
+        asset,
+        style,
+      } = mediaAdPost;
+
+      // ───────── VALIDATE ASSET ─────────
+      if (!asset || !asset.url || !asset.key || !asset.name || !asset.type) {
+        return res.status(400).json({
+          message: "Media ad post requires a valid asset",
+        });
+      }
+
+      // ───────── VALIDATE BRAND ─────────
+      if (!brandName) {
+        return res.status(400).json({
+          message: "brandName is required",
+        });
+      }
+
+      // ───────── CREATE POST ─────────
+      const post = await AllPost.create({
+        user: req.user.id,
+        description: description || "",
+        type: "media_ad_post",
+
+        mediaAdPost: {
+          brandName: brandName.trim(),
+          brandLogo: brandLogo || null,
+
+          description: description || "",
+          ctaText: ctaText || "",
+          ctaLink: ctaLink || "",
+
+          asset: {
+            name: asset.name,
+            type: asset.type,
+            url: asset.url,
+            key: asset.key,
+          },
+
+          style: {
+            accentColor: style?.accentColor || "#6366f1",
+            useGlowEffect: style?.useGlowEffect ?? true,
+            cardLayoutTheme: style?.cardLayoutTheme || "glass",
+          },
+
+          performance: {
+            clicks: 0,
+            impressions: 0,
+          },
+        },
+      });
+
+      // optional analytics hook (same pattern as others)
+      onPostCreated(post);
+
+      return res.status(201).json({
+        message: "Media ad post created successfully",
+        post,
+      });
+    }
+
     /* ====================================================== */
     return res.status(400).json({ message: "Invalid post type" });
 
@@ -440,7 +518,7 @@ export const deletePost = async (req, res) => {
       }
     }
 
-        // =====================================================
+    // =====================================================
     // MODEL POST FILES
     // =====================================================
 

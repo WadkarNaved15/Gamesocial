@@ -7,6 +7,7 @@ export type PostType =
   | 'devlog_post'
   | 'ad_model_post'
   | 'pocket_update'   // feed.service.js sets feedType: "pocket_update" on normalised entries
+  | 'media_ad_post';
 
 export interface UserSummary {
   _id: string;
@@ -208,6 +209,31 @@ export interface PocketPostProps extends CommonPostFields {
   tagline?:          string;
   compiledBundleUrl: string;
 }
+export interface MediaAdPostProps extends CommonPostFields {
+  type: 'media_ad_post';
+  mediaAdPost: {
+    brandName: string;
+    brandLogo?: string | null;
+    description?: string;
+    ctaText?: string;
+    ctaLink?: string;
+    asset: {
+      name: string;
+      type: 'image' | 'video';
+      url: string;
+      key?: string;
+    };
+    style?: {
+      accentColor?: string;
+      useGlowEffect?: boolean;
+      cardLayoutTheme?: string;
+    };
+    performance?: {
+      clicks: number;
+      impressions: number;
+    };
+  };
+}
 
 // ── Master union ───────────────────────────────────────────────────────────────
 
@@ -217,4 +243,5 @@ export type PostProps =
   | ExePostProps
   | DevlogPostProps
   | AdModelPostProps
-  | PocketPostProps;
+  | PocketPostProps
+  | MediaAdPostProps;
