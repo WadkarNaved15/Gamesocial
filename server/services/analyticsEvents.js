@@ -5,7 +5,7 @@
 
 import PostAnalytics from "../models/postAnalytics.js";
 import AllPost from "../models/Allposts.js";
-import PostViewEvent from "../models/PostViewEvent.js";
+import PostViewEvent from "../models/postViewEvent.js";
 
 
 /**
