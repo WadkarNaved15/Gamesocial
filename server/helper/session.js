@@ -1,5 +1,21 @@
 /* ================= HELPERS ================= */
 
+const CONFIG = {
+  DEFAULT_DURATION: 600,      // 10 min
+  FREE_GAME_DURATION: 600,    // 10 min
+  PAID_GAME_DURATION: 600,    // 10 min
+  MAX_CONCURRENT_SESSIONS: 3,
+  INSTANCE_TIMEOUT: 10000,
+  RETRY_ATTEMPTS: 2,
+};
+
+const DEMO_CONFIG = {
+  MIN_ACTIVE_SECONDS: 180,   // consume demo after 180s of healthy play
+  HEARTBEAT_GRACE_SECONDS: 25, // allow short disconnect gaps
+};
+
+
+
 
 export async function getQueueData(
   session
