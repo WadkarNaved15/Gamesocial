@@ -162,9 +162,12 @@ router.get("/creator", authMiddleware, async (req, res) => {
         $group: {
           _id: "$gamePost",
           totalSessions:    { $sum: 1 },
-          totalSessionTime: { $sum: "$metrics.totalPlayTime" },
-          avgSessionTime:   { $avg: "$metrics.totalPlayTime" },
+          totalSessionTime: { $sum: "$billing.billedPlayTimeMs" },
+          avgSessionTime:   { $avg: "$billing.billedPlayTimeMs" },
           uniqueUserIds:    { $addToSet: "$user" },
+          totalCreditsBurned: {
+            $sum: "$billing.creditsConsumed"
+          },
         },
       },
     ]);
@@ -183,6 +186,9 @@ const sessionMap = new Map(
         totalSessions,
         totalSessionTime:
           s.totalSessionTime || 0,
+
+        totalCreditsBurned:
+      s.totalCreditsBurned || 0,
 
         avgSessionTime:
           Math.round(
@@ -323,6 +329,8 @@ const sessionMap = new Map(
         const avgPlayTimePerUserMs = uniquePlayers > 0
           ? Math.round(sessionPlayTimeMs / uniquePlayers)
           : 0;
+        
+        
 
         return {
           ...base,
@@ -335,6 +343,8 @@ const sessionMap = new Map(
           avgSessionTime:   sessionData.avgSessionTime || avgSessionDurationMs,
           demoConsumption:  demoConsumptions,
           conversionRate:   demoConversionRate,
+          developerCreditsBurned:
+  sessionData.totalCreditsBurned || 0,
 
           lifetime: {
             ...lifetimeBase,
@@ -347,6 +357,8 @@ const sessionMap = new Map(
             uniquePlayers,
             repeatPlayers,
             retentionRate,
+            developerCreditsBurned:
+  sessionData.totalCreditsBurned || 0,
           },
         };
       }

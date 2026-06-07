@@ -14,6 +14,7 @@ import redisClient from "../config/redis.js";
 import fetch from "node-fetch";
 import GameSession from "../models/GameSession.js";
 import { releaseInstance } from "./instanceAllocator.js";
+import { finalizeSession } from "../helper/session.js"; 
 
 dotenv.config();
 
@@ -67,7 +68,7 @@ async function cleanupStaleSessions(lockId) {
     const staleSessions = await GameSession.find({
       status: { $in: ["waiting", "starting", "running"] },
       lastHeartbeat: { $lt: staleThreshold },
-    }).lean();
+    });
 
     if (staleSessions.length === 0) {
       console.log(`[Cleanup ${lockId.substring(0, 8)}...] ✓ No stale sessions found`);
@@ -98,12 +99,8 @@ async function cleanupStaleSessions(lockId) {
           }
         }
 
-        // Mark session as ended
-        await GameSession.findByIdAndUpdate(session._id, {
-          status: "ended",
-          endedAt: new Date(),
-          exitReason: "stale_abandoned",
-        });
+
+        await finalizeSession(session, "stale_abandoned");
 
         // Release the instance lease
         if (session.instanceId && session.leaseToken) {

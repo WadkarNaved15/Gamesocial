@@ -65,19 +65,7 @@ export async function processBilling(sessionId) {
       post.gamePost.creditBudget
         .remainingCredits || 0;
 
-    if (availableCredits <= 100) {
-      await AllPost.updateOne(
-        {
-          _id: session.gamePost,
-        },
-        {
-          $set: {
-            "gamePost.creditBudget.status":
-              "low_credits",
-          },
-        }
-      );
-    }
+
 
     if (availableCredits <= 0) {
       return {
@@ -113,27 +101,59 @@ export async function processBilling(sessionId) {
           new: true,
         }
       );
+      
+const remainingCredits =
+  updatedPost?.gamePost?.creditBudget
+    ?.remainingCredits || 0;
 
-    await CreditAudit.create({
-        gamePost: session.gamePost,
-        creator: updatedPost.user,
+if (remainingCredits <= 0) {
+  await AllPost.updateOne(
+    {
+      _id: session.gamePost,
+    },
+    {
+      $set: {
+        "gamePost.creditBudget.status":
+          "exhausted",
+      },
+    }
+  );
 
-        action: "consumption",
+  return {
+    exhausted: true,
+  };
+}
 
-        credits: creditsToConsume,
+if (
+  remainingCredits > 0 &&
+  remainingCredits <= 100
+) {
+  await AllPost.updateOne(
+    {
+      _id: session.gamePost,
+    },
+    {
+      $set: {
+        "gamePost.creditBudget.status":
+          "low_credits",
+      },
+    }
+  );
+}
+else {
+  await AllPost.updateOne(
+    {
+      _id: session.gamePost,
+    },
+    {
+      $set: {
+        "gamePost.creditBudget.status":
+          "active",
+      },
+    }
+  );
+}
 
-        previousBalance:
-            updatedPost.gamePost.creditBudget.remainingCredits +
-            creditsToConsume,
-
-        newBalance:
-            updatedPost.gamePost.creditBudget.remainingCredits,
-
-        reason: `Session ${session._id}`,
-        metadata: {
-            sessionId: session._id.toString(),
-        },
-        });
 
     await GameSession.updateOne(
       {
@@ -157,28 +177,6 @@ export async function processBilling(sessionId) {
         },
       }
     );
-
-    const remainingCredits =
-      updatedPost?.gamePost?.creditBudget
-        ?.remainingCredits || 0;
-
-    if (remainingCredits <= 0) {
-      await AllPost.updateOne(
-        {
-          _id: session.gamePost,
-        },
-        {
-          $set: {
-            "gamePost.creditBudget.status":
-              "exhausted",
-          },
-        }
-      );
-
-      return {
-        exhausted: true,
-      };
-    }
 
     return {
       exhausted: false,
