@@ -13,30 +13,73 @@ import PostViewEvent from "../models/postViewEvent.js";
  * @param {string|ObjectId} postId
  */
 export async function onLikeAdded(postId) {
-  try {
-    const dateKey = new Date().toISOString().split("T")[0];
+  const dateKey = new Date().toISOString().split("T")[0];
 
-    console.log("STEP 1");
+  // Ensure analytics document exists and initialize fields
+  await PostAnalytics.findOneAndUpdate(
+    { post: postId },
+    {
+      $setOnInsert: {
+        post: postId,
+        dailyStats: [],
+        hourlyStats: [],
+        lifetime: {
+          views: 0,
+          uniqueViews: 0,
+          watchTimeMs: 0,
+          likes: 0,
+          comments: 0,
+          demoConsumptions: 0,
+          sessions: 0,
+          sessionPlayTimeMs: 0,
+          uniquePlayers: 0,
+          repeatPlayers: 0,
+        },
+      },
+      $inc: {
+        "lifetime.likes": 1,
+      },
+    },
+    {
+      upsert: true,
+      new: true,
+    }
+  );
 
-    await PostAnalytics.findOneAndUpdate(
+  // Try incrementing existing daily row
+  const dailyResult = await PostAnalytics.updateOne(
+    {
+      post: postId,
+      "dailyStats.date": dateKey,
+    },
+    {
+      $inc: {
+        "dailyStats.$.likes": 1,
+      },
+    }
+  );
+
+  // If today's row doesn't exist, create it
+  if (dailyResult.modifiedCount === 0) {
+    await PostAnalytics.updateOne(
       { post: postId },
-      { $inc: { "lifetime.likes": 1 } },
-      { upsert: true }
+      {
+        $push: {
+          dailyStats: {
+            date: dateKey,
+            views: 0,
+            uniqueViews: 0,
+            watchTimeMs: 0,
+            likes: 1,
+            comments: 0,
+            demoConsumptions: 0,
+            sessions: 0,
+            sessionPlayTimeMs: 0,
+            uniquePlayers: 0,
+          },
+        },
+      }
     );
-
-    console.log("STEP 2");
-
-    const dailyResult = await PostAnalytics.updateOne(
-      { post: postId, "dailyStats.date": dateKey },
-      { $inc: { "dailyStats.$.likes": 1 } }
-    );
-
-    console.log("STEP 3");
-
-  } catch (err) {
-    console.error("LIKE ANALYTICS ERROR");
-    console.error(err);
-    throw err;
   }
 }
 /**
@@ -81,24 +124,49 @@ export async function onCommentAdded(postId) {
 
   await PostAnalytics.findOneAndUpdate(
     { post: postId },
-    { $inc: { "lifetime.comments": 1 } },
-    { upsert: true }
+    {
+      $setOnInsert: {
+        post: postId,
+        dailyStats: [],
+        hourlyStats: [],
+      },
+      $inc: {
+        "lifetime.comments": 1,
+      },
+    },
+    {
+      upsert: true,
+    }
   );
 
   const dailyResult = await PostAnalytics.updateOne(
-    { post: postId, "dailyStats.date": dateKey },
-    { $inc: { "dailyStats.$.comments": 1 } }
+    {
+      post: postId,
+      "dailyStats.date": dateKey,
+    },
+    {
+      $inc: {
+        "dailyStats.$.comments": 1,
+      },
+    }
   );
 
   if (dailyResult.modifiedCount === 0) {
     await PostAnalytics.updateOne(
-      { post: postId, "dailyStats.date": { $ne: dateKey } },
+      { post: postId },
       {
         $push: {
           dailyStats: {
-            date: dateKey, views: 0, uniqueViews: 0, watchTimeMs: 0,
-            likes: 0, comments: 1, demoConsumptions: 0,
-            sessions: 0, sessionPlayTimeMs: 0, uniquePlayers: 0,
+            date: dateKey,
+            views: 0,
+            uniqueViews: 0,
+            watchTimeMs: 0,
+            likes: 0,
+            comments: 1,
+            demoConsumptions: 0,
+            sessions: 0,
+            sessionPlayTimeMs: 0,
+            uniquePlayers: 0,
           },
         },
       }
