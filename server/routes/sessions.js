@@ -44,7 +44,7 @@ const CONFIG = {
 };
 
 const DEMO_CONFIG = {
-  MIN_ACTIVE_SECONDS: 180,   // consume demo after 180s of healthy play
+  MIN_ACTIVE_SECONDS: 120,   // consume demo after 120s of healthy play
   HEARTBEAT_GRACE_SECONDS: 25, // allow short disconnect gaps
 };
 

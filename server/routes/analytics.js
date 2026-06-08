@@ -162,8 +162,8 @@ router.get("/creator", authMiddleware, async (req, res) => {
         $group: {
           _id: "$gamePost",
           totalSessions:    { $sum: 1 },
-          totalSessionTime: { $sum: "$billing.billedPlayTimeMs" },
-          avgSessionTime:   { $avg: "$billing.billedPlayTimeMs" },
+          totalSessionTime: { $sum: "$metrics.totalPlayTime" },
+          avgSessionTime:   { $avg: "$metrics.totalPlayTime" },
           uniqueUserIds:    { $addToSet: "$user" },
           totalCreditsBurned: {
             $sum: "$billing.creditsConsumed"
@@ -197,11 +197,11 @@ const sessionMap = new Map(
 
         uniquePlayers,
 
-        repeatPlayers:
-          Math.max(
-            0,
-            totalSessions - uniquePlayers
-          ),
+        // repeatPlayers:
+        //   Math.max(
+        //     0,
+        //     totalSessions - uniquePlayers
+        //   ),
       },
     ];
   })
@@ -281,8 +281,8 @@ const sessionMap = new Map(
         avgWatchTimeMs: analytics.avgWatchTimeMs || 0,
         likes:       post.likesCount    || lt.likes    || 0,
         comments:    post.commentsCount || lt.comments || 0,
-        engagementRate: post.viewsCount > 0
-          ? Number((((post.likesCount + post.commentsCount) / post.viewsCount) * 100).toFixed(2))
+        engagementRate: post.uniqueViewsCount > 0
+          ? Number((((post.likesCount + post.commentsCount) / post.uniqueViewsCount) * 100).toFixed(2))
           : 0,
       };
 
@@ -315,13 +315,16 @@ const sessionMap = new Map(
         const sessions         = sessionData.totalSessions || lt.sessions || 0;
         const sessionPlayTimeMs= sessionData.totalSessionTime || lt.sessionPlayTimeMs || 0;
         const uniquePlayers    = sessionData.uniquePlayers || lt.uniquePlayers || 0;
-        const repeatPlayers    = sessionData.repeatPlayers || lt.repeatPlayers || 0;
+        // const repeatPlayers    = sessionData.repeatPlayers || lt.repeatPlayers || 0;
         const totalSessions    = sessions;
-        const retentionRate    = uniquePlayers > 0
-          ? Number(((repeatPlayers / uniquePlayers) * 100).toFixed(2))
-          : 0;
+        // const retentionRate    = uniquePlayers > 0
+        //   ? Number(((repeatPlayers / uniquePlayers) * 100).toFixed(2))
+        //   : 0;
         const demoConversionRate = uniqueV > 0
           ? Number(((demoConsumptions / uniqueV) * 100).toFixed(2))
+          : 0;
+        const playerConversionRate = uniqueV > 0
+          ? Number(((uniquePlayers / uniqueV) * 100).toFixed(2))
           : 0;
         const avgSessionDurationMs = totalSessions > 0
           ? Math.round(sessionPlayTimeMs / totalSessions)
@@ -343,6 +346,7 @@ const sessionMap = new Map(
           avgSessionTime:   sessionData.avgSessionTime || avgSessionDurationMs,
           demoConsumption:  demoConsumptions,
           conversionRate:   demoConversionRate,
+
           developerCreditsBurned:
   sessionData.totalCreditsBurned || 0,
 
@@ -350,13 +354,14 @@ const sessionMap = new Map(
             ...lifetimeBase,
             demoConsumptions,
             demoConversionRate,
+            playerConversionRate,
             sessions,
             sessionPlayTimeMs,
             avgSessionDurationMs,
             avgPlayTimePerUserMs,
             uniquePlayers,
-            repeatPlayers,
-            retentionRate,
+            // repeatPlayers,
+            // retentionRate,
             developerCreditsBurned:
   sessionData.totalCreditsBurned || 0,
           },
