@@ -18,7 +18,7 @@ import DevlogViewer from "./Pages/DevlogViewer";
 import AdminPocketDashboard from "./Pages/AdminPocketDashboard";
 import PostModal from "./components/PostModal";
 import PostDetailsPage from "./Pages/PostDetailsPage";
-import Puck from "./Pages/Puck";
+// import Puck from "./Pages/Puck";
 import StreamPage from "./Pages/StreamPage";
 import ForgotPassword from "./Pages/ForgotPassword";
 import VerifyEmail from "./Pages/VerifyEmail";
@@ -70,7 +70,7 @@ export const router = createBrowserRouter([
   { path: "/gameupload", element: <UploadGame /> },
   { path: "/games", element: <GamePost /> },
 
-  { path: "/puck", element: <Puck /> },
+  // { path: "/puck", element: <Puck /> },
   { path: "/recommendations", element: <Recommendations /> },
   { path: "/recommendationsposts", element: <RecommendationPosts /> },
 

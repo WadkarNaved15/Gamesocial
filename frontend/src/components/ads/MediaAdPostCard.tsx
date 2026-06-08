@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useState, useRef } from "react";
 import { Sparkles } from "lucide-react";
 
 type MediaAsset = {
@@ -35,7 +35,7 @@ const PRESET_ACCENTS = [
 const MediaAdPostCard: React.FC<Props> = ({
   brandName,
   brandLogo,
-  description,
+  description = "",
   ctaText,
   asset,
   accentColor,
@@ -44,32 +44,46 @@ const MediaAdPostCard: React.FC<Props> = ({
   rgbAccent,
   interactiveTilt = false,
 }) => {
-  const ref = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  // Track hover state to cleanly handle transition swapping
+  const [isHovered, setIsHovered] = useState(false);
+
+  const CHARACTER_LIMIT = 120;
+  const isLongText = description.length > CHARACTER_LIMIT;
+
+  const displayedText = isLongText && !isExpanded 
+    ? `${description.slice(0, CHARACTER_LIMIT)}... ` 
+    : description;
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!interactiveTilt || !ref.current) return;
+    if (!interactiveTilt || !cardRef.current) return;
 
-    const rect = ref.current.getBoundingClientRect();
+    // We calculate coordinates relative to the stable bounding box container
+    const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
     const xc = rect.width / 2;
     const yc = rect.height / 2;
 
-    const rotateX = (yc - y) / 25;
-    const rotateY = (x - xc) / 25;
+    // Smoothly limits the maximum tilt rotation angle
+    const rotateX = (yc - y) / 50;
+    const rotateY = (x - xc) / 50;
 
-    ref.current.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+    setIsHovered(true);
+    cardRef.current.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
   };
 
   const resetTilt = () => {
-    if (!ref.current) return;
-    ref.current.style.transform = "perspective(1000px) rotateX(0deg) rotateY(0deg)";
+    if (!cardRef.current) return;
+    setIsHovered(false);
+    cardRef.current.style.transform = "perspective(1000px) rotateX(0deg) rotateY(0deg)";
   };
 
   const baseGlow = useGlowEffect 
-    ? `0 20px 50px rgba(${rgbAccent}, 0.28)` 
-    : "0 12px 40px rgba(0, 0, 0, 0.3)";
+    ? `0 10px 25px rgba(${rgbAccent}, 0.17)` 
+    : "0 6px 20px rgba(0, 0, 0, 0.3)";
 
   const getDynamicCardStyles = (): React.CSSProperties => {
     if (cardLayoutTheme === "glass") {
@@ -98,82 +112,113 @@ const MediaAdPostCard: React.FC<Props> = ({
   const buttonTextColor = PRESET_ACCENTS.find(p => p.hex === accentColor)?.text || "#ffffff";
 
   return (
+    /* 
+      1. STABLE BOUNDING BOX WRAPPER
+      This container handles mouse listeners, stays perfectly flat, and prevents 
+      edge-calculated stutter loops.
+    */
     <div
-      ref={ref}
       onMouseMove={handleMouseMove}
       onMouseLeave={resetTilt}
-      className="w-full max-w-full rounded-2xl overflow-hidden transition-all duration-150 ease-out p-0.5 group select-none"
-      style={{
-        ...getDynamicCardStyles(),
-        transformStyle: "preserve-3d",
-      }}
+      className="w-full max-w-full relative block select-none"
+      style={{ perspective: "1000px" }}
     >
-      {/* ADVANCED HEAD BANNER */}
-      <div className="flex justify-between items-center px-4 pt-4 pb-3" style={{ transform: "translateZ(20px)" }}>
-        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 shadow-sm">
-          <img src={brandLogo || "/default_avatar.png"} className="w-8 h-8 rounded-full object-cover" alt="Brand Identity" />
-          <span className="text-white text-xs font-bold tracking-wide drop-shadow-sm">
-            {brandName || "Brand Identity"}
+      {/* 
+        2. VISUAL TILT LAYER 
+        This internal div handles only the visual transformations.
+        Notice we conditionally add the transition: instantaneous tracking on move,
+        smooth 300ms glide snap back when moving away.
+      */}
+      <div
+        ref={cardRef}
+        className="w-full h-full rounded-2xl overflow-hidden p-0.5 group"
+        style={{
+          ...getDynamicCardStyles(),
+          transformStyle: "preserve-3d",
+          transition: isHovered ? "none" : "transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s ease",
+        }}
+      >
+        {/* ADVANCED HEAD BANNER */}
+        <div className="flex justify-between items-center px-4 pt-4 pb-3" style={{ transform: "translateZ(20px)" }}>
+          <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-md border border-white/10 shadow-sm">
+            <img src={brandLogo || "/default_avatar.png"} className="w-8 h-8 rounded-full object-cover" alt="Brand Identity" />
+            <span className="text-white text-xs font-bold tracking-wide drop-shadow-sm">
+              {brandName || "Brand Identity"}
+            </span>
+          </div>
+
+          {/* HIGH ACCENT GLOW BADGE */}
+          <span
+            className="text-[9px] font-black uppercase tracking-widest px-3 py-1 text-white border rounded-full transition-colors"
+            style={{
+              backgroundColor: `rgba(${rgbAccent}, 0.25)`,
+              borderColor: accentColor,
+              boxShadow: `0 0 12px rgba(${rgbAccent}, 0.4)`,
+            }}
+          >
+            ✦ Sponsored ✦
           </span>
         </div>
 
-        {/* HIGH ACCENT GLOW BADGE */}
-        <span
-          className="text-[9px] font-black uppercase tracking-widest px-3 py-1 text-white border rounded-full transition-colors"
-          style={{
-            backgroundColor: `rgba(${rgbAccent}, 0.25)`,
-            borderColor: accentColor,
-            boxShadow: `0 0 12px rgba(${rgbAccent}, 0.4)`,
-          }}
-        >
-          ✦ Sponsored ✦
-        </span>
-      </div>
-
-      {/* VISUAL PAYLOAD BLOCK */}
-      <div className="h-[400px] bg-zinc-950 flex items-center justify-center relative overflow-hidden border-y border-white/5">
-        {asset ? (
-          asset.type === "video" ? (
-            <video src={asset.url} autoPlay muted loop className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700" />
+        {/* VISUAL PAYLOAD BLOCK */}
+        <div className="h-[400px] bg-zinc-950 flex items-center justify-center relative overflow-hidden border-y border-white/5">
+          {asset ? (
+            asset.type === "video" ? (
+              <video src={asset.url} autoPlay muted loop className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700" />
+            ) : (
+              <img src={asset.url} alt="Creative Payload" className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700" />
+            )
           ) : (
-            <img src={asset.url} alt="Creative Payload" className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700" />
-          )
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-30 bg-gradient-to-tr from-zinc-900 to-zinc-950">
-            <Sparkles size={32} style={{ color: accentColor }} className="animate-spin [animation-duration:8s]" />
-            <span className="text-white text-[10px] font-bold uppercase tracking-widest">Aura Medium Canvas Preview</span>
-          </div>
-        )}
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-30 bg-gradient-to-tr from-zinc-900 to-zinc-950">
+              <Sparkles size={32} style={{ color: accentColor }} className="animate-spin [animation-duration:8s]" />
+              <span className="text-white text-[10px] font-bold uppercase tracking-widest">Aura Medium Canvas Preview</span>
+            </div>
+          )}
 
-        {/* PREMIUM OVERLAY SHADOW GRADIENT TO STAND OUT */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
-      </div>
+          {/* PREMIUM OVERLAY SHADOW GRADIENT TO STAND OUT */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
+        </div>
 
-      {/* PREMIUM GLOW-ALIGNED TEXT LABELS */}
-      <div className="p-4 space-y-3" style={{ transform: "translateZ(25px)" }}>
-        {description ? (
-          <p className="text-sm leading-relaxed font-light text-zinc-100 tracking-wide drop-shadow-sm">
-            {description}
-          </p>
-        ) : (
-          <p className="text-sm italic font-light text-zinc-600 tracking-wide">
-            Draft your ad copy layout here...
-          </p>
-        )}
+        {/* FLOATING TEXT & CTA CONTAINER */}
+        <div 
+          className="p-4 text-sm leading-relaxed font-light text-zinc-100 tracking-wide drop-shadow-sm break-words" 
+          style={{ transform: "translateZ(25px)" }}
+        >
+          {/* The Button floats right inside the block container */}
+          {ctaText && (
+            <button
+              className="float-right ml-4 mb-1.5 px-8 py-2.5 -translate-y-[6px] transition rounded-xl text-[11px] font-black uppercase tracking-widest shadow-xl transform active:scale-[0.99] hover:brightness-110 flex items-center justify-center gap-1.5 whitespace-nowrap select-none"
+              style={{
+                backgroundColor: accentColor,
+                boxShadow: useGlowEffect ? `0 6px 15px rgba(${rgbAccent}, 0.3)` : "none",
+                color: buttonTextColor,
+              }}
+            >
+              <span>{ctaText}</span>
+              <span className="opacity-60 text-xs">→</span>
+            </button>
+          )}
 
-        {ctaText && (
-          <button
-            className="w-full py-3 transition rounded-xl text-xs font-black uppercase tracking-widest shadow-xl transform active:scale-[0.99] hover:brightness-110 flex items-center justify-center gap-1"
-            style={{
-              backgroundColor: accentColor,
-              boxShadow: useGlowEffect ? `0 6px 20px rgba(${rgbAccent}, 0.4)` : "none",
-              color: buttonTextColor,
-            }}
-          >
-            <span>{ctaText}</span>
-            <span className="opacity-50 text-sm">→</span>
-          </button>
-        )}
+          {/* Text rendering with inline toggle link */}
+          {description ? (
+            <>
+              <span>{displayedText}</span>
+              {isLongText && (
+                <button 
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="text-[11px] font-bold tracking-wide uppercase transition-all duration-150 ml-1 bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md inline-block align-middle cursor-pointer"
+                  style={{ color: accentColor }}
+                >
+                  {isExpanded ? "Show less" : "Show more"}
+                </button>
+              )}
+            </>
+          ) : (
+            <span className="italic text-zinc-600">
+              Draft your ad copy layout here...
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
