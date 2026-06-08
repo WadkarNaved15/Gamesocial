@@ -86,11 +86,12 @@ interface LifetimeBlock {
   avgSessionDurationMs?: number;
   avgPlayTimePerUserMs?: number;
   uniquePlayers?: number;
-  repeatPlayers?: number;
-  retentionRate?: number;
+  // repeatPlayers?: number;
+  // retentionRate?: number;
   vertices?: number;
   triangles?: number;
   developerCreditsBurned?: number;
+  playerConversionRate?: number;
 }
 interface CreatorAsset {
   _id: string;
@@ -469,10 +470,10 @@ function LifetimeVisualPanel({ asset, cfg }: { asset: CreatorAsset; cfg: AssetCf
   const hasSessions = isGame && (lt.sessions ?? 0) > 0;
 
   const engRate = lt.engagementRate;
-  const likeRate = safeDiv(lt.likes, lt.views) * 100;
-  const commentRate = safeDiv(lt.comments, lt.views) * 100;
+  const likeRate = safeDiv(lt.likes, lt.uniqueViews) * 100;
+  const commentRate = safeDiv(lt.comments, lt.uniqueViews) * 100;
   const demoConv = safeDiv(lt.demoConsumptions ?? 0, lt.uniqueViews) * 100;
-  const retentionRate = lt.retentionRate ?? 0;
+  // const retentionRate = lt.retentionRate ?? 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -543,6 +544,12 @@ function LifetimeVisualPanel({ asset, cfg }: { asset: CreatorAsset; cfg: AssetCf
               { label: "Unique Players", value: fmt(lt.uniquePlayers ?? 0), icon: "ti-users", color: cfg.color },
               { label: "Avg Session", value: fmtMs(lt.avgSessionDurationMs ?? 0), icon: "ti-clock", color: T.tealLight },
               { label: "Play / User", value: fmtMs(lt.avgPlayTimePerUserMs ?? 0), icon: "ti-player-play", color: T.tealLight },
+              {
+  label: "Demo Users",
+  value: fmt(lt.demoConsumptions ?? 0),
+  icon: "ti-player-play",
+  color: T.success,
+},
             ].map(({ label, value, icon, color }) => (
               <div key={label} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "12px 14px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
@@ -553,7 +560,7 @@ function LifetimeVisualPanel({ asset, cfg }: { asset: CreatorAsset; cfg: AssetCf
               </div>
             ))}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {/* <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                 <span style={{ fontSize: 10, color: T.textSecondary }}>Retention rate</span>
@@ -561,7 +568,7 @@ function LifetimeVisualPanel({ asset, cfg }: { asset: CreatorAsset; cfg: AssetCf
               </div>
               <MiniProgressBar value={retentionRate} max={100} color={retentionRate >= 25 ? T.success : T.negative} height={4} />
             </div>
-          </div>
+          </div> */}
         </div>
       )}
 
@@ -573,7 +580,7 @@ function LifetimeVisualPanel({ asset, cfg }: { asset: CreatorAsset; cfg: AssetCf
             <RadialGauge value={demoConv} max={50} label="Conv. Rate" color={T.success} size={80} />
             <div style={{ flex: 1 }}>
               <p style={{ fontSize: 22, fontWeight: 700, color: T.textPrimary, letterSpacing: "-0.02em" }}>{demoConv.toFixed(1)}%</p>
-              <p style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>{fmt(lt.demoConsumptions!)} plays from {fmt(lt.uniqueViews)} uniques</p>
+              <p style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>{fmt(lt.demoConsumptions ?? 0)} demo users from {fmt(lt.uniqueViews ?? 0)} unique viewers</p>
               <div style={{ marginTop: 8 }}>
                 <MiniProgressBar value={demoConv} max={50} color={T.success} height={5} />
               </div>
@@ -623,7 +630,7 @@ function generateAssetInsights(asset: CreatorAsset): InsightCardProps[] {
   const likeRate = safeDiv(lt.likes, lt.views) * 100;
   const watchAvg = lt.avgWatchTimeMs;
   const demoConv = safeDiv(lt.demoConsumptions ?? 0, lt.uniqueViews) * 100;
-  const retention = lt.retentionRate ?? 0;
+  // const retention = lt.retentionRate ?? 0;
 
   if (gi.weekOverWeekGrowth > 15) {
     insights.push({ icon: "ti-trending-up", title: "Strong week-over-week growth", body: `Views grew ${gi.weekOverWeekGrowth.toFixed(1)}% this week — momentum is accelerating.`, sentiment: "positive" });
@@ -1086,9 +1093,15 @@ function AssetAnalytics({ asset, dateRange }: { asset: CreatorAsset; dateRange: 
   const wArr = isTimeSeries ? getChartArr(asset, "watchTime",        dateRange) : [];
   const labels = isTimeSeries ? makeDateLabels(vArr, dateRange) : [];
 
-  const likeRate     = safeDiv(lt.likes, lt.views, 0);
-  const commentRate  = safeDiv(lt.comments, lt.views, 0);
+  const likeRate     = safeDiv(lt.likes, lt.uniqueViews, 0);
+  const commentRate  = safeDiv(lt.comments, lt.uniqueViews, 0);
   const demoConvRate = safeDiv(lt.demoConsumptions ?? 0, lt.uniqueViews, 0);
+  const playerConvRate =
+  safeDiv(
+    lt.uniquePlayers ?? 0,
+    lt.uniqueViews,
+    0
+  ) * 100;
 
   const isGame      = asset.type === "game";
   const hasDemos    = (lt.demoConsumptions ?? 0) > 0 && lt.uniqueViews > 0;
@@ -1239,7 +1252,7 @@ function AssetAnalytics({ asset, dateRange }: { asset: CreatorAsset; dateRange: 
           <KpiCard icon="ti-chart-pie"        rawValue={Math.round(lt.engagementRate * 10)}  displayFn={v => (v / 10).toFixed(1) + "%"} label="Engagement rate" accent={cfg.color} />
           <KpiCard icon="ti-clock"            rawValue={lt.avgWatchTimeMs}                   displayFn={fmtMs}                          label="Avg watch time"  accent={cfg.color} />
           {hasDemos && <KpiCard icon="ti-player-play" rawValue={Math.round(demoConvRate * 1000)} displayFn={v => (v / 10).toFixed(1) + "%"} label="Demo conv. rate" accent={T.success} />}
-          {hasSessions && <KpiCard icon="ti-users"    rawValue={lt.retentionRate ?? 0}           displayFn={v => Math.round(v) + "%"}       label="Retention rate"  accent={T.success} />}
+          {/* {hasSessions && <KpiCard icon="ti-users"    rawValue={lt.retentionRate ?? 0}           displayFn={v => Math.round(v) + "%"}       label="Retention rate"  accent={T.success} />} */}
         </div>
         {/* Detailed table */}
         <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 10, padding: "2px 14px 6px" }}>
@@ -1254,16 +1267,25 @@ function AssetAnalytics({ asset, dateRange }: { asset: CreatorAsset; dateRange: 
             <>
               <MetricRow label="Demo plays"            value={fmt(lt.demoConsumptions!)}            />
               <MetricRow label="Demo conversion rate"  value={`${(demoConvRate * 100).toFixed(2)}%`} positive={demoConvRate >= 0.1} />
-              {lt.demoConversionRate !== undefined && (
+              <MetricRow
+  label="View → Play Conversion"
+  value={`${playerConvRate.toFixed(2)}%`}
+/>
+<MetricRow
+  label="View → Demo Conversion"
+  value={`${(demoConvRate * 100).toFixed(2)}%`}
+/>
+
+              {/* {lt.demoConversionRate !== undefined && (
                 <MetricRow label="Demo conv (server)"  value={`${lt.demoConversionRate.toFixed(2)}%`} />
-              )}
+              )} */}
             </>
           )}
           {hasSessions && (
             <>
               <MetricRow label="Total sessions"        value={fmt(lt.sessions!)}                   />
               <MetricRow label="Unique players"        value={fmt(lt.uniquePlayers ?? 0)}           />
-              <MetricRow label="Retention rate"        value={`${(lt.retentionRate ?? 0).toFixed(1)}%`} positive={(lt.retentionRate ?? 0) >= 25} />
+              {/* <MetricRow label="Retention rate"        value={`${(lt.retentionRate ?? 0).toFixed(1)}%`} positive={(lt.retentionRate ?? 0) >= 25} /> */}
               <MetricRow label="Avg session length"    value={fmtMs(lt.avgSessionDurationMs ?? 0)} />
               <MetricRow label="Avg play time / user"  value={fmtMs(lt.avgPlayTimePerUserMs ?? 0)} />
             </>
@@ -1464,8 +1486,8 @@ export default function RigzerPortfolioAnalytics() {
             avgSessionDurationMs: Number(a.lifetime?.avgSessionDurationMs)|| 0,
             avgPlayTimePerUserMs: Number(a.lifetime?.avgPlayTimePerUserMs) || 0,
             uniquePlayers:        Number(a.lifetime?.uniquePlayers)       || 0,
-            repeatPlayers:        Number(a.lifetime?.repeatPlayers)       || 0,
-            retentionRate:        Number(a.lifetime?.retentionRate)       || 0,
+            // repeatPlayers:        Number(a.lifetime?.repeatPlayers)       || 0,
+            // retentionRate:        Number(a.lifetime?.retentionRate)       || 0,
             vertices:             Number(a.lifetime?.vertices)            || Number(a.vertices)         || 0,
             triangles:            Number(a.lifetime?.triangles)           || Number(a.triangles)        || 0,
           },
