@@ -9,6 +9,7 @@ const ExePost = lazy(() => import("./Post/ExePost"));
 const DevlogPost = lazy(() => import("./Post/DevlogPost"));
 const AdModelPost = lazy(() => import("./Post/AdModelPost"));
 const PocketPost = lazy(() => import("./Post/PocketPost"));
+const MediaAdPost = lazy(() => import("./Post/MediaAdPost"));
 
 type PostWrapperProps = PostProps & {
   onOpenDetails?: () => void;
@@ -129,6 +130,8 @@ export const Post: React.FC<PostWrapperProps> = (props) => {
         return AdModelPost as React.ComponentType<PostWrapperProps>;
       case "pocket_update":
         return PocketPost as React.ComponentType<PostWrapperProps>;
+      case "media_ad_post":
+        return MediaAdPost as React.ComponentType<PostWrapperProps>;
       default:
         return NormalPost as React.ComponentType<PostWrapperProps>;
     }
