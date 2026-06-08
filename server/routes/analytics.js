@@ -162,8 +162,8 @@ router.get("/creator", authMiddleware, async (req, res) => {
         $group: {
           _id: "$gamePost",
           totalSessions:    { $sum: 1 },
-          totalSessionTime: { $sum: "$billing.billedPlayTimeMs" },
-          avgSessionTime:   { $avg: "$billing.billedPlayTimeMs" },
+          totalSessionTime: { $sum: "$metrics.totalPlayTime" },
+          avgSessionTime:   { $avg: "$metrics.totalPlayTime" },
           uniqueUserIds:    { $addToSet: "$user" },
           totalCreditsBurned: {
             $sum: "$billing.creditsConsumed"

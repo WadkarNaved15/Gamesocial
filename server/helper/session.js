@@ -125,24 +125,110 @@ export async function finalizeSession(
 if (!lockSession) {
   return;
 }
+  const endedAt = new Date();
+
   const playTimeMs =
-    session.billing?.billedPlayTimeMs || 0;
+    session.startedAt
+      ? Math.max(
+          0,
+          endedAt.getTime() -
+            new Date(
+              session.startedAt
+            ).getTime()
+        )
+      : 0;
 
-  const creditsConsumed =
-    session.billing?.creditsConsumed || 0;
+  let creditsConsumed =
+  session.billing?.creditsConsumed || 0;
 
-  await GameSession.updateOne(
-    { _id: session._id },
+  const expectedCredits = Math.max(
+  1,
+  Math.round(playTimeMs / 60000)
+);
+
+  const creditAdjustment =
+    expectedCredits -
+    creditsConsumed;
+
+  const post = await AllPost.findById(
+  session.gamePost
+).select(
+  "gamePost.creditBudget.remainingCredits"
+);
+
+const availableCredits =
+  post?.gamePost?.creditBudget
+    ?.remainingCredits || 0;
+
+const adjustmentToCharge =
+  Math.min(
+    creditAdjustment,
+    availableCredits
+  );
+
+
+
+  if (adjustmentToCharge > 0) {
+  const billedMs =
+  adjustmentToCharge * 60000;
+
+  await AllPost.updateOne(
     {
-      $set: {
-        status: "ended",
-        endedAt: new Date(),
-        exitReason,
-        "metrics.totalPlayTime":
-          playTimeMs,
+      _id: session.gamePost,
+    },
+    {
+      $inc: {
+        "gamePost.creditBudget.usedCredits":
+          adjustmentToCharge,
+
+        "gamePost.creditBudget.remainingCredits":
+          -adjustmentToCharge,
+
+        "gamePost.gameMetrics.totalSessionTimeMs":
+          billedMs,
       },
     }
   );
+
+  await GameSession.updateOne(
+    {
+      _id: session._id,
+    },
+    {
+      $inc: {
+        "billing.creditsConsumed":
+          adjustmentToCharge,
+
+        "billing.billedPlayTimeMs":
+          billedMs,
+      },
+    }
+  );
+
+  session.billing.creditsConsumed +=
+    adjustmentToCharge;
+
+  creditsConsumed =
+  session.billing.creditsConsumed;
+
+  session.billing.billedPlayTimeMs =
+    (session.billing
+      ?.billedPlayTimeMs || 0) +
+    billedMs;
+}
+
+  await GameSession.updateOne(
+  { _id: session._id },
+  {
+    $set: {
+      status: "ended",
+      endedAt,
+      exitReason,
+      "metrics.totalPlayTime":
+        playTimeMs,
+    },
+  }
+);
 
   if (
     playTimeMs > 0 ||
