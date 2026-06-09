@@ -11,7 +11,7 @@ import CreatePostPage from "./Pages/CreatePostPage";
 import WishlistPage from "./Pages/WishlistPage";
 import GameShowcase from "./Pages/GameShowcase";
 import UploadGame from "./Pages/UploadGame";
-import DevLogs from "./Pages/DevLogs";
+// import DevLogs from "./Pages/DevLogs";
 import DevLogsView from "./Pages/DevLogViewPage";
 import DevLogCanvas from "./Pages/DevlogCanvas";
 import DevlogViewer from "./Pages/DevlogViewer";
@@ -60,7 +60,7 @@ export const router = createBrowserRouter([
   { path: "/publisher", element: <PublisherForm /> },
   { path: "/createpost", element: <CreatePostPage /> },
 
-  { path: "/devlogs", element: <DevLogs /> },
+  // { path: "/devlogs", element: <DevLogs /> },
   { path: "/devlogs/view/:id", element: <DevLogsView /> },
   { path: "/devlogCanvas", element: <DevLogCanvas /> },
   { path: "/devlogviewer/:devlogId", element: <DevlogViewer /> },
