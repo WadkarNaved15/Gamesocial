@@ -52,8 +52,8 @@ const MediaAdPostCard: React.FC<Props> = ({
   const CHARACTER_LIMIT = 120;
   const isLongText = description.length > CHARACTER_LIMIT;
 
-  const displayedText = isLongText && !isExpanded 
-    ? `${description.slice(0, CHARACTER_LIMIT)}... ` 
+  const displayedText = isLongText && !isExpanded
+    ? `${description.slice(0, CHARACTER_LIMIT)}... `
     : description;
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -68,8 +68,8 @@ const MediaAdPostCard: React.FC<Props> = ({
     const yc = rect.height / 2;
 
     // Smoothly limits the maximum tilt rotation angle
-    const rotateX = (yc - y) / 50;
-    const rotateY = (x - xc) / 50;
+    const rotateX = (yc - y) / 55;
+    const rotateY = (x - xc) / 55;
 
     setIsHovered(true);
     cardRef.current.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
@@ -81,8 +81,8 @@ const MediaAdPostCard: React.FC<Props> = ({
     cardRef.current.style.transform = "perspective(1000px) rotateX(0deg) rotateY(0deg)";
   };
 
-  const baseGlow = useGlowEffect 
-    ? `0 10px 25px rgba(${rgbAccent}, 0.17)` 
+  const baseGlow = useGlowEffect
+    ? `0 10px 25px rgba(${rgbAccent}, 0.17)`
     : "0 6px 20px rgba(0, 0, 0, 0.3)";
 
   const getDynamicCardStyles = (): React.CSSProperties => {
@@ -135,7 +135,9 @@ const MediaAdPostCard: React.FC<Props> = ({
         style={{
           ...getDynamicCardStyles(),
           transformStyle: "preserve-3d",
-          transition: isHovered ? "none" : "transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s ease",
+          transition: isHovered
+            ? "transform 0.1s ease-out, box-shadow 0.3s ease"
+            : "transform 0.5s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s ease",
         }}
       >
         {/* ADVANCED HEAD BANNER */}
@@ -180,8 +182,8 @@ const MediaAdPostCard: React.FC<Props> = ({
         </div>
 
         {/* FLOATING TEXT & CTA CONTAINER */}
-        <div 
-          className="p-4 text-sm leading-relaxed font-light text-zinc-100 tracking-wide drop-shadow-sm break-words" 
+        <div
+          className="p-4 text-sm leading-relaxed font-light text-zinc-100 tracking-wide drop-shadow-sm break-words"
           style={{ transform: "translateZ(25px)" }}
         >
           {/* The Button floats right inside the block container */}
@@ -204,7 +206,7 @@ const MediaAdPostCard: React.FC<Props> = ({
             <>
               <span>{displayedText}</span>
               {isLongText && (
-                <button 
+                <button
                   onClick={() => setIsExpanded(!isExpanded)}
                   className="text-[11px] font-bold tracking-wide uppercase transition-all duration-150 ml-1 bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md inline-block align-middle cursor-pointer"
                   style={{ color: accentColor }}
