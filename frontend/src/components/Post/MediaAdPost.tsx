@@ -1,6 +1,7 @@
 import React from "react";
 import type { MediaAdPostProps } from "../../types/Post";
 import MediaAdPostCard from "../../components/ads/MediaAdPostCard";
+import { trackEvent } from "../../utils/analytics";
 
 type Props = MediaAdPostProps & {
   onOpenDetails?: () => void;
@@ -29,6 +30,7 @@ const MediaAdPost: React.FC<Props> = ({
   if (!mediaAdPost) return null;
 
   const {
+    _id,
     brandName,
     brandLogo,
     description,
@@ -51,6 +53,22 @@ const MediaAdPost: React.FC<Props> = ({
   // Derive the required rgb variant for shadows and glows
   const rgbAccent = hexToRgbString(accentColor);
 
+  const handleCtaClick = () => {
+  trackEvent({
+    eventType: "ad_click",
+    targetType: "ad",
+    targetId: _id,
+
+    metadata: {
+      adType: "media_ad_post",
+      brand: brandName,
+      ctaText,
+      ctaLink,
+    },
+  });
+};
+
+  
   return (
     <article
       // onClick={() => onOpenDetails?.()}
@@ -82,7 +100,8 @@ const MediaAdPost: React.FC<Props> = ({
           useGlowEffect={useGlowEffect}
           cardLayoutTheme={cardLayoutTheme}
           rgbAccent={rgbAccent}
-          interactiveTilt={true} // Feed activation: users get interactive feedback during scroll sequences
+          interactiveTilt={true}
+          onCtaClick={handleCtaClick}
         />
       </div>
     </article>

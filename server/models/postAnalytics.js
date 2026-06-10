@@ -45,6 +45,11 @@ const PostAnalyticsSchema = new mongoose.Schema(
 
       likes:          { type: Number, default: 0, min: 0 },
       comments:       { type: Number, default: 0, min: 0 },
+      shares: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
 
       demoConsumptions: { type: Number, default: 0, min: 0 },
 
@@ -67,6 +72,10 @@ const PostAnalyticsSchema = new mongoose.Schema(
 
         likes:    { type: Number, default: 0 }, // can go negative transiently
         comments: { type: Number, default: 0 },
+        shares: {
+          type: Number,
+          default: 0
+        },
 
         demoConsumptions: { type: Number, default: 0, min: 0 },
 

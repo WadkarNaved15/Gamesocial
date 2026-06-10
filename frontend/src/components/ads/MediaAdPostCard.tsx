@@ -13,6 +13,9 @@ type Props = {
   description?: string;
   ctaText?: string;
   ctaLink?: string;
+
+  onCtaClick?: () => void;
+
   asset?: MediaAsset | null;
 
   accentColor: string;
@@ -22,6 +25,7 @@ type Props = {
   rgbAccent: string;
   interactiveTilt?: boolean;
 };
+
 
 const PRESET_ACCENTS = [
   { hex: "#18181b", text: "#ffffff" },
@@ -37,6 +41,10 @@ const MediaAdPostCard: React.FC<Props> = ({
   brandLogo,
   description,
   ctaText,
+  ctaLink,
+
+  onCtaClick,
+
   asset,
   accentColor,
   useGlowEffect,
@@ -163,16 +171,31 @@ const MediaAdPostCard: React.FC<Props> = ({
 
         {ctaText && (
           <button
-            className="w-full py-3 transition rounded-xl text-xs font-black uppercase tracking-widest shadow-xl transform active:scale-[0.99] hover:brightness-110 flex items-center justify-center gap-1"
-            style={{
-              backgroundColor: accentColor,
-              boxShadow: useGlowEffect ? `0 6px 20px rgba(${rgbAccent}, 0.4)` : "none",
-              color: buttonTextColor,
-            }}
-          >
-            <span>{ctaText}</span>
-            <span className="opacity-50 text-sm">→</span>
-          </button>
+  onClick={(e) => {
+    e.stopPropagation();
+
+    onCtaClick?.();
+
+    if (ctaLink) {
+      window.open(
+        ctaLink,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    }
+  }}
+  className="w-full py-3 transition rounded-xl text-xs font-black uppercase tracking-widest shadow-xl transform active:scale-[0.99] hover:brightness-110 flex items-center justify-center gap-1"
+  style={{
+    backgroundColor: accentColor,
+    boxShadow: useGlowEffect
+      ? `0 6px 20px rgba(${rgbAccent}, 0.4)`
+      : "none",
+    color: buttonTextColor,
+  }}
+>
+  <span>{ctaText}</span>
+  <span className="opacity-50 text-sm">→</span>
+</button>
         )}
       </div>
     </div>

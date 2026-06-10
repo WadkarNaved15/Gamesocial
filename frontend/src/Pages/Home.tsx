@@ -8,12 +8,13 @@ import {
 import { useSearchParams } from "react-router-dom";
 import { useFeed } from "../context/FeedContext";
 import Post from "../components/Post";
-import axios from "axios";
 import PostSkeleton from "../components/Home/PostSkeleton";
 import type { PostProps } from "../types/Post";
 import CircleLoader from "../components/Loader/CircleLoader";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { trackEvent } from "../utils/analytics";
+import api from "../utils/api";
 
 function Home() {
   const navigate = useNavigate();
@@ -47,10 +48,15 @@ function Home() {
       setLoading(true);
 
       try {
-        const res = await axios.get(`${BACKEND_URL}/api/posts/fetch_posts`, {
-          params: { cursor: reset ? null : nextCursor, limit: 5 },
-          withCredentials: true,
-        });
+        const res = await api.get(
+          "/api/posts/fetch_posts",
+          {
+            params: {
+              cursor: reset ? null : nextCursor,
+              limit: 5,
+            },
+          }
+        );
         const newPosts = res.data.posts;
         const newCursor = res.data.nextCursor;
 
@@ -79,6 +85,7 @@ function Home() {
   );
   const fetchRef = useRef(fetchMainPosts);
 
+
   useEffect(() => {
     fetchRef.current = fetchMainPosts;
   }, [fetchMainPosts]);
@@ -93,13 +100,16 @@ function Home() {
       setSearchExecuted(true);
 
       try {
-        const res = await axios.get(`${BACKEND_URL}/api/posts/filter_posts`, {
-          params: {
-            query,
-            cursor: reset ? null : searchCursor,
-            limit: 5,
-          },
-        });
+        const res = await api.get(
+          "/api/posts/filter_posts",
+          {
+            params: {
+              query,
+              cursor: reset ? null : searchCursor,
+              limit: 5,
+            },
+          }
+        );
 
         const newPosts = res.data.posts;
         const newCursor = res.data.nextCursor;
@@ -136,19 +146,26 @@ function Home() {
   }, [mainPosts.length, isSearch]);
 
   // ── Search Trigger ───────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!query) {
-      setFilteredPosts([]);
-      setSearchExecuted(false);
-      return;
-    }
-
+useEffect(() => {
+  if (!query) {
     setFilteredPosts([]);
-    setSearchCursor(null);
-    setSearchHasMore(true);
+    setSearchExecuted(false);
+    return;
+  }
 
-    fetchFilteredPosts(query, true);
-  }, [query]);
+  trackEvent({
+    eventType: "search",
+    metadata: {
+      query,
+    },
+  });
+
+  setFilteredPosts([]);
+  setSearchCursor(null);
+  setSearchHasMore(true);
+
+  fetchFilteredPosts(query, true);
+}, [query]);
   // ── Infinite Scroll ──────────────────────────────────────────────────────
   useEffect(() => {
     if (isSearch ? !searchHasMore : !hasMore) return;
@@ -172,6 +189,50 @@ function Home() {
 
     return () => observer.disconnect();
   }, [hasMore, searchHasMore, isSearch, query, fetchFilteredPosts]);
+
+
+
+
+  useEffect(() => {
+  if (isSearch) return;
+
+  trackEvent({
+    eventType: "page_view",
+    targetType: "page",
+    metadata: {
+      page: "home_feed",
+    },
+  });
+}, []);
+
+function trackPostOpen({
+  postId,
+  postType,
+  viewSource = "feed",
+}: {
+  postId: string;
+  postType:
+    | "normal_post"
+    | "model_post"
+    | "game_post"
+    | "canvas_article"
+    | "devlog_post"
+    | "ad_model_post"
+    | "media_ad_post"
+    | "pocket_update";
+  viewSource?: string;
+}) {
+  trackEvent({
+  eventType: "content_view",
+  targetType: postType,
+  targetId: postId,
+
+  metadata: {
+    source: viewSource,
+    page: window.location.pathname,
+  },
+});
+}
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
@@ -203,11 +264,24 @@ function Home() {
               key={post._id}
               {...post}
               viewSource="search"
-              onOpenDetails={() =>
+              onOpenDetails={() => {
+              trackEvent({
+                eventType: "search_click",
+                targetType: post.type,
+                targetId: post._id,
+                metadata: { query },
+              });
+
+              trackPostOpen({
+                postId: post._id,
+                postType: post.type,
+                viewSource: "search",
+              });
+
                 navigate(`/post/${post._id}`, {
-                  state: { post }
-                })
-              }
+                  state: { post },
+                });
+              }}
             />
           ))}
 
@@ -224,13 +298,17 @@ function Home() {
                   key={post._id}
                   {...post}
                   viewSource="feed"
-                  onOpenDetails={() =>
-                    navigate(`/post/${post._id}`, {
-                      state: {
-                        post,
-                      }
-                    })
-                  }
+                   onOpenDetails={() => {
+                  trackPostOpen({
+                    postId: post._id,
+                    postType: post.type,
+                    viewSource: "feed",
+                  });
+
+                  navigate(`/post/${post._id}`, {
+                    state: { post },
+                  });
+                }}
                 />
               ))}
             </div>

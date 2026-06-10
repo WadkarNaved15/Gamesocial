@@ -213,14 +213,62 @@ const GameSessionSchema = new mongoose.Schema(
 GameSessionSchema.index({ user: 1, status: 1 });
 GameSessionSchema.index({ status: 1, expiresAt: 1 });
 GameSessionSchema.index({ status: 1, lastHeartbeat: 1 });
-GameSessionSchema.index({ status: 1, createdAt: 1 }); // ✅ NEW: For FIFO queue
-GameSessionSchema.index({ createdAt: 1, status: 1 }); // ✅ NEW: For age detection
+GameSessionSchema.index({ status: 1, createdAt: 1 });
 GameSessionSchema.index({ gamePost: 1, user: 1, status: 1 });
+
 GameSessionSchema.index({
   status: 1,
   "billing.processing": 1,
   "billing.lastBillingAt": 1,
 });
+
+// Admin Dashboard
+GameSessionSchema.index({
+  user: 1,
+  createdAt: -1,
+});
+
+GameSessionSchema.index({
+  gamePost: 1,
+  status: 1,
+  createdAt: -1,
+});
+
+GameSessionSchema.index({
+  exitReason: 1,
+  endedAt: -1,
+});
+
+GameSessionSchema.index({
+  instanceRegion: 1,
+  status: 1,
+});
+
+GameSessionSchema.index({
+  queueType: 1,
+  status: 1,
+});
+
+GameSessionSchema.index({
+  endedAt: -1,
+  status: 1,
+});
+
+GameSessionSchema.index({
+  status: 1,
+  startedAt: -1,
+});
+
+GameSessionSchema.index({
+  createdAt: -1,
+  status: 1,
+});
+
+GameSessionSchema.index({
+  createdAt: -1,
+  gamePost: 1,
+});
+
 // ✅ STATICS - Helper methods
 GameSessionSchema.statics.findExpiredSessions = function () {
   return this.find({

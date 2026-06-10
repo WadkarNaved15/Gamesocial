@@ -2,6 +2,7 @@ import express from "express";
 import FollowService from "../services/followService.js";
 import  verifyToken  from "../middlewares/authMiddleware.js";
 import { sendEventToQueue } from "../utils/sendEventToQueue.js";
+import FollowEvent from "../models/FollowEvent.js";
 const router = express.Router();
 
 // Follow a user
@@ -19,6 +20,12 @@ router.post("/:id/follow",verifyToken, async (req, res) => {
         createdAt: new Date(),
       });
     }
+    await FollowEvent.create({
+      follower: followerId,
+      following: followingId,
+      action: "follow",
+      source: "web",
+    });
     res.json({ success: true, message: "Followed successfully" });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -31,6 +38,12 @@ router.post("/:id/unfollow",verifyToken, async (req, res) => {
     const followerId = req.user.id;
     const followingId = req.params.id;
     await FollowService.unfollowUser(followerId, followingId);
+    await FollowEvent.create({
+      follower: followerId,
+      following: followingId,
+      action: "unfollow",
+      source: "web",
+    });
     res.json({ success: true, message: "Unfollowed successfully" });
   } catch (err) {
     res.status(400).json({ error: err.message });
