@@ -12,6 +12,7 @@ import PostInteractions from './PostInteractions';
 import {toast} from "react-toastify";
 import { getStreamEligibility } from "../../utils/streamEligibility";
 import type { StreamEligibility } from "../../utils/streamEligibility";
+import {trackEvent} from "../../utils/analytics";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -127,6 +128,12 @@ const GamePost: React.FC<GamePostProps> = ({
 
       setIsStarting(true);
 
+      trackEvent({
+        eventType: "game_launch",
+        targetType: "game",
+        targetId: _id,
+      });
+
       const sessionId = await startSession(_id);
       if (sessionId) {
         setIsAdPlaying(true);
@@ -165,52 +172,52 @@ const GamePost: React.FC<GamePostProps> = ({
       }
     };
   // Analytics tracking
-  const startViewing = async () => {
-    viewStartTime.current = Date.now();
-    fetch(`${BACKEND_URL}/api/interactions/playtime-start`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ postId: _id })
-    }).catch(() => { });
-  };
+  // const startViewing = async () => {
+  //   viewStartTime.current = Date.now();
+  //   fetch(`${BACKEND_URL}/api/interactions/playtime-start`, {
+  //     method: "POST",
+  //     credentials: "include",
+  //     headers: { "Content-Type": "application/json" },
+  //     body: JSON.stringify({ postId: _id })
+  //   }).catch(() => { });
+  // };
 
-  const stopViewing = async () => {
-    if (!viewStartTime.current) return;
-    const duration = Math.floor((Date.now() - viewStartTime.current) / 1000);
-    viewStartTime.current = null;
-    fetch(`${BACKEND_URL}/api/interactions/playtime-end`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ postId: _id, duration })
-    }).catch(() => { });
-  };
+  // const stopViewing = async () => {
+  //   if (!viewStartTime.current) return;
+  //   const duration = Math.floor((Date.now() - viewStartTime.current) / 1000);
+  //   viewStartTime.current = null;
+  //   fetch(`${BACKEND_URL}/api/interactions/playtime-end`, {
+  //     method: "POST",
+  //     credentials: "include",
+  //     headers: { "Content-Type": "application/json" },
+  //     body: JSON.stringify({ postId: _id, duration })
+  //   }).catch(() => { });
+  // };
 
-  const markViewed = async () => {
-    fetch(`${BACKEND_URL}/api/interactions/view`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ postId: _id })
-    }).catch(() => { });
-  };
+  // const markViewed = async () => {
+  //   fetch(`${BACKEND_URL}/api/interactions/view`, {
+  //     method: "POST",
+  //     credentials: "include",
+  //     headers: { "Content-Type": "application/json" },
+  //     body: JSON.stringify({ postId: _id })
+  //   }).catch(() => { });
+  // };
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          startViewing();
-          markViewed();
-        } else {
-          stopViewing();
-        }
-      },
-      { threshold: 0.5 }
-    );
-    if (postRef.current) observer.observe(postRef.current);
-    return () => observer.disconnect();
-  }, []);
+  // useEffect(() => {
+  //   const observer = new IntersectionObserver(
+  //     (entries) => {
+  //       if (entries[0].isIntersecting) {
+  //         startViewing();
+  //         markViewed();
+  //       } else {
+  //         stopViewing();
+  //       }
+  //     },
+  //     { threshold: 0.5 }
+  //   );
+  //   if (postRef.current) observer.observe(postRef.current);
+  //   return () => observer.disconnect();
+  // }, []);
 
 
   useEffect(() => {
@@ -236,6 +243,12 @@ const GamePost: React.FC<GamePostProps> = ({
             alt={user.username}
             onClick={(e) => {
               e.stopPropagation();
+              trackEvent({
+                eventType: "profile_view",
+                targetType: "user",
+                targetId: user._id,
+                metadata: { from: "post" },
+              });
               navigate(`/profile/${user.username}`);
             }}
             className="h-10 w-10 rounded-full object-cover mt-1"

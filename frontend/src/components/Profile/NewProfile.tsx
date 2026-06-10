@@ -13,7 +13,8 @@ import { useChat } from "../../context/ChatContext";
 import EditProfileModal from "./EditProfileModal";
 import type { PostProps } from "../../types/Post";
 import { useUser } from "../../context/user";
-import axios from "axios";
+import { trackEvent } from "../../utils/analytics";
+import api from "../../utils/api";
 
 const ProfilePage: React.FC = () => {
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
@@ -79,9 +80,8 @@ const ProfilePage: React.FC = () => {
     const fetchProfile = async () => {
       if (!username) return;
       try {
-        const res = await axios.get(
-          `${BACKEND_URL}/api/users/username/${username}`,
-          { withCredentials: true } // Added here
+        const res = await api.get(
+          `/api/users/username/${username}`
         );
         if (usernameRef.current !== username) return; // stale guard
         setProfileUser(res.data);
@@ -104,14 +104,13 @@ const ProfilePage: React.FC = () => {
     setLoadingPosts(true);
 
     try {
-      const res = await axios.get(
-        `${BACKEND_URL}/api/posts/user_posts/${fetchId}`,
+      const res = await api.get(
+        `/api/posts/user_posts/${fetchId}`,
         {
           params: {
             cursor: cursorParam,
             limit: 10,
           },
-          withCredentials: true,
         }
       );
       if (activeFetchIdRef.current !== fetchId) return;
@@ -130,6 +129,11 @@ const ProfilePage: React.FC = () => {
   // ── Fetch posts on profile load (skip if cache is valid) ─────────────────
   useEffect(() => {
     if (!profileUser?._id) return;
+    trackEvent({
+    eventType: "profile_page_view",
+    targetType: "user",
+    targetId: profileUser._id,
+  });
     if (cachedRef.current?.posts?.length) return;
     fetchPosts(null);
   }, [profileUser?._id]);
@@ -144,11 +148,8 @@ const ProfilePage: React.FC = () => {
 
     const fetchArticles = async () => {
       try {
-        const res = await axios.get(
-          `${BACKEND_URL}/api/articles/published/user/${fetchId}`,
-          {
-            withCredentials: true,
-          }
+        const res = await api.get(
+          `/api/articles/published/user/${fetchId}`
         );
         if (activeArticleFetchIdRef.current !== fetchId) return; // stale guard
         setUserArticles(res.data);
@@ -416,7 +417,7 @@ const ProfilePage: React.FC = () => {
 
               <div className="flex flex-col">
                 {userPosts.map((post) => (
-                  <Post
+                 <Post
                     key={post._id}
                     {...post}
                     viewSource="profile"
@@ -425,11 +426,21 @@ const ProfilePage: React.FC = () => {
                         prev.filter((p) => p._id !== postId)
                       );
                     }}
-                    onOpenDetails={() =>
+                    onOpenDetails={() => {
+                      trackEvent({
+                        eventType: "content_view",
+                        targetType: post.type,
+                        targetId: post._id,
+                        metadata: {
+                          source: "profile",
+                          profileOwnerId: profileUser?._id,
+                        },
+                      });
+
                       navigate(`/post/${post._id}`, {
-                        state: { post }
-                      })
-                    }
+                        state: { post },
+                      });
+                    }}
                   />
                 ))}
 

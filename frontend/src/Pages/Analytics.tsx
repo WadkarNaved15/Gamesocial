@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import axios from "axios";
 import { Play, Gamepad2, Sparkles, Loader2, AlertCircle, Users } from 'lucide-react';
+import { useParams } from "react-router-dom";
 
 // ─────────────────────────────────────────────────────────────
 //  DESIGN TOKENS
@@ -61,6 +62,7 @@ interface AnalyticsPeriod {
   watchTimeMs: number;
   likes: number;
   comments: number;
+  shares: number;
   demoConsumptions: number;
   sessions: number;
   sessionPlayTimeMs: number;
@@ -78,6 +80,7 @@ interface LifetimeBlock {
   avgWatchTimeMs: number;
   likes: number;
   comments: number;
+  shares: number;
   engagementRate: number;
   demoConsumptions?: number;
   demoConversionRate?: number;
@@ -95,7 +98,7 @@ interface LifetimeBlock {
 }
 interface CreatorAsset {
   _id: string;
-  type: "game" | "ad" | "3d_ad";
+  type: "game" | "ad" | "3d_ad" | "model" | "media_ad" ;
   displayName: string;
   today: AnalyticsPeriod;
   last7Days: AnalyticsPeriod;
@@ -122,6 +125,7 @@ interface CreatorAsset {
   uniqueViews: number;
   likes: number;
   comments: number;
+  shares: number;
   demoConsumption?: number;
   conversionRate?: number;
   totalSessions?: number;
@@ -133,6 +137,7 @@ interface AnalyticsPortfolio {
   totalUniqueViews: number;
   totalLikes: number;
   totalComments: number;
+  totalShares: number;
   totalGames: number;
   totalAds: number;
   total3DAds: number;
@@ -144,6 +149,7 @@ interface AnalyticsPortfolio {
     totalUniqueViews: number;
     totalLikes: number;
     totalComments: number;
+    totalShares: number;
     totalWatchTimeMs: number;
     totalDemoConsumptions: number;
     totalSessions: number;
@@ -166,10 +172,26 @@ const ASSET_CFG: Record<CreatorAsset["type"], AssetCfg> = {
   game:   { icon: "ti-device-gamepad-2", color: "#3D7A6E", dim: "rgba(61,122,110,0.18)",  border: "rgba(61,122,110,0.35)"  },
   ad:     { icon: "ti-speakerphone",     color: "#7a6e3d", dim: "rgba(122,110,61,0.18)",  border: "rgba(122,110,61,0.35)"  },
   "3d_ad":{ icon: "ti-box",             color: "#3d5f7a", dim: "rgba(61,95,122,0.18)",   border: "rgba(61,95,122,0.35)"   },
+  model: {
+    icon: "ti-cube",
+    color: "#6d5cae",
+    dim: "rgba(109,92,174,.18)",
+    border: "rgba(109,92,174,.35)",
+  },
+
+  media_ad: {
+    icon: "ti-photo",
+    color: "#ae7a3d",
+    dim: "rgba(174,122,61,.18)",
+    border: "rgba(174,122,61,.35)",
+  },
+
 };
 function typeLabel(type: CreatorAsset["type"]): string {
   if (type === "game")   return "Game";
   if (type === "3d_ad") return "3D Ad";
+  if (type === "model") return "3D Model";
+  if (type === "media_ad") return "Media Ad";
   return "Ad";
 }
 
@@ -205,6 +227,7 @@ function getPeriod(asset: CreatorAsset, range: DateRange): AnalyticsPeriod {
     watchTimeMs:       lt.watchTimeMs,
     likes:             lt.likes,
     comments:          lt.comments,
+    shares:            lt.shares,
     demoConsumptions:  lt.demoConsumptions ?? 0,
     sessions:          lt.sessions ?? 0,
     sessionPlayTimeMs: lt.sessionPlayTimeMs ?? 0,
@@ -449,6 +472,14 @@ function TodayActivityPanel({ asset, cfg }: { asset: CreatorAsset; cfg: AssetCfg
         <TodayMetricRow icon="ti-heart"          label="Likes"      value={fmt(t.likes)}       rawValue={t.likes}       compValue={w7.likes}       color={T.warning} />
         <TodayMetricRow icon="ti-message-circle" label="Comments"   value={fmt(t.comments)}    rawValue={t.comments}    compValue={w7.comments}    color="#4a6e8a" />
         <TodayMetricRow icon="ti-clock"          label="Watch time" value={fmtMs(t.watchTimeMs)} rawValue={t.watchTimeMs} compValue={w7.watchTimeMs} color={cfg.color} />
+        <TodayMetricRow
+  icon="ti-share"
+  label="Shares"
+  value={fmt(t.shares)}
+  rawValue={t.shares}
+  compValue={w7.shares}
+  color={T.success}
+/>
         {hasDemos && (
           <TodayMetricRow icon="ti-player-play"  label="Demo plays" value={fmt(t.demoConsumptions)} rawValue={t.demoConsumptions} compValue={w7.demoConsumptions} color={T.success} />
         )}
@@ -504,25 +535,43 @@ function LifetimeVisualPanel({ asset, cfg }: { asset: CreatorAsset; cfg: AssetCf
         <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.14em", color: "rgba(255,255,255,0.22)", marginBottom: 12 }}>Engagement</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 14 }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-            <RadialGauge value={engRate} max={20} label="Engagement" color={cfg.color} />
+            <RadialGauge value={engRate} max={100} label="Engagement"color={cfg.color}/>
             <p style={{ fontSize: 14, fontWeight: 700, color: T.textPrimary, marginTop: -2 }}>{engRate.toFixed(1)}%</p>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-            <RadialGauge value={likeRate} max={20} label="Like Rate" color={T.warning} />
+            <RadialGauge value={likeRate} max={100} label="Like Rate" color={T.warning} />
             <p style={{ fontSize: 14, fontWeight: 700, color: T.textPrimary, marginTop: -2 }}>{likeRate.toFixed(2)}%</p>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-            <RadialGauge value={commentRate} max={5} label="Comment Rate" color="#4a6e8a" />
+            <RadialGauge value={commentRate} max={100} label="Comment Rate" color="#4a6e8a" />
             <p style={{ fontSize: 14, fontWeight: 700, color: T.textPrimary, marginTop: -2 }}>{commentRate.toFixed(2)}%</p>
           </div>
         </div>
         {/* Bars */}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {[
-            { label: "Engagement rate", value: engRate, max: 20, color: cfg.color, display: `${engRate.toFixed(1)}%` },
-            { label: "Like rate", value: likeRate, max: 20, color: T.warning, display: `${likeRate.toFixed(2)}%` },
-            { label: "Comment rate", value: commentRate, max: 5, color: "#4a6e8a", display: `${commentRate.toFixed(2)}%` },
-          ].map(m => (
+  {
+    label: "Engagement rate",
+    value: engRate,
+    max: 100,
+    color: cfg.color,
+    display: `${engRate.toFixed(1)}%`,
+  },
+  {
+    label: "Like rate",
+    value: likeRate,
+    max: 100,
+    color: T.warning,
+    display: `${likeRate.toFixed(2)}%`,
+  },
+  {
+    label: "Comment rate",
+    value: commentRate,
+    max: 100,
+    color: "#4a6e8a",
+    display: `${commentRate.toFixed(2)}%`,
+  },
+].map(m => (
             <div key={m.label}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                 <span style={{ fontSize: 10, color: T.textSecondary }}>{m.label}</span>
@@ -936,6 +985,7 @@ function PortfolioOverview({
   const totalUnique   = lt?.totalUniqueViews ?? assets.reduce((s, a) => s + (a.lifetime.uniqueViews || 0), 0);
   const totalLikes    = lt?.totalLikes    ?? assets.reduce((s, a) => s + (a.lifetime.likes    || 0), 0);
   const totalComments = lt?.totalComments ?? assets.reduce((s, a) => s + (a.lifetime.comments || 0), 0);
+  const totalShares   = lt?.totalShares   ?? assets.reduce((s, a) => s + (a.lifetime.shares   || 0), 0);
   const totalDemo     = lt?.totalDemoConsumptions ?? assets.reduce((s, a) => s + (a.lifetime.demoConsumptions || 0), 0);
   const totalSessions = lt?.totalSessions ?? assets.reduce((s, a) => s + (a.lifetime.sessions || 0), 0);
 
@@ -944,10 +994,11 @@ function PortfolioOverview({
     acc.views    += p.views    || 0;
     acc.likes    += p.likes    || 0;
     acc.comments += p.comments || 0;
+    acc.shares   += p.shares   || 0;
     acc.demo     += p.demoConsumptions || 0;
     acc.sessions += p.sessions || 0;
     return acc;
-  }, { views: 0, likes: 0, comments: 0, demo: 0, sessions: 0 }), [assets, dateRange]);
+  }, { views: 0, likes: 0, comments: 0, shares: 0, demo: 0, sessions: 0 }), [assets, dateRange]);
 
   const sortedByViews = [...assets].sort((a, b) => (b.lifetime.views || 0) - (a.lifetime.views || 0));
   const sortedByConv  = [...assets]
@@ -975,6 +1026,11 @@ function PortfolioOverview({
           <KpiCard icon="ti-users"            rawValue={totalUnique}   label="Unique views"    />
           <KpiCard icon="ti-heart"            rawValue={totalLikes}    label="Likes"           />
           <KpiCard icon="ti-message-circle"   rawValue={totalComments} label="Comments"        />
+          <KpiCard
+            icon="ti-share"
+            rawValue={totalShares}
+            label="Shares"
+          />
           <KpiCard icon="ti-player-play"      rawValue={totalDemo}     label="Demo plays"      />
           <KpiCard icon="ti-device-gamepad-2" rawValue={totalSessions} label="Game sessions"   />
           <KpiCard icon="ti-stack-2"          rawValue={assets.length} label="Total assets"    displayFn={v => String(v)} />
@@ -984,6 +1040,8 @@ function PortfolioOverview({
             displayFn={v => (v / 10).toFixed(1) + "%"}
             label="Avg engagement"
           />
+
+          
         </div>
       </section>
 
@@ -1145,6 +1203,7 @@ function AssetAnalytics({ asset, dateRange }: { asset: CreatorAsset; dateRange: 
           <KpiCard icon="ti-users"          rawValue={stats.uniqueViews} label="Unique views"     accent={cfg.color} />
           <KpiCard icon="ti-heart"          rawValue={stats.likes}       label="Likes"            accent={cfg.color} />
           <KpiCard icon="ti-message-circle" rawValue={stats.comments}    label="Comments"         accent={cfg.color} />
+          <KpiCard icon="ti-share" rawValue={stats.shares} label="Shares" accent={cfg.color} />
           <KpiCard icon="ti-clock"          rawValue={stats.watchTimeMs} label="Watch time"       displayFn={fmtMs} accent={cfg.color} />
           {hasDemos && (
             <KpiCard icon="ti-player-play"  rawValue={stats.demoConsumptions} label="Demo plays"  accent={cfg.color} />
@@ -1413,7 +1472,7 @@ function PanelSkeleton() {
 //  DEFAULTS
 // ─────────────────────────────────────────────────────────────
 function emptyPeriod(): AnalyticsPeriod {
-  return { views: 0, uniqueViews: 0, watchTimeMs: 0, likes: 0, comments: 0, demoConsumptions: 0, sessions: 0, sessionPlayTimeMs: 0, uniquePlayers: 0 };
+  return { views: 0, uniqueViews: 0, watchTimeMs: 0, likes: 0, comments: 0, shares: 0, demoConsumptions: 0, sessions: 0, sessionPlayTimeMs: 0, uniquePlayers: 0 };
 }
 function emptyChart(): MultiRangeChart {
   return { "7d": [], "30d": [], "90d": [] };
@@ -1424,6 +1483,12 @@ function emptyChart(): MultiRangeChart {
 // ─────────────────────────────────────────────────────────────
 export default function RigzerPortfolioAnalytics() {
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+  const { creatorId } = useParams();
+
+  const endpoint = creatorId
+    ? `${BACKEND_URL}/api/creatorAnalytics/creator/${creatorId}`
+    : `${BACKEND_URL}/api/creatorAnalytics/creator`;
+
 
   const [assets,        setAssets]        = useState<CreatorAsset[]>([]);
   const [portfolio,     setPortfolio]     = useState<AnalyticsPortfolio | null>(null);
@@ -1432,6 +1497,7 @@ export default function RigzerPortfolioAnalytics() {
   const [dateRange,     setDateRange]     = useState<DateRange>("Last 7 Days");
   const [sideCollapsed, setSideCollapsed] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
+  const [error, setError] = useState<null | "forbidden" | "failed">(null);
 
   const activeAsset = assets.find(a => a._id === activeId) ?? null;
 
@@ -1442,10 +1508,11 @@ export default function RigzerPortfolioAnalytics() {
   };
 
   useEffect(() => {
+    console.log("Fetching analytics from", endpoint);
     (async () => {
       try {
         setApiLoading(true);
-        const { data } = await axios.get(`${BACKEND_URL}/api/analytics/creator`, { withCredentials: true });
+        const { data } = await axios.get(endpoint, { withCredentials: true });
 
         const normalised: CreatorAsset[] = (data.assets || []).map((a: any): CreatorAsset => ({
           _id:         String(a._id),
@@ -1478,6 +1545,7 @@ export default function RigzerPortfolioAnalytics() {
             avgWatchTimeMs:       Number(a.lifetime?.avgWatchTimeMs)      || 0,
             likes:                Number(a.lifetime?.likes)               || Number(a.likes)            || 0,
             comments:             Number(a.lifetime?.comments)            || Number(a.comments)         || 0,
+            shares:               Number(a.lifetime?.shares)              || Number(a.shares)           || 0,
             engagementRate:       Number(a.lifetime?.engagementRate)      || 0,
             demoConsumptions:     Number(a.lifetime?.demoConsumptions)    || Number(a.demoConsumption)  || 0,
             demoConversionRate:   Number(a.lifetime?.demoConversionRate)  || 0,
@@ -1496,6 +1564,7 @@ export default function RigzerPortfolioAnalytics() {
           uniqueViews:     Number(a.uniqueViews)     || 0,
           likes:           Number(a.likes)           || 0,
           comments:        Number(a.comments)        || 0,
+          shares:          Number(a.shares)          || 0,
           demoConsumption: Number(a.demoConsumption) || 0,
           conversionRate:  Number(a.conversionRate)  || 0,
           totalSessions:   Number(a.totalSessions)   || 0,
@@ -1506,14 +1575,30 @@ export default function RigzerPortfolioAnalytics() {
         setActiveId(normalised.length > 0 ? normalised[0]._id : null);
         setPortfolio(data.portfolio ?? null);
       } catch (err) {
-        console.error("Analytics fetch failed:", err);
-      } finally {
+  if (axios.isAxiosError(err)) {
+    if (err.response?.status === 403) {
+      setError("forbidden");
+    } else {
+      setError("failed");
+    }
+  } else {
+    setError("failed");
+  }
+}finally {
         setApiLoading(false);
       }
     })();
   }, [BACKEND_URL]);
 
   if (apiLoading) return <LoadingState />;
+
+  if (error === "forbidden") {
+  return (
+    <div>
+      Access Denied
+    </div>
+  );
+}
 
   return (
     <div style={{ minHeight: "100vh", background: T.bg, fontFamily: "'DM Sans',sans-serif", color: T.textPrimary }}>
@@ -1529,6 +1614,11 @@ export default function RigzerPortfolioAnalytics() {
       `}</style>
 
       <div style={{ maxWidth: 1180, margin: "0 auto", padding: "20px 16px 80px" }}>
+        {creatorId && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: T.textPrimary }}>Creator Analytics for {creatorId}</span>
+          </div>
+        )}
 
         {/* TOP BAR */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 10 }}>

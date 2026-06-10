@@ -27,6 +27,8 @@ import NotificationsPage from "./Pages/NotificationsPage";
 import PublisherForm from "./Pages/PublisherForm";
 import Analytics from "./Pages/Analytics";
 import CreditOperations from "./Pages/CreditOperations";
+import SessionMonitoringDashboard from "./Pages/SessionMonitoringDashboard";
+import AdminIntelligenceCenter from "./Pages/AdminIntelligenceCenter";
 
 
 // Components as pages
@@ -90,6 +92,7 @@ export const router = createBrowserRouter([
       </AdminRoute>
     ),
   },
+  { path: "/admin/analytics/:creatorId", element: <Analytics /> },
   {
     path: "/admin/credits",
     element: (
@@ -98,4 +101,20 @@ export const router = createBrowserRouter([
       </AdminRoute>
     ),
   },
+  {
+    path: "/admin/sessionsMonitoring",
+    element: (
+      <AdminRoute>
+        <SessionMonitoringDashboard />
+      </AdminRoute>
+    ),
+  },
+  {
+    path: "/admin/intelligence",
+    element: (
+      <AdminRoute>
+        <AdminIntelligenceCenter />
+      </AdminRoute>
+    ),
+  }
 ]);

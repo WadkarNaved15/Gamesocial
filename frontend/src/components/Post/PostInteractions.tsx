@@ -2,6 +2,7 @@ import React, { useState, memo } from "react";
 import { Heart, MessageCircle, Share2, Bookmark, Eye } from "lucide-react";
 import { useUser } from "../../context/user";
 import ShareActionModal from "../Home/ShareActionModal";
+import { trackEvent } from "../../utils/analytics";
 
 interface PostInteractionsProps {
   postId: string;
@@ -80,7 +81,15 @@ const PostInteractions: React.FC<PostInteractionsProps> = ({
 
           <button
             className="flex items-center text-gray-500 dark:text-gray-400 hover:text-green-500 transition-colors"
-            onClick={() => setShareOpen(true)}
+              onClick={() => {
+                trackEvent({
+                  eventType: "share",
+                  targetType: "post",
+                  targetId: postId,
+                });
+
+                setShareOpen(true);
+              }}
             aria-label="Share post"
           >
             <Share2 className="h-5 w-5" />

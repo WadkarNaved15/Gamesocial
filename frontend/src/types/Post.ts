@@ -210,8 +210,10 @@ export interface PocketPostProps extends CommonPostFields {
   compiledBundleUrl: string;
 }
 export interface MediaAdPostProps extends CommonPostFields {
+ 
   type: 'media_ad_post';
   mediaAdPost: {
+    _id: string;
     brandName: string;
     brandLogo?: string | null;
     description?: string;

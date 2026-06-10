@@ -12,6 +12,7 @@ import type { NormalPostProps } from "../../types/Post";
 import { VideoPlaybackContext } from "../../context/VideoPlaybackContext";
 import { useContext } from "react";
 import { Play } from "lucide-react";
+import { trackEvent } from "../../utils/analytics";
 
 const NormalPost: React.FC<NormalPostProps> = ({
   _id,
@@ -176,6 +177,12 @@ const NormalPost: React.FC<NormalPostProps> = ({
           alt={user.username}
           onClick={(e) => {
             e.stopPropagation();
+            trackEvent({
+              eventType: "profile_view",
+              targetType: "user",
+              targetId: user._id,
+              metadata: { from: "post" },
+            });
             navigate(`/profile/${user.username}`);
           }}
           className="h-10 w-10 rounded-full object-cover"
