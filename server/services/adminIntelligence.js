@@ -291,23 +291,33 @@ export async function getOverview(query = {}) {
         $sum: 1,
       },
 
-      activeSessions: {
-        $sum: {
-          $cond: [
-            {
-              $eq: [
-                "$endedAt",
-                null,
-              ],
-            },
-            1,
-            0,
-          ],
-        },
+activeSessions: {
+  $sum: {
+    $cond: [
+      {
+        $gte: [
+          "$lastActivityAt",
+          new Date(Date.now() - 5 * 60 * 1000), // active within last 5 min
+        ],
       },
-
+      1,
+      0,
+    ],
+  },
+},
       avgSessionDuration: {
-        $avg: "$durationMs",
+        $avg: {
+          $cond: [
+            { $ne: ["$endedAt", null] },
+            "$durationMs",
+            {
+              $subtract: [
+                "$lastActivityAt",
+                "$startedAt"
+              ]
+            }
+          ]
+        }
       },
 
       avgActiveTime: {
