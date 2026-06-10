@@ -11,14 +11,14 @@ import CreatePostPage from "./Pages/CreatePostPage";
 import WishlistPage from "./Pages/WishlistPage";
 import GameShowcase from "./Pages/GameShowcase";
 import UploadGame from "./Pages/UploadGame";
-import DevLogs from "./Pages/DevLogs";
+// import DevLogs from "./Pages/DevLogs";
 import DevLogsView from "./Pages/DevLogViewPage";
 import DevLogCanvas from "./Pages/DevlogCanvas";
 import DevlogViewer from "./Pages/DevlogViewer";
 import AdminPocketDashboard from "./Pages/AdminPocketDashboard";
 import PostModal from "./components/PostModal";
 import PostDetailsPage from "./Pages/PostDetailsPage";
-import Puck from "./Pages/Puck";
+// import Puck from "./Pages/Puck";
 import StreamPage from "./Pages/StreamPage";
 import ForgotPassword from "./Pages/ForgotPassword";
 import VerifyEmail from "./Pages/VerifyEmail";
@@ -62,7 +62,7 @@ export const router = createBrowserRouter([
   { path: "/publisher", element: <PublisherForm /> },
   { path: "/createpost", element: <CreatePostPage /> },
 
-  { path: "/devlogs", element: <DevLogs /> },
+  // { path: "/devlogs", element: <DevLogs /> },
   { path: "/devlogs/view/:id", element: <DevLogsView /> },
   { path: "/devlogCanvas", element: <DevLogCanvas /> },
   { path: "/devlogviewer/:devlogId", element: <DevlogViewer /> },
@@ -72,7 +72,7 @@ export const router = createBrowserRouter([
   { path: "/gameupload", element: <UploadGame /> },
   { path: "/games", element: <GamePost /> },
 
-  { path: "/puck", element: <Puck /> },
+  // { path: "/puck", element: <Puck /> },
   { path: "/recommendations", element: <Recommendations /> },
   { path: "/recommendationsposts", element: <RecommendationPosts /> },
 

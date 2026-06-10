@@ -1,7 +1,7 @@
-import { ExcalidrawConfig } from "./Canvas";
+// import { ExcalidrawConfig } from "./Canvas";
 
-export const config = {
-  components: {
-    Excalidraw: ExcalidrawConfig,
-  },
-};
+// export const config = {
+//   components: {
+//     Excalidraw: ExcalidrawConfig,
+//   },
+// };
