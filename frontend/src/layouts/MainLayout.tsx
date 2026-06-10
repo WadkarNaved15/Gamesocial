@@ -48,7 +48,7 @@ function MainLayout() {
   className="
     min-h-screen
     bg-gray-100
-    dark:bg-[radial-gradient(circle_at_center,#252525_0%,#1c1c1c_40%,#141414_75%,#0a0a0a_100%)]
+    dark:bg-[linear-gradient(90deg,#0f0f0f_0%,#191919_20%,#242424_50%,#191919_80%,#0f0f0f_100%)]
   "
 >
       <ScrollRestoration
