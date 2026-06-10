@@ -44,15 +44,18 @@ function MainLayout() {
     isProfilePage || isModelPost || isCreatePage || isArticlePage;
 
   return (
-   <div
-  className="min-h-screen bg-gray-100 dark:bg-[#191919]"
-  style={{
-    backgroundImage: `
-      radial-gradient(circle at top left, rgba(29, 234, 104, 0.18), transparent 45%),
-      radial-gradient(circle at bottom right, rgba(74, 222, 128, 0.18), transparent 45%)
-    `,
-  }}
->
+    <>
+      <div
+    className="fixed inset-0 pointer-events-none -z-10"
+    style={{
+      background: "#191919",
+      backgroundImage: `
+        radial-gradient(circle at 8% 24%, rgba(74,222,128,0.35) 0px, transparent 200px),
+        radial-gradient(circle at 92% 88%, rgba(74,222,128,0.28) 0px, transparent 200px)
+      `,
+    }}
+  />
+    <div className="min-h-screen bg-gray-100 dark:bg-transparent">
       <ScrollRestoration
         getKey={(location) => {
           if (location.pathname.startsWith("/profile")) {
@@ -158,6 +161,7 @@ function MainLayout() {
 
       <MessagingComponent />
     </div>
+    </>
   );
 }
 
