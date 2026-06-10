@@ -44,12 +44,14 @@ function MainLayout() {
     isProfilePage || isModelPost || isCreatePage || isArticlePage;
 
   return (
-    <div
-  className="
-    min-h-screen
-    bg-gray-100
-    dark:bg-[linear-gradient(90deg,#0f0f0f_0%,#191919_20%,#242424_50%,#191919_80%,#0f0f0f_100%)]
-  "
+   <div
+  className="min-h-screen bg-gray-100 dark:bg-[#191919]"
+  style={{
+    backgroundImage: `
+      radial-gradient(circle at top left, rgba(29, 234, 104, 0.18), transparent 45%),
+      radial-gradient(circle at bottom right, rgba(74, 222, 128, 0.18), transparent 45%)
+    `,
+  }}
 >
       <ScrollRestoration
         getKey={(location) => {
