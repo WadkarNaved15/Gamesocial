@@ -307,7 +307,18 @@ export async function getOverview(query = {}) {
       },
 
       avgSessionDuration: {
-        $avg: "$durationMs",
+        $avg: {
+          $cond: [
+            { $ne: ["$endedAt", null] },
+            "$durationMs",
+            {
+              $subtract: [
+                "$lastActivityAt",
+                "$startedAt"
+              ]
+            }
+          ]
+        }
       },
 
       avgActiveTime: {
