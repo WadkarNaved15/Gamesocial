@@ -23,25 +23,45 @@ export default function ProfileCover({
       <div className="max-w-3xl mx-auto">
         <div
           className="
-  relative overflow-visible
-  rounded-t-[0.5rem]
+relative overflow-visible
+rounded-t-[0.5rem]
 
-  transition-all duration-300
+bg-gradient-to-br
+from-white/[0.08]
+via-white/[0.04]
+to-white/[0.01]
 
-  bg-white/[0.03]
-  dark:bg-white/[0.03]
+border border-white/10
 
-  backdrop-blur-xl
-  backdrop-saturate-150
+shadow-[0_8px_32px_rgba(0,0,0,0.45)]
+shadow-white/[0.02]
 
-  border border-white/10
+transition-all duration-300
 
-  shadow-[0_8px_32px_rgba(0,0,0,0.45)]
+before:absolute
+before:inset-0
+before:rounded-t-[0.5rem]
+before:pointer-events-none
+
+before:bg-gradient-to-b
+before:from-white/[0.12]
+before:via-white/[0.03]
+before:to-transparent
 "
         >
 
           <div
-  className="
+            className="
+    absolute inset-0
+    rounded-t-[0.5rem]
+    pointer-events-none
+
+    bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.08),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.04),transparent_45%)]
+  "
+          />
+
+          <div
+            className="
     absolute
     top-0
     left-1/2
@@ -58,7 +78,7 @@ export default function ProfileCover({
 
     pointer-events-none
   "
-/>
+          />
           {/* Content */}
           <div className="px-4 pt-5 pb-5 text-center">
             {/* Avatar */}
@@ -120,7 +140,7 @@ export default function ProfileCover({
   rounded-t-[0.5rem]
 
   bg-white/[0.03]
-  backdrop-blur-xl
+  backdrop-blur-2xl
   backdrop-saturate-150
 
   border border-white/10
@@ -163,12 +183,12 @@ export default function ProfileCover({
   rounded-full
   object-cover
   cursor-pointer
-
   border border-white/20
 
-  backdrop-blur-md
+bg-white/[0.08]
 
-  shadow-[0_0_25px_rgba(255,255,255,0.08)]
+shadow-[0_0_0_1px_rgba(255,255,255,0.08)]
+shadow-[0_0_25px_rgba(255,255,255,0.10)]
 
   hover:brightness-95
   hover:scale-105

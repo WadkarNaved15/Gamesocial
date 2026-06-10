@@ -44,7 +44,15 @@ function MainLayout() {
     isProfilePage || isModelPost || isCreatePage || isArticlePage;
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-[#191919]">
+   <div
+  className="min-h-screen bg-gray-100 dark:bg-[#191919]"
+  style={{
+    backgroundImage: `
+      radial-gradient(circle at top left, rgba(29, 234, 104, 0.18), transparent 45%),
+      radial-gradient(circle at bottom right, rgba(74, 222, 128, 0.18), transparent 45%)
+    `,
+  }}
+>
       <ScrollRestoration
         getKey={(location) => {
           if (location.pathname.startsWith("/profile")) {
