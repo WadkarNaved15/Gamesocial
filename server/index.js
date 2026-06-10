@@ -61,7 +61,7 @@ import canvasRoutes from "./routes/canvasRoutes.js";
 import sessionRoutes from "./routes/sessions.js";
 import internalRoutes from "./routes/internal.js";
 import pocketRoutes from "./routes/pocket.js";
-import creatorAnalyticsRoutes from "./routes/creatorAnalytics.js";
+import creatorAnalyticsRoutes from "./routes/CreatorAnalytics.js";
 import analyticsRoutes from "./routes/analytics.js"
 
 import streamProxyRouter, { handleWsUpgrade } from "./routes/streamProxy.js";
