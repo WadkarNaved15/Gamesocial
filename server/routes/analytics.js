@@ -379,6 +379,8 @@ router.post(
           sessionId,
         });
 
+        
+
         if (session.endedAt) {
   return res.json({
     success: true,
