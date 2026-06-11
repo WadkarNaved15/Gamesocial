@@ -90,7 +90,7 @@ before:to-transparent
               Welcome to Rigzer
             </h4>
 
-            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+            <p className="text-gray-400 text-sm mt-1">
               Login to access further services
             </p>
 
@@ -127,21 +127,48 @@ before:to-transparent
   return (
     <div className="max-w-3xl mx-auto">
       <div
-        className="
-  relative overflow-visible
-  rounded-t-[0.5rem]
+  className="
+  relative overflow-hidden
+  rounded-xl
 
-  bg-white/[0.03]
-  backdrop-blur-2xl
+  bg-white/[0.04]
+
+  backdrop-blur-xl
   backdrop-saturate-150
 
   border border-white/10
 
   shadow-[0_8px_32px_rgba(0,0,0,0.45)]
+  shadow-white/[0.02]
 
   transition-all duration-300
+
+  before:absolute
+  before:inset-0
+  before:pointer-events-none
+
+  before:bg-gradient-to-b
+  before:from-white/[0.08]
+  before:via-transparent
+  before:to-transparent
 "
-      >
+>
+  <div
+  className="
+    absolute
+    top-0
+    left-0
+    w-full
+    h-px
+
+    bg-gradient-to-r
+    from-transparent
+    via-white/30
+    to-transparent
+
+    z-20
+  "
+/>
         {/* Cover Image for profile */}
         <div className="relative rounded-t-[0.5rem]">
           <div
@@ -195,11 +222,11 @@ shadow-[0_0_25px_rgba(255,255,255,0.10)]
         </div>
 
         {/* Content */}
-        <div className="mt-10 px-4 pb-6">
+        <div className="mt-10 px-4 pb-8">
           <h4 className="text-md font-bold text-gray-900 dark:text-gray-100">
             {user?.username || "John Developer"}
           </h4>
-          <p className="text-gray-500 dark:text-gray-200 text-sm">
+          <p className="text-gray-400 text-sm mt-1">
             {user?.bio || "Game Developer"}
           </p>
         </div>

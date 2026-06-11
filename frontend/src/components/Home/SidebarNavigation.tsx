@@ -65,16 +65,6 @@ export default function SidebarNavigation({
     ];
 
     return (
-        <div
-            className="
-        mt-3
-        rounded-xl
-        border border-white/10
-        bg-white/[0.03]
-        backdrop-blur-xl
-        p-2
-      "
-        >
             <nav className="flex flex-col gap-1">
                 {items.map((item) => {
                     const active =
@@ -129,6 +119,5 @@ export default function SidebarNavigation({
                     );
                 })}
             </nav>
-        </div>
     );
 }
