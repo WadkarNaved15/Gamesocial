@@ -1,10 +1,31 @@
 // context/AnalyticsProvider.tsx
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import api from "../utils/api";
 import { useUser } from "./user";
 
 const SESSION_KEY = "rigzer_analytics_session";
+
+const endSession = () => {
+  const sessionId =
+    localStorage.getItem(SESSION_KEY);
+
+  if (!sessionId) return;
+
+  navigator.sendBeacon(
+    `${import.meta.env.VITE_BACKEND_URL}/api/analytics/session/end`,
+    new Blob(
+      [
+        JSON.stringify({
+          sessionId,
+        }),
+      ],
+      {
+        type: "application/json",
+      }
+    )
+  );
+};
 
 export function AnalyticsProvider({
   children,
@@ -12,6 +33,7 @@ export function AnalyticsProvider({
   children: React.ReactNode;
 }) {
   const { user } = useUser();
+  const endedRef = useRef(false);
 
   useEffect(() => {
     if (!user) return;
@@ -77,6 +99,16 @@ const handleVisibility = async () => {
 useEffect(() => {
   if (user) return;
 
+  const sessionId =
+    localStorage.getItem(
+      SESSION_KEY
+    );
+
+  if (sessionId && !endedRef.current) {
+    endedRef.current = true;
+    endSession();
+  }
+
   localStorage.removeItem(
     SESSION_KEY
   );
@@ -85,43 +117,34 @@ useEffect(() => {
 
 useEffect(() => {
   const handleUnload = () => {
-  const sessionId =
-    localStorage.getItem(
-      SESSION_KEY
-    );
+    if (endedRef.current) return;
 
-  if (!sessionId) return;
+    endedRef.current = true;
 
-  navigator.sendBeacon(
-    `${
-      import.meta.env
-        .VITE_BACKEND_URL
-    }/api/analytics/session/end`,
-    new Blob(
-      [
-        JSON.stringify({
-          sessionId,
-        }),
-      ],
-      {
-        type:
-          "application/json",
-      }
-    )
-  );
-};
-
+    endSession();
+  };
 
   window.addEventListener(
     "beforeunload",
     handleUnload
   );
 
-  return () =>
+  window.addEventListener(
+    "pagehide",
+    handleUnload
+  );
+
+  return () => {
     window.removeEventListener(
       "beforeunload",
       handleUnload
     );
+
+    window.removeEventListener(
+      "pagehide",
+      handleUnload
+    );
+  };
 }, []);
 
   return <>{children}</>;

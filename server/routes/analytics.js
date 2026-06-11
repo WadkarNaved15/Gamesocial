@@ -113,7 +113,8 @@ router.post(
               $set: {
                 endedAt: now,
                 durationMs:
-                  now.getTime() -
+                  (existingSession.lastHeartbeatAt ??
+                  existingSession.lastActivityAt).getTime() -
                   existingSession.startedAt.getTime(),
                 isBounce:
                   existingSession.pageViews <= 1 &&
@@ -320,6 +321,10 @@ router.post(
         });
       }
 
+      if (session.endedAt) {
+        return res.json({ success: true });
+      }
+
       const now = new Date();
 
       const elapsed =
@@ -379,17 +384,19 @@ router.post(
           sessionId,
         });
 
-        if (session.endedAt) {
-  return res.json({
-    success: true,
-  });
-}
-
+      
       if (!session) {
         return res.json({
           success: true,
         });
       }
+
+      if (session.endedAt) {
+        return res.json({
+          success: true,
+        });
+      }
+
 
       const now = new Date();
 
@@ -406,8 +413,12 @@ router.post(
          $set: {
   endedAt: now,
   durationMs:
-    now.getTime() -
-    session.startedAt.getTime(),
+  (
+    session.lastHeartbeatAt ??
+    session.lastActivityAt ??
+    now
+  ).getTime() -
+  session.startedAt.getTime(),
 
   isBounce:
     session.pageViews <= 1 &&

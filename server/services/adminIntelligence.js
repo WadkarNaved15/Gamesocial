@@ -297,7 +297,7 @@ activeSessions: {
       {
         $gte: [
           "$lastActivityAt",
-          new Date(Date.now() - 5 * 60 * 1000), // active within last 5 min
+          new Date(Date.now() - 10 * 60 * 1000), // active within last 10 min
         ],
       },
       1,
@@ -306,19 +306,14 @@ activeSessions: {
   },
 },
       avgSessionDuration: {
-        $avg: {
-          $cond: [
-            { $ne: ["$endedAt", null] },
-            "$durationMs",
-            {
-              $subtract: [
-                "$lastActivityAt",
-                "$startedAt"
-              ]
-            }
-          ]
-        }
-      },
+  $avg: {
+    $cond: [
+      { $ne: ["$endedAt", null] },
+      "$durationMs",
+      null
+    ]
+  }
+},
 
       avgActiveTime: {
         $avg: "$activeTimeMs",
