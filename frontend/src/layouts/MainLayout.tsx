@@ -51,12 +51,8 @@ function MainLayout() {
         style={{
           background: "#191919",
           backgroundImage: `
-      radial-gradient(
-        circle at 8% 24%,
-        rgba(38, 234, 110, 0.33) 0px,
-        rgba(21, 233, 99, 0.21) 120px,
-        transparent 420px
-      )
+      radial-gradient(circle at 8% 24%, rgba(74,222,128,0.35) 0px, transparent 200px),
+      radial-gradient(circle at 92% 88%, rgba(74,222,128,0.28) 0px, transparent 200px)
     `,
         }}
       />
