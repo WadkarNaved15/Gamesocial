@@ -50,7 +50,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose,onSaved}) =
   const res = await axios.post(`${BACKEND_URL}/api/upload/presigned-url`, {
     fileName: `${type}.jpg`,
     fileType: file.type,
-    category: "image",
+    category: "media",
   });
 
   await axios.put(res.data.uploadUrl, file, {
