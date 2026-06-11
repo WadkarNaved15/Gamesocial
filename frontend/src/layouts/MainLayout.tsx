@@ -54,7 +54,7 @@ function MainLayout() {
       radial-gradient(
         circle at 8% 24%,
         rgba(38, 234, 110, 0.33) 0px,
-        rgba(21, 233, 99, 0.22) 120px,
+        rgba(21, 233, 99, 0.21) 120px,
         transparent 420px
       )
     `,
