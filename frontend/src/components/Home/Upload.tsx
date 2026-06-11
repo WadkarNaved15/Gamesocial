@@ -11,7 +11,7 @@ export default function UploadBox({
         onClick={onUploadClick}
         className="
     w-full
-    py-3
+    py-2
 
     flex
     items-center
