@@ -4,6 +4,7 @@ import { Header } from "../components/Header";
 import Billboard from "../components/Home/Billboard";
 import UploadBox from "../components/Home/Upload";
 import { useUser } from "../context/user";
+import SidebarNavigation from "../components/Home/SidebarNavigation";
 import MessagingComponent from "../components/Home/Message";
 import ArticleRecommendations from "../components/Articles/ArticleRecommendations";
 import { ScrollRestoration } from "react-router-dom";
@@ -29,7 +30,7 @@ function MainLayout() {
     isPostDetailsPage && location.state?.post?.type === "model_post";
 
   const handleUploadClick = () => {
-    if(!user){
+    if (!user) {
       navigate("/auth");
       return;
     }
@@ -46,27 +47,27 @@ function MainLayout() {
   return (
     <>
       <div
-    className="fixed inset-0 pointer-events-none -z-10"
-    style={{
-      background: "#191919",
-      backgroundImage: `
+        className="fixed inset-0 pointer-events-none -z-10"
+        style={{
+          background: "#191919",
+          backgroundImage: `
         radial-gradient(circle at 8% 24%, rgba(74,222,128,0.35) 0px, transparent 200px),
         radial-gradient(circle at 92% 88%, rgba(74,222,128,0.28) 0px, transparent 200px)
       `,
-    }}
-  />
-    <div className="min-h-screen bg-gray-100 dark:bg-transparent">
-      <ScrollRestoration
-        getKey={(location) => {
-          if (location.pathname.startsWith("/profile")) {
-            return "profile";
-          }
-          return location.pathname;
         }}
       />
-      <Header />
+      <div className="min-h-screen bg-gray-100 dark:bg-transparent">
+        <ScrollRestoration
+          getKey={(location) => {
+            if (location.pathname.startsWith("/profile")) {
+              return "profile";
+            }
+            return location.pathname;
+          }}
+        />
+        <Header />
 
-      <main className="w-full px-0 sm:px-4 lg:px-8 2xl:px-16 pt-4">
+        <main className="w-full px-0 sm:px-4 lg:px-8 2xl:px-16 pt-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 2xl:grid-cols-16 2xl:gap-x-12">
 
             {/* ========================= */}
@@ -77,14 +78,18 @@ function MainLayout() {
               ref={sidebarRef}
               className="lg:col-span-2 2xl:col-span-3 hidden lg:block"
             >
-              <div className="sticky top-20">
+              <div className="sticky top-20 space-y-3">
                 <Suspense fallback={null}>
                   <ProfileCover onOpenWishlist={handleWishlist} />
                 </Suspense>
-              </div>
 
-              <div className="sticky top-[21rem]">
-                <UploadBox onUploadClick={handleUploadClick} />
+                <SidebarNavigation
+                  onOpenWishlist={handleWishlist}
+                />
+
+                <UploadBox
+                  onUploadClick={handleUploadClick}
+                />
               </div>
             </div>
 
@@ -153,14 +158,14 @@ function MainLayout() {
               </>
             )}
           </div>
-      </main>
+        </main>
 
-      {/* ========================= */}
-      {/* MESSAGING                 */}
-      {/* ========================= */}
+        {/* ========================= */}
+        {/* MESSAGING                 */}
+        {/* ========================= */}
 
-      <MessagingComponent />
-    </div>
+        <MessagingComponent />
+      </div>
     </>
   );
 }

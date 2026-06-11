@@ -123,14 +123,6 @@ before:to-transparent
     setAccountOverlayOpen(true);
   };
 
-  const navItems = [
-    { icon: CircleUser, label: "Profile", action: () => navigate(`/profile/${user?.username}`) },
-    { icon: Bell, label: "Notifications", action: () => navigate("/notifications") },
-    { icon: Bookmark, label: "Saved", action: onOpenWishlist },
-    user
-      ? { icon: LogOut, label: "Logout", action: logout }
-      : { icon: LogIn, label: "Login", action: () => navigate("/auth") },
-  ];
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -203,38 +195,13 @@ shadow-[0_0_25px_rgba(255,255,255,0.10)]
         </div>
 
         {/* Content */}
-        <div className="mt-10 px-4">
+        <div className="mt-10 px-4 pb-6">
           <h4 className="text-md font-bold text-gray-900 dark:text-gray-100">
             {user?.username || "John Developer"}
           </h4>
           <p className="text-gray-500 dark:text-gray-200 text-sm">
             {user?.bio || "Game Developer"}
           </p>
-        </div>
-
-        {/* Navigation Buttons */}
-        <div className="flex mt-4 pb-4 items-center justify-center space-x-2">
-          {navItems.map((item, idx) => (
-            <button
-              key={idx}
-              onClick={item.action}
-              title={item.label}
-              className="
-                p-2 rounded-full transition-all active:scale-90 group relative
-                hover:bg-gray-200 dark:hover:bg-white/10 
-              "
-            >
-              <item.icon className="h-5 w-5 text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors" />
-
-              {/* Notification Badge */}
-              {item.label === "Notifications" && unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 
-                  flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold border-2 border-[#F9FAFB] dark:border-[#191919]">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-          ))}
         </div>
 
         {accountOverlayOpen && (
