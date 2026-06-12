@@ -39,27 +39,27 @@ const FollowFace = ({ translateZ, faceAngle }: { translateZ: number; faceAngle: 
 
   return (
     <div
-      className="absolute inset-0 face bg-[#F9FAFB] dark:bg-[#191919] text-gray-900 dark:text-white overflow-y-auto backface-hidden"
+      className="absolute inset-0 face bg-transparent text-white overflow-y-auto backface-hidden"
       style={{ transform: `rotateY(${faceAngle}deg) translateZ(${translateZ}px)` }}
     >
       <div className="h-full px-3 py-2 lg:px-4 lg:py-3 2xl:px-5 2xl:py-4 flex flex-col">
-        <h3 className="text-[10px] 2xl:text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-4">
+        <h3 className="text-[10px] 2xl:text-[11px] font-bold uppercase tracking-widest text-white/50 mb-4">
           Suggested
         </h3>
 
         {!user ? (
           <div className="flex flex-col items-center justify-center flex-grow space-y-4 pb-10">
             <div className="space-y-2">
-              <p className="text-lg lg:text-xl font-bold text-gray-900 dark:text-gray-100 text-center px-6">
+              <p className="text-lg lg:text-xl font-bold text-white text-center px-6">
                 Login to follow other users
               </p>
-              <p className="text-sm text-gray-500 text-center">
+              <p className="text-sm text-white/50 text-center">
                 Join the community to stay updated
               </p>
             </div>
           </div>
         ) : users.length === 0 ? (
-          <p className="text-gray-500 text-xs">No users to follow</p>
+          <p className="text-white/50 text-xs">No users to follow</p>
         ) : (
           <div className="space-y-3 lg:space-y-4 2xl:space-y-5">
             {users.map((u) => (
@@ -71,13 +71,13 @@ const FollowFace = ({ translateZ, faceAngle }: { translateZ: number; faceAngle: 
                       e.stopPropagation();
                       navigate(`/profile/${u.username}`);
                     }}
-                    className="w-9 h-9 lg:w-10 lg:h-10 2xl:w-12 2xl:h-12 rounded-full border border-gray-200 dark:border-white/10 object-cover cursor-pointer"
+                    className="w-9 h-9 lg:w-10 lg:h-10 2xl:w-12 2xl:h-12 rounded-full border border-white/[0.08] object-cover cursor-pointer hover:border-white/20 transition-colors"
                   />
                   <div className="min-w-0">
-                    <h3 className="font-semibold truncate text-xs lg:text-sm 2xl:text-base w-24 lg:w-32 2xl:w-40 text-gray-900 dark:text-gray-100">
+                    <h3 className="font-semibold truncate text-xs lg:text-sm 2xl:text-base w-24 lg:w-32 2xl:w-40 text-gray-200">
                       {u.name || u.username}
                     </h3>
-                    <p className="text-gray-500 truncate text-[9px] lg:text-[10px] 2xl:text-xs">
+                    <p className="text-white/50 truncate text-[9px] lg:text-[10px] 2xl:text-xs">
                       @{u.username}
                     </p>
                   </div>

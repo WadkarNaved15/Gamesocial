@@ -90,7 +90,7 @@ const GamePost: React.FC<GamePostProps> = ({
         ? "Complete or cancel current session first."
         : "";
 
-  const videoUrl = gamePost?.videoDemo?.url || "/Partizan.mp4";
+  const videoUrl = gamePost?.videoDemo?.url;
   const hasVideo = !!videoUrl;
 
   const totalCredits = (gamePost.creditBudget?.usedCredits || 0) + (gamePost.creditBudget?.remainingCredits || 0);
@@ -220,7 +220,7 @@ const GamePost: React.FC<GamePostProps> = ({
         onClick={() => {
           onOpenDetails?.();
         }}
-        className="relative w-full border border-gray-200 dark:border-white/10 border-l-0 border-r-0 sm:border-l sm:border-r bg-white dark:bg-[#191919] hover:bg-[#F7F9F9] dark:hover:bg-[#16181C] cursor-pointer"
+        className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-transparent hover:bg-white/[0.03] cursor-pointer transition-colors duration-200"
       >
         <div className="flex gap-3 p-4">
           <img
@@ -252,8 +252,7 @@ const GamePost: React.FC<GamePostProps> = ({
             {description && (
               <div className="mt-2 mb-4">
                 <p
-                  className={`text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${!isExpanded ? "line-clamp-2" : ""
-                    }`}
+                  className={`text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${!isExpanded ? "line-clamp-2" : ""}`}
                 >
                   {description}
                 </p>
@@ -264,7 +263,7 @@ const GamePost: React.FC<GamePostProps> = ({
                       e.stopPropagation();
                       setIsExpanded(!isExpanded);
                     }}
-                    className="text-sky-500 hover:text-sky-600 font-semibold text-sm mt-1"
+                    className="text-sky-400 hover:text-sky-300 font-semibold text-sm mt-1"
                   >
                     {isExpanded ? "Show less" : "Show more"}
                   </button>
@@ -273,8 +272,8 @@ const GamePost: React.FC<GamePostProps> = ({
             )}
 
             {gamePost && (
-              <div className="group relative rounded-2xl overflow-hidden border border-gray-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 mb-4">
-                <div className="absolute inset-0 bg-gradient-to-br from-sky-500/10 via-transparent to-purple-500/10 opacity-50" />
+              <div className="group relative rounded-2xl overflow-hidden border border-white/[0.08] bg-transparent mb-4">
+                {/* subtle inner glow — not a fill, just a border effect via the bg of the video overlay */}
 
                 <div className="relative w-full h-[380px] overflow-hidden">
                   
@@ -294,17 +293,14 @@ const GamePost: React.FC<GamePostProps> = ({
                           e.stopPropagation();
                           setIsMuted((m) => !m);
                         }}
-                        className="
-                          absolute bottom-4 right-4 z-50 p-2 rounded-full bg-black/60
-                          backdrop-blur-md text-white border border-white/20
-                        "
+                        className="absolute bottom-4 right-4 z-50 p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/20"
                       >
                         {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
                       </button>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
                       
                       <div className="absolute top-4 left-4 z-40 flex items-center gap-3">
-                        <h3 className="text-2xl font-black text-black dark:text-white tracking-tight leading-none">
+                        <h3 className="text-2xl font-black text-white tracking-tight leading-none">
                           {gamePost.gameName}
                         </h3>
                         {hasPlayedDemo ? (
@@ -318,11 +314,7 @@ const GamePost: React.FC<GamePostProps> = ({
                                 ? "linear-gradient(to bottom right, #52525b, #18181b)"
                                 : "linear-gradient(to bottom right, #3D7A6E, #000000)",
                             }}
-                            className="
-                              text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl
-                              transition-all hover:scale-105 flex items-center gap-2 shrink-0
-                              active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed
-                            "
+                            className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Gamepad2 size={14} />
                             <span className="font-semibold text-xs">Demo Played</span>
@@ -340,11 +332,7 @@ const GamePost: React.FC<GamePostProps> = ({
                                 ? "linear-gradient(to bottom right, #52525b, #18181b)"
                                 : "linear-gradient(to bottom right, #3D7A6E, #000000)",
                             }}
-                            className="
-                              text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl
-                              transition-all hover:scale-105 flex items-center gap-2 shrink-0
-                              active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed
-                            "
+                            className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Users size={14} />
                             <span className="font-semibold text-xs">
@@ -367,10 +355,9 @@ const GamePost: React.FC<GamePostProps> = ({
                       </div>
                     </>
                   ) : (
-                    <div className="relative w-full h-full bg-zinc-100 dark:bg-zinc-900 p-6">
-                      <div className="absolute inset-0 bg-gradient-to-br from-sky-500/10 via-transparent to-purple-500/10 opacity-50" />
+                    <div className="relative w-full h-full bg-transparent p-6">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-2xl font-black text-black dark:text-white tracking-tight leading-none">
+                        <h3 className="text-2xl font-black text-white tracking-tight leading-none">
                           {gamePost.gameName}
                         </h3>
                         {hasPlayedDemo ? (
@@ -384,11 +371,7 @@ const GamePost: React.FC<GamePostProps> = ({
                                 ? "linear-gradient(to bottom right, #52525b, #18181b)"
                                 : "linear-gradient(to bottom right, #3D7A6E, #000000)",
                             }}
-                            className="
-                              text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl
-                              transition-all hover:scale-105 flex items-center gap-2 shrink-0
-                              active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed
-                            "
+                            className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Gamepad2 size={14} />
                             <span className="font-semibold text-xs">Demo Played</span>
@@ -406,11 +389,7 @@ const GamePost: React.FC<GamePostProps> = ({
                                 ? "linear-gradient(to bottom right, #52525b, #18181b)"
                                 : "linear-gradient(to bottom right, #3D7A6E, #000000)",
                             }}
-                            className="
-                              text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl
-                              transition-all hover:scale-105 flex items-center gap-2 shrink-0
-                              active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed
-                            "
+                            className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Users size={14} />
                             <span className="font-semibold text-xs">
@@ -434,12 +413,7 @@ const GamePost: React.FC<GamePostProps> = ({
                     </div>
                   )}
 
-                  <div
-                    className="
-                      absolute bottom-4 left-4 z-50 flex items-center gap-2 px-3 py-2 rounded-full
-                      bg-white/5 backdrop-blur-sm border border-white/20 shadow-lg shadow-black/30
-                    "
-                  >
+                  <div className="absolute bottom-4 left-4 z-50 flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 backdrop-blur-sm border border-white/20 shadow-lg shadow-black/30">
                     <Users size={14} className="text-white/90" />
                     <span className="text-xs font-semibold text-white tracking-wide">
                       {completedSessions}/{possibleSessions}
@@ -451,7 +425,7 @@ const GamePost: React.FC<GamePostProps> = ({
                 
                 {eligibility.checked && !eligibility.allowed && eligibility.reasons.length > 0 && (
                   <div className="mt-4 w-full rounded-xl border border-amber-400/30 bg-amber-500/10 p-3">
-                    <div className="flex items-start gap-2 text-amber-700 dark:text-amber-300">
+                    <div className="flex items-start gap-2 text-amber-300">
                       <AlertCircle size={16} className="mt-0.5 shrink-0" />
                       <div className="text-xs leading-5">
                         {eligibility.reasons.some((r) =>
@@ -477,7 +451,7 @@ const GamePost: React.FC<GamePostProps> = ({
 
                 {hasActiveSession && queue.status === 'waiting' && (
                   <div className="mt-4 w-full bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
-                    <p className="text-xs text-blue-600 dark:text-blue-400 font-medium flex items-center gap-2 justify-center">
+                    <p className="text-xs text-blue-400 font-medium flex items-center gap-2 justify-center">
                       <Loader2 size={14} className="animate-spin" />
                       Getting your instance ready ...
                     </p>

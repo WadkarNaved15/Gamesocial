@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "../../context/user";
 import PostInteractions from "./PostInteractions";
 import { useLikes } from "../../hooks/useLikes";
-import MediaViewer from "../Media/MediaViewer"
+import MediaViewer from "../Media/MediaViewer";
 import ConfirmDeleteModal from "../Home/ConfirmDeleteModal";
 import { useWishlist } from "../../hooks/useWishlist";
 import { toast } from "react-toastify";
@@ -144,7 +144,6 @@ const NormalPost: React.FC<NormalPostProps> = ({
     });
   }, [viewerOpen]);
 
-
   /* -------------------- GRID LOGIC -------------------- */
   const getGridClass = (count: number) => {
     if (count === 1) return "grid-cols-1";
@@ -159,18 +158,9 @@ const NormalPost: React.FC<NormalPostProps> = ({
         if (viewerOpen) return; // 🔥 BLOCK when overlay is open
         onOpenDetails?.();
       }}
-      className="
-  relative w-full
-  border border-gray-200 dark:border-white/10
-  border-l-0 border-r-0
-  sm:border-l sm:border-r
-  bg-white dark:bg-[#191919]
-  hover:bg-[#F7F9F9] dark:hover:bg-[#16181C]
-  cursor-pointer
-"
+      className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-transparent hover:bg-white/[0.03] cursor-pointer transition-colors duration-200"
     >
-
-      <div className="flex gap-3 px-4 py-3">
+      <div className="flex gap-3 p-4">
         {/* AVATAR */}
         <img
           src={user.avatar || "/default_avatar.png"}
@@ -185,7 +175,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
             });
             navigate(`/profile/${user.username}`);
           }}
-          className="h-10 w-10 rounded-full object-cover"
+          className="h-10 w-10 rounded-full object-cover mt-1"
         />
 
         {/* CONTENT */}
@@ -202,8 +192,9 @@ const NormalPost: React.FC<NormalPostProps> = ({
           {description && (
             <div className="mt-2 mb-4">
               <p
-                className={`text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${!isExpanded ? "line-clamp-2" : ""
-                  }`}
+                className={`text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${
+                  !isExpanded ? "line-clamp-2" : ""
+                }`}
               >
                 {description}
               </p>
@@ -215,7 +206,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
                     e.stopPropagation(); // Prevents opening post details when clicking the button
                     setIsExpanded(!isExpanded);
                   }}
-                  className="text-sky-500 hover:text-sky-600 font-semibold text-sm mt-1 focus:outline-none"
+                  className="text-sky-400 hover:text-sky-300 font-semibold text-sm mt-1 focus:outline-none"
                 >
                   {isExpanded ? "Show less" : "Show more"}
                 </button>
@@ -227,16 +218,18 @@ const NormalPost: React.FC<NormalPostProps> = ({
           {assets.length > 0 && (
             <div
               className={`
+                group relative
                 mt-3
                 w-full
                 h-[320px]
                 rounded-2xl
                 overflow-hidden
-                border border-gray-200 dark:border-gray-700
+                border border-white/[0.08]
                 grid
                 ${getGridClass(assets.length)}
                 gap-[2px]
-                bg-[#191919]
+                bg-black/20
+                mb-4
               `}
               onClick={(e) => {
                 e.stopPropagation();
@@ -251,15 +244,13 @@ const NormalPost: React.FC<NormalPostProps> = ({
                     ${assets.length === 3 && index === 0 ? "row-span-2" : ""}
                  `}
                   onClick={(e) => {
-                    e.stopPropagation()
+                    e.stopPropagation();
                     setViewerIndex(index);
                     setViewerOpen(true);
-                    e.stopPropagation();
                   }}
                 >
-
                   {asset.type === "video" ? (
-                    <div className="w-full h-full overflow-hidden relative group"> {/* added group */}
+                    <div className="w-full h-full overflow-hidden relative group">
                       <video
                         ref={(el) => {
                           if (el) {
@@ -274,10 +265,9 @@ const NormalPost: React.FC<NormalPostProps> = ({
                         src={asset.url}
                       />
 
-
                       {asset.type === "video" && index !== primaryVideoIndex && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                          <Play className="h-10 w-10 text-white/80" />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/10">
+                          <Play className="h-10 w-10 text-white/80 drop-shadow-md" />
                         </div>
                       )}
                     </div>
@@ -317,7 +307,6 @@ const NormalPost: React.FC<NormalPostProps> = ({
               onClose={() => setViewerOpen(false)}
             />
           )}
-
         </div>
       </div>
       <ConfirmDeleteModal

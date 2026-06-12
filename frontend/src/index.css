@@ -133,10 +133,9 @@
     backface-visibility: hidden;
   }
 
-  .face {
-    @apply absolute w-full h-full bg-[#F3F4F6] dark:bg-gray-700 mt-2 rounded-lg shadow-lg mb-4 backface-hidden;
+.face {
+    @apply absolute w-full h-full bg-transparent backface-hidden;
   }
-
   
   /* .face-front {
     transform: translateZ(300px);
