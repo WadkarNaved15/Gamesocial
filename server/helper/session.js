@@ -230,6 +230,38 @@ const adjustmentToCharge =
   }
 );
 
+const totalSessions =
+  await GameSession.countDocuments({
+    gamePost: session.gamePost,
+    status: "ended",
+    startedAt: { $exists: true },
+  });
+
+const uniquePlayers =
+  await GameSession.distinct(
+    "user",
+    {
+      gamePost: session.gamePost,
+      status: "ended",
+      startedAt: { $exists: true },
+    }
+  );
+
+await AllPost.updateOne(
+  {
+    _id: session.gamePost,
+  },
+  {
+    $set: {
+      "gamePost.gameMetrics.totalSessions":
+        totalSessions,
+
+      "gamePost.gameMetrics.uniquePlayers":
+        uniquePlayers.length,
+    },
+  }
+);
+
   if (
     playTimeMs > 0 ||
     creditsConsumed > 0

@@ -302,4 +302,5 @@ GameSessionSchema.statics.findNextQueued = function () {
   }).sort({ createdAt: 1 });
 };
 
+
 export default mongoose.model("GameSession", GameSessionSchema);

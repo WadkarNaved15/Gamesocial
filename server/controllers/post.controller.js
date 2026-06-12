@@ -162,6 +162,7 @@ export const createPost = async (req, res) => {
         price,
         systemRequirements,
         file,
+        videoDemo
       } = game;
 
       const allowedFormats = ["7z", "zip", "exe"];
@@ -195,6 +196,11 @@ export const createPost = async (req, res) => {
         });
       }
 
+      console.log(
+        "Received video demo:",
+        JSON.stringify(game.videoDemo, null, 2)
+      );
+
       const post = await AllPost.create({
         user: req.user.id,
         description,
@@ -220,6 +226,14 @@ export const createPost = async (req, res) => {
             size: file.size,
             format: file.format,
           },
+          videoDemo: videoDemo
+          ? {
+              name: videoDemo.name,
+              key: videoDemo.key,
+              url: videoDemo.url,
+              size: videoDemo.size,
+            }
+          : null,
           verification: {
             status: "pending",
             error: null,
