@@ -104,14 +104,14 @@ const PocketPost: React.FC<PocketPostProps> = ({
   return (
     <article
       ref={postRef}
-      className="relative w-full border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-[#0f0f0f]"
+      className="relative w-full border-b border-gray-200 dark:border-zinc-800 bg-transparent"
     >
       <div
         style={{
           width: "100%",
           height: POCKET_HEIGHT,
           position: "relative",
-          background: "#191919",
+          background:"transparent",
           // backgroundImage: "url('/defaultBackground.jpeg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
@@ -127,7 +127,7 @@ const PocketPost: React.FC<PocketPostProps> = ({
             width: "100%",
             height: "100%",
             overflow: "hidden",
-            background: "#191919",
+            background: "transparent",
 
             display: "flex",
             flexDirection: "column",
