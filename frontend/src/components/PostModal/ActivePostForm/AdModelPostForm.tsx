@@ -6,8 +6,8 @@ import { useUser } from "../../../context/user";
 import ImageRegionSelector, { CropRegion } from './Imageregionselector';
 
 const PRESET_COLORS = [
-  '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b',
-  '#10b981', '#3b82f6', '#ef4444', '#14b8a6',
+  '#3D7A6E', '#8b5cf6', '#ec4899', '#f59e0b',
+  '#10b981', '#14b8a6', '#ef4444', '#6366f1',
 ];
 
 const hexToRgb = (hex: string): string | null => {
@@ -137,7 +137,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
             bgImageUrl: bgMode === 'image' ? bgImageUrl : undefined,
             bgImagePosition: bgMode === 'image' ? bgImagePosition : undefined,
             bgImageSize: bgMode === 'image' ? bgImageSize : undefined,
-            logoUrl:user?.avatar,
+            logoUrl: user?.avatar,
             asset: { name: asset.name, originalUrl: modelUrl, originalKey: mKey },
           },
         }),
@@ -231,7 +231,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
         <button
           onClick={handleSubmit}
           disabled={!asset || isSubmitting}
-          className="bg-indigo-500 hover:bg-indigo-600 disabled:opacity-40 text-white font-bold px-5 py-1.5 rounded-full text-sm transition shadow-sm"
+          className="bg-[#3D7A6E] hover:bg-[#2F5E55] disabled:opacity-40 text-white font-bold px-5 py-1.5 rounded-full text-sm transition shadow-sm"
         >
           {isSubmitting ? 'Posting...' : 'Publish Ad'}
         </button>
@@ -241,7 +241,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
       <div className="flex border-b border-gray-100 dark:border-zinc-800 px-4 bg-white dark:bg-[#191919]">
         {(['model', 'brand', 'background'] as const).map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${activeTab === tab ? 'border-indigo-500 text-indigo-500' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}>
+            className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${activeTab === tab ? 'border-[#3D7A6E] text-[#3D7A6E]' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}>
             {tab}
           </button>
         ))}
@@ -265,8 +265,8 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
               </div>
             ) : (
               <div onClick={() => modelInputRef.current?.click()}
-                className="border-2 border-dashed border-indigo-200 dark:border-indigo-900/40 rounded-xl py-16 flex flex-col items-center gap-3 cursor-pointer hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 transition-all group">
-                <div className="p-4 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-400 group-hover:scale-110 transition-transform">
+                className="border-2 border-dashed border-[#3D7A6E]/30 dark:border-[#3D7A6E]/30 rounded-xl py-16 flex flex-col items-center gap-3 cursor-pointer hover:bg-[#3D7A6E]/5 dark:hover:bg-[#3D7A6E]/10 transition-all group">
+                <div className="p-4 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 text-[#3D7A6E] group-hover:scale-110 transition-transform">
                   <Upload size={28} />
                 </div>
                 <p className="text-gray-500 dark:text-gray-400 font-medium text-sm">Upload one .glb model</p>
@@ -275,7 +275,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
             )}
             <textarea
               placeholder="Optional description or caption..."
-              className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl p-3 outline-none text-black dark:text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition min-h-[80px]"
+              className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl p-3 outline-none text-black dark:text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-[#3D7A6E]/30 focus:border-[#3D7A6E] transition min-h-[80px]"
               value={description} onChange={(e) => setDescription(e.target.value)}
             />
           </div>
@@ -311,7 +311,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
 
               <textarea
                 placeholder="Optional caption..."
-                className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl p-3 outline-none text-black dark:text-white resize-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition min-h-[90px]"
+                className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl p-3 outline-none text-black dark:text-white resize-none focus:ring-2 focus:ring-[#3D7A6E]/30 focus:border-[#3D7A6E] transition min-h-[90px]"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -324,10 +324,10 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
         {activeTab === 'background' && (
           <div className="p-4 flex flex-col gap-4">
             <div className="flex gap-2 p-1 bg-gray-100 dark:bg-zinc-900 rounded-xl">
-              <button onClick={() => setBgMode('color')} className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${bgMode === 'color' ? 'bg-white dark:bg-zinc-800 text-indigo-500 shadow-sm' : 'text-gray-400'}`}>
+              <button onClick={() => setBgMode('color')} className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${bgMode === 'color' ? 'bg-white dark:bg-zinc-800 text-[#3D7A6E] shadow-sm' : 'text-gray-400'}`}>
                 <Palette size={13} /> Color
               </button>
-              <button onClick={() => setBgMode('image')} className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${bgMode === 'image' ? 'bg-white dark:bg-zinc-800 text-indigo-500 shadow-sm' : 'text-gray-400'}`}>
+              <button onClick={() => setBgMode('image')} className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${bgMode === 'image' ? 'bg-white dark:bg-zinc-800 text-[#3D7A6E] shadow-sm' : 'text-gray-400'}`}>
                 <ImageIcon size={13} /> Image
               </button>
             </div>
@@ -344,8 +344,8 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                     <button key={c} onClick={() => setBgColor(c)} style={{ backgroundColor: c }}
                       className={`w-9 h-9 rounded-full border-2 transition-all ${bgColor === c ? 'border-white scale-110 shadow-lg' : 'border-transparent'}`} />
                   ))}
-                  <label className="w-9 h-9 rounded-full border-2 border-dashed border-gray-300 dark:border-zinc-600 flex items-center justify-center cursor-pointer hover:border-indigo-400 transition overflow-hidden relative">
-                    <input type="color" className="opacity-0 absolute w-0 h-0" value={bgColor === 'transparent' ? '#6366f1' : bgColor} onChange={(e) => setBgColor(e.target.value)} />
+                  <label className="w-9 h-9 rounded-full border-2 border-dashed border-gray-300 dark:border-zinc-600 flex items-center justify-center cursor-pointer hover:border-[#3D7A6E] transition overflow-hidden relative">
+                    <input type="color" className="opacity-0 absolute w-0 h-0" value={bgColor === 'transparent' ? '#3D7A6E' : bgColor} onChange={(e) => setBgColor(e.target.value)} />
                     <span className="text-xs text-gray-400 font-bold">+</span>
                   </label>
                 </div>
@@ -363,14 +363,14 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Dark Overlay</label>
-                    <span className="text-xs font-bold text-indigo-500 tabular-nums">{overlayOpacity}%</span>
+                    <span className="text-xs font-bold text-[#3D7A6E] tabular-nums">{overlayOpacity}%</span>
                   </div>
                   <div className="relative h-5 flex items-center">
                     {/* Styled track */}
                     <div className="absolute inset-y-0 flex items-center w-full pointer-events-none">
                       <div className="w-full h-1.5 rounded-full bg-gray-200 dark:bg-zinc-700 overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-indigo-500 transition-all"
+                          className="h-full rounded-full bg-[#3D7A6E] transition-all"
                           style={{ width: `${(overlayOpacity / 80) * 100}%` }}
                         />
                       </div>
@@ -384,7 +384,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                     />
                     {/* Custom thumb */}
                     <div
-                      className="absolute w-4 h-4 rounded-full bg-indigo-500 shadow-md border-2 border-white pointer-events-none z-20 transition-all"
+                      className="absolute w-4 h-4 rounded-full bg-[#3D7A6E] shadow-md border-2 border-white pointer-events-none z-20 transition-all"
                       style={{ left: `calc(${(overlayOpacity / 80) * 100}% - ${(overlayOpacity / 80) * 16}px)` }}
                     />
                   </div>
@@ -426,14 +426,14 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Dark Overlay</label>
-                    <span className="text-xs font-bold text-indigo-500 tabular-nums">{overlayOpacity}%</span>
+                    <span className="text-xs font-bold text-[#3D7A6E] tabular-nums">{overlayOpacity}%</span>
                   </div>
                   <div className="relative h-5 flex items-center">
                     {/* Styled track */}
                     <div className="absolute inset-y-0 flex items-center w-full pointer-events-none">
                       <div className="w-full h-1.5 rounded-full bg-gray-200 dark:bg-zinc-700 overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-indigo-500 transition-all"
+                          className="h-full rounded-full bg-[#3D7A6E] transition-all"
                           style={{ width: `${(overlayOpacity / 80) * 100}%` }}
                         />
                       </div>
@@ -447,7 +447,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                     />
                     {/* Custom thumb */}
                     <div
-                      className="absolute w-4 h-4 rounded-full bg-indigo-500 shadow-md border-2 border-white pointer-events-none z-20 transition-all"
+                      className="absolute w-4 h-4 rounded-full bg-[#3D7A6E] shadow-md border-2 border-white pointer-events-none z-20 transition-all"
                       style={{ left: `calc(${(overlayOpacity / 80) * 100}% - ${(overlayOpacity / 80) * 16}px)` }}
                     />
                   </div>
@@ -580,21 +580,21 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
         </div>
 
         {asset?.status === 'uploading' && (
-          <div className="mx-4 mb-4 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-900/10">
+          <div className="mx-4 mb-4 p-3 rounded-xl border border-[#3D7A6E]/20 dark:border-[#3D7A6E]/30 bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/10">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 truncate">Uploading {asset.name}</span>
-              <span className="text-[10px] font-bold text-indigo-500">{asset.progress ?? 0}%</span>
+              <span className="text-xs font-semibold text-[#3D7A6E] dark:text-[#4A9384] truncate">Uploading {asset.name}</span>
+              <span className="text-[10px] font-bold text-[#3D7A6E]">{asset.progress ?? 0}%</span>
             </div>
-            <div className="h-1.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-full overflow-hidden">
-              <div className="h-full bg-indigo-500 rounded-full transition-all duration-300" style={{ width: `${asset.progress ?? 0}%` }} />
+            <div className="h-1.5 bg-[#3D7A6E]/20 dark:bg-[#3D7A6E]/40 rounded-full overflow-hidden">
+              <div className="h-full bg-[#3D7A6E] rounded-full transition-all duration-300" style={{ width: `${asset.progress ?? 0}%` }} />
             </div>
           </div>
         )}
 
         {isSavingMetadata && (
-          <div className="mx-4 mb-4 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-900/10 flex items-center gap-2 animate-pulse">
-            <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">Finalizing ad post...</span>
+          <div className="mx-4 mb-4 p-3 rounded-xl border border-[#3D7A6E]/20 dark:border-[#3D7A6E]/30 bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/10 flex items-center gap-2 animate-pulse">
+            <div className="w-4 h-4 border-2 border-[#3D7A6E] border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs font-semibold text-[#3D7A6E] dark:text-[#4A9384]">Finalizing ad post...</span>
           </div>
         )}
       </div>

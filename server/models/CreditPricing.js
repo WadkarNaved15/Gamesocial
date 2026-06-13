@@ -12,14 +12,14 @@ const CreditPricingSchema = new mongoose.Schema(
       required: true,
     },
 
-    price: {
+    amount: {
       type: Number,
       required: true,
     },
 
     currency: {
       type: String,
-      default: "INR",
+      default: "USD",
     },
 
     bonusCredits: {
