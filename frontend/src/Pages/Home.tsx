@@ -6,6 +6,7 @@ import {
   useRef,
 } from "react";
 import { useSearchParams } from "react-router-dom";
+import { usePosts } from "../context/PostContext";
 import { useFeed } from "../context/FeedContext";
 import Post from "../components/Post";
 import PostSkeleton from "../components/Home/PostSkeleton";
@@ -32,7 +33,7 @@ function Home() {
     hasMore,
     setHasMore,
   } = useFeed();
-
+  const { addPosts } = usePosts();
   const [loading, setLoading] = useState(false);
   const loaderRef = useRef<HTMLDivElement | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
@@ -59,7 +60,7 @@ function Home() {
         );
         const newPosts = res.data.posts;
         const newCursor = res.data.nextCursor;
-
+        addPosts(newPosts);
         setMainPosts((prev) => {
           const all: PostProps[] = reset ? newPosts : [...prev, ...newPosts];
           const uniquePosts: PostProps[] = Array.from(
@@ -113,6 +114,7 @@ function Home() {
 
         const newPosts = res.data.posts;
         const newCursor = res.data.nextCursor;
+        addPosts(newPosts);
         setFilteredPosts((prev: PostProps[]) => {
           const all: PostProps[] = reset ? newPosts : [...prev, ...newPosts];
 

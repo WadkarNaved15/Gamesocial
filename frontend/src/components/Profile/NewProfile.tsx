@@ -10,6 +10,7 @@ import { saveProfileCache, getProfileCache, clearProfileCache } from "../../util
 import type { ProfileUser } from "../../utils/profileCache"; // ← import shared type
 import Post from "../Post";
 import { useChat } from "../../context/ChatContext";
+import { usePosts } from "../../context/PostContext";
 import EditProfileModal from "./EditProfileModal";
 import type { PostProps } from "../../types/Post";
 import { useUser } from "../../context/user";
@@ -20,6 +21,7 @@ const ProfilePage: React.FC = () => {
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
   const { username } = useParams<{ username: string }>();
   const { user } = useUser();
+  const { addPosts } = usePosts();
   const navigate = useNavigate();
   const { openChatWith } = useChat();
 
@@ -113,6 +115,7 @@ const ProfilePage: React.FC = () => {
           },
         }
       );
+      addPosts(res.data.posts);
       if (activeFetchIdRef.current !== fetchId) return;
       setUserPosts((prev) =>
         cursorParam === null ? res.data.posts : [...prev, ...res.data.posts]
