@@ -61,6 +61,7 @@ export const PostProvider = ({
             postId: string,
             updates: Partial<PostProps>
         ) => {
+            console.log("UPDATE POST", postId, updates);
             setPostsById((prev) => {
                 const existing = prev[postId];
 
