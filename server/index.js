@@ -63,6 +63,7 @@ import internalRoutes from "./routes/internal.js";
 import pocketRoutes from "./routes/pocket.js";
 import creatorAnalyticsRoutes from "./routes/CreatorAnalytics.js";
 import analyticsRoutes from "./routes/analytics.js"
+import gamePostRoutes from "./routes/gamePosts.js"
 
 import streamProxyRouter, { handleWsUpgrade } from "./routes/streamProxy.js";
 import adminCreditsRoutes from "./routes/adminCredits.js";
@@ -217,6 +218,7 @@ app.use("/api/internal", internalRoutes);
 app.use("/api/pockets", pocketRoutes);
 app.use("/api/creatorAnalytics", creatorAnalyticsRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/gamePosts",gamePostRoutes)
 
 // Admin routes (protected by your isAdmin middleware)
 app.use("/api/admin", adminRouter);

@@ -191,7 +191,7 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
         <button
           onClick={handlePostSubmit}
           disabled={!description || assets.length === 0 || isSubmitting}
-          className="bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-bold px-5 py-1.5 rounded-full transition"
+          className="bg-[#3D7A6E] hover:bg-[#2F5E55] disabled:opacity-50 text-white font-bold px-5 py-1.5 rounded-full transition"
         >
           {isSubmitting ? "Posting..." : "Post"}
         </button>
@@ -221,8 +221,8 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
                     key={asset.id}
                     onClick={() => setActiveIndex(index)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all whitespace-nowrap ${activeIndex === index
-                      ? 'bg-sky-500 border-sky-500 text-white shadow-md'
-                      : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-500 hover:border-sky-500'
+                      ? 'bg-[#3D7A6E] border-[#3D7A6E] text-white shadow-md'
+                      : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-500 hover:border-[#3D7A6E]'
                       }`}
                   >
                     <span className="text-xs font-bold uppercase tracking-wider">{asset.type} {index + 1}</span>
@@ -238,7 +238,7 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
                 {assets.length < 4 && (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="p-2 border-2 border-dashed border-gray-300 dark:border-zinc-700 rounded-full text-gray-400 hover:text-sky-500 hover:border-sky-500 transition-all flex-shrink-0"
+                    className="p-2 border-2 border-dashed border-gray-300 dark:border-zinc-700 rounded-full text-gray-400 hover:text-[#3D7A6E] hover:border-[#3D7A6E] transition-all flex-shrink-0"
                     title="Add more media"
                   >
                     <Plus size={18} />
@@ -272,7 +272,7 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
               onClick={() => fileInputRef.current?.click()}
               className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl py-16 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900/30 transition-all group"
             >
-              <div className="p-3 rounded-full bg-sky-50 dark:bg-sky-900/20 text-sky-500 group-hover:scale-110 transition-transform">
+              <div className="p-3 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 text-[#3D7A6E] group-hover:scale-110 transition-transform">
                 <ImageIcon size={32} />
               </div>
               <p className="text-gray-500 font-medium">Add Photos or Videos (Up to 4)</p>
@@ -284,7 +284,7 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
       {/* Upload Progress Overlay */}
       <div className="px-4 space-y-2">
         {isSavingMetadata && (
-          <div className="p-3 rounded-xl border border-sky-100 dark:border-sky-900/30 bg-sky-50 dark:bg-sky-900/10 text-sky-600 dark:text-sky-400 text-sm animate-pulse text-center font-semibold">
+          <div className="p-3 rounded-xl border border-[#3D7A6E]/30 dark:border-[#3D7A6E]/30 bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/10 text-[#3D7A6E] dark:text-[#4A9384] text-sm animate-pulse text-center font-semibold">
             Finalizing post...
           </div>
         )}
@@ -292,10 +292,10 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
           <div key={asset.id} className="p-3 rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/50">
             <div className="flex justify-between text-[10px] font-bold mb-2">
               <span className="text-gray-700 dark:text-zinc-300 truncate">Uploading {asset.name}</span>
-              <span className="text-sky-500">{asset.progress}%</span>
+              <span className="text-[#3D7A6E]">{asset.progress}%</span>
             </div>
             <div className="h-1.5 bg-gray-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-              <div className="h-full bg-sky-500 transition-all duration-300" style={{ width: `${asset.progress ?? 0}%` }} />
+              <div className="h-full bg-[#3D7A6E] transition-all duration-300" style={{ width: `${asset.progress ?? 0}%` }} />
             </div>
           </div>
         ))}
@@ -307,7 +307,7 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={assets.length >= 4}
-            className={`p-2 rounded-full transition-all ${assets.length >= 4 ? 'text-gray-400 cursor-not-allowed' : 'text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-900/20'}`}
+            className={`p-2 rounded-full transition-all ${assets.length >= 4 ? 'text-gray-400 cursor-not-allowed' : 'text-[#3D7A6E] hover:bg-[#3D7A6E]/10 dark:hover:bg-[#3D7A6E]/20'}`}
           >
             <Film size={22} />
           </button>

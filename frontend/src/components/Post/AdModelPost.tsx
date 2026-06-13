@@ -74,7 +74,7 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
     return () => { modelObserver.disconnect(); postObserver.disconnect(); };
   }, [_id]);
 
-  // ── TRANSPARENT: ExePost-style ────────────────────────────────────────────
+  // ── TRANSPARENT: Feed style ───────────────────────────────────────────────
   if (isTransparent) {
     return (
       <article
@@ -83,30 +83,33 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
           if ((e.target as HTMLElement).closest('button')) return;
           onOpenDetails?.();
         }}
-        className="relative w-full border border-gray-200 dark:border-white/10 bg-[#F9FAFB] dark:bg-[#191919] hover:bg-[#F7F9F9] dark:hover:bg-[#16181C] transition-colors duration-200 cursor-pointer"
+        className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-transparent hover:bg-white/[0.03] cursor-pointer transition-colors duration-200"
       >
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full"
-              style={{ background: 'rgba(0,0,0,0.06)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
               {logoUrl ? (
                 <img src={logoUrl} alt={brandName || 'Brand'} className="w-5 h-5 rounded-full object-cover" />
               ) : (
-                <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-zinc-700 flex items-center justify-center text-[8px] font-black text-gray-500">
+                <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[8px] font-black text-white">
                   {(brandName || user?.username || 'B').charAt(0).toUpperCase()}
                 </div>
               )}
-              <span className="text-gray-700 dark:text-gray-300 text-xs font-bold tracking-wide">
+              <span className="text-gray-200 text-xs font-bold tracking-wide drop-shadow-sm">
                 {brandName || user?.username || 'Creator'}
               </span>
             </div>
-            <div className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest text-gray-400"
-              style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.08)' }}>Ad</div>
+            {/* Ad Badge with matching glass style */}
+            <div className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest text-white/90 drop-shadow-sm"
+              style={{ background: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}>
+              Ad
+            </div>
           </div>
 
-          {description && <p className="text-gray-800 dark:text-gray-200 text-sm leading-relaxed mb-3">{description}</p>}
+          {description && <p className="text-gray-200 text-sm leading-relaxed mb-3">{description}</p>}
 
-          <div ref={modelRef} className="relative overflow-hidden w-full h-[400px] rounded-xl bg-gray-100 dark:bg-zinc-900/50">
+          <div ref={modelRef} className="relative overflow-hidden w-full h-[400px] rounded-2xl bg-black/20 border border-white/[0.08]">
             {modelVisible && modelUrl ? (
               // @ts-ignore
               <model-viewer
@@ -122,7 +125,7 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
                 style={{ width: '100%', height: '400px', backgroundColor: 'transparent' }} />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <div className="w-12 h-12 rounded-xl bg-gray-200 dark:bg-zinc-800 animate-pulse" />
+                <div className="w-12 h-12 rounded-xl bg-white/10 animate-pulse" />
               </div>
             )}
           </div>
@@ -133,22 +136,12 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
 
   // ── COLOR / IMAGE: glassmorphism ──────────────────────────────────────────
 
-  // Outer article: image mode = layers handle bg / color mode = solid dark base + tinted gradient
-  // The solid base (#0a0a0f) ensures the tinted gradient looks identical in light and dark themes.
-  // Without it the nearly-transparent gradient (0.12–0.22 opacity) picks up the page bg color.
-  // Outer: color mode = exact solid bgColor (no mixing, no gradient, same in all themes)
-  //         image mode = position:relative so absolute layers stack correctly
-  const outerStyle: React.CSSProperties = isImage
-    ? { position: 'relative' }
-    : { background: bgColor! };
-
-  // Card: color mode = dark semi-transparent overlay so text stays readable on the solid color
-  //        image mode = sharp image, zero blur on the card itself
   const glassCardBase: React.CSSProperties = isImage
     ? {
       backgroundImage: `url(${bgImageUrl})`,
       backgroundSize: resolvedBgSize,
       backgroundPosition: resolvedBgPos,
+      backgroundRepeat: 'no-repeat',
       border: '1px solid rgba(255,255,255,0.18)',
       boxShadow: '0 8px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)',
     }
@@ -166,11 +159,16 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
     boxShadow: '0 4px 16px rgba(0,0,0,0.20)',
   };
 
-  const adBadgeStyle: React.CSSProperties = accentRgb
-    ? { background: `rgba(${accentRgb},0.25)`, border: `1px solid rgba(${accentRgb},0.4)`, color: bgColor! }
-    : { background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', color: 'rgba(255,255,255,0.8)' };
+  // Same styling as headerPillStyle so it's always visible regardless of background hue
+  const adBadgeStyle: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.12)',
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)',
+    border: '1px solid rgba(255,255,255,0.22)',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.20)',
+    color: '#ffffff',
+  };
 
-  // Model area: transparent so the outer bgColor shows through cleanly
   const modelAreaStyle: React.CSSProperties = { background: 'transparent' };
 
   return (
@@ -180,13 +178,14 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
         if ((e.target as HTMLElement).closest('button')) return;
         onOpenDetails?.();
       }}
-      className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-transparent hover:bg-white/[0.03] cursor-pointer transition-colors duration-200"
-      // style={outerStyle}
+      className={`relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r cursor-pointer transition-colors duration-200 overflow-hidden ${
+        isImage ? 'bg-transparent hover:bg-white/[0.03]' : ''
+      }`}
+      style={!isImage && bgColor ? { backgroundColor: bgColor } : undefined}
     >
       {/* ── Outer bg for image mode: blurred, low-opacity ── */}
       {isImage && (
         <>
-          {/* The actual blurred background image */}
           <div className="absolute inset-0 pointer-events-none" style={{
             backgroundImage: `url(${bgImageUrl})`,
             backgroundSize: 'cover',
@@ -195,7 +194,6 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
             transform: 'scale(1.12)',
             opacity: 0.45,
           }} />
-          {/* Subtle dark tint — keep low so the image's own colors stay visible */}
           <div className="absolute inset-0 pointer-events-none" style={{ background: `rgba(0,0,0,${overlayOpacity / 100 * 0.4})` }} />
         </>
       )}
@@ -204,10 +202,10 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
       <div className="absolute inset-0 pointer-events-none opacity-[0.025]"
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`, backgroundRepeat: 'repeat' }} />
 
-      {/* ── Glass card — m-3 gap gives the "floating" appearance ── */}
+      {/* ── Glass card ── */}
       <div className="relative z-10 m-3 rounded-2xl overflow-hidden" style={glassCardBase}>
 
-        {/* Image mode: pure dark tint only — NO backdropFilter (would blur card's own backgroundImage) */}
+        {/* Image mode: pure dark tint only */}
         {isImage && (
           <div className="absolute inset-0 pointer-events-none" style={{ background: `rgba(0,0,0,${overlayOpacity / 100})` }} />
         )}
@@ -233,7 +231,8 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
                 {brandName || user?.username || 'Creator'}
               </span>
             </div>
-            <div className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest" style={adBadgeStyle}>
+            {/* Ad Badge */}
+            <div className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest drop-shadow-sm" style={adBadgeStyle}>
               Ad
             </div>
           </div>
@@ -270,22 +269,20 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
             } />
         </div>
       </div>
+      
       {/* Description */}
       {description && (
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-3 relative z-10">
           <p
-            className={`text-sm leading-relaxed font-light tracking-wide ${isTransparent || bgMode === "image"
-                ? "text-black dark:text-white"
-                : ""
-              }`}
+            className="text-sm leading-relaxed font-light tracking-wide"
             style={{
               color:
                 bgMode === "color" && bgColor && bgColor !== "transparent"
                   ? getContrastText(bgColor)
-                  : undefined,
+                  : "#ffffff",
               textShadow:
                 bgMode === "image"
-                  ? "0 1px 2px rgba(0,0,0,0.6)"
+                  ? "0 1px 3px rgba(0,0,0,0.8)"
                   : "none",
             }}
           >

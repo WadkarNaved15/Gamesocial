@@ -1,6 +1,4 @@
 // src/components/postModal/PostTypeHeader.tsx
-// Full file — adds pocket icon with violet accent colour.
-
 import React from "react";
 import {
   X,
@@ -30,19 +28,13 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   pocket:  <LayoutDashboard size={22} />,
 };
 
-// Per-type accent colours for active state
-function getActiveClass(id: string): string {
-  switch (id) {
-    case "pocket":  return "text-violet-500 bg-violet-50 dark:bg-violet-500/10 shadow-sm";
-    default:        return "text-sky-500 bg-sky-50 dark:bg-sky-500/10 shadow-sm";
-  }
+// Unified brand colour for active state across all types
+function getActiveClass(): string {
+  return "text-[#3D7A6E] bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/10 shadow-sm";
 }
 
-function getBarClass(id: string): string {
-  switch (id) {
-    case "pocket":  return "bg-violet-500";
-    default:        return "bg-sky-500";
-  }
+function getBarClass(): string {
+  return "bg-[#3D7A6E]";
 }
 
 const PostTypeHeader: React.FC<PostTypeHeaderProps> = ({ active, onChange, onCancel }) => {
@@ -71,7 +63,7 @@ const PostTypeHeader: React.FC<PostTypeHeaderProps> = ({ active, onChange, onCan
               onClick={() => onChange(t.id)}
               className={`relative flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-300 ${
                 active === t.id
-                  ? getActiveClass(t.id)
+                  ? getActiveClass()
                   : "text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-900"
               }`}
             >
@@ -81,7 +73,7 @@ const PostTypeHeader: React.FC<PostTypeHeaderProps> = ({ active, onChange, onCan
               <div
                 className={`absolute left-[-8px] w-1 h-6 rounded-r-full transition-all duration-300 ${
                   active === t.id
-                    ? `${getBarClass(t.id)} scale-y-100 opacity-100`
+                    ? `${getBarClass()} scale-y-100 opacity-100`
                     : "scale-y-0 opacity-0 bg-transparent"
                 }`}
               />

@@ -1,5 +1,5 @@
 import React, { useState, useRef, ChangeEvent } from 'react';
-import { X, Image as ImageIcon, DollarSign ,Megaphone} from 'lucide-react';
+import { X, Image as ImageIcon, DollarSign, Megaphone } from 'lucide-react';
 import '@google/model-viewer';
 import AdModelPostForm from "./AdModelPostForm";
 
@@ -37,7 +37,6 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
   if (showAdForm) {
     return <AdModelPostForm onCancel={onCancel} onBack={() => setShowAdForm(false)} />;
   }
-
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -208,15 +207,12 @@ const handlePostSubmit = async () => {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 sticky top-0 bg-white/80 dark:bg-[#191919]/80 backdrop-blur-md z-30 border-b border-gray-100 dark:border-zinc-800">
         <div className="flex items-center gap-6">
-          {/* <button onClick={onCancel} className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-900 rounded-full transition-colors">
-            <X size={20} className="text-black dark:text-white" />
-          </button> */}
           <h2 className="text-xl font-bold text-black dark:text-white">Compose 3D Bundle</h2>
         </div>
           {/* ⭐ AD BUTTON */}
           <button
             onClick={() => setShowAdForm(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-indigo-300 dark:border-indigo-700/60 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 text-[11px] font-bold uppercase tracking-wider transition-all group"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#3D7A6E]/40 dark:border-[#3D7A6E]/60 text-[#3D7A6E] hover:bg-[#3D7A6E]/10 dark:hover:bg-[#3D7A6E]/20 text-[11px] font-bold uppercase tracking-wider transition-all group"
           >
             <Megaphone size={12} className="group-hover:scale-110 transition-transform" />
             Ad
@@ -224,7 +220,7 @@ const handlePostSubmit = async () => {
         <button
           onClick={handlePostSubmit}
           disabled={!title || !description || assets.length === 0 || isSubmitting}
-          className="bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-bold px-5 py-1.5 rounded-full transition shadow-sm"
+          className="bg-[#3D7A6E] hover:bg-[#2F5E55] disabled:opacity-50 text-white font-bold px-5 py-1.5 rounded-full transition shadow-sm"
         >
           {isSubmitting ? "Posting..." : "Post"}
         </button>
@@ -267,8 +263,8 @@ const handlePostSubmit = async () => {
                     key={asset.id}
                     onClick={() => setActiveIndex(index)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all whitespace-nowrap ${activeIndex === index
-                      ? 'bg-sky-500 border-sky-500 text-white shadow-md'
-                      : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-500 hover:border-sky-500'
+                      ? 'bg-[#3D7A6E] border-[#3D7A6E] text-white shadow-md'
+                      : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-500 hover:border-[#3D7A6E]'
                       }`}
                   >
                     <span className="text-xs font-bold uppercase tracking-wider">Asset {index + 1}</span>
@@ -283,7 +279,7 @@ const handlePostSubmit = async () => {
                 {assets.length < 4 && (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="p-2 border-2 border-dashed border-gray-300 dark:border-zinc-700 rounded-full text-gray-400 hover:text-sky-500 hover:border-sky-500 transition"
+                    className="p-2 border-2 border-dashed border-gray-300 dark:border-zinc-700 rounded-full text-gray-400 hover:text-[#3D7A6E] hover:border-[#3D7A6E] transition"
                     title="Add another asset"
                   >
                     <ImageIcon size={18} />
@@ -320,7 +316,7 @@ const handlePostSubmit = async () => {
               onClick={() => fileInputRef.current?.click()}
               className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl py-16 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900/30 transition-all group"
             >
-              <div className="p-3 rounded-full bg-sky-50 dark:bg-sky-900/20 text-sky-500 group-hover:scale-110 transition-transform">
+              <div className="p-3 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 text-[#3D7A6E] group-hover:scale-110 transition-transform">
                 <ImageIcon size={32} />
               </div>
               <p className="text-gray-500 font-medium">Upload up to 4 .glb assets</p>
@@ -332,9 +328,9 @@ const handlePostSubmit = async () => {
       <div className="space-y-3 px-1 mt-2">
         {/* Metadata Saving Overlay */}
         {isSavingMetadata && (
-          <div className="mx-4 p-4 rounded-xl border border-sky-100 dark:border-sky-900/30 bg-sky-50/50 dark:bg-sky-900/10 flex items-center justify-center gap-3 animate-pulse">
-            <div className="w-5 h-5 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm font-semibold text-sky-600 dark:text-sky-400">
+          <div className="mx-4 p-4 rounded-xl border border-[#3D7A6E]/20 dark:border-[#3D7A6E]/30 bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/10 flex items-center justify-center gap-3 animate-pulse">
+            <div className="w-5 h-5 border-2 border-[#3D7A6E] border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm font-semibold text-[#3D7A6E] dark:text-[#4A9384]">
               Finalizing post & fetching metadata...
             </span>
           </div>
@@ -347,12 +343,12 @@ const handlePostSubmit = async () => {
             >
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2 overflow-hidden">
-                  <div className="flex-shrink-0 w-2 h-2 rounded-full bg-sky-500 animate-pulse" />
+                  <div className="flex-shrink-0 w-2 h-2 rounded-full bg-[#3D7A6E] animate-pulse" />
                   <span className="text-xs font-medium text-gray-700 dark:text-zinc-300 truncate">
                     Uploading {asset.name}
                   </span>
                 </div>
-                <span className="text-[10px] font-bold text-sky-500 tabular-nums">
+                <span className="text-[10px] font-bold text-[#3D7A6E] tabular-nums">
                   {asset.progress || 0}%
                 </span>
               </div>
@@ -360,7 +356,7 @@ const handlePostSubmit = async () => {
               <div className="relative w-full h-1.5 bg-gray-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                 {/* Progress Fill with Glow Effect */}
                 <div
-                  className="absolute top-0 left-0 h-full bg-sky-500 transition-all duration-300 ease-out rounded-full shadow-[0_0_8px_rgba(14,165,233,0.4)]"
+                  className="absolute top-0 left-0 h-full bg-[#3D7A6E] transition-all duration-300 ease-out rounded-full shadow-[0_0_8px_rgba(61,122,110,0.4)]"
                   style={{ width: `${asset.progress || 0}%` }}
                 />
               </div>
@@ -372,7 +368,7 @@ const handlePostSubmit = async () => {
       <div className="px-4 py-3 border-t border-gray-100 dark:border-zinc-800 bg-white dark:bg-[#191919] flex items-center justify-between">
         <div className="flex items-center gap-4">
           {/* Price Input Container */}
-          <div className="flex items-center bg-gray-100 dark:bg-zinc-900 rounded-full px-3 py-1.5 border border-transparent focus-within:border-sky-500 text-sky-500 transition-all">
+          <div className="flex items-center bg-gray-100 dark:bg-zinc-900 rounded-full px-3 py-1.5 border border-transparent focus-within:border-[#3D7A6E] text-[#3D7A6E] transition-all">
             <DollarSign size={16} />
             <input
               type="number"
@@ -386,7 +382,7 @@ const handlePostSubmit = async () => {
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            className={`p-2 rounded-full transition ${assets.length >= 4 ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-sky-500 hover:bg-sky-50 dark:hover:bg-sky-900/20'}`}
+            className={`p-2 rounded-full transition ${assets.length >= 4 ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-[#3D7A6E] hover:bg-[#3D7A6E]/10 dark:hover:bg-[#3D7A6E]/20'}`}
             disabled={assets.length >= 4}
             title="Add Asset"
           >

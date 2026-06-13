@@ -8,6 +8,7 @@ import SidebarNavigation from "../components/Home/SidebarNavigation";
 import MessagingComponent from "../components/Home/Message";
 import ArticleRecommendations from "../components/Articles/ArticleRecommendations";
 import { ScrollRestoration } from "react-router-dom";
+import AmbientBackground from "../components/AmbientBackground";
 
 const ProfileCover = lazy(() => import("../components/Home/Profile"));
 
@@ -46,16 +47,7 @@ function MainLayout() {
 
   return (
     <>
-      <div
-        className="fixed inset-0 pointer-events-none -z-10"
-        style={{
-          background: "#191919",
-          backgroundImage: `
-      radial-gradient(circle at 8% 24%, rgba(74,222,128,0.35) 0px, transparent 200px),
-      radial-gradient(circle at 92% 88%, rgba(74,222,128,0.28) 0px, transparent 200px)
-    `,
-        }}
-      />
+      <AmbientBackground />
       <div className="min-h-screen bg-gray-100 dark:bg-transparent">
         <ScrollRestoration
           getKey={(location) => {
