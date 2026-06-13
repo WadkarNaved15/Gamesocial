@@ -104,7 +104,7 @@ const PocketPost: React.FC<PocketPostProps> = ({
   return (
     <article
       ref={postRef}
-      className="relative w-full border-b border-gray-200 dark:border-zinc-800 bg-transparent"
+      className="relative w-full bg-transparent"
     >
       <div
         style={{
