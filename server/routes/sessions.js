@@ -568,19 +568,6 @@ const existingSession =
     _id: { $ne: session._id }
   });
 
-await AllPost.updateOne(
-  { _id: session.gamePost },
-  {
-    $inc: {
-      "gamePost.gameMetrics.totalSessions": 1,
-      ...(existingSession
-        ? {}
-        : {
-            "gamePost.gameMetrics.uniquePlayers": 1
-          }),
-    },
-  }
-);
   console.log(`[Running] Session ${session_id} is now streaming`);
 
       // Notify SSE clients

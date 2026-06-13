@@ -136,7 +136,7 @@ const Billboard: React.FC = () => {
 
   return (
     <div
-      className="flex flex-col h-full w-full dark:bg-[#191919] rounded-xl overflow-hidden"
+      className="flex flex-col h-full w-full relative bg-transparent rounded-2xl overflow-hidden"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -150,15 +150,10 @@ const Billboard: React.FC = () => {
         />
       </div>
 
-      <div
-        className={`
-        flex-1 overflow-hidden
-        ${!isPocketFace ? "border-t border-purple-600 dark:border-gray-200" : ""}
-      `}
-      >
-        <Suspense fallback={<div className="text-center text-gray-400 pt-10">Loading...</div>}>
+      <div className="flex-1 overflow-hidden">
+        <Suspense fallback={<div className="text-center text-white/60 pt-10">Loading...</div>}>
           {loadingPockets ? (
-            <div className="text-center text-gray-400 pt-10">Loading...</div>
+            <div className="text-center text-white/60 pt-10">Loading...</div>
           ) : (
             <Tower
               activeFaceIndex={activeIndex}

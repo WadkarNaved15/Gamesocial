@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Gamepad2, Sparkles, Loader2, AlertCircle, Users } from 'lucide-react';
+import { Play, Gamepad2, Sparkles, Loader2, AlertCircle, Users, VolumeX, Volume2 } from 'lucide-react';
 import { useQueue } from '../../context/QueueContext';
 import { useUI } from '../../context/UIContext';
 import { useLikes } from '../../hooks/useLikes';
@@ -9,10 +9,10 @@ import ConfirmDeleteModal from '../Home/ConfirmDeleteModal';
 import { useUser } from "../../context/user";
 import PostHeader from './PostHeader';
 import PostInteractions from './PostInteractions';
-import {toast} from "react-toastify";
+import { toast } from "react-toastify";
 import { getStreamEligibility } from "../../utils/streamEligibility";
 import type { StreamEligibility } from "../../utils/streamEligibility";
-import {trackEvent} from "../../utils/analytics";
+import { trackEvent } from "../../utils/analytics";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -50,15 +50,16 @@ const GamePost: React.FC<GamePostProps> = ({
   gamePost,
 }) => {
   const postRef = useRef(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMuted, setIsMuted] = useState(false); 
+  
   const { user: currentUser } = useUser();
   const isOwner = currentUser?._id === user._id;
-  const hasPlayedDemo =
-    gamePost?.demoConsumed === true;
-
+  const hasPlayedDemo = gamePost?.demoConsumed === true;
 
   const [eligibility, setEligibility] = useState<StreamEligibility>({
     checked: false,
@@ -78,10 +79,6 @@ const GamePost: React.FC<GamePostProps> = ({
   const { queue, startSession } = useQueue();
   const navigate = useNavigate();
 
-  
-
-
-  // ✅ Check if ANY session exists (prevent starting new ones)
   const hasActiveSession = queue.sessionId !== null && ['waiting', 'allocation_ready', 'starting', 'running'].includes(queue.status);
 
   const playDisabled = checkingEligibility || isStarting || hasActiveSession;
@@ -92,6 +89,15 @@ const GamePost: React.FC<GamePostProps> = ({
       : hasActiveSession
         ? "Complete or cancel current session first."
         : "";
+
+  const videoUrl = gamePost?.videoDemo?.url;
+  const hasVideo = !!videoUrl;
+
+  const totalCredits = (gamePost.creditBudget?.usedCredits || 0) + (gamePost.creditBudget?.remainingCredits || 0);
+  const possibleSessions = Math.floor(totalCredits / 10);
+  const completedSessions = gamePost.gameMetrics?.totalSessions || 0;
+
+  console.log("Session stats:", { completedSessions, possibleSessions,totalCredits });
 
   const getRelativeTime = (date: string | Date) => {
     const now = new Date();
@@ -147,78 +153,29 @@ const GamePost: React.FC<GamePostProps> = ({
       setCheckingEligibility(false);
     }
   };
-    const handleDelete = async (postId: string) => {
-      try {
-        setIsDeleting(true);
-  
-        // optimistic removal
-        onDeleteSuccess?.(postId);
-  
-        await fetch(
-          `${BACKEND_URL}/api/allposts/${postId}`,
-          {
-            method: "DELETE",
-            credentials: "include",
-          }
-        );
-  
-        setDeleteOpen(false);
-        toast.success("Post deleted successfully");
-      } catch (err) {
-        console.error(err);
-        toast.error("Failed to delete post please try again later");
-      } finally {
-        setIsDeleting(false);
-      }
-    };
-  // Analytics tracking
-  // const startViewing = async () => {
-  //   viewStartTime.current = Date.now();
-  //   fetch(`${BACKEND_URL}/api/interactions/playtime-start`, {
-  //     method: "POST",
-  //     credentials: "include",
-  //     headers: { "Content-Type": "application/json" },
-  //     body: JSON.stringify({ postId: _id })
-  //   }).catch(() => { });
-  // };
 
-  // const stopViewing = async () => {
-  //   if (!viewStartTime.current) return;
-  //   const duration = Math.floor((Date.now() - viewStartTime.current) / 1000);
-  //   viewStartTime.current = null;
-  //   fetch(`${BACKEND_URL}/api/interactions/playtime-end`, {
-  //     method: "POST",
-  //     credentials: "include",
-  //     headers: { "Content-Type": "application/json" },
-  //     body: JSON.stringify({ postId: _id, duration })
-  //   }).catch(() => { });
-  // };
+  const handleDelete = async (postId: string) => {
+    try {
+      setIsDeleting(true);
+      onDeleteSuccess?.(postId);
 
-  // const markViewed = async () => {
-  //   fetch(`${BACKEND_URL}/api/interactions/view`, {
-  //     method: "POST",
-  //     credentials: "include",
-  //     headers: { "Content-Type": "application/json" },
-  //     body: JSON.stringify({ postId: _id })
-  //   }).catch(() => { });
-  // };
+      await fetch(
+        `${BACKEND_URL}/api/allposts/${postId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
 
-  // useEffect(() => {
-  //   const observer = new IntersectionObserver(
-  //     (entries) => {
-  //       if (entries[0].isIntersecting) {
-  //         startViewing();
-  //         markViewed();
-  //       } else {
-  //         stopViewing();
-  //       }
-  //     },
-  //     { threshold: 0.5 }
-  //   );
-  //   if (postRef.current) observer.observe(postRef.current);
-  //   return () => observer.disconnect();
-  // }, []);
-
+      setDeleteOpen(false);
+      toast.success("Post deleted successfully");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete post please try again later");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     if (!queue.sessionId) {
@@ -226,18 +183,46 @@ const GamePost: React.FC<GamePostProps> = ({
     }
   }, [queue.sessionId]);
 
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const video = entry.target as HTMLVideoElement;
+
+          if (entry.isIntersecting) {
+            video.play().catch((err: any) => {
+              console.warn("Browser blocked autoplay:", err);
+            });
+          } else {
+            video.pause();
+          }
+        });
+      },
+      { threshold: 0.5 } 
+    );
+
+    observer.observe(videoRef.current);
+
+    return () => {
+      if (videoRef.current) {
+        observer.unobserve(videoRef.current);
+      }
+    };
+  }, []);
+
   return (
     <>
-      {/* GAME POST CARD */}
       <article
         ref={postRef}
         onClick={() => {
           onOpenDetails?.();
         }}
-        className="relative w-full border border-gray-200 dark:border-white/10 border-l-0 border-r-0 sm:border-l sm:border-r bg-white dark:bg-[#191919] hover:bg-[#F7F9F9] dark:hover:bg-[#16181C] cursor-pointer"
+        className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-transparent hover:bg-white/[0.03] cursor-pointer transition-colors duration-200"
       >
         <div className="flex gap-3 p-4">
-          {/* Avatar */}
           <img
             src={user.avatar || "/default_avatar.png"}
             alt={user.username}
@@ -267,8 +252,7 @@ const GamePost: React.FC<GamePostProps> = ({
             {description && (
               <div className="mt-2 mb-4">
                 <p
-                  className={`text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${!isExpanded ? "line-clamp-2" : ""
-                    }`}
+                  className={`text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${!isExpanded ? "line-clamp-2" : ""}`}
                 >
                   {description}
                 </p>
@@ -279,7 +263,7 @@ const GamePost: React.FC<GamePostProps> = ({
                       e.stopPropagation();
                       setIsExpanded(!isExpanded);
                     }}
-                    className="text-sky-500 hover:text-sky-600 font-semibold text-sm mt-1"
+                    className="text-sky-400 hover:text-sky-300 font-semibold text-sm mt-1"
                   >
                     {isExpanded ? "Show less" : "Show more"}
                   </button>
@@ -287,92 +271,161 @@ const GamePost: React.FC<GamePostProps> = ({
               </div>
             )}
 
-            {/* GAME CARD */}
             {gamePost && (
-              <div className="group relative rounded-2xl overflow-hidden border border-gray-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 mb-4">
-                <div className="absolute inset-0 bg-gradient-to-br from-sky-500/10 via-transparent to-purple-500/10 opacity-50" />
+              <div className="group relative rounded-2xl overflow-hidden border border-white/[0.08] bg-transparent mb-4">
+                {/* subtle inner glow — not a fill, just a border effect via the bg of the video overlay */}
 
-                <div className="relative p-6 flex flex-col items-start justify-start text-left w-full">
-                  {/* <div className="w-16 h-16 bg-[#F9FAFB] dark:bg-[#191919] rounded-2xl shadow-xl flex items-center justify-center mb-4 border border-gray-100 dark:border-zinc-800 group-hover:scale-110 transition-transform duration-300">
-                    <Gamepad2 className="text-sky-500 w-8 h-8" />
-                  </div> */}
-
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-2xl font-black text-black dark:text-white tracking-tight leading-none">
-                      {gamePost.gameName}
-                    </h3>
-                    {hasPlayedDemo ? (
+                <div className="relative w-full h-[380px] overflow-hidden">
+                  
+                  {hasVideo ? (
+                    <>
+                      <video
+                        ref={videoRef}
+                        src={videoUrl}
+                        muted={isMuted}
+                        loop
+                        playsInline
+                        preload="metadata"
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onOpenDetails?.();
+                          setIsMuted((m) => !m);
                         }}
-                        style={{
-                          background: playDisabled
-                            ? "linear-gradient(to bottom right, #52525b, #18181b)"
-                            : "linear-gradient(to bottom right, #3D7A6E, #000000)",
-                        }}
-                        className="
-                          text-white px-3 py-2.5 rounded-2xl
-                          shadow-lg hover:shadow-xl
-                          transition-all hover:scale-105
-                          flex items-center gap-2 shrink-0
-                          active:scale-[0.98]
-                          disabled:opacity-50 disabled:cursor-not-allowed
-                        "
+                        className="absolute bottom-4 right-4 z-50 p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/20"
                       >
-                        <Gamepad2 size={14} />
-                        <span className="font-semibold text-xs">
-                          Demo Played
-                        </span>
+                        {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
                       </button>
-                    ) : (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStartGame();
-                        }}
-                        disabled={playDisabled}
-                        title={playReason}
-                        style={{
-                          background: playDisabled
-                            ? "linear-gradient(to bottom right, #52525b, #18181b)"
-                            : "linear-gradient(to bottom right, #3D7A6E, #000000)",
-                        }}
-                        className="
-                          text-white px-3 py-2.5 rounded-2xl
-                          shadow-lg hover:shadow-xl
-                          transition-all hover:scale-105
-                          flex items-center gap-2 shrink-0
-                          active:scale-[0.98]
-                          disabled:opacity-50 disabled:cursor-not-allowed
-                        "
-                      >
-                        <Users size={14} />
-                        <span className="font-semibold text-xs">
-                          {checkingEligibility
-                            ? "Checking..."
-                            : isStarting
-                              ? "Starting..."
-                              : hasActiveSession
-                                ? "Busy"
-                                : eligibility.checked && !eligibility.allowed
-                                  ? "Unavailable"
-                                  : "Play Now"}
-                        </span>
-                        <div className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-                        </div>
-                      </button>
-                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
+                      
+                      <div className="absolute top-4 left-4 z-40 flex items-center gap-3">
+                        <h3 className="text-2xl font-black text-white tracking-tight leading-none">
+                          {gamePost.gameName}
+                        </h3>
+                        {hasPlayedDemo ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenDetails?.();
+                            }}
+                            style={{
+                              background: playDisabled
+                                ? "linear-gradient(to bottom right, #52525b, #18181b)"
+                                : "linear-gradient(to bottom right, #3D7A6E, #000000)",
+                            }}
+                            className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Gamepad2 size={14} />
+                            <span className="font-semibold text-xs">Demo Played</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartGame();
+                            }}
+                            disabled={playDisabled}
+                            title={playReason}
+                            style={{
+                              background: playDisabled
+                                ? "linear-gradient(to bottom right, #52525b, #18181b)"
+                                : "linear-gradient(to bottom right, #3D7A6E, #000000)",
+                            }}
+                            className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Users size={14} />
+                            <span className="font-semibold text-xs">
+                              {checkingEligibility
+                                ? "Checking..."
+                                : isStarting
+                                  ? "Starting..."
+                                  : hasActiveSession
+                                    ? "Busy"
+                                    : eligibility.checked && !eligibility.allowed
+                                      ? "Unavailable"
+                                      : "Play Now"}
+                            </span>
+                            <div className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+                            </div>
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="relative w-full h-full bg-transparent p-6">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-2xl font-black text-white tracking-tight leading-none">
+                          {gamePost.gameName}
+                        </h3>
+                        {hasPlayedDemo ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenDetails?.();
+                            }}
+                            style={{
+                              background: playDisabled
+                                ? "linear-gradient(to bottom right, #52525b, #18181b)"
+                                : "linear-gradient(to bottom right, #3D7A6E, #000000)",
+                            }}
+                            className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Gamepad2 size={14} />
+                            <span className="font-semibold text-xs">Demo Played</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartGame();
+                            }}
+                            disabled={playDisabled}
+                            title={playReason}
+                            style={{
+                              background: playDisabled
+                                ? "linear-gradient(to bottom right, #52525b, #18181b)"
+                                : "linear-gradient(to bottom right, #3D7A6E, #000000)",
+                            }}
+                            className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Users size={14} />
+                            <span className="font-semibold text-xs">
+                              {checkingEligibility
+                                ? "Checking..."
+                                : isStarting
+                                  ? "Starting..."
+                                  : hasActiveSession
+                                    ? "Busy"
+                                    : eligibility.checked && !eligibility.allowed
+                                      ? "Unavailable"
+                                      : "Play Now"}
+                            </span>
+                            <div className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+                            </div>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
-                    {/* Game Name */}
+                  <div className="absolute bottom-4 left-4 z-50 flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 backdrop-blur-sm border border-white/20 shadow-lg shadow-black/30">
+                    <Users size={14} className="text-white/90" />
+                    <span className="text-xs font-semibold text-white tracking-wide">
+                      {completedSessions}/{possibleSessions}
+                    </span>
+                    <span className="text-[11px] text-white/60">Sessions</span>
                   </div>
 
-                  {eligibility.checked && !eligibility.allowed && eligibility.reasons.length > 0 && (
+                </div>
+                
+                {eligibility.checked && !eligibility.allowed && eligibility.reasons.length > 0 && (
                   <div className="mt-4 w-full rounded-xl border border-amber-400/30 bg-amber-500/10 p-3">
-                    <div className="flex items-start gap-2 text-amber-700 dark:text-amber-300">
+                    <div className="flex items-start gap-2 text-amber-300">
                       <AlertCircle size={16} className="mt-0.5 shrink-0" />
                       <div className="text-xs leading-5">
                         {eligibility.reasons.some((r) =>
@@ -396,48 +449,15 @@ const GamePost: React.FC<GamePostProps> = ({
                   </div>
                 )}
 
-                  {/* <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-200 dark:bg-zinc-800 px-2 py-0.5 rounded">
-                      v{gamePost.version}
-                    </span>
-                    <div className="flex items-center gap-1 text-[10px] font-bold text-sky-500 uppercase tracking-widest">
-                      <Sparkles size={10} />
-                      Instant Stream
-                    </div>
-                  </div> */}
+                {hasActiveSession && queue.status === 'waiting' && (
+                  <div className="mt-4 w-full bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
+                    <p className="text-xs text-blue-400 font-medium flex items-center gap-2 justify-center">
+                      <Loader2 size={14} className="animate-spin" />
+                      Getting your instance ready ...
+                    </p>
+                  </div>
+                )}
 
-                  {/* Status indicator while waiting */}
-                  {hasActiveSession && queue.status === 'waiting' && (
-                    <div className="mt-4 w-full bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
-                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium flex items-center gap-2 justify-center">
-                        <Loader2 size={14} className="animate-spin" />
-                        Getting your instance ready ...
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Play Button - ✅ Disabled if any session exists */}
-                  {/* <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleStartGame();
-                    }}
-                    disabled={isStarting || hasActiveSession}
-                    title={hasActiveSession ? "Complete or cancel current session first" : ""}
-                    className="mt-4 w-full flex items-center justify-center gap-2 py-3.5
-                      bg-sky-500 hover:bg-sky-600 text-white font-black rounded-xl
-                      transition-all shadow-lg shadow-sky-500/20
-                      active:scale-[0.98]
-                      disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Play size={18} fill="currentColor" />
-                    {isStarting ? "STARTING..." : hasActiveSession ? "BUSY" : "PLAY NOW"}
-                  </button>
-
-                  <p className="text-[10px] text-gray-500 dark:text-zinc-500 mt-4 font-medium italic">
-                    No download required • Powered by Cloud Instances
-                  </p> */}
-                </div>
               </div>
             )}
 
@@ -468,6 +488,5 @@ const GamePost: React.FC<GamePostProps> = ({
     </>
   );
 };
-
 
 export default GamePost;

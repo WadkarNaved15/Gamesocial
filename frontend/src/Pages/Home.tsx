@@ -42,6 +42,7 @@ function Home() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchCursor, setSearchCursor] = useState<string | null>(null);
   const [searchHasMore, setSearchHasMore] = useState(true);
+
   // ── Fetch Main Feed ──────────────────────────────────────────────────────
   const fetchMainPosts = useCallback(
     async (reset = false) => {
@@ -86,10 +87,10 @@ function Home() {
   );
   const fetchRef = useRef(fetchMainPosts);
 
-
   useEffect(() => {
     fetchRef.current = fetchMainPosts;
   }, [fetchMainPosts]);
+
   // ── Fetch Filtered Posts ─────────────────────────────────────────────────
   const fetchFilteredPosts = useCallback(
     async (query: string, reset = false) => {
@@ -140,6 +141,7 @@ function Home() {
     },
     [searchCursor, searchHasMore, BACKEND_URL]
   );
+
   // ── Initial Load ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (mainPosts.length === 0 && !isSearch) {
@@ -148,26 +150,27 @@ function Home() {
   }, [mainPosts.length, isSearch]);
 
   // ── Search Trigger ───────────────────────────────────────────────────────
-useEffect(() => {
-  if (!query) {
+  useEffect(() => {
+    if (!query) {
+      setFilteredPosts([]);
+      setSearchExecuted(false);
+      return;
+    }
+
+    trackEvent({
+      eventType: "search",
+      metadata: {
+        query,
+      },
+    });
+
     setFilteredPosts([]);
-    setSearchExecuted(false);
-    return;
-  }
+    setSearchCursor(null);
+    setSearchHasMore(true);
 
-  trackEvent({
-    eventType: "search",
-    metadata: {
-      query,
-    },
-  });
+    fetchFilteredPosts(query, true);
+  }, [query]);
 
-  setFilteredPosts([]);
-  setSearchCursor(null);
-  setSearchHasMore(true);
-
-  fetchFilteredPosts(query, true);
-}, [query]);
   // ── Infinite Scroll ──────────────────────────────────────────────────────
   useEffect(() => {
     if (isSearch ? !searchHasMore : !hasMore) return;
@@ -192,147 +195,274 @@ useEffect(() => {
     return () => observer.disconnect();
   }, [hasMore, searchHasMore, isSearch, query, fetchFilteredPosts]);
 
-
-
-
   useEffect(() => {
-  if (isSearch) return;
+    if (isSearch) return;
 
-  trackEvent({
-    eventType: "page_view",
-    targetType: "page",
-    metadata: {
-      page: "home_feed",
-    },
-  });
-}, []);
+    trackEvent({
+      eventType: "page_view",
+      targetType: "page",
+      metadata: {
+        page: "home_feed",
+      },
+    });
+  }, []);
 
-function trackPostOpen({
-  postId,
-  postType,
-  viewSource = "feed",
-}: {
-  postId: string;
-  postType:
-    | "normal_post"
-    | "model_post"
-    | "game_post"
-    | "canvas_article"
-    | "devlog_post"
-    | "ad_model_post"
-    | "media_ad_post"
-    | "pocket_update";
-  viewSource?: string;
-}) {
-  trackEvent({
-  eventType: "content_view",
-  targetType: postType,
-  targetId: postId,
-
-  metadata: {
-    source: viewSource,
-    page: window.location.pathname,
-  },
-});
-}
+  function trackPostOpen({
+    postId,
+    postType,
+    viewSource = "feed",
+  }: {
+    postId: string;
+    postType:
+      | "normal_post"
+      | "model_post"
+      | "game_post"
+      | "canvas_article"
+      | "devlog_post"
+      | "ad_model_post"
+      | "media_ad_post"
+      | "pocket_update";
+    viewSource?: string;
+  }) {
+    trackEvent({
+      eventType: "content_view",
+      targetType: postType,
+      targetId: postId,
+      metadata: {
+        source: viewSource,
+        page: window.location.pathname,
+      },
+    });
+  }
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col items-center min-h-[80vh] w-full">
+    /*
+     * LAYERED BACKGROUND SYSTEM
+     * Layer 0 (outermost): fixed animated gradient orbs — these are the
+     *   colours that bleed through the transparent posts above them.
+     * Layer 1: the scrollable feed sits on top with bg-transparent so
+     *   everything below is visible.
+     *
+     * To add your own colours/animations, edit the orb divs below.
+     * The orbs use CSS keyframe animations injected via a <style> tag.
+     */
+    <div className="relative flex flex-col items-center min-h-[80vh] w-full">
 
-      {/* SEARCH FEED */}
-      {isSearch ? (
-        <div className="w-full mt-4 flex flex-col md:px-0 px-0">
-          <button
-            onClick={() => {
-              navigate("/");
-            }}
-            className="flex items-center gap-2 text-blue-500 hover:text-blue-600 mb-4"
-          >
-            <ArrowLeft size={20} />
-            Back to Feed
-          </button>
+      {/* ── Animated background — fixed, behind everything ── */}
+      <style>{`
+        @keyframes orb-drift-1 {
+          0%   { transform: translate(0px,    0px)    scale(1);    }
+          33%  { transform: translate(60px,  -40px)   scale(1.08); }
+          66%  { transform: translate(-30px,  50px)   scale(0.95); }
+          100% { transform: translate(0px,    0px)    scale(1);    }
+        }
+        @keyframes orb-drift-2 {
+          0%   { transform: translate(0px,   0px)   scale(1);    }
+          40%  { transform: translate(-50px, 70px)   scale(1.1);  }
+          75%  { transform: translate(40px, -30px)   scale(0.92); }
+          100% { transform: translate(0px,   0px)   scale(1);    }
+        }
+        @keyframes orb-drift-3 {
+          0%   { transform: translate(0px,  0px)   scale(1);    }
+          50%  { transform: translate(30px, 60px)   scale(1.05); }
+          100% { transform: translate(0px,  0px)   scale(1);    }
+        }
+        @keyframes orb-drift-4 {
+          0%   { transform: translate(0px,   0px)   scale(1);    }
+          45%  { transform: translate(-60px,-50px)   scale(1.12); }
+          100% { transform: translate(0px,   0px)   scale(1);    }
+        }
+      `}</style>
 
-          {searchLoading && <CircleLoader />}
+      {/*
+       * Fixed orb layer — position:fixed so it never scrolls away.
+       * pointer-events:none so it doesn't intercept clicks.
+       * z-index:-1 keeps it behind the feed content.
+       */}
+      <div
+        className="fixed inset-0 overflow-hidden pointer-events-none"
+        style={{ zIndex: 0 }}
+        aria-hidden="true"
+      >
+        {/* Teal orb — top-left */}
+        <div
+          style={{
+            position: "absolute",
+            top: "-10%",
+            left: "-5%",
+            width: "55vw",
+            height: "55vw",
+            maxWidth: 700,
+            maxHeight: 700,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(61,122,110,0.28) 0%, transparent 70%)",
+            animation: "orb-drift-1 18s ease-in-out infinite",
+            filter: "blur(2px)",
+          }}
+        />
+        {/* Purple orb — top-right */}
+        <div
+          style={{
+            position: "absolute",
+            top: "5%",
+            right: "-10%",
+            width: "45vw",
+            height: "45vw",
+            maxWidth: 580,
+            maxHeight: 580,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(100,60,180,0.20) 0%, transparent 70%)",
+            animation: "orb-drift-2 22s ease-in-out infinite",
+            filter: "blur(2px)",
+          }}
+        />
+        {/* Deep blue orb — mid-screen */}
+        <div
+          style={{
+            position: "absolute",
+            top: "38%",
+            left: "20%",
+            width: "40vw",
+            height: "40vw",
+            maxWidth: 500,
+            maxHeight: 500,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(30,80,160,0.15) 0%, transparent 70%)",
+            animation: "orb-drift-3 26s ease-in-out infinite",
+            filter: "blur(2px)",
+          }}
+        />
+        {/* Teal/cyan accent orb — bottom-right */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: "-5%",
+            right: "5%",
+            width: "38vw",
+            height: "38vw",
+            maxWidth: 480,
+            maxHeight: 480,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(0,180,150,0.16) 0%, transparent 70%)",
+            animation: "orb-drift-4 20s ease-in-out infinite",
+            filter: "blur(2px)",
+          }}
+        />
+        {/* Subtle warm accent — bottom-left */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: "15%",
+            left: "-8%",
+            width: "30vw",
+            height: "30vw",
+            maxWidth: 380,
+            maxHeight: 380,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(120,60,200,0.12) 0%, transparent 70%)",
+            animation: "orb-drift-1 30s ease-in-out infinite reverse",
+            filter: "blur(2px)",
+          }}
+        />
+      </div>
 
-          {!searchLoading && searchExecuted && filteredPosts.length === 0 && (
-            <div className="text-gray-400 dark:text-gray-500 mt-4">
-              No posts found for "{query}"
-            </div>
-          )}
+      {/* ── Feed content — sits above bg layer, posts are transparent ── */}
+      <div className="relative w-full" style={{ zIndex: 1 }}>
 
-          {filteredPosts.map((post) => (
-            <Post
-              key={post._id}
-              {...post}
-              viewSource="search"
-              onOpenDetails={() => {
-              trackEvent({
-                eventType: "search_click",
-                targetType: post.type,
-                targetId: post._id,
-                metadata: { query },
-              });
-
-              trackPostOpen({
-                postId: post._id,
-                postType: post.type,
-                viewSource: "search",
-              });
-
-                navigate(`/post/${post._id}`, {
-                  state: { post },
-                });
+        {/* SEARCH FEED */}
+        {isSearch ? (
+          <div className="w-full mt-4 flex flex-col md:px-0 px-0">
+            <button
+              onClick={() => {
+                navigate("/");
               }}
-            />
-          ))}
+              className="flex items-center gap-2 text-blue-400 hover:text-blue-300 mb-4"
+            >
+              <ArrowLeft size={20} />
+              Back to Feed
+            </button>
 
-          {/* Loader for infinite scroll */}
-          <div ref={loaderRef} className="h-10 w-full" />
-        </div>
-      ) : (
-        <>
-          {/* MAIN FEED */}
-          {mainPosts.length > 0 && (
-            <div className="w-full mt-4 flex flex-col">
-              {mainPosts.map((post) => (
-                <Post
-                  key={post._id}
-                  {...post}
-                  viewSource="feed"
-                   onOpenDetails={() => {
+            {searchLoading && <CircleLoader />}
+
+            {!searchLoading && searchExecuted && filteredPosts.length === 0 && (
+              <div className="text-gray-400 mt-4">
+                No posts found for "{query}"
+              </div>
+            )}
+
+            {filteredPosts.map((post) => (
+              <Post
+                key={post._id}
+                {...post}
+                viewSource="search"
+                onOpenDetails={() => {
+                  trackEvent({
+                    eventType: "search_click",
+                    targetType: post.type,
+                    targetId: post._id,
+                    metadata: { query },
+                  });
+
                   trackPostOpen({
                     postId: post._id,
                     postType: post.type,
-                    viewSource: "feed",
+                    viewSource: "search",
                   });
 
                   navigate(`/post/${post._id}`, {
                     state: { post },
                   });
                 }}
-                />
-              ))}
-            </div>
-          )}
+              />
+            ))}
 
-          {loading && mainPosts.length === 0 && (
-            <div className="w-full mt-4 flex flex-col">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <PostSkeleton key={i} />
-              ))}
-            </div>
-          )}
+            <div ref={loaderRef} className="h-10 w-full" />
+          </div>
+        ) : (
+          <>
+            {/* MAIN FEED */}
+            {mainPosts.length > 0 && (
+              <div className="w-full mt-4 flex flex-col">
+                {mainPosts.map((post) => (
+                  <Post
+                    key={post._id}
+                    {...post}
+                    viewSource="feed"
+                    onOpenDetails={() => {
+                      trackPostOpen({
+                        postId: post._id,
+                        postType: post.type,
+                        viewSource: "feed",
+                      });
 
-          {!hasMore && mainPosts.length > 0 && (
-            <div className="text-gray-400 dark:text-gray-500 mt-4">
-              You've reached the end.
-            </div>
-          )}
+                      navigate(`/post/${post._id}`, {
+                        state: { post },
+                      });
+                    }}
+                  />
+                ))}
+              </div>
+            )}
 
-          <div ref={loaderRef} className="h-10 w-full" />
-        </>
-      )}
+            {loading && mainPosts.length === 0 && (
+              <div className="w-full mt-4 flex flex-col">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <PostSkeleton key={i} />
+                ))}
+              </div>
+            )}
+
+            {!hasMore && mainPosts.length > 0 && (
+              <div className="text-gray-500 mt-4 text-center text-sm pb-8">
+                You've reached the end.
+              </div>
+            )}
+
+            <div ref={loaderRef} className="h-10 w-full" />
+          </>
+        )}
+      </div>
     </div>
   );
 }

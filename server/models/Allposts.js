@@ -265,6 +265,16 @@ const GamePostSchema = new mongoose.Schema(
   { _id: false }
 );
 
+GamePostSchema.virtual("sessionStats").get(function () {
+  const totalCredits =
+    (this.creditBudget?.usedCredits || 0) +
+    (this.creditBudget?.remainingCredits || 0);
+
+  return {
+    completedSessions: this.gameMetrics?.totalSessions || 0,
+    possibleSessions: Math.floor(totalCredits / 10),
+  };
+});
 /* ======================================================
    AD MODEL POST SCHEMA  ⭐ NEW
 ====================================================== */

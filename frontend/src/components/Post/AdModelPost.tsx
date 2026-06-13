@@ -180,8 +180,8 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
         if ((e.target as HTMLElement).closest('button')) return;
         onOpenDetails?.();
       }}
-      className="relative w-full cursor-pointer overflow-hidden"
-      style={outerStyle}
+      className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-transparent hover:bg-white/[0.03] cursor-pointer transition-colors duration-200"
+      // style={outerStyle}
     >
       {/* ── Outer bg for image mode: blurred, low-opacity ── */}
       {isImage && (

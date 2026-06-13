@@ -194,7 +194,8 @@ export const Post: React.FC<PostWrapperProps> = (props) => {
   })();
 
   return (
-    <div ref={postRef}>
+    // bg-transparent so the animated Home background bleeds through
+    <div ref={postRef} className="bg-transparent">
       <Suspense fallback={<Fallback />}>
         <RenderedPost {...props} />
       </Suspense>

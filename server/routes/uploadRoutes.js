@@ -17,7 +17,7 @@ const MAX_MODEL_SIZE_BYTES = MAX_MODEL_SIZE_MB * 1024 * 1024;
 
 router.post("/presigned-url", async (req, res) => {
   try {
-    const { fileName, fileType, category, fileSize } = req.body;
+    const { fileName, fileType, category, subcategory, fileSize } = req.body;
 
     if (!fileName || !category) {
       return res.status(400).json({ message: "fileName and category required" });
@@ -46,7 +46,17 @@ router.post("/presigned-url", async (req, res) => {
       if (fileType?.startsWith("image/")) {
         key = `media/images/${uuidv4()}-${fileName}`;
       } else if (fileType?.startsWith("video/")) {
-        key = `media/videos/${uuidv4()}-${fileName}`;
+
+        switch (subcategory) {
+          case "game":
+            key = `media/videos/games/${uuidv4()}-${fileName}`;
+            break;
+          case "post":
+          default:
+            key = `media/videos/post/${uuidv4()}-${fileName}`;
+            break;
+        }  
+        
       } else {
         return res.status(400).json({ message: "Unsupported file type" });
       }

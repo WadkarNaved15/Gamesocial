@@ -38,17 +38,43 @@ async function getGorsePostIds(userId, limit, offset) {
 // ── Shared projection — one place to update if schema changes ─────────────────
 
 const POST_PROJECTION = {
-  _id: 1, user: 1, description: 1, type: 1, viewsCount: 1, uniqueViewsCount: 1,
-  likesCount: 1, commentsCount: 1, createdAt: 1,
+  _id: 1,
+  user: 1,
+  description: 1,
+  type: 1,
+  viewsCount: 1,
+  uniqueViewsCount: 1,
+  likesCount: 1,
+  commentsCount: 1,
+  createdAt: 1,
+
   "modelPost.price": 1,
   "modelPost.assets.originalUrl": 1,
   "modelPost.assets.optimizedUrl": 1,
+
+  // GAME POST
   "gamePost.gameName": 1,
+  "gamePost.price": 1,
+  "gamePost.version": 1,
+  "gamePost.videoDemo": 1,
+
+  "gamePost.creditBudget.usedCredits": 1,
+  "gamePost.creditBudget.remainingCredits": 1,
+
+  "gamePost.gameMetrics.totalSessions": 1,
+  "gamePost.gameMetrics.uniquePlayers": 1,
+  "gamePost.gameMetrics.totalSessionTimeMs": 1,
+
   "normalPost.assets": 1,
-  "adModelPost.brandName": 1, "adModelPost.logoUrl": 1,
-  "adModelPost.bgMode": 1, "adModelPost.bgColor": 1,
-  "adModelPost.bgImageUrl": 1, "adModelPost.bgImagePosition": 1,
-  "adModelPost.bgImageSize": 1, "adModelPost.overlayOpacity": 1,
+
+  "adModelPost.brandName": 1,
+  "adModelPost.logoUrl": 1,
+  "adModelPost.bgMode": 1,
+  "adModelPost.bgColor": 1,
+  "adModelPost.bgImageUrl": 1,
+  "adModelPost.bgImagePosition": 1,
+  "adModelPost.bgImageSize": 1,
+  "adModelPost.overlayOpacity": 1,
   "adModelPost.asset.originalUrl": 1,
   "adModelPost.asset.optimizedUrl": 1,
   "adModelPost.asset.optimization": 1,
