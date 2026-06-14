@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout";
 import AdminRoute from "./components/Routing/AdminRoutes";
+import GuestProtectedRoute from "./components/Routing/GuestProtectedRoute";
 
 // Pages
 import Home from "./Pages/Home";
@@ -49,13 +50,13 @@ export const router = createBrowserRouter([
         element: <MainLayout />,
         children: [
           { path: "/", element: <Home /> },
-          { path: "/search", element: <Home /> },
-          { path: "/post/:postId", element: <PostDetailsPage /> },
-          { path: "/profile/:username", element: <ProfilePageWrapper /> },
-          { path: "/articles/:canvasId", element: <ArticleOverlay /> },
-          { path: "/create", element: <PostModal /> },
-          { path: "/wishlist", element: <WishlistPage /> },
-          { path: "/notifications", element: <NotificationsPage /> },
+          { path: "/search", element:<GuestProtectedRoute> <Home /> </GuestProtectedRoute> },
+          { path: "/post/:postId", element:<GuestProtectedRoute> <PostDetailsPage /> </GuestProtectedRoute> },
+          { path: "/profile/:username", element:<GuestProtectedRoute> <ProfilePageWrapper /> </GuestProtectedRoute> },
+          { path: "/articles/:canvasId", element:<GuestProtectedRoute> <ArticleOverlay /> </GuestProtectedRoute> },
+          { path: "/create", element:<GuestProtectedRoute> <PostModal /> </GuestProtectedRoute> },
+          { path: "/wishlist", element:<GuestProtectedRoute> <WishlistPage /> </GuestProtectedRoute> },
+          { path: "/notifications", element:<GuestProtectedRoute> <NotificationsPage /> </GuestProtectedRoute> },
         ],
       },
 
@@ -64,27 +65,27 @@ export const router = createBrowserRouter([
       { path: "/reset-password", element: <ResetPassword /> },
       { path: "/verify-email", element: <VerifyEmail /> },
 
-      { path: "/stream/:sessionId", element: <StreamPage /> },
-      { path: "/publisher", element: <PublisherForm /> },
-      { path: "/createpost", element: <CreatePostPage /> },
+      { path: "/stream/:sessionId", element:<GuestProtectedRoute> <StreamPage /> </GuestProtectedRoute> },
+      { path: "/publisher", element:<GuestProtectedRoute> <PublisherForm /> </GuestProtectedRoute> },
+      { path: "/createpost", element:<GuestProtectedRoute> <CreatePostPage /> </GuestProtectedRoute> },
 
       // { path: "/devlogs", element: <DevLogs /> },
-      { path: "/devlogs/view/:id", element: <DevLogsView /> },
-      { path: "/devlogCanvas", element: <DevLogCanvas /> },
-      { path: "/devlogviewer/:devlogId", element: <DevlogViewer /> },
+      { path: "/devlogs/view/:id", element:<GuestProtectedRoute> <DevLogsView /> </GuestProtectedRoute> },
+      { path: "/devlogCanvas", element:<GuestProtectedRoute> <DevLogCanvas /> </GuestProtectedRoute> },
+      { path: "/devlogviewer/:devlogId", element:<GuestProtectedRoute> <DevlogViewer /> </GuestProtectedRoute> },
 
-      { path: "/models", element: <ModelViewer /> },
-      { path: "/gameshow", element: <GameShowcase /> },
-      { path: "/gameupload", element: <UploadGame /> },
-      { path: "/games", element: <GamePost /> },
+      { path: "/models", element:<GuestProtectedRoute> <ModelViewer /> </GuestProtectedRoute> },
+      { path: "/gameshow", element:<GuestProtectedRoute> <GameShowcase /> </GuestProtectedRoute> },
+      { path: "/gameupload", element:<GuestProtectedRoute> <UploadGame /> </GuestProtectedRoute> },
+      { path: "/games", element:<GuestProtectedRoute> <GamePost /> </GuestProtectedRoute> },
 
       // { path: "/puck", element: <Puck /> },
-      { path: "/recommendations", element: <Recommendations /> },
-      { path: "/recommendationsposts", element: <RecommendationPosts /> },
+      { path: "/recommendations", element:<GuestProtectedRoute> <Recommendations /> </GuestProtectedRoute> },
+      { path: "/recommendationsposts", element:<GuestProtectedRoute> <RecommendationPosts /> </GuestProtectedRoute> },
 
-      { path: "/analytics", element: <Analytics /> },
+      { path: "/analytics", element:<GuestProtectedRoute> <Analytics /> </GuestProtectedRoute> },
 
-      { path: "/ads", element: <AdsPage /> },
+      { path: "/ads", element:<GuestProtectedRoute> <AdsPage /> </GuestProtectedRoute> },
 
       // ── Admin routes ───────────────────────────────────────────────────────────
       // AdminRoute checks:  not logged in → /login?next=…  |  not admin → 403 page

@@ -1,14 +1,19 @@
 import { Outlet, useNavigate, useLocation, useParams } from "react-router-dom";
-import { Suspense, lazy, useRef } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Header } from "../components/Header";
 import Billboard from "../components/Home/Billboard";
 import UploadBox from "../components/Home/Upload";
 import { useUser } from "../context/user";
+import { useGuestSession } from "../hooks/useGuestSession";
+import { useAuthGate } from "../context/AuthGate";
 import SidebarNavigation from "../components/Home/SidebarNavigation";
 import MessagingComponent from "../components/Home/Message";
 import ArticleRecommendations from "../components/Articles/ArticleRecommendations";
 import { ScrollRestoration } from "react-router-dom";
 import AmbientBackground from "../components/AmbientBackground";
+import AuthGateModal from "../components/Auth/AuthGateModal";
+import GuestSessionExpired from "../components/Auth/GuestSessionExpired";
+import GuestAccessExpired from "../components/Auth/GuestSessionExpired";
 
 const ProfileCover = lazy(() => import("../components/Home/Profile"));
 
@@ -17,6 +22,11 @@ function MainLayout() {
   const location = useLocation();
   const { canvasId } = useParams();
   const { user } = useUser();
+  const { openGate } = useAuthGate();
+  const { minutes } = useGuestSession();
+
+  const [bannerShown, setBannerShown] = useState(false);
+  const [feedLocked, setFeedLocked] = useState(false);
   // Refs to measure the gap between sidebar and center feed.
   // VerticalBackButton uses both to find the exact midpoint.
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -45,9 +55,36 @@ function MainLayout() {
   const hideBillboard =
     isProfilePage || isModelPost || isCreatePage || isArticlePage;
 
+
+useEffect(() => {
+  if (user) return;
+
+  if (minutes >= 2 && !bannerShown) {
+    setBannerShown(true);
+
+    openGate(
+      "Join Rigzer to play games, follow creators, save favorites, and unlock the full platform."
+    );
+  }
+}, [minutes, bannerShown, user, openGate]);
+
+useEffect(() => {
+  if (user) return;
+
+  if (minutes >= 5) {
+    setFeedLocked(true);
+  }
+}, [minutes, user]);
+
+
+if (feedLocked && !user) {
+  return <GuestSessionExpired />;
+}
+
   return (
     <>
       <AmbientBackground />
+      <AuthGateModal />
       <div className="min-h-screen bg-gray-100 dark:bg-transparent">
         <ScrollRestoration
           getKey={(location) => {
