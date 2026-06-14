@@ -3,6 +3,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { AuthGateProvider } from "./context/AuthGate";
 import { UsersProvider } from "./context/UsersContext";
 import { FollowProvider } from "./context/FollowContext";
 import { FeedProvider } from "./context/FeedContext";
@@ -28,24 +29,26 @@ function App() {
           <PostProvider>
             <FollowProvider>
               <ChatProvider>
-                <UsersProvider>
-                  <NotificationProvider>
-                    <SearchProvider>
-                      <PublishedArticlesProvider>
-                        <GoogleOAuthProvider clientId="970893892840-8ecshtmle4kip6ps0bl7vbkg3nogl5od.apps.googleusercontent.com">
-                          <FeedProvider>
-                            <FeedbackProvider>
-                              <>
-                                <ToastContainer />
-                                <RouterProvider router={router} />
-                              </>
-                            </FeedbackProvider>
-                          </FeedProvider>
-                        </GoogleOAuthProvider>
-                      </PublishedArticlesProvider>
-                    </SearchProvider>
-                  </NotificationProvider>
-                </UsersProvider>
+                <AuthGateProvider>
+                  <UsersProvider>
+                    <NotificationProvider>
+                      <SearchProvider>
+                        <PublishedArticlesProvider>
+                          <GoogleOAuthProvider clientId="970893892840-8ecshtmle4kip6ps0bl7vbkg3nogl5od.apps.googleusercontent.com">
+                            <FeedProvider>
+                              <FeedbackProvider>
+                                <>
+                                  <ToastContainer />
+                                  <RouterProvider router={router} />
+                                </>
+                              </FeedbackProvider>
+                            </FeedProvider>
+                          </GoogleOAuthProvider>
+                        </PublishedArticlesProvider>
+                      </SearchProvider>
+                    </NotificationProvider>
+                  </UsersProvider>
+                </AuthGateProvider>
               </ChatProvider>
             </FollowProvider>
           </PostProvider>

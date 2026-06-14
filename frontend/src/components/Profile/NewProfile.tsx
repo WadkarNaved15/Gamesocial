@@ -16,6 +16,7 @@ import type { PostProps } from "../../types/Post";
 import { useUser } from "../../context/user";
 import { trackEvent } from "../../utils/analytics";
 import api from "../../utils/api";
+import ProfileNotFound from "../../Pages/ErrorHandling/ProfileNotFound";
 
 const ProfilePage: React.FC = () => {
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
@@ -32,6 +33,7 @@ const ProfilePage: React.FC = () => {
   const cached = cachedRef.current;
 
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(cached?.profileUser ?? null);
+  const [profileNotFound, setProfileNotFound] = useState(false);
   const [userPosts, setUserPosts] = useState<PostProps[]>(cached?.posts ?? []);
   const [cursor, setCursor] = useState<string | null>(cached?.cursor ?? null);
   const [hasMorePosts, setHasMorePosts] = useState(cached?.hasMore ?? true);
@@ -87,7 +89,10 @@ const ProfilePage: React.FC = () => {
         );
         if (usernameRef.current !== username) return; // stale guard
         setProfileUser(res.data);
-      } catch (err) {
+      } catch (err: any) {
+          if (err?.response?.status === 404) {
+            setProfileNotFound(true);
+          }
         console.error("Failed to load profile", err);
       } finally {
         if (usernameRef.current === username) setLoadingProfile(false);
@@ -187,6 +192,9 @@ const ProfilePage: React.FC = () => {
     return <div className="p-10 text-gray-400">Loading profile...</div>;
   }
 
+  if (profileNotFound) {
+    return <ProfileNotFound />;
+  }
 
   return (
 
@@ -213,7 +221,7 @@ const ProfilePage: React.FC = () => {
               {/* Top Row: Name and Action Buttons */}
               <div className="flex items-center gap-5 flex-wrap">
                 <h1 className="text-4xl font-black tracking-tight text-gray-900 dark:text-white italic uppercase leading-none">
-                  {profileUser?.username || "John Developer"}
+                  {profileUser?.username}
                 </h1>
 
                 {isOwnProfile ? (

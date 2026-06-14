@@ -38,6 +38,10 @@ export function UsersProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    if (user) {
+      localStorage.removeItem("rigzer_guest_started");
+    }
+
     const fetchUsers = async () => {
   try {
     const res = await axios.get(`${BACKEND_URL}/api/chat/my-chats`, {

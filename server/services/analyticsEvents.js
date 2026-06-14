@@ -57,9 +57,7 @@ async function ensureDailyRow(postId, dateKey) {
  * @param {string|ObjectId} postId
  */
 export async function onLikeAdded(postId) {
-  const dateKey = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-  }).format(new Date());
+  const dateKey = new Date().toISOString().split("T")[0];
 
   await ensureDailyRow(postId, dateKey);
 
@@ -78,9 +76,7 @@ export async function onLikeAdded(postId) {
 }
 
 export async function onLikeRemoved(postId) {
-  const dateKey = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-  }).format(new Date());
+  const dateKey = new Date().toISOString().split("T")[0];
 
   await PostAnalytics.updateOne(
     {
@@ -118,9 +114,7 @@ export async function onLikeRemoved(postId) {
  * @param {string|ObjectId} postId
  */
 export async function onCommentAdded(postId) {
-  const dateKey = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-  }).format(new Date());
+  const dateKey = new Date().toISOString().split("T")[0];
 
   await ensureDailyRow(postId, dateKey);
 
@@ -142,9 +136,7 @@ export async function onCommentAdded(postId) {
  * @param {string|ObjectId} postId
  */
 export async function onCommentRemoved(postId) {
-  const dateKey = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-  }).format(new Date());
+  const dateKey = new Date().toISOString().split("T")[0];
 
   await PostAnalytics.updateOne(
     {
