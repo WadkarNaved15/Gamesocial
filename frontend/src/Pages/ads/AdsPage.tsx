@@ -5,6 +5,7 @@ import CampaignPanel from "../../components/ads/CampaignPanel";
 import AdGroupPanel from "../../components/ads/AdGroupPanel";
 import AdModelPostForm from "../../components/PostModal/ActivePostForm/AdModelPostForm";
 import MediaAdPostForm from "../../components/PostModal/ActivePostForm/MediaAdPostForm";
+import PrerollAdPostForm from "../../components/Post/PrerollAdPostForm";
 import ComposerSidebar from "../../components/ads/ComposerSidebar";
 import type { AdGroup } from "../../types/ads";
 const createDefaultAdGroup = (id: number): AdGroup => ({
@@ -127,7 +128,14 @@ export default function AdsPage() {
                                     />
                                 </div>
                             )}
-                            {activeComposerType === "preroll" && <div>Pre Roll Ads Builder UI</div>}
+                            {activeComposerType === "preroll" && (
+                                <div className="flex justify-center w-full">
+                                    <PrerollAdPostForm
+                                        onCancel={() => setActiveComposerType(null)}
+                                        onBack={() => setActiveComposerType(null)}
+                                    />
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
