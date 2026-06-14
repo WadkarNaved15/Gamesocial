@@ -30,6 +30,9 @@ import CreditOperations from "./Pages/CreditOperations";
 import SessionMonitoringDashboard from "./Pages/SessionMonitoringDashboard";
 import AdminIntelligenceCenter from "./Pages/AdminIntelligenceCenter";
 
+//Error Handling
+import PageNotFound from "./Pages/ErrorHandling/PageNotFound";
+import RouteErrorBoundary from "./RouteErrorBoundary";
 
 // Components as pages
 import ModelViewer from "./components/ModelViewer";
@@ -40,81 +43,91 @@ import AdsPage from "./Pages/ads/AdsPage";
 
 export const router = createBrowserRouter([
   {
-    element: <MainLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
-      { path: "/", element: <Home /> },
-      { path: "/search", element: <Home /> },
-      { path: "/post/:postId", element: <PostDetailsPage /> },
-      { path: "/profile/:username", element: <ProfilePageWrapper /> },
-      { path: "/articles/:canvasId", element: <ArticleOverlay /> },
-      { path: "/create", element: <PostModal/> },
-      { path: "/wishlist", element: <WishlistPage /> },
-      { path: "/notifications", element: <NotificationsPage /> },
-    ],
-  },
+      {
+        element: <MainLayout />,
+        children: [
+          { path: "/", element: <Home /> },
+          { path: "/search", element: <Home /> },
+          { path: "/post/:postId", element: <PostDetailsPage /> },
+          { path: "/profile/:username", element: <ProfilePageWrapper /> },
+          { path: "/articles/:canvasId", element: <ArticleOverlay /> },
+          { path: "/create", element: <PostModal /> },
+          { path: "/wishlist", element: <WishlistPage /> },
+          { path: "/notifications", element: <NotificationsPage /> },
+        ],
+      },
 
-  { path: "/auth", element: <Auth /> },
-  { path: "/forgot-password", element: <ForgotPassword /> },
-  { path: "/reset-password", element: <ResetPassword /> },
-  { path: "/verify-email", element: <VerifyEmail /> },
+      { path: "/auth", element: <Auth /> },
+      { path: "/forgot-password", element: <ForgotPassword /> },
+      { path: "/reset-password", element: <ResetPassword /> },
+      { path: "/verify-email", element: <VerifyEmail /> },
 
-  { path: "/stream/:sessionId", element: <StreamPage /> },
-  { path: "/publisher", element: <PublisherForm /> },
-  { path: "/createpost", element: <CreatePostPage /> },
+      { path: "/stream/:sessionId", element: <StreamPage /> },
+      { path: "/publisher", element: <PublisherForm /> },
+      { path: "/createpost", element: <CreatePostPage /> },
 
-  // { path: "/devlogs", element: <DevLogs /> },
-  { path: "/devlogs/view/:id", element: <DevLogsView /> },
-  { path: "/devlogCanvas", element: <DevLogCanvas /> },
-  { path: "/devlogviewer/:devlogId", element: <DevlogViewer /> },
+      // { path: "/devlogs", element: <DevLogs /> },
+      { path: "/devlogs/view/:id", element: <DevLogsView /> },
+      { path: "/devlogCanvas", element: <DevLogCanvas /> },
+      { path: "/devlogviewer/:devlogId", element: <DevlogViewer /> },
 
-  { path: "/models", element: <ModelViewer /> },
-  { path: "/gameshow", element: <GameShowcase /> },
-  { path: "/gameupload", element: <UploadGame /> },
-  { path: "/games", element: <GamePost /> },
+      { path: "/models", element: <ModelViewer /> },
+      { path: "/gameshow", element: <GameShowcase /> },
+      { path: "/gameupload", element: <UploadGame /> },
+      { path: "/games", element: <GamePost /> },
 
-  // { path: "/puck", element: <Puck /> },
-  { path: "/recommendations", element: <Recommendations /> },
-  { path: "/recommendationsposts", element: <RecommendationPosts /> },
+      // { path: "/puck", element: <Puck /> },
+      { path: "/recommendations", element: <Recommendations /> },
+      { path: "/recommendationsposts", element: <RecommendationPosts /> },
 
-  { path: "/analytics", element: <Analytics /> },
+      { path: "/analytics", element: <Analytics /> },
 
-  { path: "/ads", element: <AdsPage/> },
+      { path: "/ads", element: <AdsPage /> },
 
-  // ── Admin routes ───────────────────────────────────────────────────────────
-  // AdminRoute checks:  not logged in → /login?next=…  |  not admin → 403 page
-  // Real security is enforced by isAdmin middleware on every /api/admin/* and
-  // /api/pockets/pending|review|eligibility endpoint — never trust this alone.
-  {
-    path: "/admin/pockets",
-    element: (
-      <AdminRoute>
-        <AdminPocketDashboard />
-      </AdminRoute>
-    ),
-  },
-  { path: "/admin/analytics/:creatorId", element: <Analytics /> },
-  {
-    path: "/admin/credits",
-    element: (
-      <AdminRoute>
-        <CreditOperations />
-      </AdminRoute>
-    ),
-  },
-  {
-    path: "/admin/sessionsMonitoring",
-    element: (
-      <AdminRoute>
-        <SessionMonitoringDashboard />
-      </AdminRoute>
-    ),
-  },
-  {
-    path: "/admin/intelligence",
-    element: (
-      <AdminRoute>
-        <AdminIntelligenceCenter />
-      </AdminRoute>
-    ),
-  }
-]);
+      // ── Admin routes ───────────────────────────────────────────────────────────
+      // AdminRoute checks:  not logged in → /login?next=…  |  not admin → 403 page
+      // Real security is enforced by isAdmin middleware on every /api/admin/* and
+      // /api/pockets/pending|review|eligibility endpoint — never trust this alone.
+      {
+        path: "/admin/pockets",
+        element: (
+          <AdminRoute>
+            <AdminPocketDashboard />
+          </AdminRoute>
+        ),
+      },
+      { path: "/admin/analytics/:creatorId", element: <Analytics /> },
+      {
+        path: "/admin/credits",
+        element: (
+          <AdminRoute>
+            <CreditOperations />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/admin/sessionsMonitoring",
+        element: (
+          <AdminRoute>
+            <SessionMonitoringDashboard />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/admin/intelligence",
+        element: (
+          <AdminRoute>
+            <AdminIntelligenceCenter />
+          </AdminRoute>
+        ),
+      },
+
+      {
+        path: "*",
+        element: <PageNotFound />,
+      },
+    ], 
+  },  
+]);    

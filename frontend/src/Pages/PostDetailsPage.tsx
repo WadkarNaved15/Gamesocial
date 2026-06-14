@@ -5,6 +5,7 @@ import NormalPostDetails from "./NormalPostDetails";
 import DevlogPostDetails from "./DevlogPostDetails";
 import PostDetail from "./PostDetail";
 import CircleLoader from "../components/Loader/CircleLoader";
+import ContentNotFound from "./ErrorHandling/ContentNotFound";
 
 const PostDetailsPage = () => {
   const { postId } = useParams();
@@ -42,7 +43,9 @@ const PostDetailsPage = () => {
   }, [postId]);
 
   if (loading) return <CircleLoader />;
-  if (!post) return <div>Post not found</div>;
+  
+  // 👇 Replaced the plain div with your custom component
+  if (!post) return <ContentNotFound />;
 
   const handleBack = () => {
     navigate(-1);
