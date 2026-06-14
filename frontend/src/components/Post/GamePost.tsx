@@ -55,8 +55,8 @@ const GamePost: React.FC<GamePostProps> = ({
   const [isStarting, setIsStarting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isMuted, setIsMuted] = useState(false); 
-  
+  const [isMuted, setIsMuted] = useState(false);
+
   const { user: currentUser } = useUser();
   const isOwner = currentUser?._id === user._id;
   const hasPlayedDemo = gamePost?.demoConsumed === true;
@@ -96,8 +96,6 @@ const GamePost: React.FC<GamePostProps> = ({
   const totalCredits = (gamePost.creditBudget?.usedCredits || 0) + (gamePost.creditBudget?.remainingCredits || 0);
   const possibleSessions = Math.floor(totalCredits / 10);
   const completedSessions = gamePost.gameMetrics?.totalSessions || 0;
-
-  console.log("Session stats:", { completedSessions, possibleSessions,totalCredits });
 
   const getRelativeTime = (date: string | Date) => {
     const now = new Date();
@@ -183,7 +181,6 @@ const GamePost: React.FC<GamePostProps> = ({
     }
   }, [queue.sessionId]);
 
-
   useEffect(() => {
     if (!videoRef.current) return;
 
@@ -191,7 +188,6 @@ const GamePost: React.FC<GamePostProps> = ({
       (entries) => {
         entries.forEach((entry) => {
           const video = entry.target as HTMLVideoElement;
-
           if (entry.isIntersecting) {
             video.play().catch((err: any) => {
               console.warn("Browser blocked autoplay:", err);
@@ -201,7 +197,7 @@ const GamePost: React.FC<GamePostProps> = ({
           }
         });
       },
-      { threshold: 0.5 } 
+      { threshold: 0.5 }
     );
 
     observer.observe(videoRef.current);
@@ -212,6 +208,56 @@ const GamePost: React.FC<GamePostProps> = ({
       }
     };
   }, []);
+
+  // Shared play button — avoids duplicating JSX in both branches
+  const PlayButton = () =>
+    hasPlayedDemo ? (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpenDetails?.();
+        }}
+        style={{
+          background: "linear-gradient(to bottom right, #3D7A6E, #000000)",
+        }}
+        className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98]"
+      >
+        <Gamepad2 size={14} />
+        <span className="font-semibold text-xs">Demo Played</span>
+      </button>
+    ) : (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleStartGame();
+        }}
+        disabled={playDisabled}
+        title={playReason}
+        style={{
+          background: playDisabled
+            ? "linear-gradient(to bottom right, #52525b, #18181b)"
+            : "linear-gradient(to bottom right, #3D7A6E, #000000)",
+        }}
+        className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <Users size={14} />
+        <span className="font-semibold text-xs">
+          {checkingEligibility
+            ? "Checking..."
+            : isStarting
+              ? "Starting..."
+              : hasActiveSession
+                ? "Busy"
+                : eligibility.checked && !eligibility.allowed
+                  ? "Unavailable"
+                  : "Play Now"}
+        </span>
+        <div className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+        </div>
+      </button>
+    );
 
   return (
     <>
@@ -272,13 +318,14 @@ const GamePost: React.FC<GamePostProps> = ({
             )}
 
             {gamePost && (
-              <div className="group relative rounded-2xl overflow-hidden border border-white/[0.08] bg-transparent mb-4">
-                {/* subtle inner glow — not a fill, just a border effect via the bg of the video overlay */}
+              <div className="group relative rounded-2xl overflow-hidden border border-white/[0.06] bg-gradient-to-b from-[#1c1c1c] to-[#0a0a0a] mb-4">
 
-                <div className="relative w-full h-[380px] overflow-hidden">
-                  
+                {/* Video / no-video container */}
+                <div className="relative w-full h-[380px] overflow-hidden bg-gradient-to-b from-[#1e1e1e] to-[#0c0c0c]">
+
                   {hasVideo ? (
                     <>
+                      {/* Video sits at natural opacity — no heavy fill competing underneath */}
                       <video
                         ref={videoRef}
                         src={videoUrl}
@@ -286,133 +333,64 @@ const GamePost: React.FC<GamePostProps> = ({
                         loop
                         playsInline
                         preload="metadata"
-                        className="absolute inset-0 w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-cover opacity-90"
                       />
+
+                      {/* Mute toggle */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setIsMuted((m) => !m);
                         }}
-                        className="absolute bottom-4 right-4 z-50 p-2 rounded-full bg-black/60 backdrop-blur-md text-white border border-white/20"
+                        className="absolute bottom-4 right-4 z-50 p-2 rounded-full bg-black/40 backdrop-blur-md text-white border border-white/20"
                       >
                         {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
                       </button>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
-                      
+
+                      {/*
+                        Gradient overlay:
+                        - Top: a gentle gray-to-transparent so the title area reads clearly
+                          without a harsh solid strip
+                        - Bottom: soft black fade for the session pill legibility
+                        - Mid: near-transparent so the video breathes in the centre
+                      */}
+                      <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          background: `
+                            linear-gradient(
+                              to bottom,
+                              rgba(20,20,20,0.55) 0%,
+                              rgba(10,10,10,0.08) 28%,
+                              rgba(0,0,0,0.0)    50%,
+                              rgba(0,0,0,0.08)   72%,
+                              rgba(0,0,0,0.52)  100%
+                            )
+                          `,
+                        }}
+                      />
+
+                      {/* Game name + play button — top left */}
                       <div className="absolute top-4 left-4 z-40 flex items-center gap-3">
-                        <h3 className="text-2xl font-black text-white tracking-tight leading-none">
+                        <h3 className="text-2xl font-black text-white tracking-tight leading-none drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
                           {gamePost.gameName}
                         </h3>
-                        {hasPlayedDemo ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onOpenDetails?.();
-                            }}
-                            style={{
-                              background: playDisabled
-                                ? "linear-gradient(to bottom right, #52525b, #18181b)"
-                                : "linear-gradient(to bottom right, #3D7A6E, #000000)",
-                            }}
-                            className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Gamepad2 size={14} />
-                            <span className="font-semibold text-xs">Demo Played</span>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStartGame();
-                            }}
-                            disabled={playDisabled}
-                            title={playReason}
-                            style={{
-                              background: playDisabled
-                                ? "linear-gradient(to bottom right, #52525b, #18181b)"
-                                : "linear-gradient(to bottom right, #3D7A6E, #000000)",
-                            }}
-                            className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Users size={14} />
-                            <span className="font-semibold text-xs">
-                              {checkingEligibility
-                                ? "Checking..."
-                                : isStarting
-                                  ? "Starting..."
-                                  : hasActiveSession
-                                    ? "Busy"
-                                    : eligibility.checked && !eligibility.allowed
-                                      ? "Unavailable"
-                                      : "Play Now"}
-                            </span>
-                            <div className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-                            </div>
-                          </button>
-                        )}
+                        <PlayButton />
                       </div>
                     </>
                   ) : (
-                    <div className="relative w-full h-full bg-transparent p-6">
+                    /* No-video fallback — same gradient base, no overlay needed */
+                    <div className="relative w-full h-full p-6">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-2xl font-black text-white tracking-tight leading-none">
                           {gamePost.gameName}
                         </h3>
-                        {hasPlayedDemo ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onOpenDetails?.();
-                            }}
-                            style={{
-                              background: playDisabled
-                                ? "linear-gradient(to bottom right, #52525b, #18181b)"
-                                : "linear-gradient(to bottom right, #3D7A6E, #000000)",
-                            }}
-                            className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Gamepad2 size={14} />
-                            <span className="font-semibold text-xs">Demo Played</span>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStartGame();
-                            }}
-                            disabled={playDisabled}
-                            title={playReason}
-                            style={{
-                              background: playDisabled
-                                ? "linear-gradient(to bottom right, #52525b, #18181b)"
-                                : "linear-gradient(to bottom right, #3D7A6E, #000000)",
-                            }}
-                            className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Users size={14} />
-                            <span className="font-semibold text-xs">
-                              {checkingEligibility
-                                ? "Checking..."
-                                : isStarting
-                                  ? "Starting..."
-                                  : hasActiveSession
-                                    ? "Busy"
-                                    : eligibility.checked && !eligibility.allowed
-                                      ? "Unavailable"
-                                      : "Play Now"}
-                            </span>
-                            <div className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-                            </div>
-                          </button>
-                        )}
+                        <PlayButton />
                       </div>
                     </div>
                   )}
 
+                  {/* Sessions pill — bottom left, always visible */}
                   <div className="absolute bottom-4 left-4 z-50 flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 backdrop-blur-sm border border-white/20 shadow-lg shadow-black/30">
                     <Users size={14} className="text-white/90" />
                     <span className="text-xs font-semibold text-white tracking-wide">
@@ -422,7 +400,8 @@ const GamePost: React.FC<GamePostProps> = ({
                   </div>
 
                 </div>
-                
+
+                {/* Eligibility warning */}
                 {eligibility.checked && !eligibility.allowed && eligibility.reasons.length > 0 && (
                   <div className="mt-4 w-full rounded-xl border border-amber-400/30 bg-amber-500/10 p-3">
                     <div className="flex items-start gap-2 text-amber-300">
@@ -449,6 +428,7 @@ const GamePost: React.FC<GamePostProps> = ({
                   </div>
                 )}
 
+                {/* Waiting indicator */}
                 {hasActiveSession && queue.status === 'waiting' && (
                   <div className="mt-4 w-full bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
                     <p className="text-xs text-blue-400 font-medium flex items-center gap-2 justify-center">
@@ -478,6 +458,7 @@ const GamePost: React.FC<GamePostProps> = ({
             )}
           </div>
         </div>
+
         <ConfirmDeleteModal
           open={deleteOpen}
           onClose={() => setDeleteOpen(false)}
