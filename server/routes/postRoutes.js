@@ -7,6 +7,7 @@ import multer from "multer";
 import dotenv from "dotenv";
 import Post from "../models/Allposts.js";
 import Like from "../models/Like.js";
+import Wishlist from "../models/Wishlist.js";
 import optionalAuthMiddleware from "../middlewares/optionalAuthMiddleware.js";
 import redisClient from "../config/redis.js";
 import { getFeedPage } from "../services/feed.service.js";
@@ -72,7 +73,7 @@ router.get("/fetch_posts", optionalAuthMiddleware, async (req, res) => {
 
 // ── GET /api/posts/filter_posts ──────────────────────────────────────────────
 // Search via Meilisearch — pocket entries indexed separately if desired.
-router.get("/filter_posts",optionalAuthMiddleware, async (req, res) => {
+router.get("/filter_posts", optionalAuthMiddleware, async (req, res) => {
   try {
     const { query, cursor, limit = 10 } = req.query;
 
@@ -119,7 +120,7 @@ router.get("/filter_posts",optionalAuthMiddleware, async (req, res) => {
 
 // ── GET /api/posts/user_posts/:userId ────────────────────────────────────────
 // Profile page — AllPost only (pocket entries are brand-owned, not user posts).
-router.get("/user_posts/:userId",optionalAuthMiddleware, async (req, res) => {
+router.get("/user_posts/:userId", optionalAuthMiddleware, async (req, res) => {
   try {
     const { userId } = req.params;
     const { cursor, limit = 10 } = req.query;
@@ -135,6 +136,41 @@ router.get("/user_posts/:userId",optionalAuthMiddleware, async (req, res) => {
       .sort({ _id: -1 })
       .limit(Number(limit))
       .lean();
+
+    const viewerId = req.user?._id?.toString();
+
+    if (viewerId && posts.length) {
+      const postIds = posts.map((p) => p._id);
+
+      const [userLikes, userWishlists] = await Promise.all([
+        Like.find({
+          user: viewerId,
+          post: { $in: postIds },
+        })
+          .select("post")
+          .lean(),
+
+        Wishlist.find({
+          user: viewerId,
+          post: { $in: postIds },
+        })
+          .select("post")
+          .lean(),
+      ]);
+
+      const likedSet = new Set(
+        userLikes.map((l) => l.post.toString())
+      );
+
+      const wishlistSet = new Set(
+        userWishlists.map((w) => w.post.toString())
+      );
+
+      for (const post of posts) {
+        post.isLiked = likedSet.has(post._id.toString());
+        post.isWishlisted = wishlistSet.has(post._id.toString());
+      }
+    }
 
     await enrichDemoConsumed(
       posts,
@@ -152,7 +188,7 @@ router.get("/user_posts/:userId",optionalAuthMiddleware, async (req, res) => {
 });
 
 // ── GET /api/posts/:postId ────────────────────────────────────────────────────
-router.get("/:postId",optionalAuthMiddleware, async (req, res) => {
+router.get("/:postId", optionalAuthMiddleware, async (req, res) => {
   try {
     const post = await Post.findById(req.params.postId)
       .populate("user", "username avatar")

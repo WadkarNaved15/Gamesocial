@@ -76,6 +76,7 @@ function Home() {
         );
         const newPosts = res.data.posts;
         const newCursor = res.data.nextCursor;
+        console.log("ADDED POSTS VIA HOME", newPosts);
         addPosts(newPosts);
         setMainPosts((prev) => {
           const all: PostProps[] = reset ? newPosts : [...prev, ...newPosts];

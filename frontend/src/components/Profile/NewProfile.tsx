@@ -121,6 +121,7 @@ const ProfilePage: React.FC = () => {
         }
       );
       addPosts(res.data.posts);
+      console.log("ADDED POSTS VIA PROFILE", res.data.posts);
       if (activeFetchIdRef.current !== fetchId) return;
       setUserPosts((prev) =>
         cursorParam === null ? res.data.posts : [...prev, ...res.data.posts]

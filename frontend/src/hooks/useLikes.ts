@@ -11,7 +11,12 @@ export function useLikes(
   const [loading, setLoading] = useState(false);
 
   const currentPost = postsById[postId];
-
+  console.log(
+    "RENDER",
+    postId,
+    currentPost?.isLiked,
+    currentPost?.likesCount
+  );
   const handleLike = async () => {
     if (!currentPost || loading) return;
 
@@ -42,9 +47,23 @@ export function useLikes(
           }
         );
       }
+      console.log(
+        "CLICK",
+        postId,
+        currentPost?.isLiked,
+        currentPost?.likesCount
+      );
     } catch (err) {
-      console.error(err);
+      // Check if it's an Axios error and has a response from the server
+      if (axios.isAxiosError(err) && err.response) {
+        console.error("Backend Error Response:", err.response.data);
+        // If you want to print just the message specifically:
+        // console.log("Message:", err.response.data.message);
+      } else {
+        console.error("An unexpected error occurred:", err);
+      }
 
+      // Your existing rollback state logic
       updatePost(postId, {
         isLiked: previousLiked,
         likesCount: currentPost.likesCount,
