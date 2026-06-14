@@ -16,21 +16,6 @@ import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { trackEvent } from "../utils/analytics";
 import api from "../utils/api";
-function CrashTest() {
-  const [crash, setCrash] = useState(false);
-
-  if (crash) {
-    throw new Error("Rigzer test crash");
-  }
-
-  return (
-    <button
-      onClick={() => setCrash(true)}
-    >
-      Test Error Boundary
-    </button>
-  );
-}
 
 function Home() {
   const navigate = useNavigate();
@@ -437,7 +422,6 @@ function Home() {
           </div>
         ) : (
           <>
-          <CrashTest />
             {/* MAIN FEED */}
             {mainPosts.length > 0 && (
               <div className="w-full mt-4 flex flex-col">
