@@ -71,7 +71,7 @@ const PrerollAdPostCard: React.FC<Props> = ({
                 )}
             </div>
             {/* BRAND + CTA PILL */}
-            <div className="absolute bottom-4 left-4 z-20">
+            <div className="absolute bottom-4 left-4 z-20 flex flex-col gap-1.5">
                 <a
                     href={ctaLink || "#"}
                     target="_blank"
@@ -164,6 +164,29 @@ duration-200
                     </div>
 
                 </a>
+                <div
+                    className="
+        flex
+        items-center
+        gap-1.5
+
+        text-[10px]
+        font-medium
+
+        text-white/80
+
+        drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]
+        select-none
+    "
+                >
+                    <span>Sponsored</span>
+
+                    <span className="opacity-50">•</span>
+
+                    <span>
+                        {currentTime}s
+                    </span>
+                </div>
             </div>
 
             {/* LINEAR PIPELINE AD TRACKER TIMELINE */}
