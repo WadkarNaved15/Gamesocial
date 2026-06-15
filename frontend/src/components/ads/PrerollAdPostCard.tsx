@@ -70,93 +70,99 @@ const PrerollAdPostCard: React.FC<Props> = ({
                     </div>
                 )}
             </div>
-            {/* BRAND & TRANSPARENT GLASS CTA CONTAINER LAYOUT */}
-            <div
-                className="
-    absolute
-    bottom-4
-    inset-x-4
-    z-20
-    flex
-    justify-between
-    items-end
-    gap-4
-    pointer-events-none
-  "
-            >
-
-                {/* BRAND PANEL HOVER */}
-                <div
-                    className="
-    flex items-center gap-2.5
-    px-3 py-2
-    rounded-full
-    bg-black/20
-    border border-white/20
-    shadow-[0_4px_20px_rgba(0,0,0,0.4)]
-  "
-                >
-                    <img
-                        src={brandLogo || "/default_avatar.png"}
-                        className="
-    w-8 h-8
-    rounded-full
-    object-cover
-    border
-    border-white/30
-    shadow-[0_0_12px_rgba(0,0,0,0.5)]
-  "
-                        alt="Brand Identity"
-                    />
-                    <span
-                        className="
-    text-white
-    text-xs
-    font-bold
-    tracking-wide
-    drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]
-  "
-                    >
-                        {brandName || "Brand Identity"}
-                    </span>
-                </div>
-
-                {/* NON-OBSTRUCTIVE GLASS ACTION BUTTON */}
+            {/* BRAND + CTA PILL */}
+            <div className="absolute bottom-4 left-4 z-20">
                 <a
                     href={ctaLink || "#"}
                     target="_blank"
                     rel="noreferrer"
                     className="
-    pointer-events-auto
-    flex items-center gap-2
-    px-5 py-2.5
-    rounded-xl
+pointer-events-auto
+inline-flex
+items-center
+gap-3
 
-    bg-black/45
+px-2.5
+py-1.5
 
-    border border-white/20
+rounded-full
 
-    text-white
-    text-[11px]
-    font-black
-    uppercase
-    tracking-wider
+bg-black/15
 
-    shadow-[0_4px_20px_rgba(0,0,0,0.5)]
+border
+border-white/15
 
-    hover:bg-black/60
-    hover:scale-[1.02]
+shadow-[0_2px_12px_rgba(0,0,0,0.25)]
 
-    active:scale-95
+hover:bg-black/25
+hover:border-white/25
 
-    transition-all
-  "
+transition-all
+duration-200
+"
                 >
-                    <span className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                        {ctaText}
-                    </span>
+                    <img
+                        src={brandLogo || "/default_avatar.png"}
+                        alt="Brand Identity"
+                        className="
+                            w-7
+                            h-7
+                            rounded-full
+                            object-cover
 
-                    <ExternalLink size={12} />
+                            border
+                            border-white/20
+
+                            shadow-[0_1px_8px_rgba(0,0,0,0.35)]
+
+                            shrink-0
+                            "
+                    />
+                    <div className="flex items-center gap-3">
+                        <span
+                            className="
+                            text-white
+                            text-xs
+                            font-bold
+                            whitespace-nowrap
+                            drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]
+                        "
+                        >
+                            {brandName}
+                        </span>
+
+                        <div
+                            className="
+                                h-4
+                                w-px
+                                bg-white/30
+                            "
+                        />
+
+                        <span
+                            className="
+                            text-white
+                            text-[10px]
+                            font-black
+                            mt-0.5
+                            uppercase
+                            tracking-wider
+                            whitespace-nowrap
+                            drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]
+                        "
+                        >
+                            {ctaText}
+                        </span>
+
+                        <ExternalLink
+                            size={11}
+                            className="
+                            text-white
+                            opacity-90
+                        "
+                        />
+                    </div>
+
                 </a>
             </div>
 

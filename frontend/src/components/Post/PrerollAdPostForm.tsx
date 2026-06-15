@@ -20,7 +20,7 @@ const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack 
 
   // ───────────── ADMINISTRATIVE STATE ─────────────
   const [activeTab, setActiveTab] = useState<"payload" | "display">("payload");
-  const [ctaText, setCtaText] = useState("PLAY NOW");
+  const [ctaText, setCtaText] = useState("VISIT NOW");
   const [ctaLink, setCtaLink] = useState("");
   const [asset, setAsset] = useState<VideoAsset | null>(null);
   const duration = 15; // Kept fixed at 15s standard for runtime calculations
@@ -161,7 +161,7 @@ const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack 
               <input
                 type="text"
                 value={ctaText}
-                placeholder="e.g. PLAY NOW"
+                placeholder="e.g. VISIT NOW"
                 onChange={(e) => setCtaText(e.target.value)}
                 className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-xs text-black dark:text-white font-bold tracking-wide"
               />
