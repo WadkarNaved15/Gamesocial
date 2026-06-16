@@ -11,7 +11,18 @@ const PostModalPage = () => {
     <div className="w-full min-h-screen flex flex-row relative">
       
       {/* Sidebar - Tightened width to bring icons closer to form */}
-      <aside className="w-16 md:w-20 flex flex-col items-center py-6 sticky top-0 h-screen ">
+        <aside
+    className="
+      relative
+      z-50
+      w-16 md:w-20
+      flex flex-col items-center
+      py-6
+      sticky top-0
+      h-screen
+      overflow-visible
+    "
+  >
         <PostTypeHeader 
           active={postType} 
           onChange={setPostType} 

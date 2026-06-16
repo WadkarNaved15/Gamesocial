@@ -38,7 +38,7 @@ function getBarClass(): string {
 
 const PostTypeHeader: React.FC<PostTypeHeaderProps> = ({ active, onChange, onCancel }) => {
   return (
-    <div className="h-full flex flex-col items-center w-full">
+    <div className="h-full flex flex-col items-center w-full mt-10">
 
       {/* Nav icons */}
       <div className="flex flex-col items-center gap-6 w-full">
