@@ -11,6 +11,7 @@ import MessagingComponent from "../components/Home/Message";
 import ArticleRecommendations from "../components/Articles/ArticleRecommendations";
 import { ScrollRestoration } from "react-router-dom";
 import AmbientBackground from "../components/AmbientBackground";
+import OrbBackground from "../components/OrbBacground";
 import AuthGateModal from "../components/Auth/AuthGateModal";
 import GuestSessionExpired from "../components/Auth/GuestSessionExpired";
 import GuestAccessExpired from "../components/Auth/GuestSessionExpired";
@@ -84,6 +85,7 @@ if (feedLocked && !user) {
   return (
     <>
       <AmbientBackground />
+      <OrbBackground />
       <AuthGateModal />
       <div className="min-h-screen bg-gray-100 dark:bg-transparent">
         <ScrollRestoration
@@ -152,10 +154,13 @@ if (feedLocked && !user) {
                 <div
                   ref={centerRef}
                   className={`
-                    flex flex-col items-center justify-start w-full
-                    ${hideBillboard
-                      ? "lg:col-span-10 2xl:col-span-13"
-                      : "lg:col-span-6 2xl:col-span-8"
+                    flex flex-col w-full
+                    ${
+                      isProfilePage
+                        ? "lg:col-span-10 2xl:col-span-13"
+                        : hideBillboard
+                        ? "lg:col-span-10 2xl:col-span-13"
+                        : "lg:col-span-6 2xl:col-span-8"
                     }
                   `}
                 >

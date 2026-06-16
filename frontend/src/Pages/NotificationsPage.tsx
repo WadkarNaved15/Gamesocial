@@ -2,7 +2,6 @@ import NotificationCard from "../components/Home/NotificationCard";
 import { useNotification } from "../context/Notifications";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
 import CircleLoader from "../components/Loader/CircleLoader";
 
 export default function NotificationsPage() {
@@ -25,14 +24,7 @@ export default function NotificationsPage() {
   return (
     <div className="w-full mt-4 flex flex-col">
       
-      {/* Back Button */}
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-blue-500 hover:text-blue-600 mb-4"
-      >
-        <ArrowLeft size={20} />
-        Back to Feed
-      </button>
+      
 
       {/* Header */}
       <div className="mb-6">

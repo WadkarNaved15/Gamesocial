@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Post from "../components/Post";
 import CircleLoader from "../components/Loader/CircleLoader";
-import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { PostProps } from "../types/Post";
 
@@ -72,13 +71,6 @@ const WishlistPage = () => {
   }, [fetchWishlist]); // ✅ stable dependency
   return (
     <div className="w-full mt-4 flex flex-col">
-      {/* Back Button */}
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-blue-500 hover:text-blue-600 mb-4"
-      >
-        <ArrowLeft size={20} /> Back to Feed
-      </button>
 
       {!loading && posts.length === 0 && (
         <div className="text-gray-400 dark:text-gray-500 mt-4">
