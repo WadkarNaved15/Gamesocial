@@ -5,7 +5,7 @@ import CampaignPanel from "../../components/ads/CampaignPanel";
 import AdGroupPanel from "../../components/ads/AdGroupPanel";
 import AdModelPostForm from "../../components/PostModal/ActivePostForm/AdModelPostForm";
 import MediaAdPostForm from "../../components/PostModal/ActivePostForm/MediaAdPostForm";
-import PrerollAdPostForm from "../../components/Post/PrerollAdPostForm";
+import PrerollAdPostForm from "../../components/PostModal/ActivePostForm/PrerollAdPostForm";
 import ComposerSidebar from "../../components/ads/ComposerSidebar";
 import type { AdGroup } from "../../types/ads";
 const createDefaultAdGroup = (id: number): AdGroup => ({

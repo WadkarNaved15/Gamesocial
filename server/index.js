@@ -34,6 +34,7 @@ import allPostRoutes from "./routes/allPosts.js";
 import gameStatus from "./routes/gameStatus.js"
 import authRoutes from "./routes/auth.js";
 import adRoutes from "./routes/adRoutes.js";
+import prerollAdRoutes from "./routes/prerollAd.js";
 import postRoutes from "./routes/postRoutes.js";
 import pocketFetchRoutes from "./routes/pocketRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
@@ -198,6 +199,7 @@ app.use("/api/me", meRoutes);
 app.use("/api/game", gameStatus);
 app.use("/uploads", express.static("uploads"));
 app.use("/api/ads", adRoutes);
+app.use("/api/prerollads", prerollAdRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/media/upload", chatMediaUpload);
 app.use("/api/wishlist", wishListRoutes);

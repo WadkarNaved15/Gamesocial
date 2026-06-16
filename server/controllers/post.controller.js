@@ -227,13 +227,13 @@ export const createPost = async (req, res) => {
             format: file.format,
           },
           videoDemo: videoDemo
-          ? {
+            ? {
               name: videoDemo.name,
               key: videoDemo.key,
               url: videoDemo.url,
               size: videoDemo.size,
             }
-          : null,
+            : null,
           verification: {
             status: "pending",
             error: null,
@@ -432,7 +432,6 @@ export const createPost = async (req, res) => {
         post,
       });
     }
-
     /* ====================================================== */
     return res.status(400).json({ message: "Invalid post type" });
 
