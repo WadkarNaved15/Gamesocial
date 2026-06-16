@@ -4,10 +4,12 @@ import express from "express";
 import verifyToken from "../middlewares/authMiddleware.js";
 import {
   createPrerollAd,
+  getFairPrerollAd
 } from "../controllers/prerollAd.controller.js";
 
 const router = express.Router();
 
 router.post("/", verifyToken, createPrerollAd);
+router.get("/fairads",verifyToken,getFairPrerollAd)
 
 export default router;

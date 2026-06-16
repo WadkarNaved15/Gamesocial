@@ -80,3 +80,25 @@ export const createPrerollAd = async (req, res) => {
     });
   }
 };
+export const getFairPrerollAd = async (req, res) => {
+  try {
+    const ad = await PrerollAd.aggregate([
+      {
+        $sample: { size: 1 }
+      }
+    ]);
+
+    if (!ad.length) {
+      return res.status(404).json({
+        message: "No active preroll ads found",
+      });
+    }
+
+    res.json(ad[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "Failed to fetch preroll ad",
+    });
+  }
+};

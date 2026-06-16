@@ -6,72 +6,36 @@ import React, {
 } from "react";
 import axios from "axios";
 import { Loader2, ChevronRight, XCircle, AlertTriangle } from "lucide-react";
-
+import PrerollAdPostCard from "../ads/PrerollAdPostCard";
 type AdWithStatusProps = {
   sessionId: string;
 };
 
 interface Ad {
   _id: string;
-  title?: string;
-  mediaType: "video" | "image";
-  mediaUrl: string;
-  redirectUrl: string;
-  logoUrl?: string | null;
+
+  brandName: string;
+
+  brandLogo?: string | null;
+
+  ctaText?: string;
+
+  ctaLink?: string;
+
+  asset: {
+    type: "video";
+    url: string;
+    name?: string;
+  };
+
+  mechanics?: {
+    duration?: number;
+  };
 }
 
 type SessionError = "failed" | "ended" | "stream_error" | null;
 
-const AdPlayer = React.memo(function AdPlayer({
-  ad,
-  onClick,
-}: {
-  ad: Ad;
-  onClick: () => void;
-}) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  useEffect(() => {
-    const video = videoRef.current;
-
-    if (!video) return;
-
-    const tryPlay = async () => {
-      try {
-        await video.play();
-      } catch {}
-    };
-
-    tryPlay();
-
-    return () => {
-      video.pause();
-    };
-  }, []);
-
-  if (ad.mediaType === "video") {
-    return (
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        preload="auto"
-        className="w-full h-full object-contain cursor-pointer"
-        src={ad.mediaUrl}
-        onClick={onClick}
-      />
-    );
-  }
-
-  return (
-    <img
-      src={ad.mediaUrl}
-      className="w-full h-full object-contain cursor-pointer"
-      onClick={onClick}
-      alt="Advertisement"
-    />
-  );
-});
 
 // const stepsMap: { [key: string]: string } = {
 //   waiting: "Preparing Cloud Instance",
@@ -110,27 +74,27 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
-const handleTerminalState = useCallback((state: "failed" | "ended") => {
+  const handleTerminalState = useCallback((state: "failed" | "ended") => {
 
-  // 🔴 Clear stale session state
-localStorage.removeItem("rigzer_queue_session");
+    // 🔴 Clear stale session state
+    localStorage.removeItem("rigzer_queue_session");
 
-  if (state === "failed") {
-    setSessionError("failed");
-    setErrorMessage("Your session failed to start. This is usually due to a server issue. Please try again.");
-  } else {
-    setSessionError("ended");
-    setErrorMessage("Your session has ended.");
-  }
+    if (state === "failed") {
+      setSessionError("failed");
+      setErrorMessage("Your session failed to start. This is usually due to a server issue. Please try again.");
+    } else {
+      setSessionError("ended");
+      setErrorMessage("Your session has ended.");
+    }
 
-  setSessionStatus(state);
+    setSessionStatus(state);
 
-  if (pollRef.current) {
-    clearInterval(pollRef.current);
-    pollRef.current = null;
-  }
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
 
-}, []);
+  }, []);
 
   const fetchStreamUrl = useCallback(async () => {
     const MAX_RETRIES = 5;
@@ -201,26 +165,26 @@ localStorage.removeItem("rigzer_queue_session");
   // Fetch ad
   useEffect(() => {
     axios
-      .get(`${BACKEND_URL}/api/ads/fairadd`)
+      .get(`${BACKEND_URL}/api/prerollads/fairads`)
       .then((res) => setAd(res.data))
       .catch((err) => console.error("Failed to load ad:", err));
   }, [BACKEND_URL]);
 
   useEffect(() => {
-  if (canSkip) return;
+    if (canSkip) return;
 
-  const interval = setInterval(() => {
-    setAdCountdown((prev) => {
-      if (prev <= 1) {
-        clearInterval(interval);
-        return 0;
-      }
-      return prev - 1;
-    });
-  }, 1000);
+    const interval = setInterval(() => {
+      setAdCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
-  return () => clearInterval(interval);
-}, [canSkip]);
+    return () => clearInterval(interval);
+  }, [canSkip]);
   // SSE connection
   useEffect(() => {
     if (!sessionId) return;
@@ -323,13 +287,6 @@ localStorage.removeItem("rigzer_queue_session");
     };
   }, [sessionId, BACKEND_URL]);
 
-  const handleAdClick = async () => {
-    if (!ad) return;
-    try {
-      await axios.post(`${BACKEND_URL}/api/ads/click/${ad._id}`);
-    } catch {}
-    window.open(ad.redirectUrl, "_blank");
-  };
 
   const cancelSession = async () => {
     if (!sessionId) return;
@@ -422,35 +379,18 @@ localStorage.removeItem("rigzer_queue_session");
   // ── Main ad screen ─────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 bg-white dark:bg-black z-50 flex flex-col font-sans overflow-hidden select-none">
-
-      {/* TOP BAR */}
-      <div className="absolute top-0 left-0 right-0 p-6 z-20">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div
-            className="flex items-center space-x-3 bg-white/80 dark:bg-black/40 backdrop-blur-md border border-gray-200 dark:border-gray-800 p-2 pr-4 rounded-xl cursor-pointer shadow-sm"
-            onClick={handleAdClick}
-          >
-            {ad.logoUrl && ad.logoUrl !== "null" && (
-              <img src={ad.logoUrl} alt="Sponsor" className="h-7 w-auto object-contain" />
-            )}
-            <div className="flex flex-col border-l border-gray-200 dark:border-gray-700 pl-3">
-              <span className="text-[9px] text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] leading-none mb-1 font-bold">
-                Sponsored
-              </span>
-              <span className="text-gray-900 dark:text-white text-xs font-semibold tracking-wide">
-                {ad.title || "Partner Content"}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* AD CONTENT */}
-      <div className="relative flex-grow flex items-center justify-center bg-gray-50 dark:bg-black">
-        <AdPlayer
-          ad={ad}
-          onClick={handleAdClick}
+      <div className="relative flex-grow flex items-center justify-center bg-black px-8">
+
+        <PrerollAdPostCard
+          brandName={ad.brandName}
+          brandLogo={ad.brandLogo}
+          ctaText={ad.ctaText}
+          ctaLink={ad.ctaLink}
+          asset={ad.asset}
+          duration={ad.mechanics?.duration || 15}
         />
+
       </div>
 
       {/* BOTTOM CONTROLS */}
@@ -518,15 +458,15 @@ localStorage.removeItem("rigzer_queue_session");
                 )}
               </>
             ) : (
-                <div className="flex items-center space-x-3 bg-white/80 dark:bg-black/40 backdrop-blur-md px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-500 text-[10px] font-bold tracking-widest uppercase shadow-sm">
-                  <div className="w-3 h-3 border-2 border-gray-300 dark:border-gray-700 border-t-gray-600 dark:border-t-gray-300 rounded-full animate-spin" />
+              <div className="flex items-center space-x-3 bg-white/80 dark:bg-black/40 backdrop-blur-md px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-500 text-[10px] font-bold tracking-widest uppercase shadow-sm">
+                <div className="w-3 h-3 border-2 border-gray-300 dark:border-gray-700 border-t-gray-600 dark:border-t-gray-300 rounded-full animate-spin" />
 
-                  <span>
-                    {canSkip
-                      ? `Launch Available in ${adCountdown}s`
-                      : "Preparing Session"}
-                  </span>
-                </div>
+                <span>
+                  {canSkip
+                    ? `Launch Available in ${adCountdown}s`
+                    : "Preparing Session"}
+                </span>
+              </div>
             )}
 
             <button
