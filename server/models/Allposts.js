@@ -515,7 +515,7 @@ const PostSchema = new mongoose.Schema(
         "canvas_article",
         "devlog_post",
         "ad_model_post",
-        "media_ad_post",  // ⭐ NEW
+        "media_ad_post",
       ],
       required: true,
     },

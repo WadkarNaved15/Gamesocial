@@ -1,7 +1,7 @@
 import React, { useState, useRef, ChangeEvent } from "react";
 import { ArrowLeft, Upload, Video, X, Play, LayoutGrid } from "lucide-react";
-import { useUser } from "../../context/user";
-import PrerollAdPostCard from "../../components/ads/PrerollAdPostCard";
+import { useUser } from "../../../context/user";
+import PrerollAdPostCard from "../../ads/PrerollAdPostCard";
 
 interface PrerollAdPostFormProps {
   onCancel: () => void;
@@ -24,7 +24,9 @@ const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack 
   const [ctaLink, setCtaLink] = useState("");
   const [asset, setAsset] = useState<VideoAsset | null>(null);
   const duration = 15; // Kept fixed at 15s standard for runtime calculations
-
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSavingMetadata, setIsSavingMetadata] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,40 +46,113 @@ const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack 
     });
   };
 
+  const uploadAssetToS3 = async (
+    file: File,
+    onProgress: (p: number) => void
+  ) => {
+    const res = await fetch(`${BACKEND_URL}/api/upload/presigned-url`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fileName: file.name,
+        fileType: file.type,
+        category: "media",
+        fileSize: file.size,
+      }),
+    });
+
+    const { uploadUrl, fileUrl, key } = await res.json();
+
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.open("PUT", uploadUrl, true);
+      xhr.setRequestHeader("Content-Type", file.type);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          onProgress(percent);
+        }
+      };
+
+      xhr.onload = () => resolve();
+      xhr.onerror = reject;
+
+      xhr.send(file);
+    });
+
+    return {
+      fileUrl,
+      key,
+    };
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting || !asset) return;
+
     setIsSubmitting(true);
-    
+    setIsUploading(true);
+    setUploadProgress(0);
+
     try {
+      // Upload video to S3
+      const uploaded = await uploadAssetToS3(asset.file, (p) => {
+        setUploadProgress(p);
+      });
+
+      setIsUploading(false);
+      setIsSavingMetadata(true);
+
       const payload = {
-        type: "preroll_ad_post",
         prerollAdPost: {
           brandName: user?.username || "Guest Publisher",
           brandLogo: user?.avatar || null,
           ctaText,
           ctaLink,
-          asset: { name: asset.name, type: "video", url: asset.url },
-          mechanics: { duration }
-        }
+
+          asset: {
+            name: asset.name,
+            type: "video",
+            url: uploaded.fileUrl,
+            key: uploaded.key,
+          },
+
+          mechanics: {
+            duration,
+          },
+        },
       };
 
-      const res = await fetch(`${BACKEND_URL}/api/allposts`, {
+      const res = await fetch(`${BACKEND_URL}/api/prerollads`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) onCancel();
+      if (!res.ok) {
+        throw new Error("Failed to create preroll ad");
+      }
+
+      onCancel();
     } catch (err) {
       console.error(err);
     } finally {
       setIsSubmitting(false);
+      setIsUploading(false);
+      setIsSavingMetadata(false);
+      setUploadProgress(0);
     }
   };
 
   return (
     <div className="w-full max-w-3xl mx-auto flex flex-col rounded-2xl overflow-hidden border border-gray-200 dark:border-zinc-800 shadow-2xl bg-white dark:bg-[#191919]">
-      
+
       {/* HEADER SECTION */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-zinc-800 bg-white dark:bg-[#191919] sticky top-0 z-30">
         <div className="flex items-center gap-3">
@@ -112,9 +187,8 @@ const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack 
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`px-4 py-3 text-[10px] font-black uppercase tracking-wider flex items-center gap-2 transition-colors border-b-2 -mb-px ${
-              activeTab === tab.id ? "border-purple-500 text-purple-500" : "border-transparent text-gray-400 hover:text-zinc-200"
-            }`}
+            className={`px-4 py-3 text-[10px] font-black uppercase tracking-wider flex items-center gap-2 transition-colors border-b-2 -mb-px ${activeTab === tab.id ? "border-purple-500 text-purple-500" : "border-transparent text-gray-400 hover:text-zinc-200"
+              }`}
           >
             {tab.icon}
             {tab.name}
@@ -124,7 +198,7 @@ const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack 
 
       {/* CORE WRAPPER */}
       <div className="p-5 flex flex-col gap-5 flex-1 min-h-[320px]">
-        
+
         {/* TAB 1: MEDIA INGESTION */}
         {activeTab === "payload" && (
           <div className="flex flex-col gap-4">
@@ -199,6 +273,27 @@ const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack 
       </div>
 
       <input ref={mediaInputRef} type="file" accept="video/*" className="hidden" onChange={handleMedia} />
+      {isUploading && (
+        // Added explicit border colors to match the theme
+        <div className="p-3 rounded-xl border border-purple-200 dark:border-purple-900/30 bg-purple-50 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 text-sm">
+          <div className="flex justify-between mb-2">
+            <span>Uploading video...</span>
+            <span>{uploadProgress}%</span>
+          </div>
+
+          <div className="h-2 bg-gray-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-purple-500 transition-all"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
+      )}
+      {isSavingMetadata && (
+        <div className="p-3 rounded-xl border border-amber-200 dark:border-amber-900/30 bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400 text-sm animate-pulse">
+          Finalizing pre-roll ad & saving to database...
+        </div>
+      )}
     </div>
   );
 };
