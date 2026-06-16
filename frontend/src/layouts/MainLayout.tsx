@@ -14,7 +14,7 @@ import AmbientBackground from "../components/AmbientBackground";
 import OrbBackground from "../components/OrbBacground";
 import AuthGateModal from "../components/Auth/AuthGateModal";
 import GuestSessionExpired from "../components/Auth/GuestSessionExpired";
-import LegalModal from "../Pages/LegalModal"; 
+import LegalModal from "../Pages/LegalModal"; // Or adjust to your actual path
 
 const ProfileCover = lazy(() => import("../components/Home/Profile"));
 
@@ -29,8 +29,8 @@ function MainLayout() {
   const [bannerShown, setBannerShown] = useState(false);
   const [feedLocked, setFeedLocked] = useState(false);
   
-  // State for the legal modal
-  const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | null>(null);
+  // State for the legal modal now includes 'paid'
+  const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | 'paid' | null>(null);
 
   // Refs to measure the gap between sidebar and center feed.
   // VerticalBackButton uses both to find the exact midpoint.
@@ -125,19 +125,26 @@ function MainLayout() {
                 />
 
                 {/* Legal Links Footer */}
-                <div className="px-2 pt-2 pb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                <div className="px-2 pt-2 pb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
                   <button 
                     onClick={() => setActiveModal('terms')} 
                     className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline transition-colors"
                   >
                     Terms of Service
                   </button>
-                  <span>•</span>
+                  <span>|</span>
                   <button 
                     onClick={() => setActiveModal('privacy')} 
                     className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline transition-colors"
                   >
                     Privacy Policy
+                  </button>
+                  <span>|</span>
+                  <button 
+                    onClick={() => setActiveModal('paid')} 
+                    className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline transition-colors"
+                  >
+                    Paid Services Policy
                   </button>
                   <span className="w-full mt-1">© {new Date().getFullYear()} Rigzer</span>
                 </div>
