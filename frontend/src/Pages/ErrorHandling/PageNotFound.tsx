@@ -149,12 +149,6 @@ export default function PageNotFound({ path }: PageNotFoundProps) {
         {/* Main content — centered */}
         <main className="relative z-10 w-full h-full flex flex-col items-center justify-center p-8">
 
-          {/* Status pill (Moved above logo) */}
-          <div className="animate-fade-up inline-flex items-center gap-[7px] text-[10.5px] font-semibold tracking-[0.16em] uppercase text-[#4FA98B] bg-[#62D4AE]/10 border border-[#62D4AE]/20 px-3.5 py-1.5 rounded-full mb-[22px]" style={{ animationDelay: '0.15s' }}>
-            <span className="w-[5px] h-[5px] rounded-full bg-[#62D4AE] shadow-[0_0_6px_#62D4AE] animate-pulse" style={{ animationDuration: '4s' }} />
-            Page Not Found
-          </div>
-
           {/* ── Image & Glow Setup ── */}
           <div className="relative w-[160px] h-[160px] mb-14 animate-fade-up" style={{ animationDelay: '0.3s' }}>
             {/* Background Glows for the Logo */}
@@ -204,13 +198,6 @@ export default function PageNotFound({ path }: PageNotFoundProps) {
           </div>
 
         </main>
-
-        {/* ── Footer ── */}
-        <div className="fixed bottom-8 inset-x-0 flex justify-center pointer-events-none z-20">
-          <p className="text-[11px] tracking-[0.1em] uppercase text-white/25 whitespace-nowrap animate-fade-up" style={{ animationDelay: '0.9s' }}>
-            Rigzer &nbsp;&mdash;&nbsp; Game Streaming Platform
-          </p>
-        </div>
 
       </div>
     </>

@@ -8,10 +8,21 @@ const PostModalPage = () => {
   const [postType, setPostType] = useState<PostType>("model");
   const navigate= useNavigate();
   return (
-    <div className="w-full min-h-screen bg-white dark:bg-[#191919] flex flex-row">
+    <div className="w-full min-h-screen flex flex-row relative">
       
       {/* Sidebar - Tightened width to bring icons closer to form */}
-      <aside className="w-16 md:w-20 flex flex-col items-center py-6 sticky top-0 h-screen bg-white dark:bg-[#191919]">
+        <aside
+    className="
+      relative
+      z-50
+      w-16 md:w-20
+      flex flex-col items-center
+      py-6
+      sticky top-0
+      h-screen
+      overflow-visible
+    "
+  >
         <PostTypeHeader 
           active={postType} 
           onChange={setPostType} 
@@ -20,7 +31,7 @@ const PostModalPage = () => {
       </aside>
 
       {/* Main Content - Reduced left padding (pl-4) to close the gap */}
-      <main className="flex-1 overflow-y-auto bg-white dark:bg-[#191919]">
+      <main className="flex-1 overflow-y-auto ">
         <div className="max-w-2xl ml-0 mr-auto py-8 pl-4 pr-8">
           <ActivePostForm
             postType={postType}

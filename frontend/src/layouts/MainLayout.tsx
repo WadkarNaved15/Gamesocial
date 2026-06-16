@@ -11,9 +11,10 @@ import MessagingComponent from "../components/Home/Message";
 import ArticleRecommendations from "../components/Articles/ArticleRecommendations";
 import { ScrollRestoration } from "react-router-dom";
 import AmbientBackground from "../components/AmbientBackground";
+import OrbBackground from "../components/OrbBacground";
 import AuthGateModal from "../components/Auth/AuthGateModal";
 import GuestSessionExpired from "../components/Auth/GuestSessionExpired";
-import GuestAccessExpired from "../components/Auth/GuestSessionExpired";
+import LegalModal from "../Pages/LegalModal"; 
 
 const ProfileCover = lazy(() => import("../components/Home/Profile"));
 
@@ -27,6 +28,10 @@ function MainLayout() {
 
   const [bannerShown, setBannerShown] = useState(false);
   const [feedLocked, setFeedLocked] = useState(false);
+  
+  // State for the legal modal
+  const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | null>(null);
+
   // Refs to measure the gap between sidebar and center feed.
   // VerticalBackButton uses both to find the exact midpoint.
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -55,35 +60,34 @@ function MainLayout() {
   const hideBillboard =
     isProfilePage || isModelPost || isCreatePage || isArticlePage;
 
+  useEffect(() => {
+    if (user) return;
 
-useEffect(() => {
-  if (user) return;
+    if (minutes >= 2 && !bannerShown) {
+      setBannerShown(true);
 
-  if (minutes >= 2 && !bannerShown) {
-    setBannerShown(true);
+      openGate(
+        "Join Rigzer to play games, follow creators, save favorites, and unlock the full platform."
+      );
+    }
+  }, [minutes, bannerShown, user, openGate]);
 
-    openGate(
-      "Join Rigzer to play games, follow creators, save favorites, and unlock the full platform."
-    );
+  useEffect(() => {
+    if (user) return;
+
+    if (minutes >= 5) {
+      setFeedLocked(true);
+    }
+  }, [minutes, user]);
+
+  if (feedLocked && !user) {
+    return <GuestSessionExpired />;
   }
-}, [minutes, bannerShown, user, openGate]);
-
-useEffect(() => {
-  if (user) return;
-
-  if (minutes >= 5) {
-    setFeedLocked(true);
-  }
-}, [minutes, user]);
-
-
-if (feedLocked && !user) {
-  return <GuestSessionExpired />;
-}
 
   return (
     <>
       <AmbientBackground />
+      <OrbBackground />
       <AuthGateModal />
       <div className="min-h-screen bg-gray-100 dark:bg-transparent">
         <ScrollRestoration
@@ -119,6 +123,24 @@ if (feedLocked && !user) {
                 <UploadBox
                   onUploadClick={handleUploadClick}
                 />
+
+                {/* Legal Links Footer */}
+                <div className="px-2 pt-2 pb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                  <button 
+                    onClick={() => setActiveModal('terms')} 
+                    className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline transition-colors"
+                  >
+                    Terms of Service
+                  </button>
+                  <span>•</span>
+                  <button 
+                    onClick={() => setActiveModal('privacy')} 
+                    className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline transition-colors"
+                  >
+                    Privacy Policy
+                  </button>
+                  <span className="w-full mt-1">© {new Date().getFullYear()} Rigzer</span>
+                </div>
               </div>
             </div>
 
@@ -152,10 +174,13 @@ if (feedLocked && !user) {
                 <div
                   ref={centerRef}
                   className={`
-                    flex flex-col items-center justify-start w-full
-                    ${hideBillboard
-                      ? "lg:col-span-10 2xl:col-span-13"
-                      : "lg:col-span-6 2xl:col-span-8"
+                    flex flex-col w-full
+                    ${
+                      isProfilePage
+                        ? "lg:col-span-10 2xl:col-span-13"
+                        : hideBillboard
+                        ? "lg:col-span-10 2xl:col-span-13"
+                        : "lg:col-span-6 2xl:col-span-8"
                     }
                   `}
                 >
@@ -194,6 +219,17 @@ if (feedLocked && !user) {
         {/* ========================= */}
 
         <MessagingComponent />
+
+        {/* ========================= */}
+        {/* LEGAL MODAL               */}
+        {/* ========================= */}
+        
+        <LegalModal 
+          type={activeModal} 
+          onClose={() => setActiveModal(null)} 
+          onAgree={() => setActiveModal(null)} 
+        />
+        
       </div>
     </>
   );

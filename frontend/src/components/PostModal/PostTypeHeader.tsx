@@ -1,7 +1,6 @@
 // src/components/postModal/PostTypeHeader.tsx
 import React from "react";
 import {
-  X,
   Box,
   Image as ImageIcon,
   Gamepad2,
@@ -39,18 +38,7 @@ function getBarClass(): string {
 
 const PostTypeHeader: React.FC<PostTypeHeaderProps> = ({ active, onChange, onCancel }) => {
   return (
-    <div className="h-full flex flex-col items-center w-full">
-
-      {/* Close button */}
-      <div className="mb-10">
-        <button
-          onClick={onCancel}
-          className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-2xl transition-all"
-          aria-label="Close"
-        >
-          <X size={24} />
-        </button>
-      </div>
+    <div className="h-full flex flex-col items-center w-full mt-10">
 
       {/* Nav icons */}
       <div className="flex flex-col items-center gap-6 w-full">
