@@ -45,10 +45,10 @@ export default function OrbBackground() {
             position: "absolute",
             top: "-10%",
             left: "-5%",
-            width: "55vw",
-            height: "55vw",
-            maxWidth: 700,
-            maxHeight: 700,
+            width: "44vw",
+            height: "44vw",
+            maxWidth: 560,
+            maxHeight: 560,
             borderRadius: "50%",
             background: "radial-gradient(circle, rgba(61,122,110,0.28) 0%, transparent 70%)",
             animation: "orb-drift-1 18s ease-in-out infinite",
@@ -61,10 +61,10 @@ export default function OrbBackground() {
             position: "absolute",
             top: "5%",
             right: "-10%",
-            width: "45vw",
-            height: "45vw",
-            maxWidth: 580,
-            maxHeight: 580,
+            width: "36vw",
+            height: "36vw",
+            maxWidth: 464,
+            maxHeight: 464,
             borderRadius: "50%",
             background: "radial-gradient(circle, rgba(100,60,180,0.20) 0%, transparent 70%)",
             animation: "orb-drift-2 22s ease-in-out infinite",
@@ -77,10 +77,10 @@ export default function OrbBackground() {
             position: "absolute",
             top: "38%",
             left: "20%",
-            width: "40vw",
-            height: "40vw",
-            maxWidth: 500,
-            maxHeight: 500,
+            width: "32vw",
+            height: "32vw",
+            maxWidth: 400,
+            maxHeight: 400,
             borderRadius: "50%",
             background: "radial-gradient(circle, rgba(30,80,160,0.15) 0%, transparent 70%)",
             animation: "orb-drift-3 26s ease-in-out infinite",
@@ -93,10 +93,10 @@ export default function OrbBackground() {
             position: "absolute",
             bottom: "-5%",
             right: "5%",
-            width: "38vw",
-            height: "38vw",
-            maxWidth: 480,
-            maxHeight: 480,
+            width: "30.4vw",
+            height: "30.4vw",
+            maxWidth: 384,
+            maxHeight: 384,
             borderRadius: "50%",
             background: "radial-gradient(circle, rgba(0,180,150,0.16) 0%, transparent 70%)",
             animation: "orb-drift-4 20s ease-in-out infinite",
@@ -104,27 +104,27 @@ export default function OrbBackground() {
           }}
         />
         {/* Top dark fade */}
-<div
-  style={{
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "25vh",
-    background:
-      "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 45%, transparent 100%)",
-  }}
-/>
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "25vh",
+            background:
+              "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 45%, transparent 100%)",
+          }}
+        />
         {/* Subtle warm accent — bottom-left */}
         <div
           style={{
             position: "absolute",
             bottom: "15%",
             left: "-8%",
-            width: "30vw",
-            height: "30vw",
-            maxWidth: 380,
-            maxHeight: 380,
+            width: "24vw",
+            height: "24vw",
+            maxWidth: 304,
+            maxHeight: 304,
             borderRadius: "50%",
             background: "radial-gradient(circle, rgba(120,60,200,0.12) 0%, transparent 70%)",
             animation: "orb-drift-1 30s ease-in-out infinite reverse",
@@ -132,7 +132,6 @@ export default function OrbBackground() {
           }}
         />
       </div>
-      
     </>
   );
 }
