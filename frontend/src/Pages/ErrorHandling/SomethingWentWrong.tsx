@@ -197,15 +197,6 @@ export default function SomethingWentWrong({ onRetry }: SomethingWentWrongProps)
         {/* Main content — centered */}
         <main className="relative z-10 w-full h-full flex flex-col items-center justify-center p-8">
 
-          {/* Status pill */}
-          <div
-            className="sww-fade-up inline-flex items-center gap-[7px] text-[10.5px] font-semibold tracking-[0.16em] uppercase text-[#4FA98B] bg-[#62D4AE]/10 border border-[#62D4AE]/20 px-3.5 py-1.5 rounded-full mb-[22px]"
-            style={{ animationDelay: '0.15s' }}
-          >
-            <span className="sww-status-dot w-[5px] h-[5px] rounded-full bg-[#62D4AE]" />
-            Application Error
-          </div>
-
           {/* ── Emblem with instability ── */}
           <div
             className="relative w-[180px] h-[180px] mb-14 sww-fade-up"
@@ -306,17 +297,6 @@ export default function SomethingWentWrong({ onRetry }: SomethingWentWrongProps)
           </div>
 
         </main>
-
-        {/* ── Footer ── */}
-        <div className="fixed bottom-8 inset-x-0 flex justify-center pointer-events-none z-20">
-          <p
-            className="sww-fade-up inline-flex items-center gap-2 text-[11px] tracking-[0.1em] uppercase text-white/25 whitespace-nowrap"
-            style={{ animationDelay: '0.9s' }}
-          >
-            <span className="w-[5px] h-[5px] rounded-full bg-[#62D4AE] opacity-60" />
-            Rigzer Platform &nbsp;&mdash;&nbsp; Operational
-          </p>
-        </div>
 
       </div>
     </>
