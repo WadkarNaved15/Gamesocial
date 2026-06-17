@@ -311,7 +311,7 @@ function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <button onClick={() => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }}
-      title="Copy URL" className="p-1.5 rounded-lg hover:bg-zinc-700 transition text-zinc-400 hover:text-white">
+      title="Copy URL" className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-white/[0.1] transition text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white">
       {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
     </button>
   );
@@ -560,17 +560,17 @@ const PocketEditor: React.FC<PocketEditorProps> = ({ onCancel: _onCancel }) => {
 
   if (isLoading) {
     return (
-      <div className="w-full max-w-3xl mx-auto h-64 bg-white dark:bg-[#191919] rounded-2xl border border-gray-200 dark:border-zinc-800 flex items-center justify-center">
+      <div className="w-full max-w-3xl mx-auto h-64 bg-white dark:bg-black/20 backdrop-blur-2xl rounded-3xl border border-gray-200 dark:border-white/[0.06] flex items-center justify-center shadow-2xl">
         <div className="w-6 h-6 border-2 border-[#3D7A6E] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto bg-white dark:bg-[#191919] min-h-[85vh] max-h-[95vh] rounded-2xl border border-gray-200 dark:border-zinc-800 flex flex-col overflow-hidden shadow-xl">
+    <div className="w-full max-w-3xl mx-auto bg-white dark:bg-black/20 backdrop-blur-2xl min-h-[85vh] max-h-[95vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col overflow-hidden shadow-2xl">
 
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-zinc-800 bg-white/80 dark:bg-[#191919]/80 backdrop-blur-md sticky top-0 z-30">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/[0.06] bg-transparent sticky top-0 z-30">
         <div>
           <h2 className="text-xl font-bold text-black dark:text-white flex items-center gap-2">
             <Sparkles size={18} className="text-[#3D7A6E]" />
@@ -580,7 +580,7 @@ const PocketEditor: React.FC<PocketEditorProps> = ({ onCancel: _onCancel }) => {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleSave} disabled={!canSave}
-            className="px-4 py-2 rounded-full border border-gray-200 dark:border-zinc-700 text-sm font-bold text-gray-600 dark:text-zinc-300 hover:border-[#3D7A6E] hover:text-[#3D7A6E] disabled:opacity-40 disabled:cursor-not-allowed transition">
+            className="px-4 py-2 rounded-full border border-gray-200 dark:border-white/[0.1] text-sm font-bold text-gray-600 dark:text-gray-300 hover:border-[#3D7A6E] hover:text-[#3D7A6E] disabled:opacity-40 disabled:cursor-not-allowed transition">
             {isSaving ? "Saving…" : "Save Draft"}
           </button>
           <button onClick={handleSubmit} disabled={!canSubmit}
@@ -619,28 +619,28 @@ const PocketEditor: React.FC<PocketEditorProps> = ({ onCancel: _onCancel }) => {
         {/* Metadata */}
         <div className="px-6 pt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
               Brand Name <span className="text-red-400">*</span>
             </label>
             <input placeholder="e.g. Acme Corp" value={brandName} onChange={e => setBrandName(e.target.value)} disabled={isLocked}
-              className="w-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-[#3D7A6E] outline-none text-sm disabled:opacity-50" />
+              className="w-full bg-gray-50 dark:bg-white/[0.02] text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-white/[0.1] focus:border-[#3D7A6E] focus:ring-1 focus:ring-[#3D7A6E] outline-none text-sm transition-all disabled:opacity-50" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-500 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
-              Tagline <span className="text-gray-400">(optional)</span>
+            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+              Tagline <span className="text-gray-400 dark:text-gray-500">(optional)</span>
             </label>
             <input placeholder="Shown in the feed above your pocket" value={tagline} onChange={e => setTagline(e.target.value)} disabled={isLocked}
-              className="w-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-zinc-800 focus:ring-2 focus:ring-[#3D7A6E] outline-none text-sm disabled:opacity-50" />
+              className="w-full bg-gray-50 dark:bg-white/[0.02] text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-white/[0.1] focus:border-[#3D7A6E] focus:ring-1 focus:ring-[#3D7A6E] outline-none text-sm transition-all disabled:opacity-50" />
           </div>
         </div>
 
         {/* Tabs */}
         <div className="px-6 pt-5">
-          <div className="flex items-center border-b border-gray-100 dark:border-zinc-800 mb-3 gap-1">
+          <div className="flex items-center border-b border-gray-100 dark:border-white/[0.06] mb-3 gap-1">
             {(["code", "media", "preview"] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold transition-all border-b-2 -mb-px ${
-                  tab === t ? "border-[#3D7A6E] text-[#3D7A6E]" : "border-transparent text-gray-500 dark:text-zinc-500 hover:text-black dark:hover:text-white"
+                  tab === t ? "border-[#3D7A6E] text-[#3D7A6E]" : "border-transparent text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white"
                 }`}>
                 {t === "code"    && <Code2  size={14} />}
                 {t === "media"   && <Images size={14} />}
@@ -663,7 +663,7 @@ const PocketEditor: React.FC<PocketEditorProps> = ({ onCancel: _onCancel }) => {
               onMouseUp={e => { const t = e.currentTarget; lastCursorPos.current = { start: t.selectionStart, end: t.selectionEnd }; }}
               onBlur={e    => { const t = e.currentTarget; lastCursorPos.current = { start: t.selectionStart, end: t.selectionEnd }; }}
               onKeyDown={handleKeyDown} spellCheck={false} disabled={isLocked}
-              className="w-full min-h-[420px] bg-gray-950 dark:bg-black text-green-400 font-mono text-xs p-4 rounded-xl border border-gray-800 focus:ring-2 focus:ring-[#3D7A6E] outline-none resize-y leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full min-h-[420px] bg-gray-950 dark:bg-black/40 text-green-400 font-mono text-xs p-4 rounded-xl border border-gray-200 dark:border-white/[0.06] focus:border-[#3D7A6E] focus:ring-1 focus:ring-[#3D7A6E] outline-none resize-y leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed shadow-inner"
               placeholder="// Write your PocketApp React component here"
             />
           )}
@@ -679,14 +679,14 @@ const PocketEditor: React.FC<PocketEditorProps> = ({ onCancel: _onCancel }) => {
                 onDragOver={!isLocked ? handleDragOver : undefined}
                 onDrop={!isLocked ? handleDrop : undefined}
                 onClick={() => !isLocked && !isUploading && fileInputRef.current?.click()}
-                className={`relative flex flex-col items-center justify-center gap-3 p-8 rounded-xl border-2 border-dashed transition-all ${
+                className={`relative flex flex-col items-center justify-center gap-3 p-8 rounded-xl border-2 transition-all ${
                   isLocked
-                    ? "border-gray-200 dark:border-zinc-800 opacity-50 cursor-not-allowed"
+                    ? "border-gray-200 dark:border-white/[0.1] opacity-50 cursor-not-allowed"
                     : isDragging
-                    ? "border-[#3D7A6E] bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 scale-[1.01] cursor-copy"
+                    ? "border-solid border-[#3D7A6E] bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 scale-[1.01] cursor-copy"
                     : isUploading
-                    ? "border-[#3D7A6E]/40 dark:border-[#3D7A6E]/60 cursor-wait"
-                    : "border-[#3D7A6E]/40 dark:border-[#3D7A6E]/60 hover:border-[#3D7A6E] dark:hover:border-[#4A9384] hover:bg-[#3D7A6E]/5 dark:hover:bg-[#3D7A6E]/10 cursor-pointer"
+                    ? "border-solid border-[#3D7A6E]/40 dark:border-[#3D7A6E]/60 cursor-wait"
+                    : "border-dashed border-gray-300 dark:border-white/[0.1] hover:border-[#3D7A6E] dark:hover:border-[#4A9384] hover:bg-gray-50 dark:hover:bg-white/[0.02] cursor-pointer"
                 }`}>
                 <input ref={fileInputRef} type="file" accept={ACCEPTED} multiple onChange={handleFileInputChange} className="hidden" />
 
@@ -709,7 +709,7 @@ const PocketEditor: React.FC<PocketEditorProps> = ({ onCancel: _onCancel }) => {
                       <p className="text-sm font-bold text-black dark:text-white">
                         Click to upload or drag & drop
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-zinc-500 mt-0.5">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                         JPG, PNG, GIF, WebP, SVG, MP4, WebM · Max 30 MB each · {slotsLeft} slot{slotsLeft !== 1 ? "s" : ""} remaining
                       </p>
                     </div>
@@ -740,11 +740,11 @@ const PocketEditor: React.FC<PocketEditorProps> = ({ onCancel: _onCancel }) => {
 
               {/* Grid */}
               {mediaFiles.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 dark:text-zinc-600 text-sm">No media uploaded yet.</div>
+                <div className="text-center py-8 text-gray-400 dark:text-gray-500 text-sm">No media uploaded yet.</div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {mediaFiles.map(file => (
-                    <div key={file.s3Key} className="group relative rounded-xl overflow-hidden border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900">
+                    <div key={file.s3Key} className="group relative rounded-xl overflow-hidden border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-white/[0.04]">
                       {file.type === "image"
                         ? <img src={file.url} alt={file.name} className="w-full h-32 object-cover" loading="lazy" />
                         : <video src={file.url} className="w-full h-32 object-cover" muted preload="metadata" />
@@ -753,7 +753,7 @@ const PocketEditor: React.FC<PocketEditorProps> = ({ onCancel: _onCancel }) => {
                         <div className="flex justify-end gap-1">
                           <CopyButton text={file.url} />
                           <button onClick={() => handleDelete(file.s3Key)} disabled={!!deletingKey} title="Delete"
-                            className="p-1.5 rounded-lg hover:bg-red-600 transition text-zinc-400 hover:text-white">
+                            className="p-1.5 rounded-lg hover:bg-red-600 transition text-gray-400 hover:text-white">
                             {deletingKey === file.s3Key ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                           </button>
                         </div>
@@ -762,9 +762,9 @@ const PocketEditor: React.FC<PocketEditorProps> = ({ onCancel: _onCancel }) => {
                           Insert into code
                         </button>
                       </div>
-                      <div className="px-2 py-1.5 border-t border-gray-200 dark:border-zinc-800">
-                        <p className="text-[10px] text-gray-500 dark:text-zinc-500 truncate">{file.name}</p>
-                        <p className="text-[10px] text-gray-400 dark:text-zinc-600">{file.sizeMB} MB · {file.type}</p>
+                      <div className="px-2 py-1.5 border-t border-gray-200 dark:border-white/[0.06]">
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{file.name}</p>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500">{file.sizeMB} MB · {file.type}</p>
                       </div>
                     </div>
                   ))}
@@ -782,7 +782,7 @@ const PocketEditor: React.FC<PocketEditorProps> = ({ onCancel: _onCancel }) => {
           {/* ── Preview tab ───────────────────────────────────────────────── */}
           {tab === "preview" && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs text-gray-400 dark:text-zinc-600 font-mono px-1">
+              <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 font-mono px-1">
                 <span>Preview — fixed {POCKET_HEIGHT}px canvas (matches feed)</span>
                 <span className="text-[10px]">overflow: hidden</span>
               </div>
@@ -794,7 +794,7 @@ const PocketEditor: React.FC<PocketEditorProps> = ({ onCancel: _onCancel }) => {
                   loading="lazy"
                 />
               </div>
-              <p className="text-[10px] text-center text-gray-400 dark:text-zinc-600">
+              <p className="text-[10px] text-center text-gray-400 dark:text-gray-500">
                 The dashed border shows the exact space your pocket occupies in the feed.
               </p>
             </div>
@@ -804,7 +804,7 @@ const PocketEditor: React.FC<PocketEditorProps> = ({ onCancel: _onCancel }) => {
         {/* Tips */}
         <div className="px-6 pt-5 pb-8">
           <button onClick={() => setShowTips(!showTips)}
-            className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-zinc-500 hover:text-black dark:hover:text-white transition">
+            className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition">
             <Info size={13} />
             How Pockets work
             {showTips ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -829,10 +829,10 @@ const PocketEditor: React.FC<PocketEditorProps> = ({ onCancel: _onCancel }) => {
                   <p>setTimeout / setInterval / requestAnimationFrame · Math, Date, JSON</p>
                 </div>
               </div>
-              <div className="p-4 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700">
-                <p className="font-black text-zinc-600 dark:text-zinc-400 uppercase tracking-wider mb-2">❌ What is blocked</p>
-                <div className="space-y-1.5 text-zinc-600 dark:text-zinc-400">
-                  <p><code className="bg-zinc-200 dark:bg-zinc-800 px-1 rounded font-mono">fetch()</code> / XHR / WebSocket · localStorage / sessionStorage</p>
+              <div className="p-4 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08]">
+                <p className="font-black text-gray-600 dark:text-gray-400 uppercase tracking-wider mb-2">❌ What is blocked</p>
+                <div className="space-y-1.5 text-gray-600 dark:text-gray-400">
+                  <p><code className="bg-gray-200 dark:bg-white/[0.1] px-1 rounded font-mono">fetch()</code> / XHR / WebSocket · localStorage / sessionStorage</p>
                   <p>Third-party libraries · Tailwind / CSS modules</p>
                 </div>
               </div>
