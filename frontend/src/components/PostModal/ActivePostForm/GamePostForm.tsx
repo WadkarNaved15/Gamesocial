@@ -77,7 +77,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
   const [dollars, setDollars] = useState<number>(100);
 
   // ── Draft / pipeline state ────────────────────────────────────────────────
-  const [pendingDraft, setPendingDraft] = useState<any | null>(null); // NEW: Holds the draft before hydration
+  const [pendingDraft, setPendingDraft] = useState<any | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [draftStatus, setDraftStatus] = useState<DraftStatus>('draft');
   const [isUploading, setIsUploading] = useState(false);
@@ -205,7 +205,6 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
       let draftData = null;
       const savedDraftId = localStorage.getItem("activeGameDraftId");
 
-      // 1. Check local storage ID
       if (savedDraftId) {
         try {
           const { data } = await api.get(`/api/gamePosts/draft/${savedDraftId}`);
@@ -215,7 +214,6 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
         }
       }
 
-      // 2. Fallback to active draft endpoint
       if (!draftData) {
         try {
           const { data } = await api.get("/api/gamePosts/my-active-draft");
@@ -225,15 +223,12 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
         }
       }
 
-      // 3. Handle the found draft
       if (draftData) {
         const autoHydrateStatuses = ['publishing', 'published', 'failed', 'payment_completed'];
         
-        // Auto-hydrate if it's currently processing or finished
         if (autoHydrateStatuses.includes(draftData.status)) {
           hydrateDraft(draftData);
         } else {
-          // Prompt user to resume or discard for WIP drafts
           setPendingDraft(draftData);
         }
       }
@@ -312,94 +307,90 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
   };
 
   // ── S3 Uploads ────────────────────────────────────────────────────────────
-const uploadGameToS3 = async (
-  a: GameAsset,
-  onProgress: (p: number) => void,
-  signal: AbortSignal,
-): Promise<{ fileUrl: string; key: string }> => {
+  const uploadGameToS3 = async (
+    a: GameAsset,
+    onProgress: (p: number) => void,
+    signal: AbortSignal,
+  ): Promise<{ fileUrl: string; key: string }> => {
 
-  if (!a.file) {
-    throw new Error(
-      "Original build file is no longer available. Please re-upload the build."
-    );
-  }
-
-  const file = a.file;
-
-  const { data: startData } = await api.post(
-    "/api/upload/game/start-multipart",
-    {
-      fileName: file.name,
-      fileType: file.type,
-    },
-    { signal }
-  );
-
-  const { uploadId, key } = startData;
-
-  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-
-  const parts: { ETag: string; PartNumber: number }[] = [];
-
-  for (let i = 0; i < totalChunks; i++) {
-    if (signal.aborted) {
-      throw new DOMException("Upload cancelled", "AbortError");
+    if (!a.file) {
+      throw new Error(
+        "Original build file is no longer available. Please re-upload the build."
+      );
     }
 
-    const partNumber = i + 1;
+    const file = a.file;
 
-    const chunk = file.slice(
-      i * CHUNK_SIZE,
-      Math.min((i + 1) * CHUNK_SIZE, file.size)
-    );
-
-    const { data: urlData } = await api.post(
-      "/api/upload/game/get-part-url",
+    const { data: startData } = await api.post(
+      "/api/upload/game/start-multipart",
       {
-        uploadId,
-        key,
-        partNumber,
+        fileName: file.name,
+        fileType: file.type,
       },
       { signal }
     );
 
-    const uploadRes = await axios.put(
-      urlData.uploadUrl,
-      chunk,
+    const { uploadId, key } = startData;
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    const parts: { ETag: string; PartNumber: number }[] = [];
+
+    for (let i = 0; i < totalChunks; i++) {
+      if (signal.aborted) {
+        throw new DOMException("Upload cancelled", "AbortError");
+      }
+
+      const partNumber = i + 1;
+      const chunk = file.slice(
+        i * CHUNK_SIZE,
+        Math.min((i + 1) * CHUNK_SIZE, file.size)
+      );
+
+      const { data: urlData } = await api.post(
+        "/api/upload/game/get-part-url",
+        {
+          uploadId,
+          key,
+          partNumber,
+        },
+        { signal }
+      );
+
+      const uploadRes = await axios.put(
+        urlData.uploadUrl,
+        chunk,
+        { signal }
+      );
+
+      const etag =
+        uploadRes.headers.etag ||
+        uploadRes.headers.ETag;
+
+      if (!etag) {
+        throw new Error("Missing ETag from S3");
+      }
+
+      parts.push({
+        ETag: etag.replace(/"/g, ""),
+        PartNumber: partNumber,
+      });
+
+      onProgress(
+        Math.round(((i + 1) / totalChunks) * 100)
+      );
+    }
+
+    const { data: completeData } = await api.post(
+      "/api/upload/game/complete-multipart",
+      {
+        uploadId,
+        key,
+        parts,
+      },
       { signal }
     );
 
-    const etag =
-      uploadRes.headers.etag ||
-      uploadRes.headers.ETag;
-
-    if (!etag) {
-      throw new Error("Missing ETag from S3");
-    }
-
-    parts.push({
-      ETag: etag.replace(/"/g, ""),
-      PartNumber: partNumber,
-    });
-
-    onProgress(
-      Math.round(((i + 1) / totalChunks) * 100)
-    );
-  }
-
-  const { data: completeData } = await api.post(
-    "/api/upload/game/complete-multipart",
-    {
-      uploadId,
-      key,
-      parts,
-    },
-    { signal }
-  );
-
-  return completeData;
-};
-
+    return completeData;
+  };
 
   const uploadVideoDemoToS3 = async (
     file: File,
@@ -427,322 +418,243 @@ const uploadGameToS3 = async (
   };
 
   // ── Main: Pay & Publish flow ──────────────────────────────────────────────
-const handlePayAndPublish = async () => {
-  if (
-    !canPayAndPublish ||
-    isUploading ||
-    isCreatingOrder ||
-    isPublishing
-  ) {
-    return;
-  }
-
-  setErrorMessage(null);
-
-  try {
-    let activeDraftId = draftId;
-
-    if (!activeDraftId) {
-      activeDraftId = await saveDraftMeta();
-    }
-
-    // --------------------------------------------------
-    // BUILD
-    // --------------------------------------------------
-
-    const buildAlreadyUploaded =
-      asset?.uploadedKey &&
-      asset?.uploadedUrl;
-
-    if (!buildAlreadyUploaded) {
-      setIsUploading(true);
-
-      const abort = new AbortController();
-      gameAbortRef.current = abort;
-
-      setAsset(prev =>
-        prev
-          ? {
-              ...prev,
-              status: "uploading",
-              progress: 0,
-            }
-          : prev
-      );
-
-      const { fileUrl, key } =
-        await uploadGameToS3(
-          asset!,
-          p =>
-            setAsset(prev =>
-              prev
-                ? {
-                    ...prev,
-                    progress: p,
-                  }
-                : prev
-            ),
-          abort.signal
-        );
-
-      setAsset(prev =>
-        prev
-          ? {
-              ...prev,
-              uploadedUrl: fileUrl,
-              uploadedKey: key,
-              status: "done",
-            }
-          : prev
-      );
-
-      gameAbortRef.current = null;
-
-      await api.post(
-        `/api/gamePosts/draft/${activeDraftId}/build`,
-        {
-          name: asset!.name,
-          key,
-          url: fileUrl,
-          size: asset!.size,
-        }
-      );
-    }
-
-    // --------------------------------------------------
-    // VIDEO
-    // --------------------------------------------------
-
-    const videoAlreadyUploaded =
-      videoUpload?.status === "done" &&
-      !videoUpload.file;
-
+  const handlePayAndPublish = async () => {
     if (
-      videoUpload &&
-      !videoAlreadyUploaded
-    ) {
-      if (!videoUpload.file) {
-        throw new Error(
-          "Original trailer file is no longer available. Please re-upload the trailer."
-        );
-      }
-
-      setVideoUpload(prev =>
-        prev
-          ? {
-              ...prev,
-              status: "uploading",
-              progress: 0,
-            }
-          : prev
-      );
-
-      const { fileUrl, key } =
-        await uploadVideoDemoToS3(
-          videoUpload.file,
-          p =>
-            setVideoUpload(prev =>
-              prev
-                ? {
-                    ...prev,
-                    progress: p,
-                  }
-                : prev
-            )
-        );
-
-      setVideoUpload(prev =>
-        prev
-          ? {
-              ...prev,
-              status: "done",
-            }
-          : prev
-      );
-
-      await api.post(
-        `/api/gamePosts/draft/${activeDraftId}/video`,
-        {
-          name: videoUpload.file.name,
-          key,
-          url: fileUrl,
-          size: videoUpload.file.size,
-        }
-      );
-    }
-
-    setIsUploading(false);
-
-    // --------------------------------------------------
-    // READY ONLY IF NOT ALREADY PAYMENT_PENDING
-    // --------------------------------------------------
-
-    if (
-      draftStatus !== "payment_pending" &&
-      draftStatus !== "payment_completed" &&
-      draftStatus !== "publishing"
-    ) {
-      await api.post(
-        `/api/gamePosts/draft/${activeDraftId}/ready`
-      );
-    }
-
-    // --------------------------------------------------
-    // ORDER
-    // --------------------------------------------------
-
-    setIsCreatingOrder(true);
-
-    const { data: orderData } =
-      await api.post(
-        "/api/gamePosts/create-payment-order",
-        {
-          draftId: activeDraftId,
-          selectedCredits:
-            effectiveCredits,
-        }
-      );
-
-    setIsCreatingOrder(false);
-
-    // --------------------------------------------------
-    // RAZORPAY
-    // --------------------------------------------------
-
-    await loadRazorpay();
-
-    if (!window.Razorpay) {
-      throw new Error(
-        "Failed to load Razorpay"
-      );
-    }
-
-    await new Promise<void>(
-      (resolve, reject) => {
-        const rzp =
-          new window.Razorpay({
-            key: orderData.keyId,
-            amount:
-              orderData.amount,
-            currency:
-              orderData.currency,
-            name: "Rigzer",
-            image: "/Logo.png",
-            description: `${effectiveCredits} Credits — ${gameName}`,
-            order_id:
-              orderData.orderId,
-
-            prefill: {
-              name:
-                user?.username ||
-                brandName,
-              email:
-                user?.email || "",
-            },
-
-            theme: {
-              color: "#3D7A6E",
-            },
-
-            handler: async (
-              response: any
-            ) => {
-              try {
-                await api.post(
-                  "/api/gamePosts/verify-payment",
-                  {
-                    draftId:
-                      activeDraftId,
-                    razorpayOrderId:
-                      response.razorpay_order_id,
-                    razorpayPaymentId:
-                      response.razorpay_payment_id,
-                    razorpaySignature:
-                      response.razorpay_signature,
-                  }
-                );
-
-                setIsPublishing(true);
-
-                setDraftStatus(
-                  "payment_completed"
-                );
-
-                startPolling(
-                  activeDraftId!
-                );
-
-                resolve();
-              } catch (
-                err: any
-              ) {
-                reject(
-                  new Error(
-                    err.response?.data
-                      ?.message ||
-                      "Payment verification failed"
-                  )
-                );
-              }
-            },
-
-            modal: {
-              ondismiss: () =>
-                reject(
-                  new Error(
-                    "Payment cancelled"
-                  )
-                ),
-            },
-          });
-
-        rzp.on(
-          "payment.failed",
-          (resp: any) => {
-            reject(
-              new Error(
-                resp.error
-                  ?.description ||
-                  "Payment failed"
-              )
-            );
-          }
-        );
-
-        rzp.open();
-      }
-    );
-  } catch (err: any) {
-    if (
-      err.name === "AbortError" ||
-      err.name === "CanceledError"
+      !canPayAndPublish ||
+      isUploading ||
+      isCreatingOrder ||
+      isPublishing
     ) {
       return;
     }
 
-    setIsUploading(false);
-    setIsCreatingOrder(false);
-    setIsPublishing(false);
+    setErrorMessage(null);
 
-    setErrorMessage(
-      err.response?.data?.message ||
-      err.message ||
-      "Something went wrong. Please try again."
-    );
-  }
-};
+    try {
+      let activeDraftId = draftId;
+
+      if (!activeDraftId) {
+        activeDraftId = await saveDraftMeta();
+      }
+
+      // --------------------------------------------------
+      // BUILD
+      // --------------------------------------------------
+
+      const buildAlreadyUploaded =
+        asset?.uploadedKey &&
+        asset?.uploadedUrl;
+
+      if (!buildAlreadyUploaded) {
+        setIsUploading(true);
+
+        const abort = new AbortController();
+        gameAbortRef.current = abort;
+
+        setAsset(prev =>
+          prev
+            ? { ...prev, status: "uploading", progress: 0 }
+            : prev
+        );
+
+        const { fileUrl, key } =
+          await uploadGameToS3(
+            asset!,
+            p => setAsset(prev => prev ? { ...prev, progress: p } : prev),
+            abort.signal
+          );
+
+        setAsset(prev =>
+          prev
+            ? { ...prev, uploadedUrl: fileUrl, uploadedKey: key, status: "done" }
+            : prev
+        );
+
+        gameAbortRef.current = null;
+
+        await api.post(
+          `/api/gamePosts/draft/${activeDraftId}/build`,
+          {
+            name: asset!.name,
+            key,
+            url: fileUrl,
+            size: asset!.size,
+          }
+        );
+      }
+
+      // --------------------------------------------------
+      // VIDEO
+      // --------------------------------------------------
+
+      const videoAlreadyUploaded =
+        videoUpload?.status === "done" &&
+        !videoUpload.file;
+
+      if (
+        videoUpload &&
+        !videoAlreadyUploaded
+      ) {
+        if (!videoUpload.file) {
+          throw new Error(
+            "Original trailer file is no longer available. Please re-upload the trailer."
+          );
+        }
+
+        setVideoUpload(prev =>
+          prev
+            ? { ...prev, status: "uploading", progress: 0 }
+            : prev
+        );
+
+        const { fileUrl, key } =
+          await uploadVideoDemoToS3(
+            videoUpload.file,
+            p => setVideoUpload(prev => prev ? { ...prev, progress: p } : prev)
+          );
+
+        setVideoUpload(prev =>
+          prev ? { ...prev, status: "done" } : prev
+        );
+
+        await api.post(
+          `/api/gamePosts/draft/${activeDraftId}/video`,
+          {
+            name: videoUpload.file.name,
+            key,
+            url: fileUrl,
+            size: videoUpload.file.size,
+          }
+        );
+      }
+
+      setIsUploading(false);
+
+      // --------------------------------------------------
+      // READY ONLY IF NOT ALREADY PAYMENT_PENDING
+      // --------------------------------------------------
+
+      if (
+        draftStatus !== "payment_pending" &&
+        draftStatus !== "payment_completed" &&
+        draftStatus !== "publishing"
+      ) {
+        await api.post(`/api/gamePosts/draft/${activeDraftId}/ready`);
+      }
+
+      // --------------------------------------------------
+      // ORDER
+      // --------------------------------------------------
+
+      setIsCreatingOrder(true);
+
+      const { data: orderData } =
+        await api.post(
+          "/api/gamePosts/create-payment-order",
+          {
+            draftId: activeDraftId,
+            selectedCredits: effectiveCredits,
+          }
+        );
+
+      setIsCreatingOrder(false);
+
+      // --------------------------------------------------
+      // RAZORPAY
+      // --------------------------------------------------
+
+      await loadRazorpay();
+
+      if (!window.Razorpay) {
+        throw new Error("Failed to load Razorpay");
+      }
+
+      await new Promise<void>(
+        (resolve, reject) => {
+          const rzp =
+            new window.Razorpay({
+              key: orderData.keyId,
+              amount: orderData.amount,
+              currency: orderData.currency,
+              name: "Rigzer",
+              image: "/Logo.png",
+              description: `${effectiveCredits} Credits — ${gameName}`,
+              order_id: orderData.orderId,
+
+              prefill: {
+                name: user?.username || brandName,
+                email: user?.email || "",
+              },
+
+              theme: {
+                color: "#3D7A6E",
+              },
+
+              handler: async (response: any) => {
+                try {
+                  await api.post(
+                    "/api/gamePosts/verify-payment",
+                    {
+                      draftId: activeDraftId,
+                      razorpayOrderId: response.razorpay_order_id,
+                      razorpayPaymentId: response.razorpay_payment_id,
+                      razorpaySignature: response.razorpay_signature,
+                    }
+                  );
+
+                  setIsPublishing(true);
+                  setDraftStatus("payment_completed");
+                  startPolling(activeDraftId!);
+
+                  resolve();
+                } catch (err: any) {
+                  reject(
+                    new Error(
+                      err.response?.data?.message || "Payment verification failed"
+                    )
+                  );
+                }
+              },
+
+              modal: {
+                ondismiss: () => reject(new Error("Payment cancelled")),
+              },
+            });
+
+          rzp.on("payment.failed", (resp: any) => {
+            reject(new Error(resp.error?.description || "Payment failed"));
+          });
+
+          rzp.open();
+        }
+      );
+    } catch (err: any) {
+      if (err.name === "AbortError" || err.name === "CanceledError") return;
+
+      setIsUploading(false);
+      setIsCreatingOrder(false);
+      setIsPublishing(false);
+
+      setErrorMessage(
+        err.response?.data?.message ||
+        err.message ||
+        "Something went wrong. Please try again."
+      );
+    }
+  };
+
   // ── UI States ─────────────────────────────────────────────────────────────
 
   // 1. Prompt Draft State
   if (pendingDraft) {
     return (
-      <div className="w-full max-w-2xl mx-auto bg-white dark:bg-[#191919] min-h-[50vh] rounded-2xl border border-gray-200 dark:border-zinc-800 flex flex-col items-center justify-center gap-5 p-12 shadow-sm">
-        <div className="p-4 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20">
+      <div className="w-full max-w-2xl mx-auto bg-white dark:bg-black/20 backdrop-blur-2xl min-h-[50vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col items-center justify-center gap-5 p-12 shadow-2xl">
+        <div className="p-4 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 border border-[#3D7A6E]/20">
           <FileArchive size={36} className="text-[#3D7A6E]" />
         </div>
         <div className="text-center space-y-4">
-          <h2 className="text-xl font-black text-black dark:text-white">Found unfinished draft</h2>
-          <div className="bg-gray-50 dark:bg-zinc-800/50 border border-gray-100 dark:border-zinc-700 rounded-2xl px-6 py-4 inline-block text-left min-w-[240px]">
+          <h2 className="text-xl font-black text-black dark:text-white tracking-tight">Found unfinished draft</h2>
+          <div className="bg-gray-50 dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.08] rounded-2xl px-6 py-4 inline-block text-left min-w-[240px]">
             <p className="text-lg font-black text-black dark:text-white mb-2">
               {pendingDraft.game?.gameName || pendingDraft.gameName || 'Untitled Project'}
             </p>
@@ -757,11 +669,10 @@ const handlePayAndPublish = async () => {
         <div className="flex items-center gap-3 mt-4">
           <button
             onClick={() => {
-              // Add a DELETE request here if you want to wipe it from the backend too
               localStorage.removeItem("activeGameDraftId");
               setPendingDraft(null);
             }}
-            className="px-8 py-2.5 rounded-full text-sm font-bold bg-gray-100 hover:bg-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-gray-600 dark:text-gray-300 transition"
+            className="px-8 py-2.5 rounded-full text-sm font-bold bg-gray-100 hover:bg-gray-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-gray-600 dark:text-gray-300 transition"
           >
             Discard
           </button>
@@ -782,18 +693,18 @@ const handlePayAndPublish = async () => {
   // 2. Published State
   if (publishSuccess) {
     return (
-      <div className="w-full max-w-2xl mx-auto bg-white dark:bg-[#191919] rounded-2xl border border-gray-200 dark:border-zinc-800 flex flex-col items-center justify-center gap-5 p-12 shadow-sm">
-        <div className="p-4 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20">
+      <div className="w-full max-w-2xl mx-auto bg-white dark:bg-black/20 backdrop-blur-2xl rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col items-center justify-center gap-5 p-12 shadow-2xl">
+        <div className="p-4 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 border border-[#3D7A6E]/20">
           <CheckCircle2 size={40} className="text-[#3D7A6E]" />
         </div>
         <div className="text-center space-y-1">
-          <h2 className="text-xl font-black text-black dark:text-white">Game Published!</h2>
+          <h2 className="text-xl font-black text-black dark:text-white tracking-tight">Game Published!</h2>
           <p className="text-sm text-gray-500">
             <span className="font-bold text-black dark:text-white">{gameName}</span> is now live with{' '}
             <span className="font-bold text-[#3D7A6E]">{effectiveCredits} credits</span>.
           </p>
         </div>
-        <button onClick={onCancel} className="bg-[#3D7A6E] hover:bg-[#2F5E55] text-white font-bold px-8 py-2.5 rounded-full text-sm transition shadow-sm">
+        <button onClick={onCancel} className="bg-[#3D7A6E] hover:bg-[#2F5E55] text-white font-bold px-8 py-2.5 rounded-full text-sm transition shadow-sm mt-2">
           Done
         </button>
       </div>
@@ -817,24 +728,24 @@ const handlePayAndPublish = async () => {
 
   // ── Render Form ───────────────────────────────────────────────────────────
   return (
-    <div className="w-full max-w-2xl mx-auto bg-white dark:bg-[#191919] min-h-[75vh] max-h-[90vh] rounded-2xl border border-gray-200 dark:border-zinc-800 flex flex-col overflow-hidden shadow-sm">
+    <div className="w-full max-w-2xl mx-auto bg-white dark:bg-black/20 backdrop-blur-2xl min-h-[75vh] max-h-[90vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col overflow-hidden shadow-2xl">
 
-      {/* ── Sticky Header ── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-zinc-800 bg-white/80 dark:bg-[#191919]/80 backdrop-blur-md sticky top-0 z-30">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/[0.06] bg-transparent sticky top-0 z-30">
         <div className="flex items-center gap-3">
           {onBack && (
-            <button onClick={onBack} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+            <button onClick={onBack} className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/[0.08] rounded-full transition-colors">
               <ArrowLeft size={18} className="text-gray-600 dark:text-gray-400" />
             </button>
           )}
-          <h2 className="text-xl font-bold text-black dark:text-white leading-tight">Publish Game</h2>
+          <h2 className="text-xl font-bold text-black dark:text-white tracking-tight leading-tight">Publish Game</h2>
         </div>
 
         {activeTab === 'payment' ? (
           <button
             onClick={handlePayAndPublish}
             disabled={!canPayAndPublish || isButtonBusy}
-            className="bg-[#3D7A6E] hover:bg-[#2F5E55] disabled:opacity-40 text-white font-bold px-5 py-1.5 rounded-full text-sm transition shadow-sm flex items-center gap-2"
+            className="bg-[#3D7A6E] hover:bg-[#2F5E55] disabled:opacity-40 text-white font-bold px-6 py-2 rounded-full text-sm transition shadow-sm flex items-center gap-2"
           >
             {isButtonBusy && <Loader2 size={14} className="animate-spin" />}
             {buttonLabel}
@@ -849,7 +760,7 @@ const handlePayAndPublish = async () => {
               (activeTab === 'details' && !canProceedToBuild) ||
               (activeTab === 'build' && !canProceedToPayment)
             }
-            className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 dark:bg-zinc-100 dark:hover:bg-white dark:text-black text-white font-bold px-5 py-1.5 rounded-full text-sm transition shadow-sm"
+            className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 dark:bg-white dark:hover:bg-gray-200 dark:text-black text-white font-bold px-6 py-2 rounded-full text-sm transition shadow-sm"
           >
             Next →
           </button>
@@ -858,14 +769,14 @@ const handlePayAndPublish = async () => {
 
       {/* Error Banner */}
       {errorMessage && (
-        <div className="mx-4 mt-3 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-xl text-red-600 dark:text-red-400 text-sm flex items-center justify-between shrink-0">
+        <div className="mx-6 mt-4 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-xl text-red-600 dark:text-red-400 text-sm flex items-center justify-between shrink-0">
           <span className="flex items-center gap-2"><Info size={16} />{errorMessage}</span>
           <button onClick={() => setErrorMessage(null)}><X size={18} /></button>
         </div>
       )}
 
       {/* ── Tab Nav ── */}
-      <div className="flex border-b border-gray-100 dark:border-zinc-800 px-4 bg-white dark:bg-[#191919] shrink-0">
+      <div className="flex border-b border-gray-100 dark:border-white/[0.06] px-6 bg-transparent shrink-0">
         {(['details', 'build', 'payment'] as const).map((tab) => {
           const labels = { details: 'Details & Media', build: 'Build', payment: 'Payment' };
           const isLocked =
@@ -876,11 +787,11 @@ const handlePayAndPublish = async () => {
               key={tab}
               onClick={() => !isLocked && setActiveTab(tab)}
               disabled={isLocked}
-              className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${
+              className={`px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${
                 activeTab === tab
                   ? 'border-[#3D7A6E] text-[#3D7A6E]'
                   : isLocked
-                  ? 'border-transparent text-gray-300 dark:text-zinc-700 cursor-not-allowed'
+                  ? 'border-transparent text-gray-300 dark:text-white/[0.2] cursor-not-allowed'
                   : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
               }`}
             >
@@ -895,12 +806,12 @@ const handlePayAndPublish = async () => {
 
         {/* ══ TAB: Details & Media ══ */}
         {activeTab === 'details' && (
-          <div className="flex flex-1 p-4 gap-4">
+          <div className="flex flex-1 p-6 gap-5">
             <div className="flex-shrink-0">
-              <img src={logoImage} alt={brandName} className="h-12 w-12 rounded-full object-cover border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800" />
+              <img src={logoImage} alt={brandName} className="h-12 w-12 rounded-full object-cover border border-transparent dark:border-white/[0.08] bg-zinc-200 dark:bg-white/[0.04]" />
             </div>
-            <div className="flex-1 flex flex-col gap-4 min-w-0">
-              <div className="space-y-1">
+            <div className="flex-1 flex flex-col gap-5 min-w-0">
+              <div className="space-y-2">
                 <input
                   type="text"
                   placeholder="Game Title"
@@ -919,25 +830,25 @@ const handlePayAndPublish = async () => {
               {/* Video Trailer */}
               <div className="flex flex-col gap-3">
                 {videoUpload ? (
-                  <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 group">
-                    <video src={videoUpload.preview} controls className="w-full h-[300px] object-contain bg-black" />
-                    <div className="absolute top-4 right-4 pointer-events-none bg-[#191919]/60 backdrop-blur-sm px-3 py-1 rounded-lg text-white text-[10px] font-bold uppercase tracking-wider">
+                  <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-black/20 group">
+                    <video src={videoUpload.preview} controls className="w-full h-[300px] object-contain bg-black/40" />
+                    <div className="absolute top-4 right-4 pointer-events-none bg-black/40 backdrop-blur-md px-3 py-1 rounded-lg text-white text-[10px] font-bold uppercase tracking-wider">
                       {(() => {
-  const videoName =
-    videoUpload.file?.name ||
-    pendingDraft?.videoDemo?.name ||
-    "Uploaded Trailer";
+                        const videoName =
+                          videoUpload.file?.name ||
+                          pendingDraft?.videoDemo?.name ||
+                          "Uploaded Trailer";
 
-  return (
-    <>
-      {videoName.substring(0, 18)}
-      {videoName.length > 18 ? "…" : ""}
-    </>
-  );
-})()}
+                        return (
+                          <>
+                            {videoName.substring(0, 18)}
+                            {videoName.length > 18 ? "…" : ""}
+                          </>
+                        );
+                      })()}
                     </div>
                     {!isButtonBusy && (
-                      <button type="button" onClick={handleRemoveVideo} className="absolute top-4 left-4 p-2 bg-[#191919]/60 hover:bg-[#191919]/80 backdrop-blur-sm rounded-full transition-colors text-white">
+                      <button type="button" onClick={handleRemoveVideo} className="absolute top-4 left-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full transition-colors text-white">
                         <X size={16} />
                       </button>
                     )}
@@ -945,7 +856,7 @@ const handlePayAndPublish = async () => {
                 ) : (
                   <div
                     onClick={() => videoInputRef.current?.click()}
-                    className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl py-16 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900/30 transition-all group"
+                    className="border border-dashed border-gray-200 dark:border-white/[0.1] rounded-2xl py-16 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-all group"
                   >
                     <div className="p-3 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 text-[#3D7A6E] group-hover:scale-110 transition-transform">
                       <Video size={32} />
@@ -960,11 +871,11 @@ const handlePayAndPublish = async () => {
               </div>
 
               {/* Live Preview */}
-              <div className="pt-4 mt-2 border-t border-gray-100 dark:border-zinc-800">
-                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-widest mb-3">Post Preview</p>
-                <article className="relative w-full border border-gray-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-[#191919] pointer-events-none">
+              <div className="pt-4 mt-2 border-t border-gray-100 dark:border-white/[0.06]">
+                <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Post Preview</p>
+                <article className="relative w-full border border-gray-200 dark:border-white/[0.06] rounded-xl bg-gray-50/50 dark:bg-black/20 pointer-events-none">
                   <div className="flex gap-3 p-4">
-                    <img src={logoImage} alt={brandName} className="h-10 w-10 rounded-full object-cover mt-1 border border-gray-100 dark:border-zinc-800" />
+                    <img src={logoImage} alt={brandName} className="h-10 w-10 rounded-full object-cover mt-1 border border-gray-100 dark:border-white/[0.08]" />
                     <div className="flex flex-col flex-1 min-w-0">
                       <div className="flex flex-col">
                         <span className="font-bold text-sm text-black dark:text-white">{brandName}</span>
@@ -973,7 +884,7 @@ const handlePayAndPublish = async () => {
                       {description && (
                         <p className="mt-2 mb-3 text-gray-800 dark:text-gray-200 text-sm leading-relaxed whitespace-pre-wrap line-clamp-2">{description}</p>
                       )}
-                      <div className="group relative rounded-xl overflow-hidden border border-gray-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900">
+                      <div className="group relative rounded-xl overflow-hidden border border-gray-200 dark:border-white/[0.06] bg-gray-100 dark:bg-white/[0.04]">
                         <div className="absolute inset-0 bg-gradient-to-br from-[#3D7A6E]/20 via-transparent to-purple-500/10 opacity-50" />
                         <div className="relative w-full h-[200px] overflow-hidden">
                           {videoUpload?.preview ? (
@@ -1006,11 +917,11 @@ const handlePayAndPublish = async () => {
 
         {/* ══ TAB: Build ══ */}
         {activeTab === 'build' && (
-          <div className="p-4 flex flex-col gap-6">
+          <div className="p-6 flex flex-col gap-6">
             <section className="space-y-3">
               <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Game Build File</label>
               {asset ? (
-                <div className="p-4 bg-gray-50 dark:bg-zinc-900 rounded-xl border border-[#3D7A6E]/30 dark:border-[#3D7A6E]/30">
+                <div className="p-4 bg-gray-50 dark:bg-white/[0.04] rounded-xl border border-[#3D7A6E]/30 dark:border-[#3D7A6E]/30">
                   <div className="flex items-center gap-4">
                     <div className="p-3 bg-[#3D7A6E]/20 dark:bg-[#3D7A6E]/30 text-[#3D7A6E] dark:text-[#4A9384] rounded-lg">
                       <FileArchive size={20} />
@@ -1020,7 +931,7 @@ const handlePayAndPublish = async () => {
                       <p className="text-[10px] text-gray-500 font-bold">{(asset.size / 1024 / 1024).toFixed(2)} MB</p>
                     </div>
                     {!isButtonBusy && (
-                      <button onClick={() => setAsset(null)} className="p-2 hover:bg-gray-200 dark:hover:bg-zinc-800 rounded-full transition-colors">
+                      <button onClick={() => setAsset(null)} className="p-2 hover:bg-gray-200 dark:hover:bg-white/[0.08] rounded-full transition-colors">
                         <X size={16} className="text-gray-400" />
                       </button>
                     )}
@@ -1029,7 +940,7 @@ const handlePayAndPublish = async () => {
               ) : (
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-xl py-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900/30 transition-all group"
+                  className="border border-dashed border-gray-200 dark:border-white/[0.1] rounded-2xl py-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-all group"
                 >
                   <div className="p-4 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 text-[#3D7A6E] group-hover:scale-110 transition-transform">
                     <Upload size={24} />
@@ -1051,20 +962,20 @@ const handlePayAndPublish = async () => {
                 placeholder="e.g. MyGame_Build/Game.exe"
                 value={startPath}
                 onChange={e => setStartPath(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white p-3 rounded-xl border border-[#3D7A6E]/50 focus:ring-2 focus:ring-[#3D7A6E] outline-none transition-all font-mono text-sm"
+                className="w-full bg-gray-50 dark:bg-white/[0.02] text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-white/[0.1] focus:border-[#3D7A6E] focus:ring-1 focus:ring-[#3D7A6E] outline-none transition-all font-mono text-sm"
               />
               <div className="px-3 py-2 bg-[#3D7A6E]/5 dark:bg-[#3D7A6E]/10 border border-[#3D7A6E]/20 dark:border-[#3D7A6E]/30 rounded-lg mt-1 space-y-1">
                 <p className="text-[10px] text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
                   Path inside your archive. <strong className="text-[#2F5E55] dark:text-[#4A9384]">No leading /</strong>
                 </p>
-                <div className="text-[10px] text-gray-500 dark:text-zinc-500 space-y-2 mt-1.5">
+                <div className="text-[10px] text-gray-500 dark:text-gray-400 space-y-2 mt-1.5">
                   <p>
-                    <span className="font-bold text-gray-600 dark:text-zinc-400">In a folder:</span>
-                    <span className="ml-2 text-[#2F5E55] dark:text-[#4A9384] font-mono font-bold bg-[#3D7A6E]/20 dark:bg-[#3D7A6E]/30 px-2 py-0.5 rounded">MyGame_Build/Game.exe</span>
+                    <span className="font-bold text-gray-600 dark:text-gray-400">In a folder:</span>
+                    <span className="ml-2 text-[#2F5E55] dark:text-[#4A9384] font-mono font-bold bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 border border-[#3D7A6E]/20 px-2 py-0.5 rounded">MyGame_Build/Game.exe</span>
                   </p>
                   <p>
-                    <span className="font-bold text-gray-600 dark:text-zinc-400">At root:</span>
-                    <span className="ml-2 text-[#2F5E55] dark:text-[#4A9384] font-mono font-bold bg-[#3D7A6E]/20 dark:bg-[#3D7A6E]/30 px-2 py-0.5 rounded">Game.exe</span>
+                    <span className="font-bold text-gray-600 dark:text-gray-400">At root:</span>
+                    <span className="ml-2 text-[#2F5E55] dark:text-[#4A9384] font-mono font-bold bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 border border-[#3D7A6E]/20 px-2 py-0.5 rounded">Game.exe</span>
                   </p>
                 </div>
               </div>
@@ -1074,9 +985,9 @@ const handlePayAndPublish = async () => {
 
         {/* ══ TAB: Payment ══ */}
         {activeTab === 'payment' && (
-          <div className="p-4 flex flex-col gap-5">
-            <section className="rounded-2xl border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 overflow-hidden">
-              <div className="px-5 pt-5 pb-4 border-b border-gray-100 dark:border-zinc-800">
+          <div className="p-6 flex flex-col gap-5">
+            <section className="rounded-2xl border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-black/20 overflow-hidden">
+              <div className="px-5 pt-5 pb-4 border-b border-gray-100 dark:border-white/[0.06]">
                 <div className="flex items-center gap-2 mb-1">
                   <CreditCard size={16} className="text-[#3D7A6E]" />
                   <span className="text-sm font-bold text-black dark:text-white">Purchase Credits</span>
@@ -1100,7 +1011,7 @@ const handlePayAndPublish = async () => {
                       step={0.25}
                       value={dollars || ''}
                       onChange={e => setDollars(Number(e.target.value))}
-                      className="w-full text-sm bg-white dark:bg-zinc-900 text-black dark:text-white py-3 pl-8 pr-3 rounded-xl border border-[#3D7A6E]/50 focus:ring-2 focus:ring-[#3D7A6E] outline-none transition-all"
+                      className="w-full text-sm bg-white dark:bg-white/[0.04] text-black dark:text-white py-3 pl-8 pr-3 rounded-xl border border-gray-200 dark:border-white/[0.1] focus:border-[#3D7A6E] focus:ring-1 focus:ring-[#3D7A6E] outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -1122,15 +1033,15 @@ const handlePayAndPublish = async () => {
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 pt-1">
-                  <div className="rounded-xl bg-white dark:bg-zinc-800/60 border border-gray-100 dark:border-zinc-700 p-3 text-center">
+                  <div className="rounded-xl bg-white dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] p-3 text-center">
                     <div className="text-lg font-black text-black dark:text-white">{effectiveCredits || '—'}</div>
                     <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Credits</div>
                   </div>
-                  <div className="rounded-xl bg-white dark:bg-zinc-800/60 border border-gray-100 dark:border-zinc-700 p-3 text-center">
+                  <div className="rounded-xl bg-white dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] p-3 text-center">
                     <div className="text-lg font-black text-[#3D7A6E]">{estimatedSessions || '—'}</div>
                     <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Sessions</div>
                   </div>
-                  <div className="rounded-xl bg-white dark:bg-zinc-800/60 border border-gray-100 dark:border-zinc-700 p-3 text-center">
+                  <div className="rounded-xl bg-white dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] p-3 text-center">
                     <div className="text-lg font-black text-emerald-500">${totalDollars.toFixed(2) || '—'}</div>
                     <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Total</div>
                   </div>
@@ -1138,11 +1049,11 @@ const handlePayAndPublish = async () => {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-gray-200 dark:border-zinc-800 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50">
+            <section className="rounded-2xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-white/[0.06] bg-gray-50 dark:bg-white/[0.02]">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Purchase Summary</p>
               </div>
-              <div className="px-5 py-4 space-y-3">
+              <div className="px-5 py-4 space-y-3 bg-white dark:bg-black/20">
                 {[
                   ['Credits Purchased', effectiveCredits ? `${effectiveCredits} credits` : '—'],
                   ['Rate', '40 credits per $1'],
@@ -1155,7 +1066,7 @@ const handlePayAndPublish = async () => {
                     <span className="text-xs font-bold text-black dark:text-white">{value}</span>
                   </div>
                 ))}
-                <div className="border-t border-gray-100 dark:border-zinc-800 pt-3 flex justify-between items-center">
+                <div className="border-t border-gray-100 dark:border-white/[0.06] pt-3 flex justify-between items-center">
                   <span className="text-sm font-bold text-black dark:text-white">Total</span>
                   <span className="text-lg font-black text-[#3D7A6E]">${totalDollars.toFixed(2) || '—'}</span>
                 </div>
@@ -1184,7 +1095,7 @@ const handlePayAndPublish = async () => {
 
       {/* ── Upload Progress Footer ── */}
       {(isUploading || isSavingDraft) && (
-        <div className="border-t border-[#3D7A6E]/20 bg-[#3D7A6E]/10 flex flex-col shrink-0">
+        <div className="border-t border-[#3D7A6E]/20 bg-[#3D7A6E]/5 dark:bg-black/40 backdrop-blur-md flex flex-col shrink-0">
           <div className="px-6 py-4 space-y-3">
             {isUploading && (
               <div className="flex justify-end">
@@ -1205,8 +1116,8 @@ const handlePayAndPublish = async () => {
                   <span className="text-[#3D7A6E] dark:text-[#4A9384] flex items-center gap-1.5"><FileArchive size={12} /> Uploading Game Build</span>
                   <span className="text-[#3D7A6E] dark:text-[#4A9384]">{asset.progress ?? 0}%</span>
                 </div>
-                <div className="h-2 bg-[#3D7A6E]/20 dark:bg-[#3D7A6E]/40 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#3D7A6E] transition-all duration-300 ease-out" style={{ width: `${asset.progress ?? 0}%` }} />
+                <div className="h-2 bg-[#3D7A6E]/20 dark:bg-white/[0.05] rounded-full overflow-hidden">
+                  <div className="h-full bg-[#3D7A6E] transition-all duration-300 ease-out shadow-[0_0_8px_rgba(61,122,110,0.4)]" style={{ width: `${asset.progress ?? 0}%` }} />
                 </div>
               </div>
             )}
@@ -1216,8 +1127,8 @@ const handlePayAndPublish = async () => {
                   <span className="text-[#3D7A6E] dark:text-[#4A9384] flex items-center gap-1.5"><Video size={12} /> Uploading Trailer</span>
                   <span className="text-[#3D7A6E] dark:text-[#4A9384]">{videoUpload.progress ?? 0}%</span>
                 </div>
-                <div className="h-2 bg-[#3D7A6E]/20 dark:bg-[#3D7A6E]/40 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#3D7A6E] transition-all duration-300 ease-out" style={{ width: `${videoUpload.progress ?? 0}%` }} />
+                <div className="h-2 bg-[#3D7A6E]/20 dark:bg-white/[0.05] rounded-full overflow-hidden">
+                  <div className="h-full bg-[#3D7A6E] transition-all duration-300 ease-out shadow-[0_0_8px_rgba(61,122,110,0.4)]" style={{ width: `${videoUpload.progress ?? 0}%` }} />
                 </div>
               </div>
             )}
@@ -1227,7 +1138,7 @@ const handlePayAndPublish = async () => {
 
       {/* Publishing progress banner */}
       {isPublishing && (
-        <div className="border-t border-emerald-100 dark:border-emerald-900/20 bg-emerald-50 dark:bg-emerald-900/10 px-6 py-4 flex items-center gap-3 shrink-0">
+        <div className="border-t border-emerald-100 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 backdrop-blur-md px-6 py-4 flex items-center gap-3 shrink-0">
           <Loader2 size={16} className="text-emerald-500 animate-spin shrink-0" />
           <p className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
             {publishingStates[draftStatus] || 'Publishing your game…'}
@@ -1236,12 +1147,12 @@ const handlePayAndPublish = async () => {
       )}
 
       {/* ── Footer counter ── */}
-      <div className="border-t border-gray-100 dark:border-zinc-800 bg-white dark:bg-[#191919] px-4 py-3 flex items-center justify-between shrink-0">
-        <div className="text-xs font-bold text-gray-400 dark:text-gray-600">
+      <div className="border-t border-gray-100 dark:border-white/[0.06] bg-transparent px-6 py-4 flex items-center justify-between shrink-0">
+        <div className="text-xs font-bold text-gray-400 dark:text-gray-500">
           {asset ? '1' : '0'} / 1 Build • {videoUpload ? '1' : '0'} / 1 Media
         </div>
         {activeTab === 'payment' && totalDollars >= 100 && (
-          <div className="text-[10px] font-bold text-gray-400">
+          <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500">
             $1 = 40 Credits &nbsp;·&nbsp; 10 Credits = 1 session
           </div>
         )}

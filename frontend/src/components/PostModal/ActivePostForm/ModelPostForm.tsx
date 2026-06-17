@@ -1,7 +1,6 @@
 import React, { useState, useRef, ChangeEvent } from 'react';
-import { X, Image as ImageIcon, DollarSign, Megaphone } from 'lucide-react';
+import { X, Image as ImageIcon, DollarSign } from 'lucide-react';
 import '@google/model-viewer';
-import AdModelPostForm from "./AdModelPostForm";
 
 interface PostModalProps {
   onCancel: () => void;
@@ -21,7 +20,6 @@ interface Asset {
 }
 
 const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
-  const [showAdForm, setShowAdForm] = useState(false); // ⭐ Ad mode toggle
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
@@ -31,12 +29,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
   const [activeIndex, setActiveIndex] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000"; // Ensure this is set in your .env file
-
-   // ⭐ Swap to Ad form — keeps same onCancel, adds onBack to return
-  if (showAdForm) {
-    return <AdModelPostForm onCancel={onCancel} onBack={() => setShowAdForm(false)} />;
-  }
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -66,178 +59,165 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
     e.target.value = "";
   };
 
-const uploadAssetToS3 = async (
-  asset: Asset,
-  onProgress: (percent: number) => void
-): Promise<{ fileUrl: string; key: string }> => {
-  // 1️⃣ Get presigned URL
-  const res = await fetch(`${BACKEND_URL}/api/upload/presigned-url`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      fileName: asset.file.name,
-      fileType: asset.file.type || "model/gltf-binary",
-      category: "original",
-       fileSize: asset.file.size,
-    }),
-  });
-
-  if (!res.ok) throw new Error("Failed to get upload URL");
-
-  const { uploadUrl, key } = await res.json();
-
-  const fileUrl = `${import.meta.env.VITE_GAMES_STORAGE_PRIVATE_CLOUDFRONT}/${key}`;
-
-  // 2️⃣ Upload
-  await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("PUT", uploadUrl);
-    xhr.setRequestHeader(
-      "Content-Type",
-      asset.file.type || "model/gltf-binary"
-    );
-
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        onProgress(Math.round((event.loaded / event.total) * 100));
-      }
-    };
-
-    xhr.onload = () =>
-      xhr.status === 200 ? resolve() : reject(new Error("Upload failed"));
-
-    xhr.onerror = () => reject(new Error("Upload error"));
-
-    xhr.send(asset.file);
-  });
-
-  return { fileUrl, key };
-};
-const handlePostSubmit = async () => {
-  if (isSubmitting) return;
-
-  setIsSubmitting(true);
-
-  // ✅ declare outside try so catch can access it
-  let updatedAssets: Asset[] = [];
-
-  try {
-    updatedAssets = [...assets];
-
-    await Promise.all(
-      updatedAssets.map(async (asset, index) => {
-        updatedAssets[index].status = "uploading";
-        updatedAssets[index].progress = 0;
-        setAssets([...updatedAssets]);
-
-        const { fileUrl, key } = await uploadAssetToS3(asset, (percent) => {
-          updatedAssets[index].progress = percent;
-          setAssets([...updatedAssets]);
-        });
-
-        updatedAssets[index].uploadedUrl = fileUrl;
-        updatedAssets[index].originalKey = key;
-        updatedAssets[index].status = "done";
-        updatedAssets[index].progress = 100;
-
-        setAssets([...updatedAssets]);
-      })
-    );
-
-    setIsSavingMetadata(true);
-
-    const response = await fetch(`${BACKEND_URL}/api/allposts`, {
+  const uploadAssetToS3 = async (
+    asset: Asset,
+    onProgress: (percent: number) => void
+  ): Promise<{ fileUrl: string; key: string }> => {
+    const res = await fetch(`${BACKEND_URL}/api/upload/presigned-url`, {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        type: "model_post",
-        title,
-        description,
-        price: Number(price),
-        assets: updatedAssets.map((a: Asset) => ({
-          name: a.name,
-          originalUrl: a.uploadedUrl,
-          originalKey: a.originalKey,
-        })),
+        fileName: asset.file.name,
+        fileType: asset.file.type || "model/gltf-binary",
+        category: "original",
+         fileSize: asset.file.size,
       }),
     });
 
-    if (!response.ok) throw new Error("Database save failed");
+    if (!res.ok) throw new Error("Failed to get upload URL");
 
-    setIsSavingMetadata(false);
-    setIsSubmitting(false);
-    onCancel();
+    const { uploadUrl, key } = await res.json();
 
-  } catch (err) {
-    console.error("Post creation failed", err);
+    const fileUrl = `${import.meta.env.VITE_GAMES_STORAGE_PRIVATE_CLOUDFRONT}/${key}`;
 
-    // ✅ Only cleanup if uploads happened
-    const uploadedKeys = updatedAssets
-      .map((a: Asset) => a.originalKey)
-      .filter(Boolean);
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", uploadUrl);
+      xhr.setRequestHeader(
+        "Content-Type",
+        asset.file.type || "model/gltf-binary"
+      );
 
-    if (uploadedKeys.length > 0) {
-      await fetch(`${BACKEND_URL}/api/upload/cleanup`, {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          onProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      };
+
+      xhr.onload = () =>
+        xhr.status === 200 ? resolve() : reject(new Error("Upload failed"));
+
+      xhr.onerror = () => reject(new Error("Upload error"));
+
+      xhr.send(asset.file);
+    });
+
+    return { fileUrl, key };
+  };
+
+  const handlePostSubmit = async () => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    let updatedAssets: Asset[] = [];
+
+    try {
+      updatedAssets = [...assets];
+
+      await Promise.all(
+        updatedAssets.map(async (asset, index) => {
+          updatedAssets[index].status = "uploading";
+          updatedAssets[index].progress = 0;
+          setAssets([...updatedAssets]);
+
+          const { fileUrl, key } = await uploadAssetToS3(asset, (percent) => {
+            updatedAssets[index].progress = percent;
+            setAssets([...updatedAssets]);
+          });
+
+          updatedAssets[index].uploadedUrl = fileUrl;
+          updatedAssets[index].originalKey = key;
+          updatedAssets[index].status = "done";
+          updatedAssets[index].progress = 100;
+
+          setAssets([...updatedAssets]);
+        })
+      );
+
+      setIsSavingMetadata(true);
+
+      const response = await fetch(`${BACKEND_URL}/api/allposts`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keys: uploadedKeys }),
+        body: JSON.stringify({
+          type: "model_post",
+          title,
+          description,
+          price: Number(price),
+          assets: updatedAssets.map((a: Asset) => ({
+            name: a.name,
+            originalUrl: a.uploadedUrl,
+            originalKey: a.originalKey,
+          })),
+        }),
       });
+
+      if (!response.ok) throw new Error("Database save failed");
+
+      setIsSavingMetadata(false);
+      setIsSubmitting(false);
+      onCancel();
+
+    } catch (err) {
+      console.error("Post creation failed", err);
+
+      const uploadedKeys = updatedAssets
+        .map((a: Asset) => a.originalKey)
+        .filter(Boolean);
+
+      if (uploadedKeys.length > 0) {
+        await fetch(`${BACKEND_URL}/api/upload/cleanup`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ keys: uploadedKeys }),
+        });
+      }
+
+      setIsSavingMetadata(false);
+      setIsSubmitting(false);
     }
-
-    setIsSavingMetadata(false);
-    setIsSubmitting(false);
-  }
-};
-
+  };
 
   const removeAsset = (index: number) => {
     const updated = assets.filter((_, i) => i !== index);
     setAssets(updated);
-    // Adjust active index if we deleted the current one
     if (activeIndex >= updated.length) {
       setActiveIndex(Math.max(0, updated.length - 1));
     }
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto bg-white dark:bg-[#191919] min-h-[75vh] rounded-2xl border border-gray-200 dark:border-zinc-800 flex flex-col overflow-hidden shadow-sm">
+    // Minimalist Glassmorphic Container
+    <div className="w-full max-w-2xl mx-auto bg-white dark:bg-black/20 backdrop-blur-2xl min-h-[75vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col overflow-hidden shadow-2xl">
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 sticky top-0 bg-white/80 dark:bg-[#191919]/80 backdrop-blur-md z-30 border-b border-gray-100 dark:border-zinc-800">
+      <div className="flex items-center justify-between px-6 py-4 sticky top-0 bg-transparent z-30 border-b border-gray-100 dark:border-white/[0.06]">
         <div className="flex items-center gap-6">
-          <h2 className="text-xl font-bold text-black dark:text-white">Compose 3D Bundle</h2>
+          <h2 className="text-xl font-bold text-black dark:text-white tracking-tight">Compose 3D Bundle</h2>
         </div>
-          {/* ⭐ AD BUTTON */}
-          <button
-            onClick={() => setShowAdForm(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#3D7A6E]/40 dark:border-[#3D7A6E]/60 text-[#3D7A6E] hover:bg-[#3D7A6E]/10 dark:hover:bg-[#3D7A6E]/20 text-[11px] font-bold uppercase tracking-wider transition-all group"
-          >
-            <Megaphone size={12} className="group-hover:scale-110 transition-transform" />
-            Ad
-          </button>
+        
         <button
           onClick={handlePostSubmit}
           disabled={!title || !description || assets.length === 0 || isSubmitting}
-          className="bg-[#3D7A6E] hover:bg-[#2F5E55] disabled:opacity-50 text-white font-bold px-5 py-1.5 rounded-full transition shadow-sm"
+          className="bg-[#3D7A6E] hover:bg-[#2F5E55] disabled:opacity-50 text-white font-bold px-6 py-2 rounded-full transition shadow-sm"
         >
           {isSubmitting ? "Posting..." : "Post"}
         </button>
-
       </div>
 
-      <div className="flex flex-1 p-4 gap-4 overflow-y-auto custom-scrollbar">
+      <div className="flex flex-1 p-6 gap-5 overflow-y-auto custom-scrollbar">
         {/* User Avatar */}
         <div className="flex-shrink-0">
-          <div className="h-12 w-12 rounded-full bg-zinc-200 dark:bg-zinc-800 border border-zinc-700 flex items-center justify-center text-gray-400">
+          <div className="h-12 w-12 rounded-full bg-zinc-200 dark:bg-white/[0.04] border border-transparent dark:border-white/[0.08] flex items-center justify-center text-gray-400">
             <ImageIcon size={20} />
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col gap-4">
+        <div className="flex-1 flex flex-col gap-5">
           {/* Inputs Section */}
-          <div className="space-y-1">
+          <div className="space-y-2">
             <input
               type="text"
               placeholder="Post Title"
@@ -264,7 +244,7 @@ const handlePostSubmit = async () => {
                     onClick={() => setActiveIndex(index)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all whitespace-nowrap ${activeIndex === index
                       ? 'bg-[#3D7A6E] border-[#3D7A6E] text-white shadow-md'
-                      : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-500 hover:border-[#3D7A6E]'
+                      : 'bg-transparent dark:bg-white/[0.02] border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 hover:border-[#3D7A6E]'
                       }`}
                   >
                     <span className="text-xs font-bold uppercase tracking-wider">Asset {index + 1}</span>
@@ -279,7 +259,7 @@ const handlePostSubmit = async () => {
                 {assets.length < 4 && (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="p-2 border-2 border-dashed border-gray-300 dark:border-zinc-700 rounded-full text-gray-400 hover:text-[#3D7A6E] hover:border-[#3D7A6E] transition"
+                    className="p-2 border border-dashed border-gray-300 dark:border-white/[0.1] rounded-full text-gray-400 hover:text-[#3D7A6E] hover:border-[#3D7A6E] transition"
                     title="Add another asset"
                   >
                     <ImageIcon size={18} />
@@ -288,11 +268,7 @@ const handlePostSubmit = async () => {
               </div>
 
               {/* Main Preview Area */}
-              <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 group">
-
-                {/* NOTE: backgroundColor: "transparent" added here 
-                  This makes the model sit directly on the container's dark bg 
-                */}
+              <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-black/20 group">
                 {/* @ts-ignore */}
                 <model-viewer
                   src={assets[activeIndex].uploadedUrl || assets[activeIndex].previewUrl}
@@ -301,11 +277,10 @@ const handlePostSubmit = async () => {
                   exposure="1.0"
                   environment-image="neutral"
                   shadow-intensity="1"
-                  // Added transparent background here
                   style={{ width: "100%", height: "400px", backgroundColor: "transparent" }}
                 />
 
-                <div className="absolute top-4 right-4 pointer-events-none bg-[#191919]/60 backdrop-blur-sm px-3 py-1 rounded-lg text-white text-[10px] font-bold uppercase tracking-wider">
+                <div className="absolute top-4 right-4 pointer-events-none bg-black/40 backdrop-blur-md px-3 py-1 rounded-lg text-white text-[10px] font-bold uppercase tracking-wider">
                   Previewing: {assets[activeIndex].name.substring(0, 15)}{assets[activeIndex].name.length > 15 ? '...' : ''}
                 </div>
               </div>
@@ -314,7 +289,7 @@ const handlePostSubmit = async () => {
             /* Upload Placeholder */
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl py-16 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900/30 transition-all group"
+              className="border border-dashed border-gray-200 dark:border-white/[0.1] rounded-2xl py-16 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-all group"
             >
               <div className="p-3 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 text-[#3D7A6E] group-hover:scale-110 transition-transform">
                 <ImageIcon size={32} />
@@ -324,11 +299,12 @@ const handlePostSubmit = async () => {
           )}
         </div>
       </div>
+      
       {/* Enhanced Upload Progress Overlay */}
-      <div className="space-y-3 px-1 mt-2">
+      <div className="space-y-3 px-2 mt-2">
         {/* Metadata Saving Overlay */}
         {isSavingMetadata && (
-          <div className="mx-4 p-4 rounded-xl border border-[#3D7A6E]/20 dark:border-[#3D7A6E]/30 bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/10 flex items-center justify-center gap-3 animate-pulse">
+          <div className="mx-4 p-4 rounded-xl border border-[#3D7A6E]/20 dark:border-[#3D7A6E]/30 bg-[#3D7A6E]/10 flex items-center justify-center gap-3 animate-pulse">
             <div className="w-5 h-5 border-2 border-[#3D7A6E] border-t-transparent rounded-full animate-spin" />
             <span className="text-sm font-semibold text-[#3D7A6E] dark:text-[#4A9384]">
               Finalizing post & fetching metadata...
@@ -339,12 +315,12 @@ const handlePostSubmit = async () => {
           asset.status === "uploading" && (
             <div
               key={asset.id}
-              className="p-3 rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/50 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2 duration-300"
+              className="mx-4 p-3 rounded-xl border border-gray-100 dark:border-white/[0.08] bg-gray-50/50 dark:bg-black/20 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2 duration-300"
             >
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2 overflow-hidden">
                   <div className="flex-shrink-0 w-2 h-2 rounded-full bg-[#3D7A6E] animate-pulse" />
-                  <span className="text-xs font-medium text-gray-700 dark:text-zinc-300 truncate">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
                     Uploading {asset.name}
                   </span>
                 </div>
@@ -353,8 +329,7 @@ const handlePostSubmit = async () => {
                 </span>
               </div>
 
-              <div className="relative w-full h-1.5 bg-gray-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-                {/* Progress Fill with Glow Effect */}
+              <div className="relative w-full h-1.5 bg-gray-200 dark:bg-white/[0.05] rounded-full overflow-hidden">
                 <div
                   className="absolute top-0 left-0 h-full bg-[#3D7A6E] transition-all duration-300 ease-out rounded-full shadow-[0_0_8px_rgba(61,122,110,0.4)]"
                   style={{ width: `${asset.progress || 0}%` }}
@@ -364,11 +339,12 @@ const handlePostSubmit = async () => {
           )
         ))}
       </div>
+      
       {/* Footer Tools */}
-      <div className="px-4 py-3 border-t border-gray-100 dark:border-zinc-800 bg-white dark:bg-[#191919] flex items-center justify-between">
+      <div className="px-6 py-4 border-t border-gray-100 dark:border-white/[0.06] bg-transparent flex items-center justify-between">
         <div className="flex items-center gap-4">
           {/* Price Input Container */}
-          <div className="flex items-center bg-gray-100 dark:bg-zinc-900 rounded-full px-3 py-1.5 border border-transparent focus-within:border-[#3D7A6E] text-[#3D7A6E] transition-all">
+          <div className="flex items-center bg-gray-100 dark:bg-white/[0.04] rounded-full px-4 py-2 border border-transparent focus-within:border-[#3D7A6E] text-[#3D7A6E] transition-all">
             <DollarSign size={16} />
             <input
               type="number"
@@ -382,7 +358,7 @@ const handlePostSubmit = async () => {
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            className={`p-2 rounded-full transition ${assets.length >= 4 ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-[#3D7A6E] hover:bg-[#3D7A6E]/10 dark:hover:bg-[#3D7A6E]/20'}`}
+            className={`p-2.5 rounded-full transition ${assets.length >= 4 ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-[#3D7A6E] hover:bg-[#3D7A6E]/10 dark:hover:bg-[#3D7A6E]/20'}`}
             disabled={assets.length >= 4}
             title="Add Asset"
           >
@@ -390,7 +366,7 @@ const handlePostSubmit = async () => {
           </button>
         </div>
 
-        <div className={`text-xs font-bold ${assets.length === 4 ? 'text-orange-500' : 'text-gray-400 dark:text-gray-600'}`}>
+        <div className={`text-xs font-bold ${assets.length === 4 ? 'text-orange-500' : 'text-gray-400 dark:text-gray-500'}`}>
           {assets.length} / 4 Assets
         </div>
       </div>
