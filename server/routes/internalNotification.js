@@ -4,9 +4,10 @@ import Notification from "../models/Notifications.js";
 const router = express.Router();
 
 export default function internalNotificationRoutes(io, onlineUsers) {
-  console.log("io exists?", !!io);
-  console.log("onlineUsers exists?", !!onlineUsers);
+
   router.post("/notify-realtime", async (req, res) => {
+    console.log("io exists?", !!io);
+    console.log("onlineUsers exists?", !!onlineUsers);
     console.log("notify-realtime got hit");
     console.log("Header Secret:", req.headers["x-internal-secret"]);
     console.log("Env Secret:", process.env.INTERNAL_SECRET);
