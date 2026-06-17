@@ -380,9 +380,10 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
   return (
     <div className="fixed inset-0 bg-white dark:bg-black z-50 flex flex-col font-sans overflow-hidden select-none">
       {/* AD CONTENT */}
-      <div className="relative flex-grow flex items-center justify-center bg-black px-8">
+      <div className="relative flex-grow bg-black">
 
         <PrerollAdPostCard
+          fullscreen
           brandName={ad.brandName}
           brandLogo={ad.brandLogo}
           ctaText={ad.ctaText}
@@ -394,7 +395,7 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
       </div>
 
       {/* BOTTOM CONTROLS */}
-      <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-white dark:from-black to-transparent">
+      <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-white dark:from-black to-transparent z-20">
         <div className="max-w-7xl mx-auto flex items-end justify-end">
 
           {/* PROGRESS */}

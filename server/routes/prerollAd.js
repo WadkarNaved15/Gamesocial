@@ -10,6 +10,6 @@ import {
 const router = express.Router();
 
 router.post("/", verifyToken, createPrerollAd);
-router.get("/fairads",verifyToken,getFairPrerollAd)
+router.get("/fairads",getFairPrerollAd);
 
 export default router;

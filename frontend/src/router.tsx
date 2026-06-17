@@ -19,6 +19,7 @@ import DevlogViewer from "./Pages/DevlogViewer";
 import AdminPocketDashboard from "./Pages/AdminPocketDashboard";
 import PostModal from "./components/PostModal";
 import PostDetailsPage from "./Pages/PostDetailsPage";
+import PlayGame from "./components/Home/PlayGame";
 // import Puck from "./Pages/Puck";
 import StreamPage from "./Pages/StreamPage";
 import ForgotPassword from "./Pages/ForgotPassword";
@@ -68,6 +69,7 @@ export const router = createBrowserRouter([
       { path: "/stream/:sessionId", element:<GuestProtectedRoute> <StreamPage /> </GuestProtectedRoute> },
       { path: "/publisher", element:<GuestProtectedRoute> <PublisherForm /> </GuestProtectedRoute> },
       { path: "/createpost", element:<GuestProtectedRoute> <CreatePostPage /> </GuestProtectedRoute> },
+      { path: "/playgame", element:<GuestProtectedRoute> <PlayGame sessionId=""/> </GuestProtectedRoute> },
 
       // { path: "/devlogs", element: <DevLogs /> },
       { path: "/devlogs/view/:id", element:<GuestProtectedRoute> <DevLogsView /> </GuestProtectedRoute> },
