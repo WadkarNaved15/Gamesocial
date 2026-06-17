@@ -10,7 +10,11 @@ const startWorker = async () => {
     // ✅ Start consuming only after DB is ready
     startSQSConsumer();
   } catch (err) {
-    console.log("❌ Worker Startup Error:", err);
+    console.error(
+      "❌ Worker Error:",
+      err.response?.status,
+      err.response?.data
+    );
   }
 };
 
