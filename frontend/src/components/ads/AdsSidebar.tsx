@@ -23,30 +23,31 @@ export default function AdsSidebar({
   resetAdGroup: () => void;
 }) {
   return (
-    <div className="w-[320px] border-r border-gray-200 dark:border-white/10 p-4">
+    <div className="w-[320px] bg-white border-r border-gray-200 p-4">
 
       {/* ONLY CAMPAIGNS LOGIC FOR NOW */}
       {activeTab === "campaigns" && (
         <div className="space-y-4">
 
           {/* CAMPAIGN NAME (AUTO GENERATED + CLICKABLE) */}
-          <button className="w-full text-left px-3 py-2 rounded-lg bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition"
-           onClick={resetAdGroup}
+          <button 
+            className="w-full text-left px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition"
+            onClick={resetAdGroup}
           >
-            <div className="text-xs text-gray-500">Campaign</div>
-            <div className="text-sm font-semibold text-gray-900 dark:text-white">
+            <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Campaign</div>
+            <div className="text-sm font-bold text-gray-900">
               {campaignName}
             </div>
           </button>
 
           {/* AD GROUP SECTION */}
           <div className="pt-2">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-gray-500">Ad Groups</span>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Ad Groups</span>
 
               <button
                 onClick={addAdGroup}
-                className="text-xs px-2 py-1 rounded-md bg-violet-600 text-white hover:bg-violet-700"
+                className="text-xs font-semibold px-2.5 py-1 rounded-md bg-[#3D7A6E] text-white hover:bg-[#2F5E55] transition"
               >
                 + Add
               </button>
@@ -61,19 +62,19 @@ export default function AdsSidebar({
                   <button
                     key={group.id}
                     onClick={() => setActiveAdGroup(group.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition border ${
+                    className={`w-full text-left px-3 py-2 rounded-lg transition border flex flex-col justify-between items-start ${
                       isActive
-                        ? "border-violet-500 bg-violet-50 dark:bg-violet-500/10"
-                        : "border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5"
+                        ? "border-[#3D7A6E] bg-[#3D7A6E]/10"
+                        : "border-gray-200 hover:bg-gray-50"
                     }`}
                   >
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                    <div className={`text-sm font-semibold ${isActive ? "text-[#3D7A6E]" : "text-gray-800"}`}>
                       {group.name}
                     </div>
 
-                    {/* ACTIVE DOT */}
+                    {/* ACTIVE INDICATOR DOT */}
                     {isActive && (
-                      <div className="mt-1 w-2 h-2 rounded-full bg-violet-600" />
+                      <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#3D7A6E]" />
                     )}
                   </button>
                 );
