@@ -209,7 +209,6 @@ const GamePost: React.FC<GamePostProps> = ({
     };
   }, []);
 
-  // Shared play button — avoids duplicating JSX in both branches
   const PlayButton = () =>
     hasPlayedDemo ? (
       <button
@@ -220,7 +219,7 @@ const GamePost: React.FC<GamePostProps> = ({
         style={{
           background: "linear-gradient(to bottom right, #3D7A6E, #000000)",
         }}
-        className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98]"
+        className="text-white px-3 py-2 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-1.5 shrink-0 active:scale-[0.98]"
       >
         <Gamepad2 size={14} />
         <span className="font-semibold text-xs">Demo Played</span>
@@ -238,9 +237,9 @@ const GamePost: React.FC<GamePostProps> = ({
             ? "linear-gradient(to bottom right, #52525b, #18181b)"
             : "linear-gradient(to bottom right, #3D7A6E, #000000)",
         }}
-        className="text-white px-3 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-2 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+        className="text-white px-3 py-2 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-1.5 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <Users size={14} />
+        <Users size={14} className="animate-pulse" />
         <span className="font-semibold text-xs">
           {checkingEligibility
             ? "Checking..."
@@ -250,12 +249,11 @@ const GamePost: React.FC<GamePostProps> = ({
                 ? "Busy"
                 : eligibility.checked && !eligibility.allowed
                   ? "Unavailable"
-                  : "Play Now"}
+                  : "Play"}
         </span>
-        <div className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-        </div>
+        <span className="text-[11px] font-medium opacity-80 border-l border-white/30 pl-1.5 ml-0.5">
+          {completedSessions}/{possibleSessions}
+        </span>
       </button>
     );
 
@@ -320,12 +318,10 @@ const GamePost: React.FC<GamePostProps> = ({
             {gamePost && (
               <div className="group relative rounded-2xl overflow-hidden border border-white/[0.06] bg-gradient-to-b from-[#1c1c1c] to-[#0a0a0a] mb-4">
 
-                {/* Video / no-video container */}
                 <div className="relative w-full h-[380px] overflow-hidden bg-gradient-to-b from-[#1e1e1e] to-[#0c0c0c]">
 
                   {hasVideo ? (
                     <>
-                      {/* Video sits at natural opacity — no heavy fill competing underneath */}
                       <video
                         ref={videoRef}
                         src={videoUrl}
@@ -336,7 +332,6 @@ const GamePost: React.FC<GamePostProps> = ({
                         className="absolute inset-0 w-full h-full object-cover opacity-90"
                       />
 
-                      {/* Mute toggle */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -347,13 +342,6 @@ const GamePost: React.FC<GamePostProps> = ({
                         {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
                       </button>
 
-                      {/*
-                        Gradient overlay:
-                        - Top: a gentle gray-to-transparent so the title area reads clearly
-                          without a harsh solid strip
-                        - Bottom: soft black fade for the session pill legibility
-                        - Mid: near-transparent so the video breathes in the centre
-                      */}
                       <div
                         className="absolute inset-0 pointer-events-none"
                         style={{
@@ -370,7 +358,6 @@ const GamePost: React.FC<GamePostProps> = ({
                         }}
                       />
 
-                      {/* Game name + play button — top left */}
                       <div className="absolute top-4 left-4 z-40 flex items-center gap-3">
                         <h3 className="text-2xl font-black text-white tracking-tight leading-none drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
                           {gamePost.gameName}
@@ -379,7 +366,6 @@ const GamePost: React.FC<GamePostProps> = ({
                       </div>
                     </>
                   ) : (
-                    /* No-video fallback — same gradient base, no overlay needed */
                     <div className="relative w-full h-full p-6">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-2xl font-black text-white tracking-tight leading-none">
@@ -389,15 +375,6 @@ const GamePost: React.FC<GamePostProps> = ({
                       </div>
                     </div>
                   )}
-
-                  {/* Sessions pill — bottom left, always visible */}
-                  <div className="absolute bottom-4 left-4 z-50 flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 backdrop-blur-sm border border-white/20 shadow-lg shadow-black/30">
-                    <Users size={14} className="text-white/90" />
-                    <span className="text-xs font-semibold text-white tracking-wide">
-                      {completedSessions}/{possibleSessions}
-                    </span>
-                    <span className="text-[11px] text-white/60">Sessions</span>
-                  </div>
 
                 </div>
 
