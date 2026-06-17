@@ -44,6 +44,9 @@ notificationSchema.index({
   recipientId: 1,
   createdAt: -1,
 });
-
-
+// Auto-delete notifications after 90 days
+notificationSchema.index(
+  { createdAt: 1 },
+  { expireAfterSeconds: 60 * 60 * 24 * 90 }
+);
 export default mongoose.model("Notification", notificationSchema);
