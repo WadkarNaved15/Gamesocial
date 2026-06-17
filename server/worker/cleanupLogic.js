@@ -21,7 +21,7 @@ const BUCKET =
   process.env.AWS_S3_BUCKET;
 
 const STALE_AFTER_MS =
-  24 * 60 * 60 * 1000;
+  10 * 24 * 60 * 60 * 1000; // 10 days  
 
 export async function runDraftCleanup() {
   const cutoff =
