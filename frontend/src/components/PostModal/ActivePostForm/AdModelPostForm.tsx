@@ -213,18 +213,18 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto flex flex-col rounded-2xl overflow-hidden border border-gray-200 dark:border-zinc-800 shadow-lg bg-white dark:bg-[#191919]">
+    <div className="w-full max-w-3xl mx-auto flex flex-col rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
 
       {/* ── Form Header ─── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-zinc-800 bg-white/80 dark:bg-[#191919]/80 backdrop-blur-md sticky top-0 z-30">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-30">
         <div className="flex items-center gap-3">
           {onBack && (
-            <button onClick={onBack} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
-              <ArrowLeft size={18} className="text-gray-600 dark:text-gray-400" />
+            <button onClick={onBack} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
+              <ArrowLeft size={18} className="text-gray-600" />
             </button>
           )}
           <div>
-            <h2 className="text-base font-bold text-black dark:text-white leading-tight">Ad Showcase</h2>
+            <h2 className="text-base font-bold text-gray-900 leading-tight">Ad Showcase</h2>
             <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">3D Model Ad</p>
           </div>
         </div>
@@ -238,10 +238,10 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
       </div>
 
       {/* ── Tab Nav ─── */}
-      <div className="flex border-b border-gray-100 dark:border-zinc-800 px-4 bg-white dark:bg-[#191919]">
+      <div className="flex border-b border-gray-100 px-4 bg-white">
         {(['model', 'brand', 'background'] as const).map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${activeTab === tab ? 'border-[#3D7A6E] text-[#3D7A6E]' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}>
+            className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${activeTab === tab ? 'border-[#3D7A6E] text-[#3D7A6E]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
             {tab}
           </button>
         ))}
@@ -253,7 +253,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
         {activeTab === 'model' && (
           <div className="p-4 flex flex-col gap-4">
             {asset ? (
-              <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-zinc-800">
+              <div className="relative rounded-xl overflow-hidden border border-gray-200">
                 {/* @ts-ignore */}
                 <model-viewer src={asset.previewUrl} camera-controls auto-rotate exposure="1.2" environment-image="neutral" shadow-intensity="1" style={{ width: '100%', height: '360px', backgroundColor: 'transparent' }} />
                 <button onClick={() => setAsset(null)} className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-sm rounded-full text-white hover:bg-black/80 transition">
@@ -265,17 +265,17 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
               </div>
             ) : (
               <div onClick={() => modelInputRef.current?.click()}
-                className="border-2 border-dashed border-[#3D7A6E]/30 dark:border-[#3D7A6E]/30 rounded-xl py-16 flex flex-col items-center gap-3 cursor-pointer hover:bg-[#3D7A6E]/5 dark:hover:bg-[#3D7A6E]/10 transition-all group">
-                <div className="p-4 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 text-[#3D7A6E] group-hover:scale-110 transition-transform">
+                className="border-2 border-dashed border-[#3D7A6E]/30 rounded-xl py-16 flex flex-col items-center gap-3 cursor-pointer hover:bg-[#3D7A6E]/5 transition-all group">
+                <div className="p-4 rounded-full bg-[#3D7A6E]/10 text-[#3D7A6E] group-hover:scale-110 transition-transform">
                   <Upload size={28} />
                 </div>
-                <p className="text-gray-500 dark:text-gray-400 font-medium text-sm">Upload one .glb model</p>
-                <p className="text-gray-400 dark:text-gray-600 text-xs">Single model only · GLB format</p>
+                <p className="text-gray-500 font-medium text-sm">Upload one .glb model</p>
+                <p className="text-gray-400 text-xs">Single model only · GLB format</p>
               </div>
             )}
             <textarea
               placeholder="Optional description or caption..."
-              className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl p-3 outline-none text-black dark:text-white placeholder-gray-400 resize-none focus:ring-2 focus:ring-[#3D7A6E]/30 focus:border-[#3D7A6E] transition min-h-[80px]"
+              className="w-full text-sm bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none text-gray-900 placeholder-gray-400 resize-none focus:ring-2 focus:ring-[#3D7A6E]/30 focus:border-[#3D7A6E] transition min-h-[80px]"
               value={description} onChange={(e) => setDescription(e.target.value)}
             />
           </div>
@@ -287,17 +287,17 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
 
             {/* PROFILE IDENTITY (LOCKED) */}
             <div>
-              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">
                 Brand Identity (From Profile)
               </label>
 
-              <div className="flex items-center gap-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
                 <img
                   src={user?.avatar || "/default_avatar.png"}
                   className="w-10 h-10 rounded-full object-cover"
                 />
 
-                <span className="text-sm font-semibold text-black dark:text-white">
+                <span className="text-sm font-semibold text-gray-900">
                   {user?.username || "Guest"}
                 </span>
               </div>
@@ -305,13 +305,13 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
 
             {/* MODEL DESCRIPTION ONLY */}
             <div>
-              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5 block">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">
                 Description
               </label>
 
               <textarea
                 placeholder="Optional caption..."
-                className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl p-3 outline-none text-black dark:text-white resize-none focus:ring-2 focus:ring-[#3D7A6E]/30 focus:border-[#3D7A6E] transition min-h-[90px]"
+                className="w-full text-sm bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none text-gray-900 resize-none focus:ring-2 focus:ring-[#3D7A6E]/30 focus:border-[#3D7A6E] transition min-h-[90px]"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -323,33 +323,33 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
         {/* ── BACKGROUND tab ─── */}
         {activeTab === 'background' && (
           <div className="p-4 flex flex-col gap-4">
-            <div className="flex gap-2 p-1 bg-gray-100 dark:bg-zinc-900 rounded-xl">
-              <button onClick={() => setBgMode('color')} className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${bgMode === 'color' ? 'bg-white dark:bg-zinc-800 text-[#3D7A6E] shadow-sm' : 'text-gray-400'}`}>
+            <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
+              <button onClick={() => setBgMode('color')} className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${bgMode === 'color' ? 'bg-white text-[#3D7A6E] shadow-sm' : 'text-gray-400'}`}>
                 <Palette size={13} /> Color
               </button>
-              <button onClick={() => setBgMode('image')} className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${bgMode === 'image' ? 'bg-white dark:bg-zinc-800 text-[#3D7A6E] shadow-sm' : 'text-gray-400'}`}>
+              <button onClick={() => setBgMode('image')} className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 ${bgMode === 'image' ? 'bg-white text-[#3D7A6E] shadow-sm' : 'text-gray-400'}`}>
                 <ImageIcon size={13} /> Image
               </button>
             </div>
 
             {bgMode === 'color' && (
               <div className="flex flex-col gap-3">
-                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Theme Color</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Theme Color</label>
                 <div className="flex flex-wrap gap-2 items-center">
                   <button onClick={() => setBgColor('transparent')} title="Transparent"
-                    className={`w-9 h-9 rounded-full border-2 relative overflow-hidden transition-all ${bgColor === 'transparent' ? 'border-gray-700 dark:border-white scale-110 shadow-lg' : 'border-gray-300 dark:border-zinc-600'}`}>
+                    className={`w-9 h-9 rounded-full border-2 relative overflow-hidden transition-all ${bgColor === 'transparent' ? 'border-gray-700 scale-110 shadow-sm' : 'border-gray-300'}`}>
                     <span className="absolute inset-0" style={{ background: 'repeating-conic-gradient(#ccc 0% 25%, white 0% 50%) 0 0 / 8px 8px' }} />
                   </button>
                   {PRESET_COLORS.map((c) => (
                     <button key={c} onClick={() => setBgColor(c)} style={{ backgroundColor: c }}
-                      className={`w-9 h-9 rounded-full border-2 transition-all ${bgColor === c ? 'border-white scale-110 shadow-lg' : 'border-transparent'}`} />
+                      className={`w-9 h-9 rounded-full border-2 transition-all ${bgColor === c ? 'border-white scale-110 shadow-sm' : 'border-transparent'}`} />
                   ))}
-                  <label className="w-9 h-9 rounded-full border-2 border-dashed border-gray-300 dark:border-zinc-600 flex items-center justify-center cursor-pointer hover:border-[#3D7A6E] transition overflow-hidden relative">
+                  <label className="w-9 h-9 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-[#3D7A6E] transition overflow-hidden relative">
                     <input type="color" className="opacity-0 absolute w-0 h-0" value={bgColor === 'transparent' ? '#3D7A6E' : bgColor} onChange={(e) => setBgColor(e.target.value)} />
                     <span className="text-xs text-gray-400 font-bold">+</span>
                   </label>
                 </div>
-                <div className="h-14 rounded-xl border border-gray-200 dark:border-zinc-700 overflow-hidden flex items-center justify-center"
+                <div className="h-14 rounded-xl border border-gray-200 overflow-hidden flex items-center justify-center"
                   style={isTransparent
                     ? { background: 'repeating-conic-gradient(#e5e7eb 0% 25%, white 0% 50%) 0 0 / 14px 14px' }
                     : { background: bgColor }
@@ -362,13 +362,13 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                 {/* ── Dark overlay slider ── */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Dark Overlay</label>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Dark Overlay</label>
                     <span className="text-xs font-bold text-[#3D7A6E] tabular-nums">{overlayOpacity}%</span>
                   </div>
                   <div className="relative h-5 flex items-center">
                     {/* Styled track */}
                     <div className="absolute inset-y-0 flex items-center w-full pointer-events-none">
-                      <div className="w-full h-1.5 rounded-full bg-gray-200 dark:bg-zinc-700 overflow-hidden">
+                      <div className="w-full h-1.5 rounded-full bg-gray-200 overflow-hidden">
                         <div
                           className="h-full rounded-full bg-[#3D7A6E] transition-all"
                           style={{ width: `${(overlayOpacity / 80) * 100}%` }}
@@ -384,7 +384,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                     />
                     {/* Custom thumb */}
                     <div
-                      className="absolute w-4 h-4 rounded-full bg-[#3D7A6E] shadow-md border-2 border-white pointer-events-none z-20 transition-all"
+                      className="absolute w-4 h-4 rounded-full bg-[#3D7A6E] shadow-sm border-2 border-white pointer-events-none z-20 transition-all"
                       style={{ left: `calc(${(overlayOpacity / 80) * 100}% - ${(overlayOpacity / 80) * 16}px)` }}
                     />
                   </div>
@@ -395,7 +395,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
 
             {bgMode === 'image' && (
               <div className="flex flex-col gap-3">
-                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Background Image</label>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Background Image</label>
                 {bgImage ? (
                   <div className="flex flex-col gap-3">
                     <div className="flex items-center justify-between">
@@ -416,8 +416,8 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                   </div>
                 ) : (
                   <div onClick={() => bgImageInputRef.current?.click()}
-                    className="border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-xl py-10 flex flex-col items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900/50 transition group">
-                    <div className="p-3 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-400 group-hover:scale-110 transition-transform"><ImageIcon size={22} /></div>
+                    className="border-2 border-dashed border-gray-200 rounded-xl py-10 flex flex-col items-center gap-2 cursor-pointer hover:bg-gray-50 transition group">
+                    <div className="p-3 rounded-full bg-gray-100 text-gray-400 group-hover:scale-110 transition-transform"><ImageIcon size={22} /></div>
                     <p className="text-xs text-gray-400 font-medium">Upload background image</p>
                   </div>
                 )}
@@ -425,13 +425,13 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                 {/* ── Dark overlay slider ── */}
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Dark Overlay</label>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Dark Overlay</label>
                     <span className="text-xs font-bold text-[#3D7A6E] tabular-nums">{overlayOpacity}%</span>
                   </div>
                   <div className="relative h-5 flex items-center">
                     {/* Styled track */}
                     <div className="absolute inset-y-0 flex items-center w-full pointer-events-none">
-                      <div className="w-full h-1.5 rounded-full bg-gray-200 dark:bg-zinc-700 overflow-hidden">
+                      <div className="w-full h-1.5 rounded-full bg-gray-200 overflow-hidden">
                         <div
                           className="h-full rounded-full bg-[#3D7A6E] transition-all"
                           style={{ width: `${(overlayOpacity / 80) * 100}%` }}
@@ -447,7 +447,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                     />
                     {/* Custom thumb */}
                     <div
-                      className="absolute w-4 h-4 rounded-full bg-[#3D7A6E] shadow-md border-2 border-white pointer-events-none z-20 transition-all"
+                      className="absolute w-4 h-4 rounded-full bg-[#3D7A6E] shadow-sm border-2 border-white pointer-events-none z-20 transition-all"
                       style={{ left: `calc(${(overlayOpacity / 80) * 100}% - ${(overlayOpacity / 80) * 16}px)` }}
                     />
                   </div>
@@ -460,29 +460,29 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
 
         {/* ── LIVE PREVIEW ── */}
         <div className="px-4 pb-4">
-          <p className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-widest mb-2">Live Preview</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Live Preview</p>
 
           {isTransparent ? (
-            <div className="relative w-full border border-gray-200 dark:border-gray-700 bg-[#F9FAFB] dark:bg-[#191919] rounded-xl overflow-hidden">
+            <div className="relative w-full border border-gray-200 bg-[#F9FAFB] rounded-xl overflow-hidden">
               <div className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={transparentPillStyle}>
                     {logoImage ? (
                       <img src={logoImage} alt="Logo" className="w-5 h-5 rounded-full object-cover" />
                     ) : (
-                      <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-zinc-700 flex items-center justify-center text-[8px] font-black text-gray-500">
+                      <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[8px] font-black text-gray-500">
                         {(brandName || 'B').charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <span className="text-gray-700 dark:text-gray-300 text-xs font-bold tracking-wide">
+                    <span className="text-gray-700 text-xs font-bold tracking-wide">
                       {user?.username || 'Brand Name'}
                     </span>
                   </div>
                   <div className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest text-gray-400"
                     style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.08)' }}>Ad</div>
                 </div>
-                {description && <p className="text-gray-800 dark:text-gray-200 text-sm leading-relaxed mb-3">{description}</p>}
-                <div className="relative overflow-hidden w-full h-[400px] rounded-xl bg-gray-100 dark:bg-zinc-900/50">
+                {description && <p className="text-gray-800 text-sm leading-relaxed mb-3">{description}</p>}
+                <div className="relative overflow-hidden w-full h-[400px] rounded-xl bg-gray-100">
                   {asset ? (
                     // @ts-ignore
                     <model-viewer src={asset.previewUrl} camera-controls auto-rotate exposure="1.2" environment-image="neutral" shadow-intensity="1"
@@ -556,10 +556,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
               {description && (
                 <div className="px-4 pb-3">
                   <p
-                    className={`text-sm leading-relaxed font-light tracking-wide ${isTransparent || bgMode === "image"
-                      ? "text-black dark:text-white"
-                      : ""
-                      }`}
+                    className={`text-sm leading-relaxed font-light tracking-wide ${isTransparent || bgMode === "image" ? "text-gray-950" : ""}`}
                     style={{
                       color:
                         bgMode === "color" && bgColor !== "transparent"
@@ -580,21 +577,21 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
         </div>
 
         {asset?.status === 'uploading' && (
-          <div className="mx-4 mb-4 p-3 rounded-xl border border-[#3D7A6E]/20 dark:border-[#3D7A6E]/30 bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/10">
+          <div className="mx-4 mb-4 p-3 rounded-xl border border-[#3D7A6E]/20 bg-[#3D7A6E]/10">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-semibold text-[#3D7A6E] dark:text-[#4A9384] truncate">Uploading {asset.name}</span>
+              <span className="text-xs font-semibold text-[#3D7A6E] truncate">Uploading {asset.name}</span>
               <span className="text-[10px] font-bold text-[#3D7A6E]">{asset.progress ?? 0}%</span>
             </div>
-            <div className="h-1.5 bg-[#3D7A6E]/20 dark:bg-[#3D7A6E]/40 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-[#3D7A6E]/20 rounded-full overflow-hidden">
               <div className="h-full bg-[#3D7A6E] rounded-full transition-all duration-300" style={{ width: `${asset.progress ?? 0}%` }} />
             </div>
           </div>
         )}
 
         {isSavingMetadata && (
-          <div className="mx-4 mb-4 p-3 rounded-xl border border-[#3D7A6E]/20 dark:border-[#3D7A6E]/30 bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/10 flex items-center gap-2 animate-pulse">
+          <div className="mx-4 mb-4 p-3 rounded-xl border border-[#3D7A6E]/20 bg-[#3D7A6E]/10 flex items-center gap-2 animate-pulse">
             <div className="w-4 h-4 border-2 border-[#3D7A6E] border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-semibold text-[#3D7A6E] dark:text-[#4A9384]">Finalizing ad post...</span>
+            <span className="text-xs font-semibold text-[#3D7A6E]">Finalizing ad post...</span>
           </div>
         )}
       </div>

@@ -87,33 +87,17 @@ const PrerollAdPostCard: React.FC<Props> = ({
             {/* CORE VIDEO VIEWPORT */}
             <div className="w-full h-full flex items-center justify-center relative z-10">
                 {asset ? (
-                    <>
-                        {/* 🔥 Processing Overlays */}
-                        {(asset.processingStatus === 'pending' || asset.processingStatus === 'processing') && (
-                            <div className="absolute top-4 right-4 z-50 bg-black/70 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-md">
-                                <Loader2 size={12} className="animate-spin text-red-500" />
-                                <span>Optimizing...</span>
-                            </div>
-                        )}
-                        {asset.processingStatus === 'failed' && (
-                            <div className="absolute top-4 right-4 z-50 bg-red-600/80 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-md">
-                                <AlertCircle size={12} />
-                                <span>Opt Failed</span>
-                            </div>
-                        )}
-
-                        <video
-                            ref={videoRef}
-                            src={asset.url}
-                            autoPlay
-                            loop
-                            playsInline
-                            muted
-                            className={`w-full h-full max-w-full max-h-full ${
-                                fullscreen ? "object-cover" : "object-contain"
-                            }`}
-                        />
-                    </>
+                    <video
+                        ref={videoRef}
+                        src={asset.url}
+                        autoPlay
+                        loop
+                        playsInline
+                        // CHANGED: Dynamic object-fit property based on fullscreen mode
+                        className={`w-full h-full max-w-full max-h-full ${
+                            fullscreen ? "object-cover" : "object-contain"
+                        }`}
+                    />
                 ) : (
                     <div className="text-center text-zinc-600 flex flex-col items-center gap-2">
                         <div className="w-10 h-10 rounded-full border border-dashed border-zinc-700 flex items-center justify-center animate-spin [animation-duration:16s]" />

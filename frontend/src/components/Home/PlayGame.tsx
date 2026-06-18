@@ -396,7 +396,7 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
 
       {/* BOTTOM CONTROLS */}
       <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-white dark:from-black to-transparent z-20">
-        <div className="max-w-7xl mx-auto flex items-end justify-end">
+        <div className="w-full flex items-end justify-end">
 
           {/* PROGRESS */}
           {/* <div className="flex flex-col space-y-2 w-56 bg-white/50 dark:bg-black/20 backdrop-blur-sm p-4 rounded-xl border border-gray-200/50 dark:border-gray-800/50">

@@ -239,10 +239,10 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto flex flex-col rounded-2xl overflow-hidden border border-gray-200 dark:border-zinc-800 shadow-xl bg-white dark:bg-[#191919]">
+    <div className="w-full max-w-3xl mx-auto flex flex-col rounded-2xl overflow-hidden border border-gray-200 shadow-xl bg-white">
 
       {/* ── Form Header ─── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-zinc-800 bg-white/80 dark:bg-[#191919]/80 backdrop-blur-md sticky top-0 z-30">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white sticky top-0 z-30">
         <div className="flex items-center gap-3">
           {onBack && (
             <button onClick={onBack} className="p-1.5 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
@@ -251,7 +251,7 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
           )}
           <div>
             <div className="flex items-center gap-1.5">
-              <h2 className="text-base font-bold text-black dark:text-white leading-tight">Premium Media Ad Builder</h2>
+              <h2 className="text-base font-bold text-black leading-tight"> Media Ad Builder</h2>
               <span className="bg-indigo-500/10 text-indigo-500 text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-wider">Scroll Stopper v2.5</span>
             </div>
             <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">High Engagement Conversion Engine</p>
@@ -267,7 +267,7 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
       </div>
 
       {/* ── Tab Nav ─── */}
-      <div className="flex border-b border-gray-100 dark:border-zinc-800 px-4 bg-white dark:bg-[#191919] overflow-x-auto [scrollbar-width:none]">
+      <div className="flex border-b border-gray-200 px-4 bg-white overflow-x-auto [scrollbar-width:none]">
         {(["media", "brand", "theme", "cta"] as const).map((tab) => (
           <button
             key={tab}
@@ -289,7 +289,7 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
           {activeTab === "media" && (
             <div className="flex flex-col gap-4">
               {asset ? (
-                <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-zinc-800 bg-zinc-900 h-[360px] flex items-center justify-center">
+                <div className="relative rounded-xl overflow-hidden border border-gray-300 bg-white h-[360px] flex items-center justify-center">
                   {asset.type === "video" ? (
                     <video src={asset.url} autoPlay muted loop className="w-full h-full object-contain" />
                   ) : (
@@ -330,12 +330,12 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
                   Brand Identity (From Profile)
                 </label>
 
-                <div className="w-full flex items-center gap-3 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3">
+                <div className="w-full flex items-center gap-3 bg-white border border-gray-300 rounded-xl px-4 py-3">
                   <img
                     src={user?.avatar || "/default_avatar.png"}
                     className="w-8 h-8 rounded-full object-cover border border-indigo-500"
                   />
-                  <span className="text-sm font-semibold text-black dark:text-white">
+                  <span className="text-sm font-semibold text-black">
                     {user?.username || "Guest Brand"}
                   </span>
                 </div>
@@ -349,7 +349,7 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
 
                 <textarea
                   placeholder="Draft copy that prompts an instant interaction hook..."
-                  className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl p-3 outline-none text-black dark:text-white resize-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition min-h-[90px]"
+                  className="w-full text-sm bg-white border border-gray-300 rounded-xl p-3 outline-none text-black resize-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition min-h-[90px]"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -372,7 +372,7 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
                       onClick={() => setAccentColor(preset.hex)}
                       className={`p-2.5 rounded-xl text-xs font-semibold transition-all border text-center relative flex flex-col items-center gap-1.5 ${accentColor === preset.hex
                         ? "border-white bg-zinc-900 shadow-md scale-105"
-                        : "border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50"
+                        : "border-gray-200 dark:border-zinc-800 bg-white/50"
                         }`}
                     >
                       <span className="w-4 h-4 rounded-full shadow-inner block" style={{ backgroundColor: preset.hex }} />
@@ -384,7 +384,7 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
                   ))}
                 </div>
 
-                <div className="mt-3 flex items-center gap-3 bg-gray-50 dark:bg-zinc-900/40 p-3 rounded-xl border border-gray-100 dark:border-zinc-800">
+                <div className="mt-3 flex items-center gap-3 bg-white/40 p-3 rounded-xl border border-gray-100 dark:border-zinc-800">
                   <input
                     type="color"
                     value={accentColor}
@@ -392,7 +392,7 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
                     className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border-0"
                   />
                   <div>
-                    <p className="text-xs font-bold text-black dark:text-white">Fine-tune Ambient Color</p>
+                    <p className="text-xs font-bold text-black">Fine-tune Ambient Color</p>
                     <p className="text-[10px] text-gray-400">Match exactly with your visual art guidelines</p>
                   </div>
                 </div>
@@ -410,7 +410,7 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
                       onClick={() => setCardLayoutTheme(mode)}
                       className={`p-3 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all text-center ${cardLayoutTheme === mode
                         ? "bg-indigo-500 border-indigo-500 text-white shadow-md shadow-indigo-500/20 scale-[1.02]"
-                        : "bg-gray-50 dark:bg-zinc-900/70 border-gray-200 dark:border-zinc-800 text-gray-400"
+                        : "bg-white/70 border-gray-200 dark:border-zinc-800 text-gray-400"
                         }`}
                     >
                       {mode}
@@ -419,11 +419,11 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-zinc-900/50 border border-gray-200 dark:border-zinc-800">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/50 border border-gray-200 dark:border-zinc-800">
                 <div className="flex items-center gap-2">
                   <Sparkles size={16} className="text-amber-400" />
                   <div>
-                    <p className="text-xs font-bold text-black dark:text-white">Inject Ambient Neon Backdrop Glow</p>
+                    <p className="text-xs font-bold text-black">Inject Ambient Neon Backdrop Glow</p>
                     <p className="text-[10px] text-gray-400">Creates depth shadows to isolate item from typical feed arrays</p>
                   </div>
                 </div>
@@ -446,7 +446,7 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
                 <input
                   type="text"
                   placeholder="e.g., CLAIM ACCESS, DISCOVER NOW, JOIN PREORDER"
-                  className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none text-black dark:text-white focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+                  className="w-full text-sm bg-white border border-gray-300 rounded-xl px-4 py-3 outline-none text-black focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
                   value={ctaText}
                   onChange={(e) => setCtaText(e.target.value)}
                 />
@@ -459,7 +459,7 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
                 <input
                   type="url"
                   placeholder="https://yourbrand.io/exclusive-landing"
-                  className="w-full text-sm bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none text-black dark:text-white focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
+                  className="w-full text-sm bg-white border border-gray-300 rounded-xl px-4 py-3 outline-none text-black focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"
                   value={ctaLink}
                   onChange={(e) => setCtaLink(e.target.value)}
                 />

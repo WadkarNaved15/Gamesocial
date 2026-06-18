@@ -15,7 +15,7 @@ export default function ComposerSidebar({
   setActiveComposerType: (val: string) => void;
 }) {
   return (
-    <div className="w-[320px] border-r border-gray-200 dark:border-white/10 p-4 space-y-2">
+    <div className="w-[320px] bg-white border-r border-gray-200 p-4 space-y-2">
       {composerItems.map((item) => {
         const isActive = activeComposerType === item.key;
         const Icon = item.icon;
@@ -24,14 +24,14 @@ export default function ComposerSidebar({
           <button
             key={item.key}
             onClick={() => setActiveComposerType(item.key)}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg border transition ${
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg border transition text-sm font-semibold ${
               isActive
-                ? "border-violet-500 bg-violet-50 dark:bg-violet-500/10"
-                : "border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5"
+                ? "border-[#3D7A6E] bg-[#3D7A6E]/10 text-[#3D7A6E]"
+                : "border-gray-200 text-gray-800 hover:bg-gray-50"
             }`}
           >
-            <Icon className="h-5 w-5" />
-            <span className="text-sm font-medium">{item.label}</span>
+            <Icon className={`h-5 w-5 shrink-0 ${isActive ? "text-[#3D7A6E]" : "text-gray-400"}`} />
+            <span>{item.label}</span>
           </button>
         );
       })}
