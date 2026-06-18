@@ -1,10 +1,12 @@
 import React, { useState, useRef } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Loader2, AlertCircle } from "lucide-react";
 
 type MediaAsset = {
   type: "image" | "video";
   url: string;
   name?: string;
+  processingStatus?: "pending" | "processing" | "completed" | "failed";
+  thumbnailUrl?: string;
 };
 
 type Props = {
@@ -46,7 +48,6 @@ const MediaAdPostCard: React.FC<Props> = ({
 }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
-  // Track hover state to cleanly handle transition swapping
   const [isHovered, setIsHovered] = useState(false);
 
   const CHARACTER_LIMIT = 120;
@@ -59,7 +60,6 @@ const MediaAdPostCard: React.FC<Props> = ({
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!interactiveTilt || !cardRef.current) return;
 
-    // We calculate coordinates relative to the stable bounding box container
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -67,7 +67,6 @@ const MediaAdPostCard: React.FC<Props> = ({
     const xc = rect.width / 2;
     const yc = rect.height / 2;
 
-    // Smoothly limits the maximum tilt rotation angle
     const rotateX = (yc - y) / 55;
     const rotateY = (x - xc) / 55;
 
@@ -112,23 +111,12 @@ const MediaAdPostCard: React.FC<Props> = ({
   const buttonTextColor = PRESET_ACCENTS.find(p => p.hex === accentColor)?.text || "#ffffff";
 
   return (
-    /* 
-      1. STABLE BOUNDING BOX WRAPPER
-      This container handles mouse listeners, stays perfectly flat, and prevents 
-      edge-calculated stutter loops.
-    */
     <div
       onMouseMove={handleMouseMove}
       onMouseLeave={resetTilt}
       className="w-full max-w-full relative block select-none"
       style={{ perspective: "1000px" }}
     >
-      {/* 
-        2. VISUAL TILT LAYER 
-        This internal div handles only the visual transformations.
-        Notice we conditionally add the transition: instantaneous tracking on move,
-        smooth 300ms glide snap back when moving away.
-      */}
       <div
         ref={cardRef}
         className="w-full h-full rounded-2xl overflow-hidden p-0.5 group"
@@ -149,7 +137,6 @@ const MediaAdPostCard: React.FC<Props> = ({
             </span>
           </div>
 
-          {/* HIGH ACCENT GLOW BADGE */}
           <span
             className="text-[9px] font-black uppercase tracking-widest px-3 py-1 text-white border rounded-full transition-colors"
             style={{
@@ -166,7 +153,30 @@ const MediaAdPostCard: React.FC<Props> = ({
         <div className="h-[400px] bg-zinc-950 flex items-center justify-center relative overflow-hidden border-y border-white/5">
           {asset ? (
             asset.type === "video" ? (
-              <video src={asset.url} autoPlay muted loop className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700" />
+              <>
+                {(asset.processingStatus === 'pending' || asset.processingStatus === 'processing') && (
+                  <div className="absolute top-4 right-4 z-50 bg-black/70 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-md">
+                    <Loader2 size={12} className="animate-spin" style={{ color: accentColor }} />
+                    <span>Optimizing...</span>
+                  </div>
+                )}
+                {asset.processingStatus === 'failed' && (
+                  <div className="absolute top-4 right-4 z-50 bg-red-600/80 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-md">
+                    <AlertCircle size={12} />
+                    <span>Opt Failed</span>
+                  </div>
+                )}
+                <video 
+                  src={asset.url} 
+                  poster={asset.thumbnailUrl}
+                  autoPlay 
+                  muted 
+                  loop 
+                  playsInline 
+                  preload="metadata"
+                  className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700" 
+                />
+              </>
             ) : (
               <img src={asset.url} alt="Creative Payload" className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700" />
             )
@@ -177,7 +187,6 @@ const MediaAdPostCard: React.FC<Props> = ({
             </div>
           )}
 
-          {/* PREMIUM OVERLAY SHADOW GRADIENT TO STAND OUT */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
         </div>
 
@@ -186,7 +195,6 @@ const MediaAdPostCard: React.FC<Props> = ({
           className="p-4 text-sm leading-relaxed font-light text-zinc-100 tracking-wide drop-shadow-sm break-words"
           style={{ transform: "translateZ(25px)" }}
         >
-          {/* The Button floats right inside the block container */}
           {ctaText && (
             <button
               className="float-right ml-4 mb-1.5 px-8 py-2.5 -translate-y-[6px] transition rounded-xl text-[11px] font-black uppercase tracking-widest shadow-xl transform active:scale-[0.99] hover:brightness-110 flex items-center justify-center gap-1.5 whitespace-nowrap select-none"
@@ -201,7 +209,6 @@ const MediaAdPostCard: React.FC<Props> = ({
             </button>
           )}
 
-          {/* Text rendering with inline toggle link */}
           {description ? (
             <>
               <span>{displayedText}</span>

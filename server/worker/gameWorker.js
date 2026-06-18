@@ -25,6 +25,7 @@ console.log("✅ MongoDB Connected");
 
 import "./publishGameWorker.js";
 import "./draftCleanupWorker.js";
+import "./videoWorker.js";
 
 import { registerRepeatJobs } from "./registerRepeatJobs.js";
 

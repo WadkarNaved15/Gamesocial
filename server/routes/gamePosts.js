@@ -27,6 +27,7 @@ import CreditPurchase from "../models/CreditPurchase.js";
 import CreditAudit from "../models/CreditAudit.js";
 import AllPost from "../models/Allposts.js";
 import { publishGameQueue } from "../queues/publishGameQueue.js";
+import { videoProcessingQueue } from "../queues/videoQueue.js"; 
 
 const router = express.Router();
 
@@ -81,7 +82,18 @@ async function runPublishTransaction(draft, creditPurchase, session) {
           runMode: "sandboxed",
           price: 0, // price is credit-based; set to 0
           file: draft.buildFile,
-          videoDemo: draft.videoDemo ?? null,
+          videoDemo: draft.videoDemo ? {
+            name: draft.videoDemo.name,
+            key: draft.videoDemo.key,
+            url: draft.videoDemo.url,
+            size: draft.videoDemo.size,
+            optimizedKey: draft.videoDemo.optimizedKey,
+            optimizedUrl: draft.videoDemo.optimizedUrl,
+            thumbnailUrl: draft.videoDemo.thumbnailUrl,
+            processingStatus:draft.videoDemo.processingStatus || "pending",
+            processingError: draft.videoDemo.processingError,
+            processedAt: draft.videoDemo.processedAt,
+          } : null,
           creditBudget: {
             purchasedCredits: draft.selectedCredits,
             giftedCredits: 0,
@@ -245,6 +257,10 @@ router.post("/draft/:draftId/build", verifyToken, async (req, res) => {
  * POST /game-posts/draft/:draftId/video
  * Called after optional gameplay trailer upload completes.
  */
+/**
+ * POST /game-posts/draft/:draftId/video
+ * Called after optional gameplay trailer upload completes.
+ */
 router.post("/draft/:draftId/video", verifyToken, async (req, res) => {
   try {
     const { name, key, url, size } = req.body;
@@ -254,17 +270,35 @@ router.post("/draft/:draftId/video", verifyToken, async (req, res) => {
         _id: req.params.draftId,
         creator: req.user._id,
         status: {
-          $in: [
-            "draft",
-            "uploading",
-            "ready_for_payment",
-          ],
+          $in: ["draft", "uploading", "ready_for_payment"],
         },
       },
-      { $set: { videoDemo: { name, key, url, size, uploadedAt: new Date() } } },
+      { 
+        $set: { 
+          videoDemo: { 
+            name, 
+            key, 
+            url, 
+            size, 
+            processingStatus: "pending", // Trigger loading state on frontend
+            uploadedAt: new Date() 
+          } 
+        } 
+      },
       { new: true }
     );
     if (!draft) return res.status(404).json({ message: "Draft not found" });
+
+    // 🚀 Dispatch to FFmpeg Worker
+    await videoProcessingQueue.add('optimize-video', {
+      key: key,
+      url: url,
+      entityType: 'game',
+      entityId: draft._id.toString()
+    }, {
+      removeOnComplete: true,
+      attempts: 3
+    });
 
     res.json({ draftId: draft._id, status: draft.status });
   } catch (err) {
@@ -272,7 +306,6 @@ router.post("/draft/:draftId/video", verifyToken, async (req, res) => {
     res.status(500).json({ message: "Failed to update video metadata" });
   }
 });
-
 /**
  * POST /game-posts/draft/:draftId/ready
  * Frontend calls this after uploads finish to advance status to ready_for_payment.

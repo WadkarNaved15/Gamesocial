@@ -25,10 +25,11 @@ interface GameAsset {
 }
 
 interface VideoUploadState {
-  file: File | null ;
+  file: File | null;
   preview: string;
   progress?: number;
-  status?: 'pending' | 'uploading' | 'done' | 'error' | 'cancelled';
+  status?: 'pending' | 'uploading' | 'done' | 'error' | 'cancelled'; // S3 Upload status
+  processingStatus?: 'pending' | 'processing' | 'completed' | 'failed'; // FFmpeg Worker status
 }
 
 type DraftStatus =
@@ -174,15 +175,17 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     }
 
     if (data.videoDemo?.key) {
-      setVideoUpload({
-        file: null as any,
-        preview: data.videoDemo.url,
-        progress: 100,
-        status: "done",
-      });
-    } else {
-      setVideoUpload(null);
-    }
+  setVideoUpload({
+    file: null as any,
+    // Prefer optimized preview if available, fallback to original
+    preview: data.videoDemo.optimizedUrl || data.videoDemo.url, 
+    progress: 100,
+    status: "done",
+    processingStatus: data.videoDemo.processingStatus // Track backend FFmpeg status
+  });
+} else {
+  setVideoUpload(null);
+}
 
     if (data.status === "payment_completed" || data.status === "publishing") {
       setIsPublishing(true);

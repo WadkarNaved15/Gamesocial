@@ -495,6 +495,53 @@ router.post("/:sessionId/cancel", verifyToken, async (req, res) => {
   }
 });
 
+
+/**
+ * POST /api/sessions/cancel-by-token/:token
+ * ✅ Allows the stream page to cancel the session using the subdomain token
+ */
+router.post("/cancel-by-token/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    console.log(`[Session Cancel] Stream requested cancel via token: ${token}`);
+
+    const cached = await cacheService.get(`stream:${token}`);
+    if (!cached) {
+      return res.status(404).json({ error: "Stream token invalid or expired" });
+    }
+
+    const session = await GameSession.findById(cached.sessionId);
+    if (!session) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    // Release the EC2/Bare metal instance if allocated
+    if (session.instanceId && session.leaseToken) {
+      try {
+        await releaseInstance(session.instanceId, session.leaseToken);
+      } catch (err) {
+        console.error("[Cancel by Token] Error releasing instance:", err.message);
+      }
+    }
+
+    // Mark session as ended cleanly
+    await finalizeSession(session, "user_cancelled");
+
+    // Clean up cache
+    await cacheService.del(`stream:${token}`);
+    await cacheService.del(`streamtoken:${session._id}`);
+
+    // Notify SSE clients
+    const send = sessionStreams.get(session._id.toString());
+    if (send) send({ status: "ended", reason: "user_cancelled" });
+
+    return res.json({ message: "Session successfully cancelled" });
+  } catch (err) {
+    console.error("Cancel by token error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 /**
  * POST /api/sessions/:sessionId/abandon/:secret
  * ✅ Beacon endpoint - user closed tab

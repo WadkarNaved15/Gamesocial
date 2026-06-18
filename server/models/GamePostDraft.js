@@ -91,15 +91,45 @@ const GamePostDraftSchema = new mongoose.Schema(
         },
 
         videoDemo: {
-        name: String,
-        key: String,
-        url: String,
-        size: Number,
+          name: String,
 
-        uploadedAt: {
+          // original
+          key: String,
+          url: String,
+
+          // optimized
+          optimizedKey: String,
+          optimizedUrl: String,
+
+          thumbnailUrl: String,
+
+          size: Number,
+
+          processingStatus: {
+            type: String,
+            enum: [
+              "pending",
+              "processing",
+              "completed",
+              "failed",
+            ],
+            default: "pending",
+          },
+
+          processingError: {
+            type: String,
+            default: null,
+          },
+
+          uploadedAt: {
             type: Date,
             default: null,
-        },
+          },
+
+          processedAt: {
+            type: Date,
+            default: null,
+          },
         },
 
     // ── Payment / credits ─────────────────────────────────────────
