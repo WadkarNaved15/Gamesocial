@@ -7,46 +7,32 @@ import React, {
 import axios from "axios";
 import { Loader2, ChevronRight, XCircle, AlertTriangle } from "lucide-react";
 import PrerollAdPostCard from "../ads/PrerollAdPostCard";
+
 type AdWithStatusProps = {
   sessionId: string;
 };
 
 interface Ad {
   _id: string;
-
   brandName: string;
-
   brandLogo?: string | null;
-
   ctaText?: string;
-
   ctaLink?: string;
-
   asset: {
     type: "video";
     url: string;
     name?: string;
+    // 🔥 Added optimization tracking fields
+    optimizedUrl?: string;
+    optimizedKey?: string;
+    processingStatus?: "pending" | "processing" | "completed" | "failed";
   };
-
   mechanics?: {
     duration?: number;
   };
 }
 
 type SessionError = "failed" | "ended" | "stream_error" | null;
-
-
-
-// const stepsMap: { [key: string]: string } = {
-//   waiting: "Preparing Cloud Instance",
-//   assigning: "Assigning Cloud Instance",
-//   starting: "Initializing Session",
-//   downloading: "Downloading Game",
-//   launching: "Launching Game",
-//   running: "Stream Ready",
-//   failed: "Session Failed",
-//   ended: "Session Ended",
-// };
 
 const orderedSteps = [
   "waiting",
@@ -185,6 +171,7 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
 
     return () => clearInterval(interval);
   }, [canSkip]);
+  
   // SSE connection
   useEffect(() => {
     if (!sessionId) return;
@@ -376,6 +363,19 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
     );
   }
 
+  // ─── OPTIMIZATION LOGIC ──────────────────────────────────────────────────────
+  // Pass the optimized URL down if it successfully processed, otherwise play the original
+  const displayAsset = ad.asset ? {
+    ...ad.asset,
+    url: (ad.asset.processingStatus === "completed" && ad.asset.optimizedUrl)
+      ? ad.asset.optimizedUrl
+      : ad.asset.url,
+    // Note: We deliberately drop 'processingStatus' here so the viewer doesn't 
+    // see the "Optimizing..." badge while watching the fallback video!
+    processingStatus: undefined, 
+  } : undefined;
+  // ─────────────────────────────────────────────────────────────────────────────
+
   // ── Main ad screen ─────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 bg-white dark:bg-black z-50 flex flex-col font-sans overflow-hidden select-none">
@@ -388,7 +388,7 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
           brandLogo={ad.brandLogo}
           ctaText={ad.ctaText}
           ctaLink={ad.ctaLink}
-          asset={ad.asset}
+          asset={displayAsset as any} // Cast safely since we stripped the processingStatus
           duration={ad.mechanics?.duration || 15}
         />
 
@@ -397,32 +397,6 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
       {/* BOTTOM CONTROLS */}
       <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-white dark:from-black to-transparent z-20">
         <div className="w-full flex items-end justify-end">
-
-          {/* PROGRESS */}
-          {/* <div className="flex flex-col space-y-2 w-56 bg-white/50 dark:bg-black/20 backdrop-blur-sm p-4 rounded-xl border border-gray-200/50 dark:border-gray-800/50">
-            <div className="flex items-center space-x-2">
-              {sessionStatus !== "running" && (
-                <div className="w-2.5 h-2.5 border-2 border-gray-400 dark:border-gray-500 border-t-gray-700 dark:border-t-gray-200 rounded-full animate-spin flex-shrink-0" />
-              )}
-              <span className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 truncate">
-                {stepsMap[sessionStatus] || sessionStatus}
-              </span>
-            </div>
-            <div className="flex space-x-1 h-[3px] w-full">
-              {orderedSteps.map((_, idx) => (
-                <div
-                  key={idx}
-                  className={`h-full flex-grow rounded-full transition-all duration-700 ${
-                    idx < currentStepIndex
-                      ? "bg-gray-600 dark:bg-gray-300"
-                      : idx === currentStepIndex
-                      ? "bg-gray-400 dark:bg-gray-500 animate-pulse"
-                      : "bg-gray-200 dark:bg-gray-800"
-                  }`}
-                />
-              ))}
-            </div>
-          </div> */}
 
           {/* ACTION BUTTONS */}
           <div className="flex flex-col items-end gap-3">
