@@ -11,7 +11,7 @@ import { toast } from "react-toastify";
 import type { NormalPostProps } from "../../types/Post";
 import { VideoPlaybackContext } from "../../context/VideoPlaybackContext";
 import { useContext } from "react";
-import { Play } from "lucide-react";
+import { Play, Loader2, AlertCircle } from "lucide-react"; // 🔥 Added Icons for processing state
 import { trackEvent } from "../../utils/analytics";
 
 const NormalPost: React.FC<NormalPostProps> = ({
@@ -48,10 +48,29 @@ const NormalPost: React.FC<NormalPostProps> = ({
     handleWishlist
   } = useWishlist(_id, BACKEND_URL);
 
-  const assets = normalPost?.assets || [];
+  const rawAssets = normalPost?.assets || [];
+
+  // ─── VIDEO OPTIMIZATION MAPPING ──────────────────────────────────────────────
+  // Intercept the raw assets and swap the URL to the optimized version if ready.
+  // This ensures the grid AND the MediaViewer both get the fast-loading 3MB video.
+  const displayAssets = useMemo(() => {
+    return rawAssets.map(asset => {
+      const isVideo = asset.type === "video";
+      const isCompleted = isVideo && asset.processingStatus === "completed";
+      
+      const displayUrl = (isCompleted && asset.optimizedUrl) ? asset.optimizedUrl : asset.url;
+      
+      return {
+        ...asset,
+        url: displayUrl, // Overridden with the smartest available URL
+      };
+    });
+  }, [rawAssets]);
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const primaryVideoIndex = useMemo(() => {
-    return assets.findIndex(a => a.type === "video");
-  }, [assets]);
+    return displayAssets.findIndex(a => a.type === "video");
+  }, [displayAssets]);
 
   /* -------------------- TIME FORMAT -------------------- */
   const getRelativeTime = (date: string | Date) => {
@@ -134,7 +153,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
 
   useEffect(() => {
     videoRefs.current = [];
-  }, [assets]);
+  }, [displayAssets]);
 
   useEffect(() => {
     if (!viewerOpen) return;
@@ -215,7 +234,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
           )}
 
           {/* -------------------- X STYLE MEDIA GRID -------------------- */}
-          {assets.length > 0 && (
+          {displayAssets.length > 0 && (
             <div
               className={`
                 group relative
@@ -226,7 +245,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
                 overflow-hidden
                 border border-white/[0.08]
                 grid
-                ${getGridClass(assets.length)}
+                ${getGridClass(displayAssets.length)}
                 gap-[2px]
                 bg-black/20
                 mb-4
@@ -236,51 +255,72 @@ const NormalPost: React.FC<NormalPostProps> = ({
                 onOpenDetails?.();
               }}
             >
-              {assets.slice(0, 4).map((asset, index) => (
-                <div
-                  key={index}
-                  className={`
-                    relative w-full h-full
-                    ${assets.length === 3 && index === 0 ? "row-span-2" : ""}
-                 `}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setViewerIndex(index);
-                    setViewerOpen(true);
-                  }}
-                >
-                  {asset.type === "video" ? (
-                    <div className="w-full h-full overflow-hidden relative group">
-                      <video
-                        ref={(el) => {
-                          if (el) {
-                            videoRefs.current[index] = el;
-                          }
-                        }}
-                        muted
-                        playsInline
-                        loop
-                        preload="metadata"
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        src={asset.url}
-                      />
+              {displayAssets.slice(0, 4).map((asset, index) => {
+                const isProcessing = asset.type === "video" && (asset.processingStatus === "pending" || asset.processingStatus === "processing");
+                const isFailed = asset.type === "video" && asset.processingStatus === "failed";
 
-                      {asset.type === "video" && index !== primaryVideoIndex && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/10">
-                          <Play className="h-10 w-10 text-white/80 drop-shadow-md" />
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <img
-                      src={asset.url}
-                      alt={asset.name}
-                      loading="lazy"
-                      className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-                    />
-                  )}
-                </div>
-              ))}
+                return (
+                  <div
+                    key={index}
+                    className={`
+                      relative w-full h-full
+                      ${displayAssets.length === 3 && index === 0 ? "row-span-2" : ""}
+                    `}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewerIndex(index);
+                      setViewerOpen(true);
+                    }}
+                  >
+                    {asset.type === "video" ? (
+                      <div className="w-full h-full overflow-hidden relative group">
+                        
+                        {/* Creator Processing Overlay */}
+                        {isOwner && isProcessing && (
+                          <div className="absolute top-2 right-2 z-10 bg-black/70 text-white text-[9px] font-bold px-2 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-md border border-white/10">
+                            <Loader2 size={10} className="animate-spin text-sky-400" />
+                            <span>Optimizing...</span>
+                          </div>
+                        )}
+                        {isOwner && isFailed && (
+                          <div className="absolute top-2 right-2 z-10 bg-red-600/80 text-white text-[9px] font-bold px-2 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-md border border-white/10">
+                            <AlertCircle size={10} />
+                            <span>Opt Failed</span>
+                          </div>
+                        )}
+
+                        <video
+                          ref={(el) => {
+                            if (el) {
+                              videoRefs.current[index] = el;
+                            }
+                          }}
+                          muted
+                          playsInline
+                          loop
+                          preload="metadata"
+                          poster={asset.thumbnailUrl} // 🔥 Generated thumbnail prevents black boxes
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          src={asset.url}
+                        />
+
+                        {asset.type === "video" && index !== primaryVideoIndex && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/10">
+                            <Play className="h-10 w-10 text-white/80 drop-shadow-md" />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <img
+                        src={asset.url}
+                        alt={asset.name}
+                        loading="lazy"
+                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -302,7 +342,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
           )}
           {viewerOpen && (
             <MediaViewer
-              assets={assets}
+              assets={displayAssets} // 🔥 Pass mapped assets so the modal plays optimized versions
               startIndex={viewerIndex}
               onClose={() => setViewerOpen(false)}
             />

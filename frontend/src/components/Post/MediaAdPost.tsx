@@ -6,6 +6,7 @@ type Props = MediaAdPostProps & {
   onOpenDetails?: () => void;
 };
 type CardTheme = "glass" | "gradient" | "minimal";
+
 /**
  * Utility to convert saved database Hex colors to RGB string channels
  * This satisfies the real-time translucent box-shadow engines in the card UI
@@ -51,6 +52,19 @@ const MediaAdPost: React.FC<Props> = ({
   // Derive the required rgb variant for shadows and glows
   const rgbAccent = hexToRgbString(accentColor);
 
+  // ─── VIDEO OPTIMIZATION FALLBACK ───
+  const isVideo = asset?.type === "video";
+  const isVideoCompleted = asset?.processingStatus === "completed";
+
+  const displayUrl = (isVideo && isVideoCompleted && asset?.optimizedUrl)
+    ? asset.optimizedUrl
+    : asset?.url;
+
+  const displayAsset = asset ? {
+    ...asset,
+    url: displayUrl, 
+  } : undefined;
+
   return (
     <article
       // onClick={() => onOpenDetails?.()}
@@ -66,10 +80,6 @@ const MediaAdPost: React.FC<Props> = ({
         flex justify-center
       "
     >
-      {/* This wrapper is now full width, meaning it matches NormalPost exactly.
-        If your feed container has its own max-width constraints (e.g. max-w-2xl), 
-        this will scale smoothly to fill it.
-      */}
       <div className="w-full">
         <MediaAdPostCard
           brandName={brandName}
@@ -77,12 +87,12 @@ const MediaAdPost: React.FC<Props> = ({
           description={description}
           ctaText={ctaText}
           ctaLink={ctaLink}
-          asset={asset}
+          asset={displayAsset}
           accentColor={accentColor}
           useGlowEffect={useGlowEffect}
           cardLayoutTheme={cardLayoutTheme}
           rgbAccent={rgbAccent}
-          interactiveTilt={true} // Feed activation: users get interactive feedback during scroll sequences
+          interactiveTilt={true} 
         />
       </div>
     </article>

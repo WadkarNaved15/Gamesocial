@@ -90,8 +90,19 @@ const GamePost: React.FC<GamePostProps> = ({
         ? "Complete or cancel current session first."
         : "";
 
-  const videoUrl = gamePost?.videoDemo?.url;
+  // ─── VIDEO OPTIMIZATION LOGIC ────────────────────────────────────────────────
+  const videoDemo = gamePost?.videoDemo;
+  const processingStatus = videoDemo?.processingStatus;
+  
+  const isVideoProcessing = processingStatus === 'pending' || processingStatus === 'processing';
+  const isVideoCompleted = processingStatus === 'completed';
+  const isVideoFailed = processingStatus === 'failed';
+
+  // Fallback pattern: Prefer optimized URL if ready, otherwise use original URL.
+  const videoUrl = isVideoCompleted && videoDemo?.optimizedUrl ? videoDemo.optimizedUrl : videoDemo?.url;
+  const thumbnailUrl = videoDemo?.thumbnailUrl;
   const hasVideo = !!videoUrl;
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const totalCredits = (gamePost.creditBudget?.usedCredits || 0) + (gamePost.creditBudget?.remainingCredits || 0);
   const possibleSessions = Math.floor(totalCredits / 10);
@@ -322,9 +333,25 @@ const GamePost: React.FC<GamePostProps> = ({
 
                   {hasVideo ? (
                     <>
+                      {/* Creator Upload/Processing Status Overlay */}
+                      {isOwner && isVideoProcessing && (
+                        <div className="absolute top-4 right-4 z-50 bg-black/70 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-md">
+                          <Loader2 size={12} className="animate-spin text-[#3D7A6E]" />
+                          <span>Optimizing Trailer...</span>
+                        </div>
+                      )}
+
+                      {isOwner && isVideoFailed && (
+                        <div className="absolute top-4 right-4 z-50 bg-red-600/80 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-md">
+                          <AlertCircle size={12} />
+                          <span>Optimization failed (Original playing)</span>
+                        </div>
+                      )}
+
                       <video
                         ref={videoRef}
                         src={videoUrl}
+                        poster={thumbnailUrl} // Loads instantly while video buffers
                         muted={isMuted}
                         loop
                         playsInline

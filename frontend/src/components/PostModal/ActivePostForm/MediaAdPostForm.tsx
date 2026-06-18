@@ -83,7 +83,22 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
   const handleMedia = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    
     const isVideo = file.type.startsWith("video");
+
+    // Catch limits before hitting the backend
+    if (isVideo && file.size > 50 * 1024 * 1024) {
+      alert("Video is too large. Maximum allowed size is 50 MB."); // Replace with your toast notification
+      e.target.value = "";
+      return;
+    }
+    
+    if (!isVideo && file.size > 5 * 1024 * 1024) {
+      alert("Image is too large. Maximum allowed size is 5 MB."); // Replace with your toast notification
+      e.target.value = "";
+      return;
+    }
+
     setAsset({
       type: isVideo ? "video" : "image",
       file,
@@ -93,7 +108,7 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
     e.target.value = "";
   };
 
-  const uploadAssetToS3 = async (
+ const uploadAssetToS3 = async (
     file: File,
     onProgress: (p: number) => void
   ) => {
@@ -104,6 +119,7 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
         fileName: file.name,
         fileType: file.type,
         category: "media",
+        subcategory: "post", 
         fileSize: file.size,
       }),
     });

@@ -1,31 +1,67 @@
 import mongoose from "mongoose";
 
 const PrerollAdAssetSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true,
-    },
-
-    type: {
-      type: String,
-      enum: ["video"],
-      default: "video",
-    },
-
-    url: {
-      type: String,
-      required: true,
-    },
-
-    key: {
-      type: String,
-      required: true,
-    },
-
-    sizeMB: Number,
+{
+  name: {
+    type: String,
+    required: true,
   },
-  { _id: false }
+
+  type: {
+    type: String,
+    enum: ["video"],
+    default: "video",
+  },
+
+  // Original upload
+  url: {
+    type: String,
+    required: true,
+  },
+
+  key: {
+    type: String,
+    required: true,
+  },
+
+  // Optimized version
+  optimizedUrl: {
+    type: String,
+    default: null,
+  },
+
+  optimizedKey: {
+    type: String,
+    default: null,
+  },
+
+  thumbnailUrl: {
+    type: String,
+    default: null,
+  },
+
+  sizeMB: Number,
+
+  optimizedSizeMB: Number,
+
+  processing: {
+    status: {
+      type: String,
+      enum: [
+        "pending",
+        "processing",
+        "completed",
+        "failed"
+      ],
+      default: "pending",
+    },
+
+    error: String,
+
+    processedAt: Date,
+  },
+},
+{ _id: false }
 );
 
 const PrerollAdSchema = new mongoose.Schema(

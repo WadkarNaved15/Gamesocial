@@ -100,17 +100,52 @@ const ModelPostSchema = new mongoose.Schema(
 const NormalPostSchema = new mongoose.Schema(
   {
     assets: [
-      {
-        name: String,
-        url: String,
-        key: String,
-        type: {
-          type: String,
-          enum: ["image", "video"],
-          required: true,
-        },
-      },
+  {
+    name: String,
+
+    type: {
+      type: String,
+      enum: ["image", "video"],
+      required: true,
+    },
+
+    // original
+    url: String,
+    key: String,
+
+    // video only
+    optimizedUrl: String,
+    optimizedKey: String,
+
+    thumbnailUrl: String,
+
+    processingStatus: {
+    type: String,
+    enum: [
+      "pending",
+      "processing",
+      "completed",
+      "failed",
     ],
+    default: "pending",
+  },
+
+  processingError: {
+    type: String,
+    default: null,
+  },
+
+  uploadedAt: {
+    type: Date,
+    default: null,
+  },
+
+  processedAt: {
+    type: Date,
+    default: null,
+  },
+  },
+],
   },
   { _id: false }
 );
@@ -160,11 +195,70 @@ const GamePostSchema = new mongoose.Schema(
       min: [0, "Price cannot be negative"],
     },
     videoDemo: {
-      name: String,
-      key: String,
-      url: String,
-      size: Number,
-    },
+  name: {
+    type: String,
+    default: null,
+  },
+
+  // Original upload
+  key: {
+    type: String,
+    default: null,
+  },
+
+  url: {
+    type: String,
+    default: null,
+  },
+
+  // Optimized video
+  optimizedKey: {
+    type: String,
+    default: null,
+  },
+
+  optimizedUrl: {
+    type: String,
+    default: null,
+  },
+
+  // Generated thumbnail
+  thumbnailUrl: {
+    type: String,
+    default: null,
+  },
+
+  size: {
+    type: Number,
+    default: null,
+  },
+
+  processingStatus: {
+    type: String,
+    enum: [
+      "pending",
+      "processing",
+      "completed",
+      "failed",
+    ],
+    default: "pending",
+  },
+
+  processingError: {
+    type: String,
+    default: null,
+  },
+
+  uploadedAt: {
+    type: Date,
+    default: null,
+  },
+
+  processedAt: {
+    type: Date,
+    default: null,
+  },
+},
     systemRequirements: {
       ramGB: { type: Number, min: 1 },
       cpuCores: { type: Number, min: 1 },
@@ -411,21 +505,74 @@ const AdModelPostSchema = new mongoose.Schema(
    AD MEDIA POST SCHEMA  ⭐ NEW
 ====================================================== */
 const MediaAdAssetSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true },
-
-    type: {
-      type: String,
-      enum: ["image", "video"],
-      required: true,
-    },
-
-    url: { type: String, required: true },
-    key: { type: String, required: true },
-
-    sizeMB: Number,
+{
+  name: {
+    type: String,
+    required: true,
   },
-  { _id: false }
+
+  type: {
+    type: String,
+    enum: ["image", "video"],
+    required: true,
+  },
+
+  // Original asset
+  url: {
+    type: String,
+    required: true,
+  },
+
+  key: {
+    type: String,
+    required: true,
+  },
+
+  // Video-only fields
+  optimizedUrl: {
+    type: String,
+    default: null,
+  },
+
+  optimizedKey: {
+    type: String,
+    default: null,
+  },
+
+  thumbnailUrl: {
+    type: String,
+    default: null,
+  },
+
+  sizeMB: Number,
+
+  processingStatus: {
+    type: String,
+    enum: [
+      "pending",
+      "processing",
+      "completed",
+      "failed",
+    ],
+    default: "pending",
+  },
+
+  processingError: {
+    type: String,
+    default: null,
+  },
+
+  uploadedAt: {
+    type: Date,
+    default: null,
+  },
+
+  processedAt: {
+    type: Date,
+    default: null,
+  },
+},
+{ _id: false }
 );
 
 const MediaAdPostSchema = new mongoose.Schema(

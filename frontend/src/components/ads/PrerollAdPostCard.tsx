@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Loader2, AlertCircle } from "lucide-react"; // 🔥 Added icons
 
 type VideoAsset = {
     type: "video";
     url: string;
     name?: string;
+    processingStatus?: "pending" | "processing" | "completed" | "failed"; // 🔥 Added status
+    thumbnailUrl?: string; // 🔥 Added thumbnail
 };
 
 interface Props {

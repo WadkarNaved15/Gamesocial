@@ -39,7 +39,15 @@ export interface ModelMetadata {
 export interface NormalPostAsset {
   name: string;
   url: string;
+  key?: string;
   type: 'image' | 'video';
+  
+  // New Video Optimization Fields
+  optimizedUrl?: string;
+  optimizedKey?: string;
+  thumbnailUrl?: string;
+  processingStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+  processingError?: string;
 }
 
 export interface OptimizationInfo {
@@ -174,6 +182,19 @@ export interface GamePost {
   price: number;
   systemRequirements?: GameSystemRequirements;
   file: GameFile;
+  
+  // Add the video demo typing here
+  videoDemo?: {
+    name: string;
+    key?: string;
+    url: string;
+    size?: number;
+    optimizedUrl?: string;
+    optimizedKey?: string;
+    thumbnailUrl?: string;
+    processingStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+    processingError?: string;
+  } | null;
 }
 
 export interface GamePostProps extends CommonPostFields {
@@ -198,10 +219,6 @@ export interface AdModelPostProps extends CommonPostFields {
 }
 
 // ── Pocket post ────────────────────────────────────────────────────────────────
-// Extends CommonPostFields so it has `type` — required for the discriminated union.
-// feed.service.js sets type: "pocket_update" when normalising PocketFeedEntry rows.
-// The flat props (brandName, tagline, compiledBundleUrl) are set by the same
-// normalisation step so PocketPost.tsx can read them directly.
 
 export interface PocketPostProps extends CommonPostFields {
   type: 'pocket_update';
@@ -209,8 +226,8 @@ export interface PocketPostProps extends CommonPostFields {
   tagline?:          string;
   compiledBundleUrl: string;
 }
+
 export interface MediaAdPostProps extends CommonPostFields {
- 
   type: 'media_ad_post';
   mediaAdPost: {
     _id: string;
@@ -224,6 +241,11 @@ export interface MediaAdPostProps extends CommonPostFields {
       type: 'image' | 'video';
       url: string;
       key?: string;
+      optimizedUrl?: string;
+      optimizedKey?: string;
+      thumbnailUrl?: string;
+      processingStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+      processingError?: string;
     };
     style?: {
       accentColor?: string;

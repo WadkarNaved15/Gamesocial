@@ -8,6 +8,8 @@ import Comment from "../models/Comment.js";
 import Wishlist from "../models/Wishlist.js";
 import Notification from "../models/Notifications.js";
 import { extractS3KeyFromUrl } from "../utils/extractS3Key.js";
+import { videoProcessingQueue } from "../queues/videoQueue.js"; // Adjust path
+
 function deriveBuildType(fileFormat) {
   if (fileFormat === "exe") return "executable";
   return "archive";
@@ -45,14 +47,33 @@ export const createPost = async (req, res) => {
         description,
         type: "normal_post",
         normalPost: {
-          assets: assets.map((asset) => ({
-            name: asset.name,
-            url: asset.url,
-            key: asset.key,
-            type: asset.type,
-          })),
+          assets: assets.map((asset) => {
+            const isVideo = asset.type === "video";
+            return {
+              name: asset.name,
+              url: asset.url,
+              key: asset.key,
+              type: asset.type,
+              ...(isVideo && { processingStatus: "pending" }) // Set initial status
+            };
+          }),
         },
       });
+
+      // 🚀 Dispatch to FFmpeg Worker for any videos
+      for (const asset of post.normalPost.assets) {
+        if (asset.type === "video") {
+          await videoProcessingQueue.add('optimize-video', {
+            key: asset.key,
+            url: asset.url,
+            entityType: 'post',
+            entityId: post._id.toString()
+          }, {
+            removeOnComplete: true,
+            attempts: 3
+          });
+        }
+      }
 
       // ✅ GORSE: sync new post (fire-and-forget)
       onPostCreated(post);
@@ -390,6 +411,8 @@ export const createPost = async (req, res) => {
         });
       }
 
+      const isVideo = mediaAdPost.asset.type === "video";
+
       // ───────── CREATE POST ─────────
       const post = await AllPost.create({
         user: req.user.id,
@@ -405,10 +428,11 @@ export const createPost = async (req, res) => {
           ctaLink: ctaLink || "",
 
           asset: {
-            name: asset.name,
-            type: asset.type,
-            url: asset.url,
-            key: asset.key,
+            name: mediaAdPost.asset.name,
+            type: mediaAdPost.asset.type,
+            url: mediaAdPost.asset.url,
+            key: mediaAdPost.asset.key,
+            ...(isVideo && { processingStatus: "pending" }) // Set initial status
           },
 
           style: {
@@ -423,6 +447,18 @@ export const createPost = async (req, res) => {
           },
         },
       });
+
+      if (isVideo) {
+        await videoProcessingQueue.add('optimize-video', {
+          key: mediaAdPost.asset.key,
+          url: mediaAdPost.asset.url,
+          entityType: 'media_ad',
+          entityId: post._id.toString()
+        }, {
+          removeOnComplete: true,
+          attempts: 3
+        });
+      }
 
       // optional analytics hook (same pattern as others)
       onPostCreated(post);
@@ -468,25 +504,25 @@ export const deletePost = async (req, res) => {
 
     const keysToDelete = [];
 
+    const getThumbnailKey = (thumbUrl) => {
+      if (!thumbUrl) return null;
+      return extractS3KeyFromUrl(thumbUrl);
+    };
+
     // NORMAL POST
-    if (
-      post.type === "normal_post" &&
-      post.normalPost?.assets?.length
-    ) {
+    if (post.type === "normal_post" && post.normalPost?.assets?.length) {
       for (const asset of post.normalPost.assets) {
-
-        // NEW POSTS
-        if (asset.key) {
-          keysToDelete.push(asset.key);
-        }
-
-        // OLD POSTS
+        if (asset.key) keysToDelete.push(asset.key);
         else if (asset.url) {
           const extractedKey = extractS3KeyFromUrl(asset.url);
+          if (extractedKey) keysToDelete.push(extractedKey);
+        }
 
-          if (extractedKey) {
-            keysToDelete.push(extractedKey);
-          }
+        // Add optimized files & thumbnails to deletion array
+        if (asset.optimizedKey) keysToDelete.push(asset.optimizedKey);
+        if (asset.thumbnailUrl) {
+          const thumbKey = getThumbnailKey(asset.thumbnailUrl);
+          if (thumbKey) keysToDelete.push(thumbKey);
         }
       }
     }
@@ -495,42 +531,29 @@ export const deletePost = async (req, res) => {
     // GAME POST FILE
     // =====================================================
 
-    if (
-      post.type === "game_post" &&
-      post.gamePost?.file
-    ) {
-
-
-      // NEW POSTS (with key stored)
-      if (post.gamePost.file.key) {
-        keysToDelete.push(post.gamePost.file.key);
+   if (post.type === "game_post") {
+      // 1. Build File
+      if (post.gamePost?.file) {
+        if (post.gamePost.file.key) {
+          keysToDelete.push(post.gamePost.file.key);
+        } else if (post.gamePost.file.url) {
+          let extractedKey = post.gamePost.file.url.startsWith("/") 
+            ? post.gamePost.file.url.replace(/^\/+/, "")
+            : extractS3KeyFromUrl(post.gamePost.file.url);
+          if (extractedKey) keysToDelete.push(extractedKey);
+        }
       }
 
-      // OLD POSTS (without key)
-      else if (post.gamePost.file.url) {
-
-        let extractedKey = null;
-
-        // OLD GAME URL FORMAT:
-        // "/games/builds/uuid-file.zip"
-
-        if (post.gamePost.file.url.startsWith("/")) {
-          extractedKey = post.gamePost.file.url.replace(/^\/+/, "");
-        }
-
-        // FULL CDN URL FORMAT
-        else {
-          extractedKey = extractS3KeyFromUrl(
-            post.gamePost.file.url
-          );
-        }
-
-        if (extractedKey) {
-          keysToDelete.push(extractedKey);
+      // 2. Trailer Video
+      if (post.gamePost?.videoDemo) {
+        if (post.gamePost.videoDemo.key) keysToDelete.push(post.gamePost.videoDemo.key);
+        if (post.gamePost.videoDemo.optimizedKey) keysToDelete.push(post.gamePost.videoDemo.optimizedKey);
+        if (post.gamePost.videoDemo.thumbnailUrl) {
+          const thumbKey = getThumbnailKey(post.gamePost.videoDemo.thumbnailUrl);
+          if (thumbKey) keysToDelete.push(thumbKey);
         }
       }
     }
-
     // =====================================================
     // MODEL POST FILES
     // =====================================================

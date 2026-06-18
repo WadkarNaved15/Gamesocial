@@ -30,12 +30,20 @@ const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
 
-  const handleMedia = (e: ChangeEvent<HTMLInputElement>) => {
+const handleMedia = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("video/")) {
       alert("Pre-roll placements strictly accept video payloads only.");
+      e.target.value = "";
+      return;
+    }
+
+    // Catch limits before hitting the backend
+    if (file.size > 50 * 1024 * 1024) {
+      alert("Video is too large. Maximum allowed size is 50 MB."); // Replace with your toast notification
+      e.target.value = "";
       return;
     }
 
@@ -44,9 +52,10 @@ const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack 
       url: URL.createObjectURL(file),
       name: file.name,
     });
+    e.target.value = "";
   };
 
-  const uploadAssetToS3 = async (
+const uploadAssetToS3 = async (
     file: File,
     onProgress: (p: number) => void
   ) => {
@@ -59,6 +68,7 @@ const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack 
         fileName: file.name,
         fileType: file.type,
         category: "media",
+        subcategory: "post", 
         fileSize: file.size,
       }),
     });

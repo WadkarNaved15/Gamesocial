@@ -29,22 +29,36 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
-  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
     const remainingSlots = 4 - assets.length;
     const filesArray = Array.from(files).slice(0, remainingSlots);
-    const filesToProcess = await Promise.all(
-      filesArray.map(async (file) => {
-        if (file.type.startsWith("image/")) {
-          return await compressImage(file); // 🔥 COMPRESS HERE
-        }
-        return file; // videos untouched
-      })
-    );
+    const validFilesToProcess: File[] = [];
 
-    const newAssets: Asset[] = filesToProcess.map((file) => ({
+    // Process and validate each file
+    for (const file of filesArray) {
+      const isVideo = file.type.startsWith("video/");
+      
+      if (isVideo) {
+        if (file.size > 50 * 1024 * 1024) {
+          alert(`Video "${file.name}" exceeds the 50MB limit.`); // Replace with your toast UI
+          continue;
+        }
+        validFilesToProcess.push(file);
+      } else {
+        // It's an image, compress it first
+        const compressedFile = await compressImage(file);
+        if (compressedFile.size > 5 * 1024 * 1024) {
+          alert(`Image "${file.name}" is still over 5MB after compression.`); // Replace with toast
+          continue;
+        }
+        validFilesToProcess.push(compressedFile);
+      }
+    }
+
+    const newAssets: Asset[] = validFilesToProcess.map((file) => ({
       id: crypto.randomUUID(),
       file,
       previewUrl: URL.createObjectURL(file),
@@ -59,6 +73,8 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
     e.target.value = "";
   };
 
+
+
   const uploadAssetToS3 = async (asset: Asset, onProgress: (percent: number) => void): Promise<{ fileUrl: string; key: string }> => {
     // 1. Get the presigned URL
     const res = await fetch(`${BACKEND_URL}/api/upload/presigned-url`, {
@@ -67,7 +83,8 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
       body: JSON.stringify({
         fileName: asset.file.name,
         fileType: asset.file.type,
-        category: "media", // "image" | "video"
+        category: "media", 
+        subcategory: "post", 
         fileSize: asset.file.size,
       }),
     });
