@@ -1,25 +1,18 @@
-import { useState ,useEffect } from "react";
-import { FaTimes } from "react-icons/fa";
+import { useState } from "react";
+import { FaTimes, FaRegCommentDots } from "react-icons/fa";
 
 interface FeedbackModalProps {
   isOpen: boolean;
-  screenshot?: File | null;
   onClose: () => void;
 }
 
-export default function FeedbackModal({ isOpen,screenshot, onClose }: FeedbackModalProps) {
+export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
   const [category, setCategory] = useState("");
   const [feedback, setFeedback] = useState("");
-  const [image, setImage] = useState<File | null>(screenshot || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
-      useEffect(() => {
-    // if screenshot changes (Ctrl+Shift+F), show it
-    setImage(screenshot || null);
-  }, [screenshot]);
 
   if (!isOpen) return null;
 
@@ -34,16 +27,17 @@ export default function FeedbackModal({ isOpen,screenshot, onClose }: FeedbackMo
     setSuccess("");
 
     try {
-      const formData = new FormData();
-    formData.append("category", category);
-    formData.append("message", feedback);
-    if (image) formData.append("attachment", image);
-
-    const res = await fetch(`${BACKEND_URL}/api/feedback`, {
-      method: "POST",
-      credentials: "include",
-      body: formData,
-    });
+      const res = await fetch(`${BACKEND_URL}/api/feedback`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          category,
+          message: feedback.trim(),
+        }),
+      });
 
       const data = await res.json();
 
@@ -56,7 +50,7 @@ export default function FeedbackModal({ isOpen,screenshot, onClose }: FeedbackMo
         setTimeout(() => {
           onClose();
           setSuccess("");
-        }, 1000);
+        }, 1200);
       }
     } catch (err) {
       setError("Failed to submit feedback. Please try again.");
@@ -66,108 +60,133 @@ export default function FeedbackModal({ isOpen,screenshot, onClose }: FeedbackMo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="bg-gradient-to-b from-[#0A1714] via-[#1F4D44] to-[#3D7A6E] 
-                      text-white w-full max-w-lg rounded-xl shadow-2xl p-6 relative">
+    // Backdrop blur (keeps background readable but soft)
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300">
+      
+      {/* Main Glassmorphic Card with the rich green gradient */}
+      <div className="relative w-full max-w-lg mx-4 overflow-hidden rounded-2xl p-7 text-white shadow-[0_25px_50px_-12px_rgba(0,0,0,0.6)]">
+        
+        {/* 
+          Gradient + Frosted Layer:
+          1. Sets the rich green/teal gradient from the previous theme.
+          2. Reduces opacity slightly (/80).
+          3. Applies heavy backdrop blur for the glass effect.
+        */}
+        <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#0A1714]/80 via-[#1F4D44]/80 to-[#3D7A6E]/80 backdrop-blur-xl" />
 
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-300 hover:text-red-400 transition"
-        >
-          <FaTimes size={18} />
-        </button>
+        {/* 
+          Double Border "Light" Refraction effect:
+          - An outer very thin faint white border.
+          - An inner pseudo-element with a top-down light gradient to simulate edge catching light.
+        */}
+        <div className="absolute inset-0 z-10 border border-white/[0.08] rounded-2xl pointer-events-none
+                        before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-b 
+                        before:from-white/[0.05] before:to-transparent before:-z-10" />
 
-        {/* Header */}
-        <h2 className="text-xl font-semibold mb-2">Give Feedback</h2>
-        <p className="text-sm text-gray-200 mb-4">
-          Help us improve by sharing your thoughts. You can suggest features, report issues,
-          or just tell us what you think about the app.
-        </p>
-
-        {/* Show messages */}
-        {error && <p className="text-red-400 text-sm mb-2">{error}</p>}
-        {success && <p className="text-green-400 text-sm mb-2">{success}</p>}
-
-        {/* Category Select */}
-        <label className="block text-sm font-medium mb-1">Category</label>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="w-full p-2 rounded-lg bg-[#0A1714]/80 border border-gray-500 
-                     focus:ring-2 focus:ring-red-500 text-white text-sm mb-4"
-        >
-          <option value="">Please select a category</option>
-          <option value="Feature Request">Feature Request</option>
-          <option value="Bug Report">Bug Report</option>
-          <option value="Purchase and Payment Issue">Purchase and Payment Issue</option>
-          <option value="Other">Other</option>
-        </select>
-
-        {/* Image upload */}
-<div className="mb-4">
-  <label className="block text-sm font-medium mb-1">Attach image (optional)</label>
-  <input
-    type="file"
-    accept="image/*"
-    onChange={(e) => {
-      const file = e.target.files?.[0];
-      if (file) setImage(file);
-    }}
-    className="block w-full text-sm text-gray-300
-               file:mr-4 file:py-2 file:px-4
-               file:rounded file:border-0
-               file:text-sm file:font-semibold
-               file:bg-red-500 file:text-white
-               hover:file:bg-red-600"
-  />
-
-  {image && (
-    <div className="mt-2">
-      <img
-        src={URL.createObjectURL(image)}
-        alt="Selected attachment"
-        className="max-h-40 rounded border"
-      />
-      <button
-        type="button"
-        className="text-xs text-red-400 mt-1 underline"
-        onClick={() => setImage(null)}
-      >
-        Remove
-      </button>
-    </div>
-  )}
-</div>
-
-
-        {/* Feedback textarea */}
-        <label className="block text-sm font-medium mb-1">Feedback</label>
-        <textarea
-          value={feedback}
-          onChange={(e) => setFeedback(e.target.value)}
-          placeholder="Write your feedback here..."
-          className="w-full h-28 p-3 rounded-lg bg-[#0A1714]/80 border border-gray-500 
-                     focus:ring-2 focus:ring-red-500 text-white text-sm resize-none mb-6"
-        />
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3">
+        {/* Content (Set relative and z-20 to sit above the glass layer) */}
+        <div className="relative z-20">
+          {/* Close Button */}
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-gray-500 
-                       hover:bg-gray-700/50 transition text-sm"
+            className="absolute top-0 right-0 text-gray-300 hover:text-red-400 transition-colors duration-200 p-1.5 rounded-lg hover:bg-white/[0.05]"
+            aria-label="Close modal"
           >
-            Cancel
+            <FaTimes size={18} />
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="px-4 py-2 rounded-lg bg-red-500 text-white font-medium 
-                       hover:bg-red-600 transition text-sm disabled:opacity-50"
-          >
-            {loading ? "Submitting..." : "Submit"}
-          </button>
+
+          {/* Header Section */}
+          <div className="flex items-start gap-4 mb-5">
+            <div className="p-2.5 bg-red-500/10 text-red-400 rounded-xl border border-red-500/20 mt-1 shadow-inner">
+              <FaRegCommentDots size={22} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-white drop-shadow-sm">Give Feedback</h2>
+              <p className="text-xs text-gray-200 mt-1">
+                Press <kbd className="px-1.5 py-0.5 bg-white/[0.08] border border-white/[0.1] rounded text-[10px] font-mono text-gray-200 shadow-sm">Ctrl + Shift + F</kbd> anywhere to open.
+              </p>
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-100 mb-6 leading-relaxed">
+            Help us improve by sharing your thoughts. You can suggest features, report bugs, or just tell us what you think.
+          </p>
+
+          {/* Alert Messages */}
+          {error && (
+            <div className="mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm backdrop-blur-sm">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="mb-4 p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-sm backdrop-blur-sm">
+              {success}
+            </div>
+          )}
+
+          {/* Category Select */}
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-gray-200 uppercase tracking-wider mb-2">
+              Category
+            </label>
+            <div className="relative">
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full p-3 rounded-xl bg-black/30 border border-white/[0.08] 
+                          focus:border-red-500/50 focus:ring-4 focus:ring-red-500/10 text-white text-sm 
+                          outline-none transition-all duration-200 cursor-pointer appearance-none shadow-inner"
+                style={{ 
+                  backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23d1d5db' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>")`, 
+                  backgroundPosition: 'right 16px center', 
+                  backgroundSize: '16px', 
+                  backgroundRepeat: 'no-repeat' 
+                }}
+              >
+                {/* Keep native option backgrounds dark for readability */}
+                <option value="" className="bg-[#0A1714]">Select a category</option>
+                <option value="Feature Request" className="bg-[#0A1714]">Feature Request</option>
+                <option value="Bug Report" className="bg-[#0A1714]">Bug Report</option>
+                <option value="Purchase and Payment Issue" className="bg-[#0A1714]">Purchase & Payment Issue</option>
+                <option value="Other" className="bg-[#0A1714]">Other</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Feedback Textarea */}
+          <div className="mb-6">
+            <label className="block text-xs font-semibold text-gray-200 uppercase tracking-wider mb-2">
+              Your Message
+            </label>
+            <textarea
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="Describe your issue or suggestion in detail..."
+              className="w-full h-32 p-3.5 rounded-xl bg-black/30 border border-white/[0.08] 
+                        focus:border-red-500/50 focus:ring-4 focus:ring-red-500/10 text-white text-sm 
+                        resize-none outline-none transition-all duration-200 placeholder-gray-400 
+                        leading-relaxed shadow-inner"
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-white/[0.06]">
+            <button
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-xl border border-white/[0.08] text-gray-200 font-medium
+                        hover:bg-white/[0.05] hover:text-white transition-all duration-200 text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 text-white font-semibold 
+                        shadow-[0_4px_20px_rgba(239,68,68,0.3)] hover:brightness-110 active:scale-[0.98] 
+                        transition-all duration-200 text-sm disabled:opacity-40 disabled:pointer-events-none"
+            >
+              {loading ? "Submitting..." : "Submit Feedback"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -92,9 +92,8 @@ const PrerollAdPostCard: React.FC<Props> = ({
                         loop
                         playsInline
                         // CHANGED: Dynamic object-fit property based on fullscreen mode
-                        className={`w-full h-full max-w-full max-h-full ${
-                            fullscreen ? "object-cover" : "object-contain"
-                        }`}
+                        className={`w-full h-full max-w-full max-h-full ${fullscreen ? "object-cover" : "object-contain"
+                            }`}
                     />
                 ) : (
                     <div className="text-center text-zinc-600 flex flex-col items-center gap-2">
@@ -161,12 +160,36 @@ const PrerollAdPostCard: React.FC<Props> = ({
                         <ExternalLink size={11} className="text-white opacity-90" />
                     </div>
                 </a>
-                <div className="flex items-center gap-1.5 text-[10px] font-medium text-white/90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] select-none">
-                    <span>Sponsored</span>
-                    <span className="opacity-50">•</span>
-                    <span>{currentTime}s</span>
-                </div>
+                {!fullscreen && (
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-white/90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] select-none">
+                        <span>Sponsored</span>
+                        <span className="opacity-50">•</span>
+                        <span>{currentTime}s</span>
+                    </div>
+                )}
             </div>
+
+            {/* Fullscreen Sponsored */}
+            {fullscreen && (
+                <div className="absolute bottom-3 left-0 z-40">
+                    <div className="
+                    flex
+                    items-center
+                    gap-1.5
+                    px-2
+                    py-1
+                    drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]
+                    text-[10px]
+                    font-medium
+                    text-white
+                    select-none
+                ">
+                        <span>Sponsored</span>
+                        <span className="opacity-50">•</span>
+                        <span>{currentTime}s</span>
+                    </div>
+                </div>
+            )}
 
             {/* LINEAR PIPELINE AD TRACKER TIMELINE */}
             <div className={

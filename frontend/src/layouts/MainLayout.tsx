@@ -5,6 +5,7 @@ import Billboard from "../components/Home/Billboard";
 import UploadBox from "../components/Home/Upload";
 import { useUser } from "../context/user";
 import { useGuestSession } from "../hooks/useGuestSession";
+import FeedbackModal from "../components/Home/Feedback";
 import { useAuthGate } from "../context/AuthGate";
 import SidebarNavigation from "../components/Home/SidebarNavigation";
 import MessagingComponent from "../components/Home/Message";
@@ -28,7 +29,8 @@ function MainLayout() {
 
   const [bannerShown, setBannerShown] = useState(false);
   const [feedLocked, setFeedLocked] = useState(false);
-  
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+
   // State for the legal modal now includes 'paid'
   const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | 'paid' | null>(null);
 
@@ -126,25 +128,32 @@ function MainLayout() {
 
                 {/* Legal Links Footer */}
                 <div className="px-2 pt-2 pb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-                  <button 
-                    onClick={() => setActiveModal('terms')} 
+                  <button
+                    onClick={() => setActiveModal('terms')}
                     className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline transition-colors"
                   >
                     Terms of Service
                   </button>
                   <span>|</span>
-                  <button 
-                    onClick={() => setActiveModal('privacy')} 
+                  <button
+                    onClick={() => setActiveModal('privacy')}
                     className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline transition-colors"
                   >
                     Privacy Policy
                   </button>
                   <span>|</span>
-                  <button 
-                    onClick={() => setActiveModal('paid')} 
+                  <button
+                    onClick={() => setActiveModal('paid')}
                     className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline transition-colors"
                   >
                     Paid Services Policy
+                  </button>
+                  <span>|</span>
+                  <button
+                    onClick={() => setIsFeedbackOpen(true)}
+                    className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline transition-colors"
+                  >
+                    Feedback
                   </button>
                   <span className="w-full mt-1">© {new Date().getFullYear()} Rigzer</span>
                 </div>
@@ -182,10 +191,9 @@ function MainLayout() {
                   ref={centerRef}
                   className={`
                     flex flex-col w-full
-                    ${
-                      isProfilePage
-                        ? "lg:col-span-10 2xl:col-span-13"
-                        : hideBillboard
+                    ${isProfilePage
+                      ? "lg:col-span-10 2xl:col-span-13"
+                      : hideBillboard
                         ? "lg:col-span-10 2xl:col-span-13"
                         : "lg:col-span-6 2xl:col-span-8"
                     }
@@ -230,13 +238,18 @@ function MainLayout() {
         {/* ========================= */}
         {/* LEGAL MODAL               */}
         {/* ========================= */}
-        
-        <LegalModal 
-          type={activeModal} 
-          onClose={() => setActiveModal(null)} 
-          onAgree={() => setActiveModal(null)} 
+
+        <LegalModal
+          type={activeModal}
+          onClose={() => setActiveModal(null)}
+          onAgree={() => setActiveModal(null)}
         />
-        
+
+        <FeedbackModal
+          isOpen={isFeedbackOpen}
+          onClose={() => setIsFeedbackOpen(false)}
+        />
+
       </div>
     </>
   );
