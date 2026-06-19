@@ -347,21 +347,15 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
   // 🔥 Type-safe extraction of your Ad payload
   const adData = ad.data as Ad;
 
-  // ─── OPTIMIZATION LOGIC ──────────────────────────────────────────────────────
-  // Pass the optimized URL down if it successfully processed, otherwise play the original
-  const displayAsset = useMemo(() => {
-    if (!ad?.asset) return undefined;
 
-    return {
-      ...ad.asset,
-      url:
-        ad.asset.processingStatus === "completed" &&
-          ad.asset.optimizedUrl
-          ? ad.asset.optimizedUrl
-          : ad.asset.url,
-      processingStatus: undefined,
-    };
-  }, [ad]);
+  // ─── OPTIMIZATION LOGIC ──────────────────────────────────────────────────────
+  const displayAsset = adData.asset ? {
+    ...adData.asset,
+    url: (adData.asset.processingStatus === "completed" && adData.asset.optimizedUrl)
+      ? adData.asset.optimizedUrl
+      : adData.asset.url,
+    processingStatus: undefined, 
+  } : undefined;
   // ─────────────────────────────────────────────────────────────────────────────
 
   // ── Main ad screen ─────────────────────────────────────────────────────────
