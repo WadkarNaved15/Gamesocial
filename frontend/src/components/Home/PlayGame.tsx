@@ -6,6 +6,7 @@ import React, {
 } from "react";
 import axios from "axios";
 import { Loader2, ChevronRight, XCircle, AlertTriangle } from "lucide-react";
+import { useMemo } from "react";
 import PrerollAdPostCard from "../ads/PrerollAdPostCard";
 import { useAds  } from "../../context/AdContext";
 
@@ -173,7 +174,7 @@ useEffect(() => {
 
     return () => clearInterval(interval);
   }, [canSkip]);
-  
+
   useEffect(() => {
     if (!sessionId) return;
 
@@ -238,7 +239,7 @@ useEffect(() => {
     };
 
     connect();
-    startFallbackPoll(); 
+    startFallbackPoll();
 
     return () => {
       es?.close();
@@ -370,14 +371,21 @@ if (!ad && !adFetchCompleted) {
   // 🔥 Type-safe extraction of your Ad payload
   const adData = ad!.data as Ad;
 
+
   // ─── OPTIMIZATION LOGIC ──────────────────────────────────────────────────────
-  const displayAsset = adData.asset ? {
-    ...adData.asset,
-    url: (adData.asset.processingStatus === "completed" && adData.asset.optimizedUrl)
-      ? adData.asset.optimizedUrl
-      : adData.asset.url,
-    processingStatus: undefined, 
-  } : undefined;
+  const displayAsset = useMemo(() => {
+    if (!adData.asset) return undefined;
+
+    return {
+      ...adData.asset,
+      url:
+        adData.asset.processingStatus === "completed" &&
+          adData.asset.optimizedUrl
+          ? adData.asset.optimizedUrl
+          : adData.asset.url,
+      processingStatus: undefined,
+    };
+  }, [adData.asset]);
   // ─────────────────────────────────────────────────────────────────────────────
 
   // ── Main ad screen ─────────────────────────────────────────────────────────
