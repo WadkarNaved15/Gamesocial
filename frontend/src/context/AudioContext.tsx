@@ -8,6 +8,8 @@ import {
 interface AudioContextType {
   isMuted: boolean;
   toggleMute: () => void;
+  audioFocusId: string | null;
+  setAudioFocusId: (id: string | null) => void;
 }
 
 const AudioContext = createContext<AudioContextType | null>(null);
@@ -21,6 +23,7 @@ export const AudioProvider = ({
     const saved = localStorage.getItem("rigzer_muted");
     return saved === null ? true : saved === "true";
   });
+  const [audioFocusId, setAudioFocusId] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem("rigzer_muted", String(isMuted));
@@ -31,6 +34,8 @@ export const AudioProvider = ({
       value={{
         isMuted,
         toggleMute: () => setIsMuted((m) => !m),
+        audioFocusId,
+        setAudioFocusId,
       }}
     >
       {children}

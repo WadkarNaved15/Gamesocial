@@ -56,10 +56,12 @@ const GamePost: React.FC<GamePostProps> = ({
   const [isStarting, setIsStarting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { isMuted, toggleMute } = useAudio();
+  const { isMuted, toggleMute, audioFocusId, setAudioFocusId } = useAudio();
 
   const { user: currentUser } = useUser();
   const isOwner = currentUser?._id === user._id;
+  const isAudioActive =
+  audioFocusId === null || audioFocusId === _id;
   const hasPlayedDemo = gamePost?.demoConsumed === true;
 
   const [eligibility, setEligibility] = useState<StreamEligibility>({
@@ -353,7 +355,7 @@ const GamePost: React.FC<GamePostProps> = ({
                         ref={videoRef}
                         src={videoUrl}
                         poster={thumbnailUrl} // Loads instantly while video buffers
-                        muted={isMuted}
+                        muted={!isAudioActive || isMuted}
                         loop
                         playsInline
                         preload="metadata"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ExternalLink, Loader2, AlertCircle } from "lucide-react"; // 🔥 Added icons
-
+import { useAudio } from "../../context/AudioContext";
 type VideoAsset = {
     type: "video";
     url: string;
@@ -33,36 +33,42 @@ const PrerollAdPostCard: React.FC<Props> = ({
     const videoRef = useRef<HTMLVideoElement>(null);
     const timeTextRef = useRef<HTMLSpanElement>(null);
     const animationRef = useRef<number | null>(null);
+    const { setAudioFocusId } = useAudio();
+    const AD_AUDIO_ID = "PREROLL_AD";
 
     const startProgressLoop = () => {
         const video = videoRef.current;
         if (!video) return;
 
+        if (animationRef.current) return; // 🔥 prevent duplicate loops
+
         const update = () => {
-            if (!video || video.ended) return;
+            const v = videoRef.current;
+            if (!v) return;
 
-            if (!video.paused) {
-                const time = video.currentTime;
+            if (!v.paused && !v.ended) {
+                const time = v.currentTime;
 
-                // update time text (NO React state)
                 if (timeTextRef.current) {
                     timeTextRef.current.textContent = `${Math.floor(time)}s`;
                 }
 
-                // update progress bar
                 if (progressBarRef.current) {
                     const percent = Math.min((time / duration) * 100, 100);
                     progressBarRef.current.style.width = `${percent}%`;
                 }
-            }
 
-            animationRef.current = requestAnimationFrame(update);
+                animationRef.current = requestAnimationFrame(update);
+            } else {
+                animationRef.current = requestAnimationFrame(update);
+            }
         };
 
         animationRef.current = requestAnimationFrame(update);
     };
     useEffect(() => {
         return () => {
+            setAudioFocusId(null)
             stopProgressLoop();
         };
     }, []);
@@ -115,9 +121,15 @@ const PrerollAdPostCard: React.FC<Props> = ({
                         src={asset.url}
                         autoPlay
                         playsInline
-                        onPlay={startProgressLoop}
-                        onPause={stopProgressLoop}
-                        onEnded={stopProgressLoop}
+                        muted={false}   // ad should be audible
+                        onPlay={() => {
+                            setAudioFocusId(AD_AUDIO_ID); // 🔥 TAKE AUDIO CONTROL
+                            startProgressLoop();
+                        }}
+                        onEnded={() => {
+                            setAudioFocusId(null); // 🔥 RELEASE AUDIO CONTROL
+                            stopProgressLoop();
+                        }}
                         // CHANGED: Dynamic object-fit property based on fullscreen mode
                         className={`w-full h-full max-w-full max-h-full ${fullscreen ? "object-cover" : "object-contain"
                             }`}
