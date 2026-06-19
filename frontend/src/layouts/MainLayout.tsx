@@ -73,7 +73,6 @@ function MainLayout() {
       );
     }
   }, [minutes, bannerShown, user, openGate]);
-
   useEffect(() => {
     if (user) return;
 
@@ -151,8 +150,12 @@ function MainLayout() {
                   <span>|</span>
                   <button
                     onClick={() => setIsFeedbackOpen(true)}
-                    className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline transition-colors"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-medium hover:scale-105 transition-all duration-200"
                   >
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
                     Feedback
                   </button>
                   <span className="w-full mt-1">© {new Date().getFullYear()} Rigzer</span>
