@@ -157,7 +157,7 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
       });
     }, 1000);
 
-    
+
     return () => clearInterval(interval);
   }, [canSkip]);
 
@@ -225,7 +225,7 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
     };
 
     connect();
-    startFallbackPoll(); 
+    startFallbackPoll();
 
     return () => {
       es?.close();
@@ -350,13 +350,19 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
 
 
   // ─── OPTIMIZATION LOGIC ──────────────────────────────────────────────────────
-  const displayAsset = adData.asset ? {
-    ...adData.asset,
-    url: (adData.asset.processingStatus === "completed" && adData.asset.optimizedUrl)
-      ? adData.asset.optimizedUrl
-      : adData.asset.url,
-    processingStatus: undefined, 
-  } : undefined;
+  const displayAsset = useMemo(() => {
+    if (!adData.asset) return undefined;
+
+    return {
+      ...adData.asset,
+      url:
+        adData.asset.processingStatus === "completed" &&
+          adData.asset.optimizedUrl
+          ? adData.asset.optimizedUrl
+          : adData.asset.url,
+      processingStatus: undefined,
+    };
+  }, [adData.asset]);
   // ─────────────────────────────────────────────────────────────────────────────
 
   // ── Main ad screen ─────────────────────────────────────────────────────────
