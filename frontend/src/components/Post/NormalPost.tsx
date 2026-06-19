@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useEffect, useRef, useState } from "react";
+import React, { memo, useMemo, useEffect, useRef, useState, useContext } from "react";
 import PostHeader from "./PostHeader";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../context/user";
@@ -10,8 +10,8 @@ import { useWishlist } from "../../hooks/useWishlist";
 import { toast } from "react-toastify";
 import type { NormalPostProps } from "../../types/Post";
 import { VideoPlaybackContext } from "../../context/VideoPlaybackContext";
-import { useContext } from "react";
-import { Play, Loader2, AlertCircle } from "lucide-react"; // 🔥 Added Icons for processing state
+import { useAudio } from "../../context/AudioContext";
+import { Play, Loader2, AlertCircle, VolumeX, Volume2 } from "lucide-react";
 import { trackEvent } from "../../utils/analytics";
 
 const NormalPost: React.FC<NormalPostProps> = ({
@@ -30,6 +30,8 @@ const NormalPost: React.FC<NormalPostProps> = ({
   createdAt,
 }) => {
   const { activeVideo, setActiveVideo } = useContext(VideoPlaybackContext);
+  const { isMuted, toggleMute } = useAudio();
+  
   const postRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const { user: currentUser } = useUser();
@@ -39,30 +41,23 @@ const NormalPost: React.FC<NormalPostProps> = ({
   const [viewerIndex, setViewerIndex] = useState(0);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const BACKEND_URL =
-    import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
   const navigate = useNavigate();
   const { likesCount: localLikesCount, isLiked: localIsLiked, handleLike } = useLikes(_id, BACKEND_URL);
-  const {
-    isWishlisted: localIsWishlisted,
-    handleWishlist
-  } = useWishlist(_id, BACKEND_URL);
+  const { isWishlisted: localIsWishlisted, handleWishlist } = useWishlist(_id, BACKEND_URL);
 
   const rawAssets = normalPost?.assets || [];
 
   // ─── VIDEO OPTIMIZATION MAPPING ──────────────────────────────────────────────
-  // Intercept the raw assets and swap the URL to the optimized version if ready.
-  // This ensures the grid AND the MediaViewer both get the fast-loading 3MB video.
   const displayAssets = useMemo(() => {
     return rawAssets.map(asset => {
       const isVideo = asset.type === "video";
       const isCompleted = isVideo && asset.processingStatus === "completed";
-      
       const displayUrl = (isCompleted && asset.optimizedUrl) ? asset.optimizedUrl : asset.url;
       
       return {
         ...asset,
-        url: displayUrl, // Overridden with the smartest available URL
+        url: displayUrl, 
       };
     });
   }, [rawAssets]);
@@ -92,25 +87,17 @@ const NormalPost: React.FC<NormalPostProps> = ({
     });
   };
 
-  const timestamp = useMemo(
-    () => getRelativeTime(createdAt),
-    [createdAt]
-  );
+  const timestamp = useMemo(() => getRelativeTime(createdAt), [createdAt]);
 
   const handleDelete = async (postId: string) => {
     try {
       setIsDeleting(true);
-
-      // optimistic removal
       onDeleteSuccess?.(postId);
 
-      await fetch(
-        `${BACKEND_URL}/api/allposts/${postId}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        }
-      );
+      await fetch(`${BACKEND_URL}/api/allposts/${postId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
 
       setDeleteOpen(false);
       toast.success("Post deleted successfully");
@@ -174,7 +161,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
     <article
       ref={postRef}
       onClick={() => {
-        if (viewerOpen) return; // 🔥 BLOCK when overlay is open
+        if (viewerOpen) return; 
         onOpenDetails?.();
       }}
       className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-transparent hover:bg-white/[0.03] cursor-pointer transition-colors duration-200"
@@ -218,11 +205,10 @@ const NormalPost: React.FC<NormalPostProps> = ({
                 {description}
               </p>
 
-              {/* Only show button if description is long enough to need it */}
               {description.length > 100 && (
                 <button
                   onClick={(e) => {
-                    e.stopPropagation(); // Prevents opening post details when clicking the button
+                    e.stopPropagation();
                     setIsExpanded(!isExpanded);
                   }}
                   className="text-sky-400 hover:text-sky-300 font-semibold text-sm mt-1 focus:outline-none"
@@ -233,7 +219,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
             </div>
           )}
 
-          {/* -------------------- X STYLE MEDIA GRID -------------------- */}
+          {/* -------------------- MEDIA GRID -------------------- */}
           {displayAssets.length > 0 && (
             <div
               className={`
@@ -295,14 +281,24 @@ const NormalPost: React.FC<NormalPostProps> = ({
                               videoRefs.current[index] = el;
                             }
                           }}
-                          muted
+                          muted={isMuted} // 🔥 Using dynamic mute state
                           playsInline
                           loop
                           preload="metadata"
-                          poster={asset.thumbnailUrl} // 🔥 Generated thumbnail prevents black boxes
+                          poster={asset.thumbnailUrl}
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                           src={asset.url}
                         />
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleMute();
+                          }}
+                          className="absolute bottom-7 right-2 z-50 p-2 rounded-full bg-black/40 backdrop-blur-md text-white border border-white/20 transition-opacity opacity-0 group-hover:opacity-100 sm:opacity-100"
+                        >
+                          {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                        </button>
 
                         {asset.type === "video" && index !== primaryVideoIndex && (
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/10">
@@ -324,7 +320,6 @@ const NormalPost: React.FC<NormalPostProps> = ({
             </div>
           )}
 
-          {/* -------------------- INTERACTIONS -------------------- */}
           {!disableInteractions && (
             <div onClick={(e) => e.stopPropagation()}>
               <PostInteractions
@@ -342,7 +337,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
           )}
           {viewerOpen && (
             <MediaViewer
-              assets={displayAssets} // 🔥 Pass mapped assets so the modal plays optimized versions
+              assets={displayAssets}
               startIndex={viewerIndex}
               onClose={() => setViewerOpen(false)}
             />

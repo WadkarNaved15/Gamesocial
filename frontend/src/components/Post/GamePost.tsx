@@ -13,6 +13,7 @@ import { toast } from "react-toastify";
 import { getStreamEligibility } from "../../utils/streamEligibility";
 import type { StreamEligibility } from "../../utils/streamEligibility";
 import { trackEvent } from "../../utils/analytics";
+import { useAudio } from "../../context/AudioContext";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -55,7 +56,7 @@ const GamePost: React.FC<GamePostProps> = ({
   const [isStarting, setIsStarting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const { isMuted, toggleMute } = useAudio();
 
   const { user: currentUser } = useUser();
   const isOwner = currentUser?._id === user._id;
@@ -362,7 +363,7 @@ const GamePost: React.FC<GamePostProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setIsMuted((m) => !m);
+                          toggleMute();
                         }}
                         className="absolute bottom-4 right-4 z-50 p-2 rounded-full bg-black/40 backdrop-blur-md text-white border border-white/20"
                       >

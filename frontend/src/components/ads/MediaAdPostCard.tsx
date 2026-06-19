@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
-import { Sparkles, Loader2, AlertCircle } from "lucide-react";
+import { Sparkles, Loader2, AlertCircle, VolumeX, Volume2 } from "lucide-react"; 
+import { useAudio } from "../../context/AudioContext"; 
 
 type MediaAsset = {
   type: "image" | "video";
@@ -49,6 +50,7 @@ const MediaAdPostCard: React.FC<Props> = ({
   const cardRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const { isMuted, toggleMute } = useAudio();
 
   const CHARACTER_LIMIT = 120;
   const isLongText = description.length > CHARACTER_LIMIT;
@@ -166,16 +168,29 @@ const MediaAdPostCard: React.FC<Props> = ({
                     <span>Opt Failed</span>
                   </div>
                 )}
+                
                 <video 
                   src={asset.url} 
                   poster={asset.thumbnailUrl}
                   autoPlay 
-                  muted 
+                  muted={isMuted} // 🔥 Using global mute state
                   loop 
                   playsInline 
                   preload="metadata"
                   className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700" 
                 />
+
+                {/* 🔥 Added Mute/Unmute Toggle Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleMute();
+                  }}
+                  className="absolute bottom-4 right-4 z-50 p-2 rounded-full bg-black/40 backdrop-blur-md text-white border border-white/20 transition-opacity opacity-0 group-hover:opacity-100 sm:opacity-100"
+                >
+                  {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
+                </button>
+
               </>
             ) : (
               <img src={asset.url} alt="Creative Payload" className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-700" />

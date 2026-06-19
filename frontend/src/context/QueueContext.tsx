@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
+import { useAds } from './AdContext';
 
 export interface QueueState {
   // Session
@@ -52,6 +53,9 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const [countdownInterval, setCountdownInterval] = useState<NodeJS.Timeout | null>(null);
+
+  const { preloadAd, clearAd } = useAds();
+  const adPreloadedRef = useRef(false);
 
 
   // ✅ Load session from localStorage on mount
@@ -143,6 +147,8 @@ const setupSSE = useCallback((sessionId: string) => {
 
     // 🔴 Session finished → clear everything
     if (data.status === "ended" || data.status === "failed") {
+      adPreloadedRef.current = false;
+      clearAd();
       console.log("[Queue SSE] Session finished, clearing session");
       clearSession();
       return;
@@ -207,11 +213,15 @@ if (data.status === "allocation_ready") {
       // 🟢 DIRECT USER → skip countdown, show ads
       if (data.status === "starting") {
         console.log("[Queue SSE] starting → direct session");
+        if (!adPreloadedRef.current) {
+            adPreloadedRef.current = true;
+            preloadAd();
+          }
 
         if (countdownInterval) {
-  clearInterval(countdownInterval);
-  setCountdownInterval(null);
-}
+          clearInterval(countdownInterval);
+          setCountdownInterval(null);
+        }
 
         newState.isDirectPlay = true;
 
@@ -232,7 +242,7 @@ if (data.status === "allocation_ready") {
   };
 
   setEventSource(es);
-}, [eventSource, clearSession]);
+}, [eventSource, clearSession,preloadAd]);
 
   // 🎮 Start Session
   const startSession = useCallback(
