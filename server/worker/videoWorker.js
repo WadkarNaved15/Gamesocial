@@ -34,39 +34,39 @@ async function updateDatabaseStatus(
     /**
      * NORMAL POST VIDEO
      */
-    case "post": {
-      await AllPost.updateOne(
-        {
-          _id: entityId,
-          "normalPost.assets.url": payload.url,
-        },
-        {
-          $set: {
-            "normalPost.assets.$.optimizedUrl":
-              payload.optimizedUrl,
+case "post": {
+  await AllPost.updateOne(
+    {
+      _id: entityId,
+      "normalPost.assets.url": payload.url,
+    },
+    {
+      $set: {
+        "normalPost.assets.$.optimizedUrl":
+          payload.optimizedUrl,
 
-            "normalPost.assets.$.optimizedKey":
-              payload.optimizedKey,
+        "normalPost.assets.$.optimizedKey":
+          payload.optimizedKey,
 
-            "normalPost.assets.$.thumbnailUrl":
-              payload.thumbnailUrl,
+        "normalPost.assets.$.thumbnailUrl":
+          payload.thumbnailUrl,
 
-            "normalPost.assets.$.processing.status":
-              payload.processingStatus,
+        "normalPost.assets.$.processingStatus":
+          payload.processingStatus,
 
-            "normalPost.assets.$.processing.error":
-              payload.processingError || null,
+        "normalPost.assets.$.processingError":
+          payload.processingError || null,
 
-            "normalPost.assets.$.processing.processedAt":
-              payload.processingStatus === "completed"
-                ? new Date()
-                : null,
-          },
-        }
-      );
-
-      break;
+        "normalPost.assets.$.processedAt":
+          payload.processingStatus === "completed"
+            ? new Date()
+            : null,
+      },
     }
+  );
+
+  break;
+}
 
     /**
      * GAME DRAFT TRAILER
@@ -172,42 +172,42 @@ async function updateDatabaseStatus(
     /**
      * PREROLL AD
      */
-    case "preroll_ad": {
-      const update = {
-        "asset.processing.status":
-          payload.processingStatus,
-      };
+case "preroll_ad": {
+  const update = {
+    "asset.processingStatus":
+      payload.processingStatus,
+  };
 
-      if (payload.optimizedUrl)
-        update["asset.optimizedUrl"] =
-          payload.optimizedUrl;
+  if (payload.optimizedUrl)
+    update["asset.optimizedUrl"] =
+      payload.optimizedUrl;
 
-      if (payload.optimizedKey)
-        update["asset.optimizedKey"] =
-          payload.optimizedKey;
+  if (payload.optimizedKey)
+    update["asset.optimizedKey"] =
+      payload.optimizedKey;
 
-      if (payload.thumbnailUrl)
-        update["asset.thumbnailUrl"] =
-          payload.thumbnailUrl;
+  if (payload.thumbnailUrl)
+    update["asset.thumbnailUrl"] =
+      payload.thumbnailUrl;
 
-      if (payload.processingError)
-        update["asset.processing.error"] =
-          payload.processingError;
+  if (payload.processingError)
+    update["asset.processingError"] =
+      payload.processingError;
 
-      if (payload.processingStatus === "completed") {
-        update["asset.processing.processedAt"] =
-          new Date();
-      }
+  if (payload.processingStatus === "completed") {
+    update["asset.processedAt"] =
+      new Date();
+  }
 
-      await PrerollAd.findByIdAndUpdate(
-        entityId,
-        {
-          $set: update,
-        }
-      );
-
-      break;
+  await PrerollAd.findByIdAndUpdate(
+    entityId,
+    {
+      $set: update,
     }
+  );
+
+  break;
+}
 
     default:
       throw new Error(

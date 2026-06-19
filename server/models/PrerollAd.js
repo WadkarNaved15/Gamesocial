@@ -44,22 +44,26 @@ const PrerollAdAssetSchema = new mongoose.Schema(
 
   optimizedSizeMB: Number,
 
-  processing: {
-    status: {
-      type: String,
-      enum: [
-        "pending",
-        "processing",
-        "completed",
-        "failed"
-      ],
-      default: "pending",
-    },
+processingStatus: {
+  type: String,
+  enum: [
+    "pending",
+    "processing",
+    "completed",
+    "failed",
+  ],
+  default: "pending",
+},
 
-    error: String,
+processingError: {
+  type: String,
+  default: null,
+},
 
-    processedAt: Date,
-  },
+processedAt: {
+  type: Date,
+  default: null,
+},
 },
 { _id: false }
 );

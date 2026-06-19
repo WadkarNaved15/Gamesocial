@@ -1,4 +1,5 @@
 import PrerollAd from "../models/PrerollAd.js";
+import { videoProcessingQueue } from "../queues/videoQueue.js";
 
 export const createPrerollAd = async (req, res) => {
   try {
@@ -66,6 +67,20 @@ export const createPrerollAd = async (req, res) => {
         skippedViews: 0,
       },
     });
+
+    await videoProcessingQueue.add(
+  "optimize-video",
+  {
+    key: asset.key,
+    url: asset.url,
+    entityType: "preroll_ad",
+    entityId: ad._id.toString(),
+  },
+  {
+    removeOnComplete: true,
+    attempts: 3,
+  }
+);
 
     return res.status(201).json({
       message: "Pre-roll ad created successfully",
