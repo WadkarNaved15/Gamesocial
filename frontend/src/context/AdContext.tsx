@@ -16,11 +16,12 @@
     loaded: boolean;
   }
 
-  interface AdContextType {
-    ad: CachedAd | null;
-    preloadAd: () => Promise<void>;
-    clearAd: () => void;
-  }
+interface AdContextType {
+  ad: CachedAd | null;
+  preloadAd: () => Promise<void>;
+  clearAd: () => void;
+  adFetchCompleted: boolean;
+}
 
   const AdContext = createContext<AdContextType | null>(
     null
@@ -32,63 +33,71 @@
     children: React.ReactNode;
   }) => {
     const [ad, setAd] = useState<CachedAd | null>(null);
-    const loadingRef = useRef(false);
+const [adFetchCompleted, setAdFetchCompleted] = useState(false);
+const loadingRef = useRef(false);
 
     const preloadAd = useCallback(async () => {
-      try {
-         if (ad || loadingRef.current) return;
+  if (ad || loadingRef.current) return;
 
-        loadingRef.current = true;
+  loadingRef.current = true;
 
-        try {
-        const res = await fetch(
-          `${BACKEND_URL}/api/prerollads/fairads`
-        );
+  try {
+    const res = await fetch(
+      `${BACKEND_URL}/api/prerollads/fairads`
+    );
 
-        const adData = await res.json();
+    if (!res.ok) {
+      setAdFetchCompleted(true);
+      return;
+    }
 
-        if (adData?.asset?.url) {
-          const video = document.createElement("video");
+    const adData = await res.json();
 
-          video.preload = "auto";
+    // no ad inventory
+    if (!adData?._id || !adData?.asset?.url) {
+      setAdFetchCompleted(true);
+      return;
+    }
 
-          video.src =
-            adData.asset.processingStatus ===
-              "completed" &&
-            adData.asset.optimizedUrl
-              ? adData.asset.optimizedUrl
-              : adData.asset.url;
+    const video = document.createElement("video");
 
-          video.load();
-        }
+    video.preload = "auto";
+    video.src =
+      adData.asset.processingStatus === "completed" &&
+      adData.asset.optimizedUrl
+        ? adData.asset.optimizedUrl
+        : adData.asset.url;
 
-        setAd({
-          data: adData,
-          loaded: true,
-        });
-      } catch (err) {
-        console.error(
-          "[Ads] preload failed",
-          err
-        );
-      }
-    } finally {
-        loadingRef.current = false;
-      }
-    }, [ad]);
+    video.load();
+
+    setAd({
+      data: adData,
+      loaded: true,
+    });
+
+    setAdFetchCompleted(true);
+  } catch (err) {
+    console.error("[Ads] preload failed", err);
+    setAdFetchCompleted(true);
+  } finally {
+    loadingRef.current = false;
+  }
+}, [ad]);
 
     const clearAd = () => {
-      setAd(null);
-    };
+  setAd(null);
+  setAdFetchCompleted(false);
+};
 
     return (
       <AdContext.Provider
-        value={{
-          ad,
-          preloadAd,
-          clearAd,
-        }}
-      >
+  value={{
+    ad,
+    preloadAd,
+    clearAd,
+    adFetchCompleted,
+  }}
+>
         {children}
       </AdContext.Provider>
     );
