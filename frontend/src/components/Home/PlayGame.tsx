@@ -156,6 +156,7 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
       });
     }, 1000);
 
+    
     return () => clearInterval(interval);
   }, [canSkip]);
   
