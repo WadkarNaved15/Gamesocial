@@ -73,7 +73,6 @@ function MainLayout() {
       );
     }
   }, [minutes, bannerShown, user, openGate]);
-
   useEffect(() => {
     if (user) return;
 
@@ -151,7 +150,7 @@ function MainLayout() {
                   <span>|</span>
                   <button
                     onClick={() => setIsFeedbackOpen(true)}
-                    className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline transition-colors"
+                    className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 hover:underline transition-colors font-medium"
                   >
                     Feedback
                   </button>
