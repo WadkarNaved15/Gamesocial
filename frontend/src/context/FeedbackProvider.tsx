@@ -7,7 +7,7 @@ import FeedbackModal from "../components/Home/Feedback";
 
 type FeedbackCtx = {
   open: () => void;                // normal (no screenshot)
-  openWithScreenshot: () => void;  // for manual use if needed
+  openWithScreenshot: () => void;
 };
 
 const FeedbackContext = createContext<FeedbackCtx | null>(null);
@@ -182,7 +182,6 @@ export default function FeedbackProvider({ children }: { children: ReactNode }) 
       {children}
       <FeedbackModal
         isOpen={isOpen}
-        screenshot={screenshot}
         onClose={() => setIsOpen(false)}
       />
     </FeedbackContext.Provider>
