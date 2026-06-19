@@ -6,6 +6,7 @@ import React, {
 } from "react";
 import axios from "axios";
 import { Loader2, ChevronRight, XCircle, AlertTriangle } from "lucide-react";
+import { useMemo } from "react";
 import PrerollAdPostCard from "../ads/PrerollAdPostCard";
 
 type AdWithStatusProps = {
@@ -171,7 +172,7 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
 
     return () => clearInterval(interval);
   }, [canSkip]);
-  
+
   // SSE connection
   useEffect(() => {
     if (!sessionId) return;
@@ -365,15 +366,19 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
 
   // ─── OPTIMIZATION LOGIC ──────────────────────────────────────────────────────
   // Pass the optimized URL down if it successfully processed, otherwise play the original
-  const displayAsset = ad.asset ? {
-    ...ad.asset,
-    url: (ad.asset.processingStatus === "completed" && ad.asset.optimizedUrl)
-      ? ad.asset.optimizedUrl
-      : ad.asset.url,
-    // Note: We deliberately drop 'processingStatus' here so the viewer doesn't 
-    // see the "Optimizing..." badge while watching the fallback video!
-    processingStatus: undefined, 
-  } : undefined;
+  const displayAsset = useMemo(() => {
+    if (!ad?.asset) return undefined;
+
+    return {
+      ...ad.asset,
+      url:
+        ad.asset.processingStatus === "completed" &&
+          ad.asset.optimizedUrl
+          ? ad.asset.optimizedUrl
+          : ad.asset.url,
+      processingStatus: undefined,
+    };
+  }, [ad]);
   // ─────────────────────────────────────────────────────────────────────────────
 
   // ── Main ad screen ─────────────────────────────────────────────────────────
