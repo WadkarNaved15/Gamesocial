@@ -7,7 +7,7 @@ import React, {
 import axios from "axios";
 import { Loader2, ChevronRight, XCircle, AlertTriangle } from "lucide-react";
 import PrerollAdPostCard from "../ads/PrerollAdPostCard";
-import { useAds } from "../../context/AdContext";
+import { useAds  } from "../../context/AdContext";
 
 type AdWithStatusProps = {
   sessionId: string;
@@ -46,7 +46,11 @@ const orderedSteps = [
 export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [sessionStatus, setSessionStatus] = useState<string>("waiting");
-  const { ad } = useAds();
+  const {
+  ad,
+  preloadAd,
+  adFetchCompleted,
+} = useAds();
   const [canSkip, setCanSkip] = useState(false);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [streamUrlError, setStreamUrlError] = useState(false);
@@ -58,6 +62,16 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+
+const adRequested = useRef(false);
+
+useEffect(() => {
+  if (!ad && !adRequested.current) {
+    adRequested.current = true;
+    preloadAd();
+  }
+}, [ad, preloadAd]);
+  
 
   const handleTerminalState = useCallback((state: "failed" | "ended") => {
     localStorage.removeItem("rigzer_queue_session");
@@ -156,7 +170,7 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
       });
     }, 1000);
 
-    
+
     return () => clearInterval(interval);
   }, [canSkip]);
   
@@ -284,6 +298,8 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
     window.location.href = "/";
   };
 
+  
+
   if (sessionError === "failed" || sessionError === "stream_error") {
     return (
       <div className="fixed inset-0 bg-white dark:bg-black z-50 flex flex-col items-center justify-center space-y-6 p-8">
@@ -332,20 +348,27 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
     );
   }
 
+
+  
+
   // ── Loading (no ad yet) ────────────────────────────────────────────────────
-  if (!ad || !ad.data) {
-    return (
-      <div className="fixed inset-0 bg-white dark:bg-[#0a0a0a] z-50 flex flex-col items-center justify-center space-y-4">
-        <Loader2 className="animate-spin text-gray-400 dark:text-gray-600" size={32} />
-        <span className="text-gray-400 dark:text-gray-600 text-xs tracking-[0.3em] uppercase font-medium">
-          Initializing
-        </span>
-      </div>
-    );
-  }
+if (!ad && !adFetchCompleted) {
+  return (
+    <div className="fixed inset-0 bg-white dark:bg-[#0a0a0a] z-50 flex flex-col items-center justify-center space-y-4">
+      <Loader2
+        className="animate-spin text-gray-400 dark:text-gray-600"
+        size={32}
+      />
+      <span className="text-gray-400 dark:text-gray-600 text-xs tracking-[0.3em] uppercase font-medium">
+        Loading Advertisement
+      </span>
+    </div>
+  );
+}
+
 
   // 🔥 Type-safe extraction of your Ad payload
-  const adData = ad.data as Ad;
+  const adData = ad!.data as Ad;
 
   // ─── OPTIMIZATION LOGIC ──────────────────────────────────────────────────────
   const displayAsset = adData.asset ? {
