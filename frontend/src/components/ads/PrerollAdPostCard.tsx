@@ -28,31 +28,53 @@ const PrerollAdPostCard: React.FC<Props> = ({
     duration = 15,
     fullscreen,
 }) => {
-    const [currentTime, setCurrentTime] = useState(0);
+    const currentTimeRef = useRef(0);
+    const progressBarRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
+    const timeTextRef = useRef<HTMLSpanElement>(null);
+    const animationRef = useRef<number | null>(null);
 
-   useEffect(() => {
-    setCurrentTime(0);
+    const startProgressLoop = () => {
+        const video = videoRef.current;
+        if (!video) return;
 
-    if (videoRef.current) {
-        videoRef.current.currentTime = 0;
-        videoRef.current.play().catch(() => {});
-    }
+        const update = () => {
+            if (!video || video.ended) return;
 
-    const interval = setInterval(() => {
-        setCurrentTime((prev) => {
-            if (prev >= duration - 1) {
-                clearInterval(interval);
-                return duration;
+            if (!video.paused) {
+                const time = video.currentTime;
+
+                // update time text (NO React state)
+                if (timeTextRef.current) {
+                    timeTextRef.current.textContent = `${Math.floor(time)}s`;
+                }
+
+                // update progress bar
+                if (progressBarRef.current) {
+                    const percent = Math.min((time / duration) * 100, 100);
+                    progressBarRef.current.style.width = `${percent}%`;
+                }
             }
-            return prev + 1;
-        });
-    }, 1000);
 
-    return () => clearInterval(interval);
-}, [asset?.url, duration]);
+            animationRef.current = requestAnimationFrame(update);
+        };
 
-    const progressPercent = (currentTime / duration) * 100;
+        animationRef.current = requestAnimationFrame(update);
+    };
+    useEffect(() => {
+        return () => {
+            stopProgressLoop();
+        };
+    }, []);
+
+    const stopProgressLoop = () => {
+        if (animationRef.current) {
+            cancelAnimationFrame(animationRef.current);
+            animationRef.current = null;
+        }
+    };
+
+
 
     return (
         <div
@@ -93,6 +115,9 @@ const PrerollAdPostCard: React.FC<Props> = ({
                         src={asset.url}
                         autoPlay
                         playsInline
+                        onPlay={startProgressLoop}
+                        onPause={stopProgressLoop}
+                        onEnded={stopProgressLoop}
                         // CHANGED: Dynamic object-fit property based on fullscreen mode
                         className={`w-full h-full max-w-full max-h-full ${fullscreen ? "object-cover" : "object-contain"
                             }`}
@@ -166,7 +191,7 @@ const PrerollAdPostCard: React.FC<Props> = ({
                     <div className="flex items-center gap-1.5 text-[10px] font-medium text-white/90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] select-none">
                         <span>Sponsored</span>
                         <span className="opacity-50">•</span>
-                        <span>{currentTime}s</span>
+                        <span ref={timeTextRef}>0s</span>
                     </div>
                 )}
             </div>
@@ -188,7 +213,7 @@ const PrerollAdPostCard: React.FC<Props> = ({
                 ">
                         <span>Sponsored</span>
                         <span className="opacity-50">•</span>
-                        <span>{currentTime}s</span>
+                        <span ref={timeTextRef}>0s</span>
                     </div>
                 </div>
             )}
@@ -200,8 +225,8 @@ const PrerollAdPostCard: React.FC<Props> = ({
                     : "absolute bottom-0 inset-x-0 h-1 bg-white/10 dark:bg-zinc-900/50 z-20"
             }>
                 <div
-                    className="h-full bg-red-600 backdrop-blur-sm transition-all ease-linear duration-1000"
-                    style={{ width: `${progressPercent}%` }}
+                    ref={progressBarRef}
+                    className="h-full bg-red-600"
                 />
             </div>
         </div>
