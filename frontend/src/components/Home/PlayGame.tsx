@@ -8,6 +8,7 @@ import axios from "axios";
 import { Loader2, ChevronRight, XCircle, AlertTriangle } from "lucide-react";
 import { useMemo } from "react";
 import PrerollAdPostCard from "../ads/PrerollAdPostCard";
+import { useAds } from "../../context/AdContext";
 
 type AdWithStatusProps = {
   sessionId: string;
@@ -23,7 +24,6 @@ interface Ad {
     type: "video";
     url: string;
     name?: string;
-    // 🔥 Added optimization tracking fields
     optimizedUrl?: string;
     optimizedKey?: string;
     processingStatus?: "pending" | "processing" | "completed" | "failed";
@@ -47,7 +47,7 @@ const orderedSteps = [
 export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [sessionStatus, setSessionStatus] = useState<string>("waiting");
-  const [ad, setAd] = useState<Ad | null>(null);
+  const { ad } = useAds();
   const [canSkip, setCanSkip] = useState(false);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [streamUrlError, setStreamUrlError] = useState(false);
@@ -55,15 +55,12 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [adCountdown, setAdCountdown] = useState(20);
 
-  // Refs to avoid stale closures in SSE handler
   const fetchRetryCount = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
   const handleTerminalState = useCallback((state: "failed" | "ended") => {
-
-    // 🔴 Clear stale session state
     localStorage.removeItem("rigzer_queue_session");
 
     if (state === "failed") {
@@ -80,7 +77,6 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
-
   }, []);
 
   const fetchStreamUrl = useCallback(async () => {
@@ -114,9 +110,8 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
     }
   }, [sessionId, BACKEND_URL]);
 
-  // Fallback poll — catches missed SSE events (multi-instance backend, dropped connections)
   const startFallbackPoll = useCallback(() => {
-    if (pollRef.current) return; // already polling
+    if (pollRef.current) return;
     pollRef.current = setInterval(async () => {
       try {
         const res = await fetch(
@@ -149,14 +144,6 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
     }, 6000);
   }, [sessionId, BACKEND_URL, handleTerminalState, fetchStreamUrl]);
 
-  // Fetch ad
-  useEffect(() => {
-    axios
-      .get(`${BACKEND_URL}/api/prerollads/fairads`)
-      .then((res) => setAd(res.data))
-      .catch((err) => console.error("Failed to load ad:", err));
-  }, [BACKEND_URL]);
-
   useEffect(() => {
     if (canSkip) return;
 
@@ -173,7 +160,6 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
     return () => clearInterval(interval);
   }, [canSkip]);
 
-  // SSE connection
   useEffect(() => {
     if (!sessionId) return;
 
@@ -189,7 +175,7 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
       );
 
       es.onmessage = (e) => {
-        reconnectAttempts = 0; // reset on successful message
+        reconnectAttempts = 0;
         const { status, phase } = JSON.parse(e.data);
 
         const effectiveStatus =
@@ -216,7 +202,6 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
         if (effectiveStatus === "running") {
           setCanSkip(true);
           fetchStreamUrl();
-          // Stop fallback poll — SSE is working
           if (pollRef.current) {
             clearInterval(pollRef.current);
             pollRef.current = null;
@@ -229,11 +214,9 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
         reconnectAttempts += 1;
         if (reconnectAttempts > MAX_RECONNECT) {
           console.error("SSE permanently failed, relying on poll");
-          // Poll takes over completely
           startFallbackPoll();
           return;
         }
-        // Exponential backoff reconnect: 1s, 2s, 4s … capped at 15s
         const delay = Math.min(1000 * 2 ** reconnectAttempts, 15000);
         console.warn(`SSE error — reconnecting in ${delay}ms (attempt ${reconnectAttempts})`);
         reconnectTimer = setTimeout(connect, delay);
@@ -241,7 +224,7 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
     };
 
     connect();
-    startFallbackPoll(); // always run poll as safety net
+    startFallbackPoll(); 
 
     return () => {
       es?.close();
@@ -253,7 +236,6 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
     };
   }, [sessionId, BACKEND_URL, fetchStreamUrl, handleTerminalState, startFallbackPoll]);
 
-  // Heartbeat + abandon beacon
   useEffect(() => {
     if (!sessionId) return;
 
@@ -274,7 +256,6 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
       window.removeEventListener("beforeunload", handleUnload);
     };
   }, [sessionId, BACKEND_URL]);
-
 
   const cancelSession = async () => {
     if (!sessionId) return;
@@ -303,7 +284,6 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
     window.location.href = "/";
   };
 
-  // ── Error overlay ──────────────────────────────────────────────────────────
   if (sessionError === "failed" || sessionError === "stream_error") {
     return (
       <div className="fixed inset-0 bg-white dark:bg-black z-50 flex flex-col items-center justify-center space-y-6 p-8">
@@ -353,7 +333,7 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
   }
 
   // ── Loading (no ad yet) ────────────────────────────────────────────────────
-  if (!ad) {
+  if (!ad || !ad.data) {
     return (
       <div className="fixed inset-0 bg-white dark:bg-[#0a0a0a] z-50 flex flex-col items-center justify-center space-y-4">
         <Loader2 className="animate-spin text-gray-400 dark:text-gray-600" size={32} />
@@ -363,6 +343,9 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
       </div>
     );
   }
+
+  // 🔥 Type-safe extraction of your Ad payload
+  const adData = ad.data as Ad;
 
   // ─── OPTIMIZATION LOGIC ──────────────────────────────────────────────────────
   // Pass the optimized URL down if it successfully processed, otherwise play the original
@@ -389,12 +372,12 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
 
         <PrerollAdPostCard
           fullscreen
-          brandName={ad.brandName}
-          brandLogo={ad.brandLogo}
-          ctaText={ad.ctaText}
-          ctaLink={ad.ctaLink}
-          asset={displayAsset as any} // Cast safely since we stripped the processingStatus
-          duration={ad.mechanics?.duration || 15}
+          brandName={adData.brandName}
+          brandLogo={adData.brandLogo}
+          ctaText={adData.ctaText}
+          ctaLink={adData.ctaLink}
+          asset={displayAsset} // 🎉 Fully type-safe! No 'as any' needed.
+          duration={adData.mechanics?.duration || 15}
         />
 
       </div>
