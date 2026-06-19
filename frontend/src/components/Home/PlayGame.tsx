@@ -373,19 +373,17 @@ if (!ad && !adFetchCompleted) {
 
 
   // ─── OPTIMIZATION LOGIC ──────────────────────────────────────────────────────
-  const displayAsset = useMemo(() => {
-    if (!adData.asset) return undefined;
-
-    return {
+const displayAsset = adData.asset
+  ? {
       ...adData.asset,
       url:
         adData.asset.processingStatus === "completed" &&
-          adData.asset.optimizedUrl
+        adData.asset.optimizedUrl
           ? adData.asset.optimizedUrl
           : adData.asset.url,
       processingStatus: undefined,
-    };
-  }, [adData.asset]);
+    }
+  : undefined;
   // ─────────────────────────────────────────────────────────────────────────────
 
   // ── Main ad screen ─────────────────────────────────────────────────────────
