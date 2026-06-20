@@ -122,7 +122,7 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
                 environment-image="neutral"
                 shadow-intensity="1"
                 onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                style={{ width: '100%', height: '400px', backgroundColor: 'transparent' }} />
+                style={{ width: '100%', height: '600px', backgroundColor: 'transparent' }} />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <div className="w-12 h-12 rounded-xl bg-white/10 animate-pulse" />
