@@ -27,7 +27,7 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
     setSuccess("");
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/feedback`, {
+      const res = await fetch(`${BACKEND_URL}/api/v1/feedback`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -96,14 +96,8 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
 
           {/* Header Section */}
           <div className="flex items-start gap-4 mb-5">
-            <div className="p-2.5 bg-red-500/10 text-red-400 rounded-xl border border-red-500/20 mt-1 shadow-inner">
-              <FaRegCommentDots size={22} />
-            </div>
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-white drop-shadow-sm">Give Feedback</h2>
-              <p className="text-xs text-gray-200 mt-1">
-                Press <kbd className="px-1.5 py-0.5 bg-white/[0.08] border border-white/[0.1] rounded text-[10px] font-mono text-gray-200 shadow-sm">Ctrl + Shift + F</kbd> anywhere to open.
-              </p>
             </div>
           </div>
 
