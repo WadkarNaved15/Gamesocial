@@ -196,7 +196,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
           />
 
           {description && (
-            <div className="mt-2 mb-4">
+            <div className="mt-2">
               <p
                 className={`text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${
                   !isExpanded ? "line-clamp-2" : ""
@@ -234,7 +234,6 @@ const NormalPost: React.FC<NormalPostProps> = ({
                 ${getGridClass(displayAssets.length)}
                 gap-[2px]
                 bg-black/20
-                mb-4
               `}
               onClick={(e) => {
                 e.stopPropagation();
