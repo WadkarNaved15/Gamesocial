@@ -1,5 +1,5 @@
 import React from "react";
-
+import { Trash2 } from "lucide-react";
 type AdGroup = {
   id: number;
   name: string;
@@ -12,6 +12,7 @@ export default function AdsSidebar({
   activeAdGroup,
   setActiveAdGroup,
   addAdGroup,
+  deleteAdGroup,
   resetAdGroup,
 }: {
   activeTab: string;
@@ -20,6 +21,7 @@ export default function AdsSidebar({
   activeAdGroup: number | null;
   setActiveAdGroup: (id: number) => void;
   addAdGroup: () => void;
+  deleteAdGroup: (id: number) => void;
   resetAdGroup: () => void;
 }) {
   return (
@@ -30,7 +32,7 @@ export default function AdsSidebar({
         <div className="space-y-4">
 
           {/* CAMPAIGN NAME (AUTO GENERATED + CLICKABLE) */}
-          <button 
+          <button
             className="w-full text-left px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition"
             onClick={resetAdGroup}
           >
@@ -59,24 +61,41 @@ export default function AdsSidebar({
                 const isActive = activeAdGroup === group.id;
 
                 return (
-                  <button
+                  <div
                     key={group.id}
-                    onClick={() => setActiveAdGroup(group.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg transition border flex flex-col justify-between items-start ${
-                      isActive
-                        ? "border-[#3D7A6E] bg-[#3D7A6E]/10"
-                        : "border-gray-200 hover:bg-gray-50"
-                    }`}
+                    className={`w-full px-3 py-2 rounded-lg transition border ${activeAdGroup === group.id
+                      ? "border-[#3D7A6E] bg-[#3D7A6E]/10"
+                      : "border-gray-200 hover:bg-gray-50"
+                      }`}
                   >
-                    <div className={`text-sm font-semibold ${isActive ? "text-[#3D7A6E]" : "text-gray-800"}`}>
-                      {group.name}
-                    </div>
+                    <div className="flex items-start justify-between gap-2">
 
-                    {/* ACTIVE INDICATOR DOT */}
-                    {isActive && (
-                      <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#3D7A6E]" />
-                    )}
-                  </button>
+                      <button
+                        onClick={() => setActiveAdGroup(group.id)}
+                        className="flex-1 text-left"
+                      >
+                        <div
+                          className={`text-sm font-semibold ${activeAdGroup === group.id
+                            ? "text-[#3D7A6E]"
+                            : "text-gray-800"
+                            }`}
+                        >
+                          {group.name}
+                        </div>
+                      </button>
+                      {adGroups.length > 1 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteAdGroup(group.id);
+                          }}
+                          className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>

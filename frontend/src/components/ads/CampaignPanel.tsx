@@ -1,10 +1,11 @@
 import React from "react";
 // Imported Lucide Icons for each marketing objective
-import { 
-  Eye, 
-  Globe, 
-  ShoppingBag, 
-  Download 
+import {
+  Eye,
+  Globe,
+  ShoppingBag,
+  Edit2,
+  Download
 } from "lucide-react";
 
 const objectives = [
@@ -48,10 +49,12 @@ const objectives = [
 
 export default function CampaignPanel({
   campaignName,
+  setCampaignName,
   selectedObjective,
   setSelectedObjective,
 }: {
   campaignName: string;
+  setCampaignName: (val: string) => void;
   selectedObjective: string;
   setSelectedObjective: (val: string) => void;
 }) {
@@ -60,12 +63,23 @@ export default function CampaignPanel({
   return (
     <div className="flex-1 bg-white px-8 py-6 space-y-6">
 
-      {/* CAMPAIGN HEADER */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <div className="text-xs text-gray-500 mb-0.5 uppercase tracking-wider font-semibold">Campaign Name</div>
-        <div className="text-lg font-bold text-gray-900">
-          {campaignName}
-        </div>
+      {/* EDITABLE CAMPAIGN HEADER */}
+      <div className="bg-white border border-gray-200 rounded-xl p-4 focus-within:border-[#3D7A6E] focus-within:ring-1 focus-within:ring-[#3D7A6E] hover:border-gray-300 transition-all">
+        <label
+          htmlFor="campaign-name-input"
+          className="text-xs text-gray-500 mb-1.5 uppercase tracking-wider font-semibold flex items-center gap-2 cursor-pointer"
+        >
+          <span>Campaign Name</span>
+          <Edit2 className="h-3.5 w-3.5 text-[#3D7A6E] stroke-[2.5]" />
+        </label>
+        <input
+          id="campaign-name-input"
+          type="text"
+          value={campaignName}
+          onChange={(e) => setCampaignName(e.target.value)}
+          placeholder="Enter campaign name..."
+          className="w-full text-lg font-bold text-gray-900 bg-transparent border-none outline-none p-0 focus:ring-0 placeholder-gray-400"
+        />
       </div>
 
       <div>
@@ -75,7 +89,7 @@ export default function CampaignPanel({
 
         {/* TWO-COLUMN LAYOUT */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-stretch">
-          
+
           {/* LEFT COLUMN: VERTICAL OBJECTIVES LIST WITH ICONS */}
           <div className="md:col-span-2 flex flex-col gap-2.5">
             {objectives.map((obj) => {
@@ -86,16 +100,14 @@ export default function CampaignPanel({
                 <button
                   key={obj.key}
                   onClick={() => setSelectedObjective(obj.key)}
-                  className={`w-full p-4 rounded-xl border text-left transition-all text-sm font-semibold flex items-center gap-3.5 ${
-                    isActive
-                      ? "border-[#3D7A6E] bg-[#3D7A6E]/10 text-[#3D7A6E] shadow-sm"
-                      : "border-gray-200 text-gray-800 hover:bg-gray-50"
-                  }`}
+                  className={`w-full p-4 rounded-xl border text-left transition-all text-sm font-semibold flex items-center gap-3.5 ${isActive
+                    ? "border-[#3D7A6E] bg-[#3D7A6E]/10 text-[#3D7A6E] shadow-sm"
+                    : "border-gray-200 text-gray-800 hover:bg-gray-50"
+                    }`}
                 >
-                  <IconComponent 
-                    className={`h-5 w-5 shrink-0 ${
-                      isActive ? "text-[#3D7A6E]" : "text-gray-400"
-                    }`} 
+                  <IconComponent
+                    className={`h-5 w-5 shrink-0 ${isActive ? "text-[#3D7A6E]" : "text-gray-400"
+                      }`}
                   />
                   <span>{obj.title}</span>
                 </button>
@@ -107,7 +119,7 @@ export default function CampaignPanel({
           <div className="md:col-span-3 p-6 rounded-xl border border-gray-200 bg-white flex flex-col justify-between shadow-sm">
             {activeObjective ? (
               <div className="flex flex-col h-full space-y-6">
-                
+
                 {/* Header with large icon and title */}
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-[#3D7A6E]/10 rounded-xl text-[#3D7A6E] shrink-0">
