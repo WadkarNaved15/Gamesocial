@@ -30,8 +30,9 @@ const NormalPost: React.FC<NormalPostProps> = ({
   createdAt,
 }) => {
   const { activeVideo, setActiveVideo } = useContext(VideoPlaybackContext);
-  const { isMuted, toggleMute } = useAudio();
-  
+  const { isMuted, toggleMute, audioFocusId, setAudioFocusId } = useAudio();
+  const isAudioActive =
+  audioFocusId === null || audioFocusId === _id;
   const postRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const { user: currentUser } = useUser();
@@ -280,7 +281,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
                               videoRefs.current[index] = el;
                             }
                           }}
-                          muted={isMuted} // 🔥 Using dynamic mute state
+                          muted={!isAudioActive || isMuted}
                           playsInline
                           loop
                           preload="metadata"
