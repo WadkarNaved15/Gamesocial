@@ -121,6 +121,7 @@ const PrerollAdPostCard: React.FC<Props> = ({
                         src={asset.url}
                         autoPlay
                         playsInline
+                        preload="metadata"
                         muted={false}   // ad should be audible
                         onPlay={() => {
                             setAudioFocusId(AD_AUDIO_ID); // 🔥 TAKE AUDIO CONTROL

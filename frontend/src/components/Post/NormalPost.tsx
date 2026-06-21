@@ -30,8 +30,9 @@ const NormalPost: React.FC<NormalPostProps> = ({
   createdAt,
 }) => {
   const { activeVideo, setActiveVideo } = useContext(VideoPlaybackContext);
-  const { isMuted, toggleMute } = useAudio();
-  
+  const { isMuted, toggleMute, audioFocusId, setAudioFocusId } = useAudio();
+  const isAudioActive =
+  audioFocusId === null || audioFocusId === _id;
   const postRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const { user: currentUser } = useUser();
@@ -196,7 +197,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
           />
 
           {description && (
-            <div className="mt-2 mb-4">
+            <div className="mt-2">
               <p
                 className={`text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${
                   !isExpanded ? "line-clamp-2" : ""
@@ -234,7 +235,6 @@ const NormalPost: React.FC<NormalPostProps> = ({
                 ${getGridClass(displayAssets.length)}
                 gap-[2px]
                 bg-black/20
-                mb-4
               `}
               onClick={(e) => {
                 e.stopPropagation();
@@ -281,7 +281,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
                               videoRefs.current[index] = el;
                             }
                           }}
-                          muted={isMuted} // 🔥 Using dynamic mute state
+                          muted={!isAudioActive || isMuted}
                           playsInline
                           loop
                           preload="metadata"

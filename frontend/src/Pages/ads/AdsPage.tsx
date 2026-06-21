@@ -29,7 +29,7 @@ const createDefaultAdGroup = (id: number): AdGroup => ({
 export default function AdsPage() {
   const [activeTab, setActiveTab] = useState("campaigns");
   const [selectedObjective, setSelectedObjective] = useState("reach");
-  const [campaignName] = useState(() => {
+  const [campaignName, setCampaignName] = useState(() => {
     const now = new Date();
     return `Campaign · ${now.toLocaleDateString()} · ${now.toLocaleTimeString([], {
       hour: "2-digit",
@@ -44,7 +44,16 @@ export default function AdsPage() {
   const [activeAdGroup, setActiveAdGroup] = useState<number | null>(null);
   const [activeComposerType, setActiveComposerType] = useState<string | null>(null);
   const selectedAdGroup = adGroups.find(g => g.id === activeAdGroup);
-  
+  const deleteAdGroup = (id: number) => {
+  if (adGroups.length <= 1) return;
+
+  setAdGroups((prev) => prev.filter((group) => group.id !== id));
+
+  if (activeAdGroup === id) {
+    setActiveAdGroup(null);
+  }
+};;
+
   const addAdGroup = () => {
     const newGroup = createDefaultAdGroup(adGroups.length + 1);
     setAdGroups([...adGroups, newGroup]);
@@ -65,6 +74,7 @@ export default function AdsPage() {
             activeAdGroup={activeAdGroup}
             setActiveAdGroup={setActiveAdGroup}
             addAdGroup={addAdGroup}
+            deleteAdGroup={deleteAdGroup}
             resetAdGroup={() => setActiveAdGroup(null)}
           />
         )}
@@ -92,6 +102,7 @@ export default function AdsPage() {
               ) : (
                 <CampaignPanel
                   campaignName={campaignName}
+                  setCampaignName={setCampaignName}
                   selectedObjective={selectedObjective}
                   setSelectedObjective={setSelectedObjective}
                 />
