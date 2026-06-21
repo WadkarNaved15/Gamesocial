@@ -219,6 +219,11 @@ router.post(
       console.log("geo:", geo);
       console.log("asn:", asn);
 
+      console.log("headers:", req.headers);
+console.log("req.ip:", req.ip);
+console.log("x-forwarded-for:", req.headers["x-forwarded-for"]);
+console.log("x-real-ip:", req.headers["x-real-ip"]);
+
       const sessionId =
         crypto.randomUUID();
 
