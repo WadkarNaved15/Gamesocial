@@ -65,25 +65,61 @@ const userSessionSchema = new mongoose.Schema(
       default: 0,
     },
 
-    country: String,
+    geo: {
+      countryCode: String,
+      country: String,
 
-    city: String,
+      region: String,
+      city: String,
 
-    deviceType: {
-      type: String,
-      enum: [
-        "desktop",
-        "mobile",
-        "tablet",
-        "unknown",
-      ],
-      default: "unknown",
+      timezone: String,
+
+      latitude: Number,
+      longitude: Number,
+
+      postalCode: String,
+
+      detectedAt: {
+        type: Date,
+        default: Date.now
+      },
+
+      isp: {
+        name: String,
+        organization: String,
+        asn: Number
+      }
     },
 
-    browser: String,
+    device: {
+      deviceType: {
+        type: String,
+        enum: [
+          "desktop",
+          "mobile",
+          "tablet",
+          "smarttv",
+          "console",
+          "bot",
+          "unknown"
+        ],
+        default: "unknown"
+      },
 
-    operatingSystem: String,
+      vendor: String,
+      model: String,
 
+      browser: String,
+      browserVersion: String,
+
+      operatingSystem: String,
+      operatingSystemVersion: String
+    },
+
+    locale: {
+      language: String,
+      languages: [String]
+    },
     isBounce: {
       type: Boolean,
       default: false,
@@ -105,6 +141,11 @@ userSessionSchema.index({
 
 userSessionSchema.index({
   lastActivityAt: -1,
+});
+
+userSessionSchema.index({
+  "geo.countryCode": 1,
+  startedAt: -1
 });
 
 export default mongoose.model(

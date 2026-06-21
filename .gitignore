@@ -124,3 +124,7 @@ codedeploy-agent.log
 .terraform/
 *.tfstate
 *.tfstate.backup
+
+
+# MaxMind databases
+server/data/*.mmdb

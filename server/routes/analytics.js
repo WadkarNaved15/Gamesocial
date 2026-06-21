@@ -2,8 +2,14 @@
 
 import express from "express";
 import crypto from "crypto";
+import { UAParser } from "ua-parser-js";
 
 import verifyToken from "../middlewares/authMiddleware.js";
+import {
+  getGeoData,
+  getASNData,
+} from "../services/geoService.js";
+import redisClient from "../config/redis.js";
 
 import UserSession from "../models/UserSession.js";
 import { trackEvent } from "../services/analyticsService.js";
@@ -49,21 +55,66 @@ router.post(
   "/session/start",
   verifyToken,
   async (req, res) => {
+    const userId = req.user.id;
+    const lockKey = `session:start:${userId}`;
+
+    let lockAcquired = false;
+
     try {
-      const userId = req.user.id;
+      lockAcquired = await redisClient.set(
+        lockKey,
+        "1",
+        {
+          NX: true,
+          EX: 10,
+        }
+      );
+
+      if (!lockAcquired) {
+        return res.status(429).json({
+          success: false,
+          message:
+            "Session creation already in progress",
+        });
+      }
 
       const {
         existingSessionId,
         source = "web",
-
-        deviceType = "unknown",
-        browser = "unknown",
-        operatingSystem = "unknown",
       } = req.body;
 
       const now = new Date();
 
-      // Try to reuse existing session
+      const ip =
+        req.headers["x-forwarded-for"]
+          ?.split(",")[0]
+          ?.trim() ||
+        req.socket.remoteAddress ||
+        null;
+
+      const geoData = ip
+        ? getGeoData(ip)
+        : null;
+
+      const asnData = ip
+        ? getASNData(ip)
+        : null;
+
+      const ua = new UAParser(
+        req.headers["user-agent"]
+      ).getResult();
+
+      const language =
+        req.headers["accept-language"]
+          ?.split(",")[0]
+          ?.trim() || null;
+
+      const languages =
+        req.headers["accept-language"]
+          ?.split(",")
+          .map((x) => x.trim()) || [];
+
+      // Existing session from localStorage
       if (existingSessionId) {
         const existingSession =
           await UserSession.findOne({
@@ -76,22 +127,16 @@ router.post(
             now.getTime() -
             existingSession.lastActivityAt.getTime();
 
-          // Session still active
           if (
             inactiveMs <
             SESSION_TIMEOUT_MS
           ) {
             await UserSession.updateOne(
-              {
-                _id: existingSession._id,
-              },
+              { _id: existingSession._id },
               {
                 $set: {
                   lastActivityAt: now,
                   lastHeartbeatAt: now,
-                  deviceType,
-                  browser,
-                  operatingSystem,
                 },
               }
             );
@@ -104,28 +149,66 @@ router.post(
             });
           }
 
-          // Mark old session ended
           await UserSession.updateOne(
-            {
-              _id: existingSession._id,
-            },
+            { _id: existingSession._id },
             {
               $set: {
                 endedAt: now,
                 durationMs:
-                  (existingSession.lastHeartbeatAt ??
-                  existingSession.lastActivityAt).getTime() -
+                  (
+                    existingSession.lastHeartbeatAt ??
+                    existingSession.lastActivityAt
+                  ).getTime() -
                   existingSession.startedAt.getTime(),
+
                 isBounce:
-                  existingSession.pageViews <= 1 &&
-                  existingSession.actions <= 1
+                  existingSession.pageViews <=
+                    1 &&
+                  existingSession.actions <=
+                    1,
               },
             }
           );
         }
       }
 
-      // Create fresh session
+      // IMPORTANT:
+      // Check if user already has an active session
+      const activeSession =
+        await UserSession.findOne({
+          user: userId,
+          endedAt: null,
+          lastActivityAt: {
+            $gte: new Date(
+              Date.now() -
+                SESSION_TIMEOUT_MS
+            ),
+          },
+        }).sort({
+          startedAt: -1,
+        });
+
+      if (activeSession) {
+        await UserSession.updateOne(
+          {
+            _id: activeSession._id,
+          },
+          {
+            $set: {
+              lastActivityAt: now,
+              lastHeartbeatAt: now,
+            },
+          }
+        );
+
+        return res.json({
+          success: true,
+          sessionId:
+            activeSession.sessionId,
+          reused: true,
+        });
+      }
+
       const sessionId =
         crypto.randomUUID();
 
@@ -136,14 +219,75 @@ router.post(
 
         source,
 
-        deviceType,
-        browser,
-        operatingSystem,
-
         startedAt: now,
-
         lastActivityAt: now,
         lastHeartbeatAt: now,
+
+        geo: {
+          countryCode:
+            geoData?.country?.iso_code,
+
+          country:
+            geoData?.country?.names?.en,
+
+          region:
+            geoData?.subdivisions?.[0]
+              ?.names?.en,
+
+          city:
+            geoData?.city?.names?.en,
+
+          timezone:
+            geoData?.location?.time_zone,
+
+          latitude:
+            geoData?.location?.latitude,
+
+          longitude:
+            geoData?.location?.longitude,
+
+          postalCode:
+            geoData?.postal?.code,
+
+          detectedAt: now,
+
+          isp: {
+            asn:
+              asnData?.autonomous_system_number,
+
+            organization:
+              asnData?.autonomous_system_organization,
+          },
+        },
+
+        device: {
+          deviceType:
+            ua.device?.type ||
+            "desktop",
+
+          vendor:
+            ua.device?.vendor,
+
+          model:
+            ua.device?.model,
+
+          browser:
+            ua.browser?.name,
+
+          browserVersion:
+            ua.browser?.version,
+
+          operatingSystem:
+            ua.os?.name,
+
+          operatingSystemVersion:
+            ua.os?.version,
+        },
+
+        locale: {
+          language,
+          languages,
+        },
       });
 
       return res.json({
@@ -157,11 +301,15 @@ router.post(
         err
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message:
           "Failed to create session",
       });
+    } finally {
+      if (lockAcquired) {
+        await redisClient.del(lockKey);
+      }
     }
   }
 );

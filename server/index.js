@@ -19,6 +19,7 @@ import fetch from "node-fetch";
 import { releaseInstance } from "./services/instanceAllocator.js";
 import { sessionStreams } from "./services/sessionStream.js";
 import { initializeSessionPubSub } from "./services/sessionPubSub.js";
+import {  initGeoService  } from "./services/geoService.js";
 
 // ✅ Import your existing Redis client
 import redisClient from "./config/redis.js";
@@ -562,6 +563,8 @@ io.on("connection", (socket) => {
       socketTimeoutMS: 20000,
     });
     console.log("✅ MongoDB Connected");
+
+    await initGeoService();
 
     //  Initialize PubSub for SSE
     await initializeSessionPubSub();

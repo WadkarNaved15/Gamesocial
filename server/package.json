@@ -50,6 +50,7 @@
     "http-proxy": "^1.18.1",
     "ioredis": "^5.8.1",
     "jsonwebtoken": "^9.0.2",
+    "maxmind": "^5.0.6",
     "meilisearch": "^0.53.0",
     "metascraper": "^5.49.5",
     "metascraper-description": "^5.49.5",
@@ -69,6 +70,7 @@
     "simple-peer": "^9.11.1",
     "socket.io": "^4.8.1",
     "three": "^0.182.0",
+    "ua-parser-js": "^2.0.10",
     "unzipper": "^0.12.3",
     "uuid": "^11.1.0"
   }
