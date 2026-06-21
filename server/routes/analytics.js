@@ -209,6 +209,16 @@ router.post(
         });
       }
 
+      console.log("req.ip:", req.ip);
+      console.log("x-forwarded-for:", req.headers["x-forwarded-for"]);
+
+      const geo = getGeoData(ip);
+      const asn = getASNData(ip);
+
+      console.log("lookup ip:", ip);
+      console.log("geo:", geo);
+      console.log("asn:", asn);
+
       const sessionId =
         crypto.randomUUID();
 
