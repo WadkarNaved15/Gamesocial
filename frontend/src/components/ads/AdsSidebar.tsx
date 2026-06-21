@@ -1,9 +1,6 @@
 import React from "react";
 import { Trash2 } from "lucide-react";
-type AdGroup = {
-  id: number;
-  name: string;
-};
+import { AdGroup } from "../../types/ads";
 
 export default function AdsSidebar({
   activeTab,
@@ -14,6 +11,8 @@ export default function AdsSidebar({
   addAdGroup,
   deleteAdGroup,
   resetAdGroup,
+  setComposerTargetGroup,
+  setActiveTab,
 }: {
   activeTab: string;
   campaignName: string;
@@ -23,6 +22,8 @@ export default function AdsSidebar({
   addAdGroup: () => void;
   deleteAdGroup: (id: number) => void;
   resetAdGroup: () => void;
+  setComposerTargetGroup: (id: number) => void;
+  setActiveTab: (tab: string) => void;
 }) {
   return (
     <div className="w-[320px] bg-white border-r border-gray-200 p-4">
@@ -57,7 +58,7 @@ export default function AdsSidebar({
 
             {/* AD GROUP LIST */}
             <div className="space-y-2">
-              {adGroups.map((group) => {
+              {adGroups.map((group, index) => {
                 const isActive = activeAdGroup === group.id;
 
                 return (
@@ -71,7 +72,15 @@ export default function AdsSidebar({
                     <div className="flex items-start justify-between gap-2">
 
                       <button
-                        onClick={() => setActiveAdGroup(group.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+
+                          setActiveAdGroup(group.id);
+
+                          setComposerTargetGroup(group.id);
+
+                          setActiveTab("composer");
+                        }}
                         className="flex-1 text-left"
                       >
                         <div
@@ -80,7 +89,27 @@ export default function AdsSidebar({
                             : "text-gray-800"
                             }`}
                         >
-                          {group.name}
+                          {group.customName?.trim() || `Ad Group ${index + 1}`}
+                        </div>
+                        <div className="mt-2 border-t border-gray-100 pt-2">
+                          {group.posts?.map((post) => (
+                            <button
+                              key={post.id}
+                              className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-50 text-gray-600"
+                            >
+                              📄 {post.name}
+                            </button>
+                          ))}
+
+                          <button
+                            onClick={() => {
+                              setActiveAdGroup(group.id);
+                              // open composer
+                            }}
+                            className="w-full text-left text-xs px-2 py-1 mt-1 rounded text-[#3D7A6E] hover:bg-[#3D7A6E]/10 font-medium"
+                          >
+                            + Add Post
+                          </button>
                         </div>
                       </button>
                       {adGroups.length > 1 && (

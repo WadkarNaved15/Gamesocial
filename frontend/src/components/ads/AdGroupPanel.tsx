@@ -13,9 +13,11 @@ import {
 
 export default function AdGroupPanel({
   adGroup,
+  displayName,
   updateAdGroup,
 }: {
   adGroup: any;
+  displayName: string;
   updateAdGroup: (updated: any) => void;
 }) {
   if (!adGroup) return null;
@@ -34,7 +36,7 @@ export default function AdGroupPanel({
   // Reusable styles matching your clean form inputs and documentation theme
   const inputStyle = "w-full mt-1.5 p-3 text-sm rounded-xl border border-gray-200 bg-white text-gray-800 focus:border-[#3D7A6E] outline-none transition-all";
   const labelStyle = "block text-xs font-bold uppercase tracking-wider text-gray-500";
-  
+
   const [locationQuery, setLocationQuery] = useState("");
   const [languageQuery, setLanguageQuery] = useState("");
 
@@ -54,7 +56,7 @@ export default function AdGroupPanel({
         l.toLowerCase().includes(languageQuery.toLowerCase())
       )
       : [];
-      
+
   return (
     <div className="flex-1 bg-white px-8 py-6 space-y-6">
 
@@ -62,7 +64,7 @@ export default function AdGroupPanel({
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <div className="text-xs text-gray-500 mb-0.5 uppercase tracking-wider font-semibold">Ad Group Name</div>
         <div className="text-lg font-bold text-gray-900">
-          {adGroup.name || "Unnamed Ad Group"}
+          {adGroup.customName?.trim() || displayName}
         </div>
       </div>
 
@@ -83,9 +85,14 @@ export default function AdGroupPanel({
                 <label className={labelStyle}>Rename Ad Group</label>
                 <input
                   type="text"
-                  placeholder="e.g., Core Demographic - Retargeting"
-                  value={adGroup.name || ""}
-                  onChange={(e) => updateAdGroup({ ...adGroup, name: e.target.value })}
+                  placeholder={displayName}
+                  value={adGroup.customName || ""}
+                  onChange={(e) =>
+                    updateAdGroup({
+                      ...adGroup,
+                      customName: e.target.value,
+                    })
+                  }
                   className={inputStyle}
                 />
               </div>
@@ -136,7 +143,6 @@ export default function AdGroupPanel({
 
           {/* SECTION 2: TARGETING DEMOGRAPHICS */}
           <div className="p-6 rounded-xl border border-gray-200 bg-white space-y-5">
-
             <div className="flex flex-col space-y-5 h-full">
 
               {/* Header section matching Campaign overview style */}
@@ -156,11 +162,10 @@ export default function AdGroupPanel({
 
               <hr className="border-gray-100" />
 
-              {/* Geo & Language Section */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Geo & Language Section - Changed to standard column layout with spacing */}
+              <div className="flex flex-col gap-5">
                 <div className="relative">
                   <label className={labelStyle}>Target Location</label>
-
                   <input
                     placeholder="e.g. Mumbai, India"
                     value={adGroup.targeting?.location || ""}
@@ -193,7 +198,6 @@ export default function AdGroupPanel({
 
                 <div className="relative">
                   <label className={labelStyle}>Languages</label>
-
                   <input
                     placeholder="e.g. English, Hindi"
                     value={adGroup.targeting?.languages || ""}
@@ -225,8 +229,8 @@ export default function AdGroupPanel({
                 </div>
               </div>
 
-              {/* Gender & Age Selection */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Gender & Age Selection - Changed to standard column layout with spacing */}
+              <div className="flex flex-col gap-5">
                 <div>
                   <label className={labelStyle}>Gender Strategy</label>
                   <select
@@ -293,9 +297,7 @@ export default function AdGroupPanel({
               </div>
 
             </div>
-
           </div>
-
         </div>
       </div>
 

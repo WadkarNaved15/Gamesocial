@@ -6,6 +6,11 @@ import PrerollAdPostCard from "../../ads/PrerollAdPostCard";
 interface PrerollAdPostFormProps {
   onCancel: () => void;
   onBack?: () => void;
+  onPublish?: (post: {
+    id: string;
+    name: string;
+    type: "preroll";
+  }) => void;
 }
 
 type VideoAsset = {
@@ -14,7 +19,7 @@ type VideoAsset = {
   name: string;
 };
 
-const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack }) => {
+const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack, onPublish }) => {
   const { user } = useUser();
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -30,7 +35,7 @@ const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
 
-const handleMedia = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleMedia = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -55,7 +60,7 @@ const handleMedia = (e: ChangeEvent<HTMLInputElement>) => {
     e.target.value = "";
   };
 
-const uploadAssetToS3 = async (
+  const uploadAssetToS3 = async (
     file: File,
     onProgress: (p: number) => void
   ) => {
@@ -68,7 +73,7 @@ const uploadAssetToS3 = async (
         fileName: file.name,
         fileType: file.type,
         category: "media",
-        subcategory: "post", 
+        subcategory: "post",
         fileSize: file.size,
       }),
     });
@@ -148,7 +153,13 @@ const uploadAssetToS3 = async (
       if (!res.ok) {
         throw new Error("Failed to create preroll ad");
       }
+      const createdPost = await res.json();
 
+      onPublish?.({
+        id: createdPost._id,
+        name:"PreRoll Feed Ad",
+        type: "preroll",
+      });
       onCancel();
     } catch (err) {
       console.error(err);
@@ -197,9 +208,8 @@ const uploadAssetToS3 = async (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`px-4 py-3 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 transition-colors border-b-2 -mb-px ${
-              activeTab === tab.id ? "border-[#3D7A6E] text-[#3D7A6E]" : "border-transparent text-gray-400 hover:text-gray-600"
-            }`}
+            className={`px-4 py-3 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 transition-colors border-b-2 -mb-px ${activeTab === tab.id ? "border-[#3D7A6E] text-[#3D7A6E]" : "border-transparent text-gray-400 hover:text-gray-600"
+              }`}
           >
             {tab.icon}
             {tab.name}
@@ -284,7 +294,7 @@ const uploadAssetToS3 = async (
       </div>
 
       <input ref={mediaInputRef} type="file" accept="video/*" className="hidden" onChange={handleMedia} />
-      
+
       {isUploading && (
         <div className="mx-5 mb-4 p-3 rounded-xl border border-[#3D7A6E]/20 bg-[#3D7A6E]/5 text-gray-800 text-xs font-semibold">
           <div className="flex justify-between mb-2">

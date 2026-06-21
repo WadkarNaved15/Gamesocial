@@ -11,7 +11,10 @@ import type { AdGroup } from "../../types/ads";
 
 const createDefaultAdGroup = (id: number): AdGroup => ({
   id,
-  name: `Ad Group ${id}`,
+  customName: "",
+
+  posts: [],
+
   budget: 0,
   startTime: "",
   endTime: "",
@@ -43,23 +46,55 @@ export default function AdsPage() {
 
   const [activeAdGroup, setActiveAdGroup] = useState<number | null>(null);
   const [activeComposerType, setActiveComposerType] = useState<string | null>(null);
+  const [composerTargetGroup, setComposerTargetGroup] =
+    useState<number | null>(null);
   const selectedAdGroup = adGroups.find(g => g.id === activeAdGroup);
   const deleteAdGroup = (id: number) => {
-  if (adGroups.length <= 1) return;
+    if (adGroups.length <= 1) return;
 
-  setAdGroups((prev) => prev.filter((group) => group.id !== id));
+    setAdGroups((prev) => prev.filter((group) => group.id !== id));
 
-  if (activeAdGroup === id) {
-    setActiveAdGroup(null);
-  }
-};;
+    if (activeAdGroup === id) {
+      setActiveAdGroup(null);
+    }
+  };;
 
   const addAdGroup = () => {
-    const newGroup = createDefaultAdGroup(adGroups.length + 1);
-    setAdGroups([...adGroups, newGroup]);
-    setActiveAdGroup(newGroup.id);
+    const nextId =
+      adGroups.length > 0
+        ? Math.max(...adGroups.map((g) => g.id)) + 1
+        : 1;
+
+    const newGroup = createDefaultAdGroup(nextId);
+
+    setAdGroups((prev) => [...prev, newGroup]);
+
+    setActiveAdGroup(nextId);
   };
 
+  const attachPostToAdGroup = (
+    post: {
+      id: string;
+      name: string;
+      type: "feed" | "preroll" | "3d";
+    }
+  ) => {
+    if (!composerTargetGroup) return;
+
+    setAdGroups(prev =>
+      prev.map(group =>
+        group.id === composerTargetGroup
+          ? {
+            ...group,
+            posts: [...group.posts, post],
+          }
+          : group
+      )
+    );
+
+    setActiveTab("campaigns");
+    setComposerTargetGroup(null);
+  };
   return (
     <div className="min-h-screen bg-[#F9FAFB] flex flex-col">
       <AdsNavbar activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -76,6 +111,8 @@ export default function AdsPage() {
             addAdGroup={addAdGroup}
             deleteAdGroup={deleteAdGroup}
             resetAdGroup={() => setActiveAdGroup(null)}
+            setComposerTargetGroup={setComposerTargetGroup}
+            setActiveTab={setActiveTab}
           />
         )}
 
@@ -93,6 +130,12 @@ export default function AdsPage() {
               {activeAdGroup !== null && selectedAdGroup ? (
                 <AdGroupPanel
                   adGroup={selectedAdGroup}
+                  displayName={
+                    selectedAdGroup.customName?.trim()
+                      ? selectedAdGroup.customName
+                      : `Ad Group ${adGroups.findIndex((g) => g.id === selectedAdGroup.id) + 1
+                      }`
+                  }
                   updateAdGroup={(updated) => {
                     setAdGroups((prev) =>
                       prev.map((g) => (g.id === updated.id ? updated : g))
@@ -139,6 +182,7 @@ export default function AdsPage() {
                   <PrerollAdPostForm
                     onCancel={() => setActiveComposerType(null)}
                     onBack={() => setActiveComposerType(null)}
+                    onPublish={attachPostToAdGroup}
                   />
                 </div>
               )}
