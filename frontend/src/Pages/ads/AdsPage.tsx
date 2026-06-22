@@ -46,6 +46,7 @@ export default function AdsPage() {
 
   const [activeAdGroup, setActiveAdGroup] = useState<number | null>(null);
   const [activeComposerType, setActiveComposerType] = useState<string | null>(null);
+  const [showComposer, setShowComposer] = useState(false);
   const [composerTargetGroup, setComposerTargetGroup] =
     useState<number | null>(null);
   const selectedAdGroup = adGroups.find(g => g.id === activeAdGroup);
@@ -79,6 +80,8 @@ export default function AdsPage() {
       type: "feed" | "preroll" | "3d";
     }
   ) => {
+    console.log("POST RECEIVED", post);
+    console.log("TARGET GROUP", composerTargetGroup);
     if (!composerTargetGroup) return;
 
     setAdGroups(prev =>
@@ -112,7 +115,9 @@ export default function AdsPage() {
             deleteAdGroup={deleteAdGroup}
             resetAdGroup={() => setActiveAdGroup(null)}
             setComposerTargetGroup={setComposerTargetGroup}
+            setShowComposer={setShowComposer}
             setActiveTab={setActiveTab}
+            setActiveComposerType={setActiveComposerType}
           />
         )}
 
@@ -127,28 +132,86 @@ export default function AdsPage() {
         <div className="flex-1">
           {activeTab === "campaigns" && (
             <>
-              {activeAdGroup !== null && selectedAdGroup ? (
-                <AdGroupPanel
-                  adGroup={selectedAdGroup}
-                  displayName={
-                    selectedAdGroup.customName?.trim()
-                      ? selectedAdGroup.customName
-                      : `Ad Group ${adGroups.findIndex((g) => g.id === selectedAdGroup.id) + 1
-                      }`
-                  }
-                  updateAdGroup={(updated) => {
-                    setAdGroups((prev) =>
-                      prev.map((g) => (g.id === updated.id ? updated : g))
-                    );
-                  }}
-                />
+              {showComposer ? (
+                <div className="flex h-full">
+
+                  <ComposerSidebar
+                    activeComposerType={activeComposerType}
+                    setActiveComposerType={setActiveComposerType}
+                  />
+
+                  <div className="flex-1 p-6">
+
+                    {activeComposerType === null && (
+                      <div className="text-gray-400 text-sm">
+                        Select a Composer type to begin
+                      </div>
+                    )}
+
+                    {activeComposerType === "3d" && (
+                      <AdModelPostForm
+                        onCancel={() => {
+                          setShowComposer(false);
+                          setActiveComposerType(null);
+                        }}
+                        onBack={() => setActiveComposerType(null)}
+                      />
+                    )}
+
+                    {activeComposerType === "feed" && (
+                      <MediaAdPostForm
+                        onCancel={() => {
+                          setShowComposer(false);
+                          setActiveComposerType(null);
+                        }}
+                        onBack={() => setActiveComposerType(null)}
+                      />
+                    )}
+
+                    {activeComposerType === "preroll" && (
+                      <PrerollAdPostForm
+                        onCancel={() => {
+                          setShowComposer(false);
+                          setActiveComposerType(null);
+                        }}
+                        onBack={() => setActiveComposerType(null)}
+                        onPublish={attachPostToAdGroup}
+                      />
+                    )}
+
+                  </div>
+
+                </div>
               ) : (
-                <CampaignPanel
-                  campaignName={campaignName}
-                  setCampaignName={setCampaignName}
-                  selectedObjective={selectedObjective}
-                  setSelectedObjective={setSelectedObjective}
-                />
+                <>
+                  {activeAdGroup !== null && selectedAdGroup ? (
+                    <AdGroupPanel
+                      adGroup={selectedAdGroup}
+                      displayName={
+                        selectedAdGroup.customName?.trim()
+                          ? selectedAdGroup.customName
+                          : `Ad Group ${adGroups.findIndex(
+                            (g) => g.id === selectedAdGroup.id
+                          ) + 1
+                          }`
+                      }
+                      updateAdGroup={(updated) => {
+                        setAdGroups((prev) =>
+                          prev.map((g) =>
+                            g.id === updated.id ? updated : g
+                          )
+                        );
+                      }}
+                    />
+                  ) : (
+                    <CampaignPanel
+                      campaignName={campaignName}
+                      setCampaignName={setCampaignName}
+                      selectedObjective={selectedObjective}
+                      setSelectedObjective={setSelectedObjective}
+                    />
+                  )}
+                </>
               )}
             </>
           )}

@@ -13,6 +13,8 @@ export default function AdsSidebar({
   resetAdGroup,
   setComposerTargetGroup,
   setActiveTab,
+  setShowComposer,
+  setActiveComposerType,
 }: {
   activeTab: string;
   campaignName: string;
@@ -24,6 +26,8 @@ export default function AdsSidebar({
   resetAdGroup: () => void;
   setComposerTargetGroup: (id: number) => void;
   setActiveTab: (tab: string) => void;
+  setShowComposer: (value: boolean) => void;
+  setActiveComposerType: (value: string | null) => void;
 }) {
   return (
     <div className="w-[320px] bg-white border-r border-gray-200 p-4">
@@ -71,17 +75,11 @@ export default function AdsSidebar({
                   >
                     <div className="flex items-start justify-between gap-2">
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-
+                      <div
+                        onClick={() => {
                           setActiveAdGroup(group.id);
-
-                          setComposerTargetGroup(group.id);
-
-                          setActiveTab("composer");
                         }}
-                        className="flex-1 text-left"
+                        className="flex-1 text-left cursor-pointer"
                       >
                         <div
                           className={`text-sm font-semibold ${activeAdGroup === group.id
@@ -102,16 +100,19 @@ export default function AdsSidebar({
                           ))}
 
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
+
                               setActiveAdGroup(group.id);
-                              // open composer
+                              setComposerTargetGroup(group.id);
+                              setShowComposer(true);
+                              setActiveComposerType(null);
                             }}
-                            className="w-full text-left text-xs px-2 py-1 mt-1 rounded text-[#3D7A6E] hover:bg-[#3D7A6E]/10 font-medium"
                           >
                             + Add Post
                           </button>
                         </div>
-                      </button>
+                      </div>
                       {adGroups.length > 1 && (
                         <button
                           onClick={(e) => {
