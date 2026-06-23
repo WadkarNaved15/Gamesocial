@@ -12,10 +12,13 @@ aws ssm get-parameter \
   --query "Parameter.Value" \
   --output text > .env
 
+chown ubuntu:ubuntu .env
+
 echo "Starting workers..."
 
-pm2 start /home/ubuntu/Rigzer/workers/ecosystem.workers.config.cjs
+sudo -u ubuntu pm2 start \
+  /home/ubuntu/Rigzer/workers/ecosystem.workers.config.cjs
 
-pm2 save
+sudo -u ubuntu pm2 save
 
 echo "Workers started successfully"
