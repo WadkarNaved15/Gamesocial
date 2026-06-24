@@ -15,6 +15,7 @@ export default function AdsSidebar({
   setActiveTab,
   setShowComposer,
   setActiveComposerType,
+  setActivePostId,
 }: {
   activeTab: string;
   campaignName: string;
@@ -28,6 +29,7 @@ export default function AdsSidebar({
   setActiveTab: (tab: string) => void;
   setShowComposer: (value: boolean) => void;
   setActiveComposerType: (value: string | null) => void;
+  setActivePostId: (id: string) => void;
 }) {
   return (
     <div className="w-[320px] bg-white border-r border-gray-200 p-4">
@@ -78,6 +80,7 @@ export default function AdsSidebar({
                       <div
                         onClick={() => {
                           setActiveAdGroup(group.id);
+                          setComposerTargetGroup(group.id);
                         }}
                         className="flex-1 text-left cursor-pointer"
                       >
@@ -92,10 +95,15 @@ export default function AdsSidebar({
                         <div className="mt-2 border-t border-gray-100 pt-2">
                           {group.posts?.map((post) => (
                             <button
+                              onClick={() => {
+                                setActivePostId(post.id);
+                                setActiveComposerType(post.type);
+                                setShowComposer(true);
+                              }}
                               key={post.id}
                               className="w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-50 text-gray-600"
                             >
-                              📄 {post.name}
+                            {post.name}
                             </button>
                           ))}
 

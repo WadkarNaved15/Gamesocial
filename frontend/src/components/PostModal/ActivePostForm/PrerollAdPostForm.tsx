@@ -6,11 +6,6 @@ import PrerollAdPostCard from "../../ads/PrerollAdPostCard";
 interface PrerollAdPostFormProps {
   onCancel: () => void;
   onBack?: () => void;
-  onPublish?: (post: {
-    id: string;
-    name: string;
-    type: "preroll";
-  }) => void;
 }
 
 type VideoAsset = {
@@ -19,7 +14,7 @@ type VideoAsset = {
   name: string;
 };
 
-const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack, onPublish }) => {
+const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack}) => {
   const { user } = useUser();
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -153,13 +148,6 @@ const PrerollAdPostForm: React.FC<PrerollAdPostFormProps> = ({ onCancel, onBack,
       if (!res.ok) {
         throw new Error("Failed to create preroll ad");
       }
-      const createdPost = await res.json();
-
-      onPublish?.({
-        id: createdPost._id,
-        name:"PreRoll Feed Ad",
-        type: "preroll",
-      });
       onCancel();
     } catch (err) {
       console.error(err);
