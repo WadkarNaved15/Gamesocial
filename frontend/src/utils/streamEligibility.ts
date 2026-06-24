@@ -7,7 +7,7 @@ export type StreamEligibility = {
 };
 
 const SPEED_TEST_BYTES = 5 * 1024 * 1024;
-const MIN_SPEED_MBPS = 8;
+const MIN_SPEED_MBPS = 4;
 const MAX_TEST_MS = 10000;
 
 type NavWithHints = Navigator & {
