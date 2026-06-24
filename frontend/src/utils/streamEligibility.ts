@@ -6,9 +6,9 @@ export type StreamEligibility = {
   testMs: number | null;
 };
 
-const SPEED_TEST_BYTES = 512 * 1024; // 512 KB
+const SPEED_TEST_BYTES = 5 * 1024 * 1024;
 const MIN_SPEED_MBPS = 8;
-const MAX_TEST_MS = 2500;
+const MAX_TEST_MS = 10000;
 
 type NavWithHints = Navigator & {
   userAgentData?: { mobile?: boolean };
