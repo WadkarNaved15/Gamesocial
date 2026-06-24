@@ -8,7 +8,7 @@ files:
   - source: /nginx
     destination: /home/ubuntu/Rigzer/nginx
 
-hooks:
+hooks: 
   BeforeInstall:
     - location: scripts/before_install.sh
       timeout: 300
