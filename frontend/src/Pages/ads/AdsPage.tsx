@@ -32,6 +32,8 @@ const createDefaultAdGroup = (id: number): AdGroup => ({
 export default function AdsPage() {
   const [activeTab, setActiveTab] = useState("campaigns");
   const [selectedObjective, setSelectedObjective] = useState("reach");
+  const [activePostId, setActivePostId] =
+    useState<string | null>(null);
   const [campaignName, setCampaignName] = useState(() => {
     const now = new Date();
     return `Campaign · ${now.toLocaleDateString()} · ${now.toLocaleTimeString([], {
@@ -73,31 +75,36 @@ export default function AdsPage() {
     setActiveAdGroup(nextId);
   };
 
-  const attachPostToAdGroup = (
-    post: {
-      id: string;
-      name: string;
-      type: "feed" | "preroll" | "3d";
-    }
+  const createDraftPost = (
+    groupId: number,
+    type: "feed" | "preroll" | "3d"
   ) => {
-    console.log("POST RECEIVED", post);
-    console.log("TARGET GROUP", composerTargetGroup);
-    if (!composerTargetGroup) return;
+   
+    const postId = crypto.randomUUID();
 
     setAdGroups(prev =>
       prev.map(group =>
-        group.id === composerTargetGroup
+        group.id === groupId
           ? {
             ...group,
-            posts: [...group.posts, post],
+            posts: [
+              ...group.posts,
+              {
+                id: postId,
+                name: `Post ${group.posts.length + 1}`,
+                type,
+                status: "draft",
+              },
+            ],
           }
           : group
       )
     );
 
-    setActiveTab("campaigns");
-    setComposerTargetGroup(null);
+    setActivePostId(postId);
+    setActiveComposerType(type);
   };
+
   return (
     <div className="min-h-screen bg-[#F9FAFB] flex flex-col">
       <AdsNavbar activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -118,6 +125,7 @@ export default function AdsPage() {
             setShowComposer={setShowComposer}
             setActiveTab={setActiveTab}
             setActiveComposerType={setActiveComposerType}
+            setActivePostId={setActivePostId}
           />
         )}
 
@@ -125,6 +133,8 @@ export default function AdsPage() {
           <ComposerSidebar
             activeComposerType={activeComposerType}
             setActiveComposerType={setActiveComposerType}
+            createDraftPost={createDraftPost}
+            composerTargetGroup={composerTargetGroup}
           />
         )}
 
@@ -138,6 +148,8 @@ export default function AdsPage() {
                   <ComposerSidebar
                     activeComposerType={activeComposerType}
                     setActiveComposerType={setActiveComposerType}
+                    createDraftPost={createDraftPost}
+                    composerTargetGroup={composerTargetGroup}
                   />
 
                   <div className="flex-1 p-6">
@@ -175,7 +187,6 @@ export default function AdsPage() {
                           setActiveComposerType(null);
                         }}
                         onBack={() => setActiveComposerType(null)}
-                        onPublish={attachPostToAdGroup}
                       />
                     )}
 
@@ -245,7 +256,7 @@ export default function AdsPage() {
                   <PrerollAdPostForm
                     onCancel={() => setActiveComposerType(null)}
                     onBack={() => setActiveComposerType(null)}
-                    onPublish={attachPostToAdGroup}
+
                   />
                 </div>
               )}

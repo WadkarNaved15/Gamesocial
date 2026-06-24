@@ -122,7 +122,7 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
                 environment-image="neutral"
                 shadow-intensity="1"
                 onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                style={{ width: '100%', height: '400px', backgroundColor: 'transparent' }} />
+                style={{ width: '100%', height: '450px', backgroundColor: 'transparent' }} />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <div className="w-12 h-12 rounded-xl bg-white/10 animate-pulse" />
@@ -238,7 +238,7 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
           </div>
 
           {/* ── 3D model ── */}
-          <div ref={modelRef} className="relative w-full overflow-hidden" style={{ ...modelAreaStyle, height: '380px' }}>
+          <div ref={modelRef} className="relative w-full overflow-hidden" style={{ ...modelAreaStyle, height: '450px' }}>
             {accentRgb && (
               <div className="absolute inset-0 pointer-events-none"
                 style={{ background: `radial-gradient(ellipse 60% 50% at 50% 60%, rgba(${accentRgb},0.2) 0%, transparent 70%)` }} />
@@ -249,7 +249,7 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
               <model-viewer src={modelUrl} camera-controls auto-rotate autoplay animation-name="*"
                 exposure="1.15" environment-image="neutral" shadow-intensity="0.8"
                 onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                style={{ width: '100%', height: '380px', backgroundColor: 'transparent' }} />
+                style={{ width: '100%', height: '450px', backgroundColor: 'transparent' }} />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <div className="w-16 h-16 rounded-2xl animate-pulse"
