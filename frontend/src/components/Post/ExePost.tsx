@@ -159,7 +159,7 @@ const ExePost: React.FC<ExePostProps> = ({
           />
 
           {description && (
-            <div className="mt-2 mb-4">
+            <div className="mt-2 ">
               <p
                 className={`text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${
                   !isExpanded ? "line-clamp-2" : ""
@@ -185,7 +185,7 @@ const ExePost: React.FC<ExePostProps> = ({
 
           {/* 3D MODEL */}
           {modelUrl && (
-            <div className="group relative mt-3 mb-4 flex justify-center overflow-hidden w-full h-[450px] rounded-2xl border border-white/[0.08] bg-black/20">
+            <div className="group relative mt-3 flex justify-center overflow-hidden w-full h-[450px] rounded-2xl border border-white/[0.08] bg-black/20">
               {/* @ts-ignore */}
               <model-viewer
                 src={modelUrl}

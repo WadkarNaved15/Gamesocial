@@ -309,7 +309,7 @@ const GamePost: React.FC<GamePostProps> = ({
             />
 
             {description && (
-              <div className="mt-2 mb-4">
+              <div className="mt-2">
                 <p
                   className={`text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${!isExpanded ? "line-clamp-2" : ""}`}
                 >
@@ -331,7 +331,7 @@ const GamePost: React.FC<GamePostProps> = ({
             )}
 
             {gamePost && (
-              <div className="group relative rounded-2xl overflow-hidden border border-white/[0.06] bg-gradient-to-b from-[#1c1c1c] to-[#0a0a0a] mb-4">
+              <div className="group relative rounded-2xl overflow-hidden border border-white/[0.06] bg-gradient-to-b from-[#1c1c1c] to-[#0a0a0a]">
 
                 <div className="relative w-full h-[380px] overflow-hidden bg-gradient-to-b from-[#1e1e1e] to-[#0c0c0c]">
 

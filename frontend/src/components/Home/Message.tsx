@@ -549,24 +549,16 @@ const MessagingComponent = () => {
         <button
           onClick={toggleOpen}
           className="
-      /* Premium dark gradient matching the app icon background */
-      bg-black
-      
-      /* High-contrast text/icon */
-      text-white
-      p-4 
-      
-      /* Changed from rounded-full to rounded-2xl to mimic the squircle shape */
-      rounded-2xl
-      
-      /* Subtle border & deep shadow for that premium, elevated look */
-      border border-solid border-white/40
-      shadow-5xl
-      
-      transition-all duration-300 transform
-      hover:scale-110
-      group relative
-    "
+            bg-black
+            text-white
+            p-4 
+            rounded-2xl
+            border border-solid border-white/40
+            shadow-5xl   
+            transition-all duration-300 transform
+            hover:scale-110
+            group relative
+          "
         >
           <MessageCircle
             size={24}
