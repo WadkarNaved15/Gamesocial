@@ -241,7 +241,6 @@ function MainLayout() {
         <LegalModal
           type={activeModal}
           onClose={() => setActiveModal(null)}
-          onAgree={() => setActiveModal(null)}
         />
 
         <FeedbackModal

@@ -426,10 +426,6 @@ function Auth() {
       <LegalModal 
         type={activeModal} 
         onClose={() => setActiveModal(null)} 
-        onAgree={() => {
-          setAgreedToLegal(true);
-          setActiveModal(null);
-        }} 
       />
 
     </div>
