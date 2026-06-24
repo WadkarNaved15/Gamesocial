@@ -13,7 +13,7 @@ const headers = {
 // ── Internal fetch wrapper ────────────────────────────────────────────────────
 
 async function gorseRequest(method, path, body) {
-  const res = await fetch(`${GORSE_URL}${path}`, {
+  const res = await fetch(`${GORSE_URL}${path}`, { 
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
