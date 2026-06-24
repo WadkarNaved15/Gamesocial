@@ -185,7 +185,7 @@ const ExePost: React.FC<ExePostProps> = ({
 
           {/* 3D MODEL */}
           {modelUrl && (
-            <div className="group relative mt-3 mb-4 flex justify-center overflow-hidden w-full h-[400px] rounded-2xl border border-white/[0.08] bg-black/20">
+            <div className="group relative mt-3 mb-4 flex justify-center overflow-hidden w-full h-[450px] rounded-2xl border border-white/[0.08] bg-black/20">
               {/* @ts-ignore */}
               <model-viewer
                 src={modelUrl}

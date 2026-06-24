@@ -109,7 +109,7 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
 
           {description && <p className="text-gray-200 text-sm leading-relaxed mb-3">{description}</p>}
 
-          <div ref={modelRef} className="relative overflow-hidden w-full h-[400px] rounded-2xl bg-black/20 border border-white/[0.08]">
+          <div ref={modelRef} className="relative overflow-hidden w-full h-[450px] rounded-2xl bg-black/20 border border-white/[0.08]">
             {modelVisible && modelUrl ? (
               // @ts-ignore
               <model-viewer
