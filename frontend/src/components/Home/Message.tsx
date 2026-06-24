@@ -550,8 +550,7 @@ const MessagingComponent = () => {
           onClick={toggleOpen}
           className="
       /* Premium dark gradient matching the app icon background */
-      bg-gradient-to-b from-[#3A3A3C] to-[#121212]
-      hover:from-[#48484A] hover:to-[#1C1C1E] 
+      bg-black
       
       /* High-contrast text/icon */
       text-white
@@ -561,8 +560,8 @@ const MessagingComponent = () => {
       rounded-2xl
       
       /* Subtle border & deep shadow for that premium, elevated look */
-      border border-white-700/40
-      shadow-2xl
+      border border-solid border-white/40
+      shadow-5xl
       
       transition-all duration-300 transform
       hover:scale-110
