@@ -127,11 +127,9 @@ export function Header() {
             {/* Ads Campaign */}
             <button
               onClick={handleAdsClick}
-              className="flex items-center justify-center p-1.5 rounded-md text-white hover:text-white/80 transition-all"
-              aria-label="Ads Dashboard"
+              className="flex items-center justify-center p-1.5 rounded-md text-white hover:text-white/80 transition-all mt-1"
             >
-              {/* The h-[16px] or h-4 controls the height of both elements simultaneously */}
-              <ExternalLinkIcon className="h-5 w-auto" />
+              <ExternalLinkIcon className="h-7 w-auto" />
             </button>
             {/* Search Bar */}
             <form onSubmit={handleSearch} className="relative hidden md:block w-full max-w-[250px]">

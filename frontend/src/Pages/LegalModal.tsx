@@ -5,10 +5,9 @@ type ModalType = 'terms' | 'privacy' | 'paid' | null;
 interface LegalModalProps {
   type: ModalType;
   onClose: () => void;
-  onAgree: () => void;
 }
 
-const LegalModal: React.FC<LegalModalProps> = ({ type, onClose, onAgree }) => {
+const LegalModal: React.FC<LegalModalProps> = ({ type, onClose}) => {
   if (!type) return null;
 
   const isTerms = type === 'terms';
@@ -395,12 +394,6 @@ const LegalModal: React.FC<LegalModalProps> = ({ type, onClose, onAgree }) => {
               className="px-4 py-2.5 rounded-lg bg-gray-200 text-black hover:bg-gray-300 transition-colors font-medium text-sm"
             >
               Close
-            </button>
-            <button
-              onClick={onAgree}
-              className="px-4 py-2.5 rounded-lg bg-black text-white hover:bg-gray-800 transition-all font-medium text-sm shadow-md"
-            >
-              I Agree
             </button>
           </div>
         </div>
