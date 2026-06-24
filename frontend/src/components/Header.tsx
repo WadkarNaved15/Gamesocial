@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
+import ExternalLinkIcon from "./AdIcons/ExternalLinkIcon";
 import {
   Moon,
   Search,
@@ -62,7 +63,7 @@ export function Header() {
   };
 
   const handleAdsClick = () => {
-     window.open("/ads", "_blank");
+    window.open("/ads", "_blank");
   };
 
   return (
@@ -123,25 +124,14 @@ export function Header() {
           {/* 3. Right Section - Search & Theme */}
           <div className="flex items-center justify-end space-x-4">
             {/* Ads Campaign */}
+            {/* Ads Campaign */}
             <button
               onClick={handleAdsClick}
-              className="
-                flex items-center gap-2
-                px-3 py-2
-                rounded-full
-                bg-gradient-to-r
-                from-violet-500
-                to-fuchsia-500
-                text-white
-                text-sm
-                font-medium
-                hover:shadow-lg
-                hover:scale-[1.02]
-                transition-all
-              "
+              className="flex items-center justify-center p-1.5 rounded-md text-white hover:text-white/80 transition-all"
+              aria-label="Ads Dashboard"
             >
-              <Megaphone className="h-4 w-4" />
-              <span className="hidden lg:block">Promote</span>
+              {/* The h-[16px] or h-4 controls the height of both elements simultaneously */}
+              <ExternalLinkIcon className="h-5 w-auto" />
             </button>
             {/* Search Bar */}
             <form onSubmit={handleSearch} className="relative hidden md:block w-full max-w-[250px]">
