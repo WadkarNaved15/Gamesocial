@@ -651,7 +651,8 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
   // 1. Prompt Draft State
   if (pendingDraft) {
     return (
-      <div className="w-full max-w-2xl mx-auto bg-white dark:bg-black/20 backdrop-blur-2xl min-h-[50vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col items-center justify-center gap-5 p-12 shadow-2xl">
+      // <div className="w-full max-w-2xl mx-auto bg-white dark:bg-black/20 backdrop-blur-2xl min-h-[50vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col items-center justify-center gap-5 p-12 shadow-2xl">
+      <div className="w-full max-w-2xl mx-auto bg-white/[0.03] backdrop-blur-2xl min-h-[50vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col items-center justify-center gap-5 p-12 shadow-2xl">
         <div className="p-4 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 border border-[#3D7A6E]/20">
           <FileArchive size={36} className="text-[#3D7A6E]" />
         </div>
@@ -696,7 +697,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
   // 2. Published State
   if (publishSuccess) {
     return (
-      <div className="w-full max-w-2xl mx-auto bg-white dark:bg-black/20 backdrop-blur-2xl rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col items-center justify-center gap-5 p-12 shadow-2xl">
+      <div className="w-full max-w-2xl mx-auto bg-white/[0.03] backdrop-blur-2xl rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col items-center justify-center gap-5 p-12 shadow-2xl">
         <div className="p-4 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 border border-[#3D7A6E]/20">
           <CheckCircle2 size={40} className="text-[#3D7A6E]" />
         </div>
@@ -731,7 +732,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
 
   // ── Render Form ───────────────────────────────────────────────────────────
   return (
-    <div className="w-full max-w-2xl mx-auto bg-white dark:bg-black/20 backdrop-blur-2xl min-h-[75vh] max-h-[90vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col overflow-hidden shadow-2xl">
+    <div className="w-full max-w-2xl mx-auto bg-white/[0.03] backdrop-blur-2xl min-h-[75vh] max-h-[90vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col overflow-hidden shadow-2xl">
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/[0.06] bg-transparent sticky top-0 z-30">

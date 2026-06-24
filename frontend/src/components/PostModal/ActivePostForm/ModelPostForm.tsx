@@ -1,6 +1,7 @@
 import React, { useState, useRef, ChangeEvent } from 'react';
 import { X, Image as ImageIcon, DollarSign } from 'lucide-react';
 import '@google/model-viewer';
+import { useUser } from '../../../context/user';
 
 interface PostModalProps {
   onCancel: () => void;
@@ -20,6 +21,8 @@ interface Asset {
 }
 
 const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
+  const { user } = useUser();
+  const logoImage = user?.avatar || '/default_avatar.png';
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
@@ -70,7 +73,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
         fileName: asset.file.name,
         fileType: asset.file.type || "model/gltf-binary",
         category: "original",
-         fileSize: asset.file.size,
+        fileSize: asset.file.size,
       }),
     });
 
@@ -190,14 +193,15 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
 
   return (
     // Minimalist Glassmorphic Container
-    <div className="w-full max-w-2xl mx-auto bg-white dark:bg-black/20 backdrop-blur-2xl min-h-[75vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col overflow-hidden shadow-2xl">
+    // <div className="w-full max-w-2xl mx-auto bg-white dark:bg-black/20 backdrop-blur-2xl min-h-[75vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col overflow-hidden shadow-2xl">
+    <div className="w-full max-w-2xl mx-auto bg-white/[0.03] backdrop-blur-2xl min-h-[75vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col overflow-hidden shadow-2xl">
 
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 sticky top-0 bg-transparent z-30 border-b border-gray-100 dark:border-white/[0.06]">
         <div className="flex items-center gap-6">
           <h2 className="text-xl font-bold text-black dark:text-white tracking-tight">Compose 3D Bundle</h2>
         </div>
-        
+
         <button
           onClick={handlePostSubmit}
           disabled={!title || !description || assets.length === 0 || isSubmitting}
@@ -210,8 +214,20 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
       <div className="flex flex-1 p-6 gap-5 overflow-y-auto custom-scrollbar">
         {/* User Avatar */}
         <div className="flex-shrink-0">
-          <div className="h-12 w-12 rounded-full bg-zinc-200 dark:bg-white/[0.04] border border-transparent dark:border-white/[0.08] flex items-center justify-center text-gray-400">
-            <ImageIcon size={20} />
+          <div className="h-12 w-12 rounded-full bg-zinc-200 dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] flex items-center justify-center text-gray-400 overflow-hidden">
+            {user?.avatar ? (
+              <img
+                src={logoImage}
+                alt={`${user.username || 'User'}'s avatar`}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  // Fallback if the image URL fails to load
+                  e.currentTarget.src = '/default_avatar.png';
+                }}
+              />
+            ) : (
+              <ImageIcon size={20} />
+            )}
           </div>
         </div>
 
@@ -299,7 +315,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
           )}
         </div>
       </div>
-      
+
       {/* Enhanced Upload Progress Overlay */}
       <div className="space-y-3 px-2 mt-2">
         {/* Metadata Saving Overlay */}
@@ -339,7 +355,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
           )
         ))}
       </div>
-      
+
       {/* Footer Tools */}
       <div className="px-6 py-4 border-t border-gray-100 dark:border-white/[0.06] bg-transparent flex items-center justify-between">
         <div className="flex items-center gap-4">

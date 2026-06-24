@@ -125,7 +125,8 @@ const ExePost: React.FC<ExePostProps> = ({
         // 🔥 OPEN DETAILS IN HOME (NO ROUTING)
         onOpenDetails?.();
       }}
-      className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-transparent hover:bg-white/[0.03] cursor-pointer transition-colors duration-200"
+      // className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-transparent hover:bg-white/[0.03] cursor-pointer transition-colors duration-200"
+      className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-white/[0.03] cursor-pointer transition-colors duration-200"
     >
       <div className="flex gap-3 p-4">
         {/* LEFT COLUMN — Avatar stays here */}
