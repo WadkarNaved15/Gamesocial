@@ -1,0 +1,79 @@
+name: Deploy Workers
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "server/**"
+      - "deploy/workers/**"
+      - ".github/workflows/deploy-workers.yml"
+
+concurrency:
+  group: worker-deployment
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build worker bundle
+        run: |
+          set -euo pipefail
+
+          rm -rf /tmp/rigzer-workers-bundle /tmp/rigzer-workers.zip
+
+          mkdir -p /tmp/rigzer-workers-bundle/server
+          mkdir -p /tmp/rigzer-workers-bundle/scripts
+          mkdir -p /tmp/rigzer-workers-bundle/workers
+
+          cp deploy/workers/appspec.yml \
+            /tmp/rigzer-workers-bundle/appspec.yml
+
+          cp deploy/workers/ecosystem.workers.config.cjs \
+            /tmp/rigzer-workers-bundle/workers/
+
+          cp deploy/workers/scripts/* \
+            /tmp/rigzer-workers-bundle/scripts/
+
+          rsync -a --delete \
+            --exclude node_modules \
+            --exclude .git \
+            --exclude .env \
+            --exclude .env.* \
+            server/ \
+            /tmp/rigzer-workers-bundle/server/
+
+          find /tmp/rigzer-workers-bundle \
+            \( -name ".env" -o -name ".env.*" \) -delete
+
+          cd /tmp/rigzer-workers-bundle
+
+          zip -r /tmp/rigzer-workers.zip .
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload revision
+        run: |
+          aws s3 cp \
+            /tmp/rigzer-workers.zip \
+            s3://${{ secrets.DEPLOY_BUCKET }}/rigzer-workers.zip
+
+      - name: Deploy
+        run: |
+          aws deploy create-deployment \
+            --application-name RigzerWorkerApp \
+            --deployment-group-name RigzerWorkerDG \
+            --s3-location bucket=${{ secrets.DEPLOY_BUCKET }},key=rigzer-workers.zip,bundleType=zip
