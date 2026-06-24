@@ -226,6 +226,15 @@ export const videoWorker = new Worker(
       entityId,
     } = job.data;
 
+    console.log(
+      `[VideoWorker] Job ${job.id} STARTED`,
+      {
+        entityType,
+        entityId,
+        key,
+      }
+    );
+
     const tempDir = await fs.mkdtemp(
       path.join(os.tmpdir(), "rigzer-video-")
     );
@@ -246,14 +255,38 @@ export const videoWorker = new Worker(
         }
       );
 
+      console.log(
+        `[VideoWorker] Job ${job.id} Downloading original file`
+      );
+
       await downloadFile(
         key,
         originalFile
       );
 
+      console.log(
+        `[VideoWorker] Job ${job.id} Download complete`
+      );
+
+      console.log(
+        `[VideoWorker] Job ${job.id} VIDEO OPTIMIZATION STARTED`
+      );
+
+      const optimizeStart = Date.now();
+
       await optimizeVideo(
         originalFile,
         optimizedFile
+      );
+
+      console.log(
+        `[VideoWorker] Job ${job.id} VIDEO OPTIMIZATION COMPLETED in ${
+          Date.now() - optimizeStart
+        } ms`
+      );
+
+      console.log(
+        `[VideoWorker] Job ${job.id} THUMBNAIL GENERATION STARTED`
       );
 
       const thumbnailFile =
@@ -263,10 +296,18 @@ export const videoWorker = new Worker(
           "thumbnail.jpg"
         );
 
+      console.log(
+        `[VideoWorker] Job ${job.id} THUMBNAIL GENERATION COMPLETED`
+      );
+
       const {
         optimizedKey,
         thumbnailKey,
       } = generateOptimizedKeys(key);
+
+      console.log(
+        `[VideoWorker] Job ${job.id} UPLOADING OPTIMIZED VIDEO`
+      );
 
       const optimizedUrl =
         await uploadFile(
@@ -275,12 +316,24 @@ export const videoWorker = new Worker(
           "video/mp4"
         );
 
+      console.log(
+        `[VideoWorker] Job ${job.id} OPTIMIZED VIDEO UPLOADED`
+      );
+
+      console.log(
+        `[VideoWorker] Job ${job.id} UPLOADING THUMBNAIL`
+      );
+
       const thumbnailUrl =
         await uploadFile(
           thumbnailFile,
           thumbnailKey,
           "image/jpeg"
         );
+
+      console.log(
+        `[VideoWorker] Job ${job.id} THUMBNAIL UPLOADED`
+      );
 
       await updateDatabaseStatus(
         entityType,
@@ -293,9 +346,13 @@ export const videoWorker = new Worker(
           url,
         }
       );
+
+      console.log(
+        `[VideoWorker] Job ${job.id} COMPLETED SUCCESSFULLY`
+      );
     } catch (err) {
       console.error(
-        `[VideoWorker] ${job.id}`,
+        `[VideoWorker] Job ${job.id} FAILED`,
         err
       );
 
@@ -312,10 +369,18 @@ export const videoWorker = new Worker(
 
       throw err;
     } finally {
+      console.log(
+        `[VideoWorker] Job ${job.id} CLEANUP STARTED`
+      );
+
       await fs.rm(tempDir, {
         recursive: true,
         force: true,
       });
+
+      console.log(
+        `[VideoWorker] Job ${job.id} CLEANUP COMPLETED`
+      );
     }
   },
   {
