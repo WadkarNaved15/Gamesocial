@@ -79,7 +79,7 @@ export default function AdsPage() {
     groupId: number,
     type: "feed" | "preroll" | "3d"
   ) => {
-   
+
     const postId = crypto.randomUUID();
 
     setAdGroups(prev =>
@@ -111,32 +111,21 @@ export default function AdsPage() {
 
       <div className="flex flex-1">
         {/* LEFT SIDEBAR (SWITCH BASED ON TAB) */}
-        {activeTab === "campaigns" && (
-          <AdsSidebar
-            activeTab={activeTab}
-            campaignName={campaignName}
-            adGroups={adGroups}
-            activeAdGroup={activeAdGroup}
-            setActiveAdGroup={setActiveAdGroup}
-            addAdGroup={addAdGroup}
-            deleteAdGroup={deleteAdGroup}
-            resetAdGroup={() => setActiveAdGroup(null)}
-            setComposerTargetGroup={setComposerTargetGroup}
-            setShowComposer={setShowComposer}
-            setActiveTab={setActiveTab}
-            setActiveComposerType={setActiveComposerType}
-            setActivePostId={setActivePostId}
-          />
-        )}
-
-        {activeTab === "composer" && (
-          <ComposerSidebar
-            activeComposerType={activeComposerType}
-            setActiveComposerType={setActiveComposerType}
-            createDraftPost={createDraftPost}
-            composerTargetGroup={composerTargetGroup}
-          />
-        )}
+        <AdsSidebar
+          activeTab={activeTab}
+          campaignName={campaignName}
+          adGroups={adGroups}
+          activeAdGroup={activeAdGroup}
+          setActiveAdGroup={setActiveAdGroup}
+          addAdGroup={addAdGroup}
+          deleteAdGroup={deleteAdGroup}
+          resetAdGroup={() => setActiveAdGroup(null)}
+          setComposerTargetGroup={setComposerTargetGroup}
+          setShowComposer={setShowComposer}
+          setActiveTab={setActiveTab}
+          setActiveComposerType={setActiveComposerType}
+          setActivePostId={setActivePostId}
+        />
 
         {/* RIGHT PANEL */}
         <div className="flex-1">
@@ -228,38 +217,43 @@ export default function AdsPage() {
           )}
 
           {activeTab === "composer" && (
-            <div className="p-6">
-              {activeComposerType === null && (
-                <div className="text-gray-400 text-sm">
-                  Select a Composer type to begin
-                </div>
-              )}
+            <div className="flex h-full">
 
-              {activeComposerType === "3d" && (
-                <div className="flex justify-center w-full">
-                  <AdModelPostForm
-                    onCancel={() => setActiveComposerType(null)}
-                    onBack={() => setActiveComposerType(null)}
-                  />
-                </div>
-              )}
-              {activeComposerType === "feed" && (
-                <div className="flex justify-center w-full">
+              <ComposerSidebar
+                activeComposerType={activeComposerType}
+                setActiveComposerType={setActiveComposerType}
+                createDraftPost={createDraftPost}
+                composerTargetGroup={composerTargetGroup}
+              />
+
+              <div className="flex-1 p-6">
+
+                {activeComposerType === null && (
+                  <div>Select a Composer type</div>
+                )}
+
+                {activeComposerType === "feed" && (
                   <MediaAdPostForm
                     onCancel={() => setActiveComposerType(null)}
                     onBack={() => setActiveComposerType(null)}
                   />
-                </div>
-              )}
-              {activeComposerType === "preroll" && (
-                <div className="flex justify-center w-full">
+                )}
+
+                {activeComposerType === "preroll" && (
                   <PrerollAdPostForm
                     onCancel={() => setActiveComposerType(null)}
                     onBack={() => setActiveComposerType(null)}
-
                   />
-                </div>
-              )}
+                )}
+
+                {activeComposerType === "3d" && (
+                  <AdModelPostForm
+                    onCancel={() => setActiveComposerType(null)}
+                    onBack={() => setActiveComposerType(null)}
+                  />
+                )}
+
+              </div>
             </div>
           )}
         </div>
