@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import BillboardHeader from "../Billboard/BillboardHeader";
 const Tower = React.lazy(() => import("./Tower"));
 
 interface Pocket {
@@ -140,17 +139,57 @@ const Billboard: React.FC = () => {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="relative z-50">
-        <BillboardHeader
-          title={headerData.title}
-          subtitle={headerData.subtitle}
-          avatar={headerData.avatar}
-          onPrev={handlePrev}
-          onNext={handleNext}
-        />
-      </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
+        {/* LEFT BUTTON */}
+        <button
+          onClick={handlePrev}
+          className="
+      absolute
+      left-2
+      top-1/2
+      -translate-y-1/2
+      z-50
+      w-10
+      h-10
+      rounded-full
+      bg-black/50
+      backdrop-blur-md
+      text-white
+      flex
+      items-center
+      justify-center
+      hover:bg-black/70
+      transition
+    "
+        >
+          <ArrowLeft size={18} />
+        </button>
+
+        {/* RIGHT BUTTON */}
+        <button
+          onClick={handleNext}
+          className="
+      absolute
+      right-2
+      top-1/2
+      -translate-y-1/2
+      z-50
+      w-10
+      h-10
+      rounded-full
+      bg-black/50
+      backdrop-blur-md
+      text-white
+      flex
+      items-center
+      justify-center
+      hover:bg-black/70
+      transition
+    "
+        >
+          <ArrowRight size={18} />
+        </button>
         <Suspense fallback={<div className="text-center text-white/60 pt-10">Loading...</div>}>
           {loadingPockets ? (
             <div className="text-center text-white/60 pt-10">Loading...</div>
