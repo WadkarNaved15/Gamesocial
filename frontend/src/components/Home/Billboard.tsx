@@ -135,30 +135,27 @@ const Billboard: React.FC = () => {
 
   return (
     <div
-      className="flex h-full w-full relative bg-transparent rounded-2xl overflow-hidden"
+      className="flex h-full w-full relative bg-transparent rounded-2xl overflow-visible"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
 
-      <div className="w-12 flex justify-center items-center">
-        <button
-          onClick={handlePrev}
-          className="
-            w-10
-            h-10
-            rounded-full
-            bg-black/50
-            text-white
-            flex
-            items-center
-            justify-center
-            hover:bg-black/70
-            transition
-          "
-        >
-          <ArrowLeft size={18} />
-        </button>
-      </div>
+      <button
+        onClick={handlePrev}
+        className="
+      absolute
+      top-1/2
+      -translate-y-1/2
+      -left-12
+      z-50
+      w-10
+      h-10
+      rounded-full
+      text-white
+    "
+      >
+        <ArrowLeft size={18} />
+      </button>
 
       <div className="flex-1 overflow-hidden">
         <Suspense fallback={<div className="text-center text-white/60 pt-10">Loading...</div>}>
@@ -174,25 +171,23 @@ const Billboard: React.FC = () => {
           )}
         </Suspense>
       </div>
-      <div className="w-12 flex justify-center items-center">
-        <button
-          onClick={handleNext}
-          className="
-            w-10
-            h-10
-            rounded-full
-            bg-black/50
-            text-white
-            flex
-            items-center
-            justify-center
-            hover:bg-black/70
-            transition
-          "
-        >
-          <ArrowRight size={18} />
-        </button>
-      </div>
+      {/* RIGHT */}
+      <button
+        onClick={handleNext}
+        className="
+      absolute
+      top-1/2
+      -translate-y-1/2
+      -right-12
+      z-50
+      w-10
+      h-10
+      rounded-full
+      text-white
+    "
+      >
+        <ArrowRight size={18} />
+      </button>
     </div>
   );
 };
