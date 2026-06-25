@@ -135,61 +135,32 @@ const Billboard: React.FC = () => {
 
   return (
     <div
-      className="flex flex-col h-full w-full relative bg-transparent rounded-2xl overflow-hidden"
+      className="flex h-full w-full relative bg-transparent rounded-2xl overflow-hidden"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
 
-      <div className="flex-1 overflow-hidden relative">
-        {/* LEFT BUTTON */}
+      <div className="w-12 flex justify-center items-center">
         <button
           onClick={handlePrev}
           className="
-      absolute
-      left-1
-      top-1/2
-      -translate-y-1/2
-      z-50
-      w-10
-      h-10
-      rounded-full
-      bg-black/50
-      backdrop-blur-md
-      text-white
-      flex
-      items-center
-      justify-center
-      hover:bg-black/70
-      transition
-    "
+            w-10
+            h-10
+            rounded-full
+            bg-black/50
+            text-white
+            flex
+            items-center
+            justify-center
+            hover:bg-black/70
+            transition
+          "
         >
           <ArrowLeft size={18} />
         </button>
+      </div>
 
-        {/* RIGHT BUTTON */}
-        <button
-          onClick={handleNext}
-          className="
-      absolute
-      right-1
-      top-1/2
-      -translate-y-1/2
-      z-50
-      w-10
-      h-10
-      rounded-full
-      bg-black/50
-      backdrop-blur-md
-      text-white
-      flex
-      items-center
-      justify-center
-      hover:bg-black/70
-      transition
-    "
-        >
-          <ArrowRight size={18} />
-        </button>
+      <div className="flex-1 overflow-hidden">
         <Suspense fallback={<div className="text-center text-white/60 pt-10">Loading...</div>}>
           {loadingPockets ? (
             <div className="text-center text-white/60 pt-10">Loading...</div>
@@ -202,6 +173,25 @@ const Billboard: React.FC = () => {
             />
           )}
         </Suspense>
+      </div>
+      <div className="w-12 flex justify-center items-center">
+        <button
+          onClick={handleNext}
+          className="
+            w-10
+            h-10
+            rounded-full
+            bg-black/50
+            text-white
+            flex
+            items-center
+            justify-center
+            hover:bg-black/70
+            transition
+          "
+        >
+          <ArrowRight size={18} />
+        </button>
       </div>
     </div>
   );
