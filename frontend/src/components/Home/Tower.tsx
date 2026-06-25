@@ -30,15 +30,28 @@ const Tower: React.FC<{
   const [translateZ, setTranslateZ] = useState(150);
 
   const totalFaces = faces.length;
-  const angleStep = 360 / totalFaces;
+  const angleStep =
+  totalFaces === 1
+    ? 0
+    : totalFaces === 2
+    ? 180
+    : 360 / totalFaces;
 
   useEffect(() => {
     const update = () => {
-      if (cubeRef.current) {
-        const w = cubeRef.current.offsetWidth;
-        const r = (w / 2) / Math.tan(Math.PI / totalFaces);
-        setTranslateZ(r);
+      if (!cubeRef.current) return;
+
+      const w = cubeRef.current.offsetWidth;
+
+      let radius;
+
+      if (totalFaces <= 2) {
+        radius = w * 0.6;
+      } else {
+        radius = (w / 2) / Math.tan(Math.PI / totalFaces);
       }
+
+      setTranslateZ(radius);
     };
     update();
     window.addEventListener("resize", update);
