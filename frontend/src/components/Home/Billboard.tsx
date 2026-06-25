@@ -146,7 +146,6 @@ const Billboard: React.FC = () => {
           onClick={handlePrev}
           className="
       absolute
-      left-2
       top-1/2
       -translate-y-1/2
       z-50
@@ -171,7 +170,6 @@ const Billboard: React.FC = () => {
           onClick={handleNext}
           className="
       absolute
-      right-2
       top-1/2
       -translate-y-1/2
       z-50
