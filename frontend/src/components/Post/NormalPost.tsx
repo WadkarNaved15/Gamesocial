@@ -261,20 +261,6 @@ const NormalPost: React.FC<NormalPostProps> = ({
                   >
                     {asset.type === "video" ? (
                       <div className="w-full h-full overflow-hidden relative group">
-                        
-                        {/* Creator Processing Overlay */}
-                        {isOwner && isProcessing && (
-                          <div className="absolute top-2 right-2 z-10 bg-black/70 text-white text-[9px] font-bold px-2 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-md border border-white/10">
-                            <Loader2 size={10} className="animate-spin text-sky-400" />
-                            <span>Optimizing...</span>
-                          </div>
-                        )}
-                        {isOwner && isFailed && (
-                          <div className="absolute top-2 right-2 z-10 bg-red-600/80 text-white text-[9px] font-bold px-2 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-md border border-white/10">
-                            <AlertCircle size={10} />
-                            <span>Opt Failed</span>
-                          </div>
-                        )}
 
                         <video
                           ref={(el) => {

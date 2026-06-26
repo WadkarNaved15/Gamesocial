@@ -86,19 +86,43 @@ async function recoverStuckDrafts() {
 }
 
 async function recoverPendingVideos() {
-  const posts = await AllPost.find({
-    "normalPost.assets.processingStatus": "pending",
-  });
+  // recover videos stuck in pending/processing
+  // for less than 24h old posts only
+  const cutoff = new Date(
+    Date.now() - 24 * 60 * 60 * 1000
+  );
+
+  const posts = await AllPost.find(
+    {
+      createdAt: { $gte: cutoff },
+      "normalPost.assets.processingStatus": {
+        $in: ["pending", "processing"],
+      },
+    },
+    {
+      _id: 1,
+      normalPost: 1,
+    }
+  );
 
   if (!posts.length) {
-    console.log("✅ No pending videos found");
+    console.log(
+      "✅ No recoverable videos found"
+    );
     return;
   }
 
+  let recovered = 0;
+
   for (const post of posts) {
     for (const asset of post.normalPost?.assets || []) {
-      if (asset.processingStatus !== "pending")
+      if (
+        !["pending", "processing"].includes(
+          asset.processingStatus
+        )
+      ) {
         continue;
+      }
 
       try {
         await videoProcessingQueue.add(
@@ -110,27 +134,32 @@ async function recoverPendingVideos() {
             url: asset.url,
           },
           {
-            jobId: `recover-video-${post._id}-${asset.key}`,
+            // prevents duplicate recovery jobs
+            jobId: `video-recovery-${post._id}-${asset.key}`,
             removeOnComplete: 100,
             removeOnFail: 100,
           }
         );
 
-        console.log(
-          `✅ Recovered video ${post._id}`
-        );
+        recovered++;
       } catch (err) {
         console.error(
-          `❌ Failed to recover video ${post._id}`,
+          `❌ Failed recovering video ${post._id}`,
           err
         );
       }
     }
   }
 
-  console.log(
-    `Recovered ${posts.length} pending videos`
-  );
+  if (recovered > 0) {
+    console.log(
+      `✅ Recovered ${recovered} stuck video jobs`
+    );
+  } else {
+    console.log(
+      "✅ No stuck video jobs found"
+    );
+  }
 }
 
 try {
