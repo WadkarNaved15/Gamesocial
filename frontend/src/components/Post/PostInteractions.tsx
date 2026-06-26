@@ -83,7 +83,7 @@ const PostInteractions: React.FC<PostInteractionsProps> = ({
             className="flex items-center text-gray-500 dark:text-gray-400 hover:text-green-500 transition-colors"
               onClick={() => {
                 trackEvent({
-                  eventType: "share",
+                  eventType: "share_open",
                   targetType: "post",
                   targetId: postId,
                 });

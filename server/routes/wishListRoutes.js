@@ -3,6 +3,11 @@ import express from "express";
 import Wishlist from "../models/Wishlist.js";
 import verifyToken from "../middlewares/authMiddleware.js";
 import { insertFeedback, deleteFeedback, fireAndForget } from "../services/gorse.client.js";
+import {
+  onSaveAdded,
+  onSaveRemoved,
+} from "../services/analyticsEvents.js";
+import { trackEvent } from "../services/analyticsService.js";
 
 const router = express.Router();
 
@@ -39,6 +44,17 @@ router.post("/", verifyToken, async (req, res) => {
 
     await Wishlist.create({ post: postId, user: userId });
 
+    await onSaveAdded(postId);
+
+    await trackEvent({
+      user: userId,
+      sessionId: null,
+      eventType: "wishlist_add",
+      targetType: "post",
+      targetId: postId,
+      source: "web",
+    });
+
     // ✅ Gorse: save is the strongest positive signal
     fireAndForget(() =>
       insertFeedback({ feedbackType: "save", userId, postId })
@@ -58,6 +74,17 @@ router.delete("/", verifyToken, async (req, res) => {
   const userId = req.user.id;
 
   await Wishlist.deleteOne({ post: postId, user: userId });
+
+  await onSaveRemoved(postId);
+
+  await trackEvent({
+    user: userId,
+    sessionId: null,
+    eventType: "wishlist_remove",
+    targetType: "post",
+    targetId: postId,
+    source: "web",
+  });
 
   // ✅ Gorse: remove save signal
   fireAndForget(() =>

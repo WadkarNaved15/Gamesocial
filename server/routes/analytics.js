@@ -23,6 +23,7 @@ const ALLOWED_EVENTS = [
   "page_view",
   "content_view",
   "profile_page_view",
+  "share_open",
 
   "search",
   "search_click",
@@ -348,15 +349,17 @@ router.post(
         }
     
         if (ACTION_EVENTS.includes(eventType)) {
-  await UserSession.updateOne(
-    { sessionId },
-    {
-      $inc: {
-        actions: 1,
-      },
-    }
-  );
-}
+          await UserSession.updateOne(
+            { sessionId },
+            {
+              $inc: {
+                actions: 1,
+              },
+            }
+          );
+        }
+
+    
 
 
       await trackEvent({

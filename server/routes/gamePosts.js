@@ -28,6 +28,9 @@ import CreditAudit from "../models/CreditAudit.js";
 import AllPost from "../models/Allposts.js";
 import { publishGameQueue } from "../queues/publishGameQueue.js";
 import { videoProcessingQueue } from "../queues/videoQueue.js"; 
+import {
+  processRazorpayPayment,
+} from "../services/razorpay/processPayment.js";
 
 const router = express.Router();
 
@@ -425,112 +428,68 @@ router.post("/create-payment-order", verifyToken, async (req, res) => {
  *
  * Body: { draftId, razorpayOrderId, razorpayPaymentId, razorpaySignature }
  */
-router.post("/verify-payment", verifyToken, async (req, res) => {
-  try {
-    const { draftId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+router.post(
+  "/verify-payment",
+  verifyToken,
+  async (req, res) => {
+    try {
+      const {
+        draftId,
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature,
+      } = req.body;
 
-    if (!draftId || !razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
-      return res.status(400).json({ message: "Missing payment verification fields" });
-    }
+      const expected =
+        crypto
+          .createHmac(
+            "sha256",
+            process.env
+              .RAZORPAY_KEY_SECRET
+          )
+          .update(
+            `${razorpayOrderId}|${razorpayPaymentId}`
+          )
+          .digest("hex");
 
-    // 1. Verify Razorpay signature
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-      .digest("hex");
-
-    if (expectedSignature !== razorpaySignature) {
-      return res.status(400).json({ message: "Payment signature verification failed" });
-    }
-
-    // 2. Load draft and validate ownership
-    const draft = await GamePostDraft.findOne({
-      _id: draftId,
-      creator: req.user._id,
-      razorpayOrderId,
-      status: "payment_pending",
-    });
-
-    if (!draft) {
-      return res.status(404).json({ message: "Draft not found or already processed" });
-    }
-
-    // 3. Idempotency: reject if a CreditPurchase with this paymentId already exists
-    const existingPurchase = await CreditPurchase.findOne({ paymentId: razorpayPaymentId });
-    if (existingPurchase) {
-      // Payment already processed — return current draft status to frontend
-      return res.json({
-        message: "Payment already recorded",
-        draftId: draft._id,
-        status: draft.status,
-      });
-    }
-
-    const payment = await getRazorpay().payments.fetch(razorpayPaymentId);
-
-    if (payment.status !== "captured") {
-      return res.status(400).json({
-        message: "Payment not captured",
-      });
-    }
-
-    if (
-      payment.amount !== draft.amount ||
-      payment.order_id !== razorpayOrderId ||
-      payment.currency !== draft.currency
-    ) {
-      return res.status(400).json({
-        message: "Payment mismatch"
-      });
-    }
-
-    // 4. Create CreditPurchase (status = completed)
-    const creditPurchase = await CreditPurchase.create({
-      creator: req.user._id,
-      draft: draft._id,
-      gamePost: null, // set by publish job
-      creditsPurchased: draft.selectedCredits,
-      amountPaid: draft.amount,
-      currency: draft.currency || "USD",
-      paymentProvider: "razorpay",
-      razorpayOrderId,
-      paymentId: razorpayPaymentId,
-      status: "completed",
-      fulfillmentStatus: "pending",
-    });
-
-    // 5. Advance draft to payment_completed
-    draft.status = "payment_completed";
-    draft.creditPurchaseId = creditPurchase._id;
-    await draft.save();
-
-    await publishGameQueue.add(
-      "publishGame",
-      {
-        draftId: draft._id.toString(),
-        creditPurchaseId: creditPurchase._id.toString(),
-      },
-      {
-        attempts: 5,
-        backoff: {
-          type: "exponential",
-          delay: 10000,
-        },
-        removeOnComplete: 500,
-        removeOnFail: 500,
+      if (
+        expected !==
+        razorpaySignature
+      ) {
+        return res
+          .status(400)
+          .json({
+            message:
+              "Payment signature verification failed",
+          });
       }
-    );
 
-    res.json({
-      message: "Payment verified. Publishing your game…",
-      draftId: draft._id,
-      status: "payment_completed",
-    });
-  } catch (err) {
-    console.error("verify-payment error:", err);
-    res.status(500).json({ message: "Payment verification failed" });
+      await processRazorpayPayment(
+        razorpayPaymentId
+      );
+
+      res.json({
+        message:
+          "Payment verified. Publishing your game…",
+        draftId,
+        status:
+          "payment_completed",
+      });
+    } catch (err) {
+      console.error(
+        "verify-payment",
+        err
+      );
+
+      res
+        .status(500)
+        .json({
+          message:
+            "Payment verification failed",
+        });
+    }
   }
-});
+);
 
 /**
  * Publish job — runs the Mongo transaction.

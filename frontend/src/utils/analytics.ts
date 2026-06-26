@@ -2,14 +2,21 @@
 
 import api from "./api.ts";
 
-export async function trackEvent(
-  payload :any
-) {
+let lastPage: string | null = null;
+
+export async function trackEvent(payload: any) {
   try {
-    await api.post(
-      "/api/analytics/event",
-      payload
-    );
+    if (payload.eventType === "page_view") {
+      const currentPage = payload.metadata?.page;
+
+      if (currentPage && currentPage === lastPage) {
+        return;
+      }
+
+      lastPage = currentPage;
+    }
+
+    await api.post("/api/analytics/event", payload);
   } catch (err) {
     console.error(err);
   }

@@ -39,7 +39,7 @@ type DraftStatus =
 
 const CREDITS_PER_SESSION = 10;
 const CHUNK_SIZE = 10 * 1024 * 1024;
-const ALLOWED_BUILD_EXTENSIONS = ['7z', 'zip', 'exe'];
+const ALLOWED_BUILD_EXTENSIONS = ['7z', 'zip'];
 const ALLOWED_VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov'];
 const POLL_INTERVAL_MS = 2500;
 
@@ -267,7 +267,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!isValidBuildFile(file)) {
-      setErrorMessage('Invalid build format. Only .7z, .zip, or .exe are allowed.');
+      setErrorMessage('Invalid build format. Only .7z and .zip are allowed.');
       return;
     }
     setErrorMessage(null);
@@ -951,11 +951,11 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
                   </div>
                   <div className="text-center">
                     <p className="text-gray-900 dark:text-white font-bold text-sm">Upload Game Build</p>
-                    <p className="text-[10px] text-gray-500 mt-1">.zip, .7z, .exe</p>
+                    <p className="text-[10px] text-gray-500 mt-1">.zip, .7z</p>
                   </div>
                 </div>
               )}
-              <input ref={fileInputRef} type="file" hidden accept=".7z,.zip,.exe,application/x-7z-compressed,application/zip" onChange={handleFileChange} />
+              <input ref={fileInputRef} type="file" hidden accept=".7z,.zip,application/x-7z-compressed,application/zip" onChange={handleFileChange} />
             </section>
 
             <section className="space-y-1.5">

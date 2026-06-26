@@ -2,27 +2,28 @@ import React, { useState, useEffect, useRef, memo } from "react";
 import axios from "axios";
 import { useUser } from "../../context/user";
 import { useNavigate } from "react-router-dom";
-import { Send, Link as LinkIcon, MessageSquare  ,Gamepad2} from "lucide-react"; // Optional: npm install lucide-react
+import { Send, Link as LinkIcon, MessageSquare, Gamepad2 } from "lucide-react";
 import { useFeed } from "../../context/FeedContext";
+
 interface Comment {
   _id: string;
   postId: string;
   text: string;
   createdAt: string;
-
   user?: {
     username: string;
     avatar?: string;
   };
-
   hasPlayedDemo?: boolean;
 }
+
 interface LinkPreview {
   title?: string;
   description?: string;
   image?: string;
   url?: string;
 }
+
 interface CommentSectionProps {
   postId: string;
   BACKEND_URL: string;
@@ -42,28 +43,12 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache }: any) => {
 
   // useEffect(() => {
   //   if (!url || fetchedRef.current) return;
-
   //   if (linkPreviewCache.current[url]) {
   //     setLinkPreview(linkPreviewCache.current[url]);
   //     fetchedRef.current = true;
   //     return;
   //   }
-
-  //   const fetchMetadata = async () => {
-  //     setLoadingPreview(true);
-  //     try {
-  //       const { data } = await axios.get(`${BACKEND_URL}/api/metadata`, { params: { url } });
-  //       const meta = { ...data, url };
-  //       linkPreviewCache.current[url] = meta;
-  //       setLinkPreview(meta);
-  //     } catch (error) {
-  //       console.error("Error fetching metadata:", error);
-  //     } finally {
-  //       setLoadingPreview(false);
-  //       fetchedRef.current = true;
-  //     }
-  //   };
-  //   fetchMetadata();
+  //   const fetchMetadata = async () => { ... }
   // }, [url, BACKEND_URL, linkPreviewCache]);
 
   return (
@@ -76,7 +61,8 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache }: any) => {
             e.stopPropagation();
             navigate(`/profile/${comment.user?.username}`);
           }}
-          className="h-10 w-10 rounded-full object-cover"
+          className="h-10 w-10 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+          alt="Avatar"
         />
       </div>
 
@@ -88,28 +74,38 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache }: any) => {
                 {comment.user?.username || "Anonymous"}
               </span>
 
+              {/* 👇 UPDATED CIRCULAR "PLAYED" BADGE */}
               {comment.hasPlayedDemo && (
-                <span
+                <div
+                  title="Verified Player"
+                  className="relative flex items-center justify-center rounded-full flex-shrink-0 shadow-sm border border-emerald-400/30"
                   style={{
-                    background:
-                      "linear-gradient(135deg, #3D7A6E 0%, #23473f 45%, #000000 100%)",
+                    width: "22px", // Scaled down to match text size
+                    height: "22px",
+                    background: "linear-gradient(135deg, #4ade80 0%, #166534 100%)", // Matching the green from your reference
                   }}
-                  className="
-                    inline-flex items-center gap-1.5
-                    px-2.5 py-1
-                    rounded-full
-                    text-[10px]
-                    font-black
-                    uppercase
-                    tracking-wide
-                    text-white
-                    shadow-lg
-                    border border-emerald-400/20
-                  "
                 >
-                  <Gamepad2 size={11} />
-                  Verified Player
-                </span>
+                  {/* Center Gamepad Icon */}
+                  <Gamepad2 size={10} className="text-white z-10" fill="currentColor" strokeWidth={2.5} />
+                  
+                  {/* Circular SVG Text */}
+                  <svg 
+                    viewBox="0 0 100 100" 
+                    className="absolute inset-0 w-full h-full pointer-events-none transform -rotate-12"
+                  >
+                    <path 
+                      id={`circlePath-${comment._id}`} 
+                      d="M 50, 14 a 36,36 0 1,1 0,72 a 36,36 0 1,1 0,-72" 
+                      fill="none" 
+                    />
+                    <text fill="rgba(255,255,255,0.9)" fontSize="16" fontWeight="900">
+                      {/* textLength="226" roughly matches the path circumference to space it perfectly */}
+                      <textPath href={`#circlePath-${comment._id}`} textLength="226" lengthAdjust="spacing">
+                        PLAYED • PLAYED • 
+                      </textPath>
+                    </text>
+                  </svg>
+                </div>
               )}
             </div>
             <span className="text-[11px] text-gray-400 font-medium">
@@ -129,12 +125,6 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache }: any) => {
             )}
           </p>
         </div>
-
-        {/* Action Buttons
-        <div className="flex items-center gap-4 mt-1.5 ml-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
-          <button className="hover:text-blue-600 transition-colors">Like</button>
-          <button className="hover:text-blue-600 transition-colors">Reply</button>
-        </div> */}
 
         {/* Enhanced Link Preview */}
         {loadingPreview && (
@@ -174,7 +164,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
   const [loadingMore, setLoadingMore] = useState(false);
   const { user } = useUser();
   const observerRef = useRef<HTMLDivElement | null>(null);
-  // const linkPreviewCache = useRef<Record<string, LinkPreview>>({});
 
   useEffect(() => {
     const fetchComments = async () => {
@@ -182,20 +171,20 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
         const res = await axios.get(`${BACKEND_URL}/api/comments`, {
           params: { postId, limit: 20 }
         });
-
         setComments(res.data.comments);
         setNextCursor(res.data.nextCursor);
       } catch (err) { console.error(err); }
     };
     fetchComments();
   }, [postId, BACKEND_URL]);
+
   useEffect(() => {
     setComments([]);
     setNextCursor(null);
   }, [postId]);
+
   useEffect(() => {
     if (!observerRef.current) return;
-
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
@@ -204,21 +193,17 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
       },
       { threshold: 1 }
     );
-
     observer.observe(observerRef.current);
-
     return () => observer.disconnect();
   }, [observerRef.current, nextCursor, loadingMore]);
+
   const loadMoreComments = async () => {
     if (!nextCursor || loadingMore) return;
-
     try {
       setLoadingMore(true);
-
       const res = await axios.get(`${BACKEND_URL}/api/comments`, {
         params: { postId, limit: 20, cursor: nextCursor }
       });
-
       setComments(prev => [...prev, ...res.data.comments]);
       setNextCursor(res.data.nextCursor);
     } catch (err) {
@@ -227,6 +212,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
       setLoadingMore(false);
     }
   };
+
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
 
@@ -250,17 +236,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
         { postId, text: newComment },
         { withCredentials: true }
       );
-
       const { comment, commentsCount } = res.data;
-
       setComments(prev =>
         prev.map(c =>
           c._id === tempComment._id ? comment : c
         )
       );
-
       updateCommentsCount(postId, commentsCount);
-
     } catch (err) {
       setComments(prev =>
         prev.filter(c => c._id !== tempComment._id)
@@ -304,7 +286,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
               key={c._id}
               comment={c}
               BACKEND_URL={BACKEND_URL}
-              // linkPreviewCache={linkPreviewCache}
             />
           ))
         ) : (

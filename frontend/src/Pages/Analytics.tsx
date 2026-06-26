@@ -98,7 +98,7 @@ interface LifetimeBlock {
 }
 interface CreatorAsset {
   _id: string;
-  type: "game" | "ad" | "3d_ad" | "model" | "media_ad" ;
+  type: "game" | "ad" | "3d_ad" | "model" | "media_ad" | "post";
   displayName: string;
   today: AnalyticsPeriod;
   last7Days: AnalyticsPeriod;
@@ -168,10 +168,28 @@ interface AnalyticsPortfolio {
 // ─────────────────────────────────────────────────────────────
 interface AssetCfg { icon: string; color: string; dim: string; border: string; }
 
-const ASSET_CFG: Record<CreatorAsset["type"], AssetCfg> = {
-  game:   { icon: "ti-device-gamepad-2", color: "#3D7A6E", dim: "rgba(61,122,110,0.18)",  border: "rgba(61,122,110,0.35)"  },
-  ad:     { icon: "ti-speakerphone",     color: "#7a6e3d", dim: "rgba(122,110,61,0.18)",  border: "rgba(122,110,61,0.35)"  },
-  "3d_ad":{ icon: "ti-box",             color: "#3d5f7a", dim: "rgba(61,95,122,0.18)",   border: "rgba(61,95,122,0.35)"   },
+const ASSET_CFG = {
+  game: {
+    icon: "ti-device-gamepad-2",
+    color: "#3D7A6E",
+    dim: "rgba(61,122,110,0.18)",
+    border: "rgba(61,122,110,0.35)",
+  },
+
+  ad: {
+    icon: "ti-speakerphone",
+    color: "#7a6e3d",
+    dim: "rgba(122,110,61,0.18)",
+    border: "rgba(122,110,61,0.35)",
+  },
+
+  "3d_ad": {
+    icon: "ti-box",
+    color: "#3d5f7a",
+    dim: "rgba(61,95,122,0.18)",
+    border: "rgba(61,95,122,0.35)",
+  },
+
   model: {
     icon: "ti-cube",
     color: "#6d5cae",
@@ -186,12 +204,20 @@ const ASSET_CFG: Record<CreatorAsset["type"], AssetCfg> = {
     border: "rgba(174,122,61,.35)",
   },
 
+  post: {
+    icon: "ti-photo",
+    color: "#888",
+    dim: "rgba(255,255,255,.08)",
+    border: "rgba(255,255,255,.15)",
+  },
 };
+
 function typeLabel(type: CreatorAsset["type"]): string {
   if (type === "game")   return "Game";
   if (type === "3d_ad") return "3D Ad";
   if (type === "model") return "3D Model";
   if (type === "media_ad") return "Media Ad";
+   if (type === "post") return "Post";
   return "Ad";
 }
 
@@ -905,6 +931,7 @@ function Sidebar({
   collapsed: boolean;
   onToggle: () => void;
 }) {
+  console.log("Asset types", assets.map(a => a.type));
   const grouped = useMemo(() => {
     const map: Record<string, CreatorAsset[]> = {};
     assets.forEach(a => {

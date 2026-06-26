@@ -50,6 +50,11 @@ const PostAnalyticsSchema = new mongoose.Schema(
         default: 0,
         min: 0,
       },
+      saves: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
 
       demoConsumptions: { type: Number, default: 0, min: 0 },
 
@@ -75,6 +80,10 @@ const PostAnalyticsSchema = new mongoose.Schema(
         shares: {
           type: Number,
           default: 0
+        },
+        saves: {
+          type: Number,
+          default: 0,
         },
 
         demoConsumptions: { type: Number, default: 0, min: 0 },
