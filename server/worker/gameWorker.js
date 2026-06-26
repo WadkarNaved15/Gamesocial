@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import dns from "dns";
+import AllPost from "../models/Allposts.js";
+import { videoQueue } from "../queues/videoQueue.js";
 
 dotenv.config();
 
@@ -83,6 +85,54 @@ async function recoverStuckDrafts() {
   );
 }
 
+async function recoverPendingVideos() {
+  const posts = await AllPost.find({
+    "normalPost.assets.processingStatus": "pending",
+  });
+
+  if (!posts.length) {
+    console.log("✅ No pending videos found");
+    return;
+  }
+
+  for (const post of posts) {
+    for (const asset of post.normalPost?.assets || []) {
+      if (asset.processingStatus !== "pending")
+        continue;
+
+      try {
+        await videoQueue.add(
+          "processVideo",
+          {
+            entityType: "post",
+            entityId: post._id.toString(),
+            key: asset.key,
+            url: asset.url,
+          },
+          {
+            jobId: `recover-video-${post._id}-${asset.key}`,
+            removeOnComplete: 100,
+            removeOnFail: 100,
+          }
+        );
+
+        console.log(
+          `✅ Recovered video ${post._id}`
+        );
+      } catch (err) {
+        console.error(
+          `❌ Failed to recover video ${post._id}`,
+          err
+        );
+      }
+    }
+  }
+
+  console.log(
+    `Recovered ${posts.length} pending videos`
+  );
+}
+
 try {
   await registerRepeatJobs();
 
@@ -91,6 +141,8 @@ try {
   );
 
   await recoverStuckDrafts();
+
+  await recoverPendingVideos();
 
   console.log(
     "🚀 Workers started"
