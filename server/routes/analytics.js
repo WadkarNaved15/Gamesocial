@@ -348,15 +348,17 @@ router.post(
         }
     
         if (ACTION_EVENTS.includes(eventType)) {
-  await UserSession.updateOne(
-    { sessionId },
-    {
-      $inc: {
-        actions: 1,
-      },
-    }
-  );
-}
+          await UserSession.updateOne(
+            { sessionId },
+            {
+              $inc: {
+                actions: 1,
+              },
+            }
+          );
+        }
+
+    
 
 
       await trackEvent({

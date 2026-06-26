@@ -73,6 +73,8 @@ import adminCreditsRoutes from "./routes/adminCredits.js";
 import adminSessionRouter from "./routes/adminSessionMonitoring.js";
 import adminIntelligenceRouter from "./routes/adminIntelligence.js";
 
+import RazorpayWebhookRouter from "./routes/razorpayWebhook.js";
+
 import adminRouter from "./routes/admin.js"
 
 dotenv.config();
@@ -153,6 +155,13 @@ app.use(
     credentials: true,
   })
 );
+
+app.use(
+  "/api/webhooks",
+  webhookRoutes
+);
+
+
 app.set("trust proxy", 1);
 app.use(express.json({ limit: '200mb' }));
 app.use(express.urlencoded({ extended: true, limit: '200mb' }));

@@ -52,7 +52,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
 
   const [eventSource, setEventSource] = useState<EventSource | null>(null);
-  const [countdownInterval, setCountdownInterval] = useState<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const { preloadAd, clearAd } = useAds();
   const adPreloadedRef = useRef(false);
@@ -112,7 +112,10 @@ const clearSession = useCallback(() => {
   console.log("[Queue] Clearing session state");
 
   if (eventSource) eventSource.close();
-  if (countdownInterval) clearInterval(countdownInterval);
+  if (countdownIntervalRef.current) {
+    clearInterval(countdownIntervalRef.current);
+    countdownIntervalRef.current = null;
+  }
 
   setQueue({
     sessionId: null,
@@ -128,7 +131,7 @@ const clearSession = useCallback(() => {
   });
 
   localStorage.removeItem(STORAGE_KEY);
-}, [eventSource, countdownInterval]);
+}, [eventSource]);
 
 // 🔌 Setup SSE Connection
 const setupSSE = useCallback((sessionId: string) => {
@@ -172,6 +175,7 @@ const setupSSE = useCallback((sessionId: string) => {
         newState.estimatedWaitMinutes = data.estimatedWaitMinutes;
 
       // 🟡 QUEUED USER → show countdown modal
+// 🟡 QUEUED USER → show countdown modal
 if (data.status === "allocation_ready") {
   console.log("[Queue SSE] allocation_ready → queued user");
 
@@ -185,52 +189,63 @@ if (data.status === "allocation_ready") {
 
   newState.countdownSecondsRemaining = seconds;
 
-  // start countdown timer
-  if (countdownInterval) clearInterval(countdownInterval);
+  // Stop previous timer
+  if (countdownIntervalRef.current) {
+    clearInterval(countdownIntervalRef.current);
+    countdownIntervalRef.current = null;
+  }
 
-  const interval = setInterval(() => {
+  // Start countdown
+  countdownIntervalRef.current = setInterval(() => {
     setQueue(prev => {
-      if (!prev.countdownSecondsRemaining) return prev;
+      if (prev.countdownSecondsRemaining == null) {
+        return prev;
+      }
 
       const next = prev.countdownSecondsRemaining - 1;
 
       if (next <= 0) {
-        clearInterval(interval);
-        cancelSession(); // auto release
-        return { ...prev, countdownSecondsRemaining: 0 };
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
+
+        cancelSession();
+
+        return {
+          ...prev,
+          countdownSecondsRemaining: 0,
+        };
       }
 
       return {
         ...prev,
-        countdownSecondsRemaining: next
+        countdownSecondsRemaining: next,
       };
     });
   }, 1000);
-
-  setCountdownInterval(interval);
 }
 
-      // 🟢 DIRECT USER → skip countdown, show ads
-      if (data.status === "starting") {
-        console.log("[Queue SSE] starting → direct session");
-        if (!adPreloadedRef.current) {
-            adPreloadedRef.current = true;
-            preloadAd();
-          }
+// 🟢 DIRECT USER → skip countdown, show ads
+if (data.status === "starting") {
+  console.log("[Queue SSE] starting → direct session");
 
-        if (countdownInterval) {
-          clearInterval(countdownInterval);
-          setCountdownInterval(null);
-        }
+  if (!adPreloadedRef.current) {
+    adPreloadedRef.current = true;
+    preloadAd();
+  }
 
-        newState.isDirectPlay = true;
+  if (countdownIntervalRef.current) {
+    clearInterval(countdownIntervalRef.current);
+    countdownIntervalRef.current = null;
+  }
 
-        // IMPORTANT: reset countdown state
-        newState.countdownStartsAt = null;
-        newState.countdownSecondsRemaining = null;
+  newState.isDirectPlay = true;
+  newState.countdownStartsAt = null;
+  newState.countdownSecondsRemaining = null;
+  newState.phase = data.phase || "downloading";
+}
 
-        newState.phase = data.phase || "downloading";
-      }
 
       return newState;
     });

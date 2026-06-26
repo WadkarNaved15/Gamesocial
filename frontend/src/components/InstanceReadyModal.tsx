@@ -23,8 +23,8 @@ export const InstanceReadyModal: React.FC<InstanceReadyModalProps> = ({
 }) => {
   const [isLaunching, setIsLaunching] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [displayCountdown, setDisplayCountdown] = useState(countdown);
   const [isDark, setIsDark] = useState(false);
+  const displayCountdown = countdown;
 
   useEffect(() => {
     const check = () =>
@@ -38,22 +38,7 @@ export const InstanceReadyModal: React.FC<InstanceReadyModalProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    setDisplayCountdown(countdown);
 
-    const interval = setInterval(() => {
-      setDisplayCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          onCancel();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [countdown, onCancel]);
 
   const handleLaunch = async () => {
     setIsLaunching(true);
