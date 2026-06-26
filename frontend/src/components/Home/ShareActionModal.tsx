@@ -3,6 +3,7 @@ import { useState } from "react";
 import SharePostModal from "./SharePostModal";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { trackEvent } from "../../utils/analytics";
 
 interface Props {
   postId: string;
@@ -21,6 +22,14 @@ export default function ShareActionModal({ postId, currentUserId, onClose }: Pro
       await axios.post(`${BACKEND_URL}/api/feedback/share`, {
         postId,
       }, { withCredentials: true });
+      await trackEvent({
+          eventType: "share",
+          targetType: "post",
+          targetId: postId,
+          metadata: {
+            method: "copy_link",
+          },
+        });
       toast.success("Copied to clipboard", { position: "bottom-center", autoClose: 2000 });
       onClose();
     } catch (err) {
@@ -35,6 +44,14 @@ export default function ShareActionModal({ postId, currentUserId, onClose }: Pro
         await axios.post(`${BACKEND_URL}/api/feedback/share`, {
           postId,
         }, { withCredentials: true });
+        await trackEvent({
+          eventType: "share",
+          targetType: "post",
+          targetId: postId,
+          metadata: {
+            method: "system_share",
+          },
+        });
         onClose();
       } catch (err) {
         // User cancelled or error

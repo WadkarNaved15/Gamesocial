@@ -23,6 +23,7 @@ const ALLOWED_EVENTS = [
   "page_view",
   "content_view",
   "profile_page_view",
+  "share_open",
 
   "search",
   "search_click",

@@ -40,6 +40,8 @@ async function ensureDailyRow(postId, dateKey) {
             watchTimeMs: 0,
             likes: 0,
             comments: 0,
+            shares: 0,
+            saves: 0,
             demoConsumptions: 0,
             sessions: 0,
             sessionPlayTimeMs: 0,
@@ -162,6 +164,65 @@ export async function onCommentRemoved(postId) {
         {
           "day.date": dateKey,
           "day.comments": { $gt: 0 },
+        },
+      ],
+    }
+  );
+}
+
+
+export async function onSaveAdded(postId) {
+  const dateKey = new Date()
+    .toISOString()
+    .split("T")[0];
+
+  await ensureDailyRow(postId, dateKey);
+
+  await PostAnalytics.updateOne(
+    { post: postId },
+    {
+      $inc: {
+        "lifetime.saves": 1,
+        "dailyStats.$[day].saves": 1,
+      },
+    },
+    {
+      arrayFilters: [
+        { "day.date": dateKey },
+      ],
+    }
+  );
+}
+
+export async function onSaveRemoved(postId) {
+  const dateKey = new Date()
+    .toISOString()
+    .split("T")[0];
+
+  await PostAnalytics.updateOne(
+    {
+      post: postId,
+      "lifetime.saves": { $gt: 0 },
+    },
+    {
+      $inc: {
+        "lifetime.saves": -1,
+      },
+    }
+  );
+
+  await PostAnalytics.updateOne(
+    { post: postId },
+    {
+      $inc: {
+        "dailyStats.$[day].saves": -1,
+      },
+    },
+    {
+      arrayFilters: [
+        {
+          "day.date": dateKey,
+          "day.saves": { $gt: 0 },
         },
       ],
     }

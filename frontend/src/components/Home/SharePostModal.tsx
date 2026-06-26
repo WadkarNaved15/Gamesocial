@@ -4,6 +4,7 @@ import { useSocket } from "../../context/SocketContext";
 import { useUsers } from "../../context/UsersContext";
 import { toast } from "react-toastify";
 import { useState } from "react";
+import { trackEvent } from "../../utils/analytics";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 const DEFAULT_AVATAR = "/default_avatar.png";
@@ -49,6 +50,18 @@ export default function SharePostModal({
       await axios.post(`${BACKEND_URL}/api/feedback/share`, {
         postId,
       }, { withCredentials: true });
+
+      // analytics event
+      await trackEvent({
+        eventType: "share",
+        targetType: "post",
+        targetId: postId,
+        metadata: {
+          method: "direct_message",
+          receiverId,
+        },
+      });
+
       toast.success("Sent", {
         position: "bottom-center",
         autoClose: 1500,
@@ -67,6 +80,16 @@ export default function SharePostModal({
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(shareLink);
+
+    await trackEvent({
+    eventType: "share",
+    targetType: "post",
+    targetId: postId,
+    metadata: {
+      method: "copy_link_dm_modal",
+    },
+  });
+    
     toast.success("Link copied!", {
       position: "bottom-center",
       autoClose: 1500,
