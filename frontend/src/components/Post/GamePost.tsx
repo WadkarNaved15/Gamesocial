@@ -148,7 +148,7 @@ const GamePost: React.FC<GamePostProps> = ({
 
       trackEvent({
         eventType: "game_launch",
-        targetType: "game",
+        targetType: "game_post",
         targetId: _id,
       });
 
