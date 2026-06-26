@@ -120,7 +120,9 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
                 animation-name="*"
                 exposure="1.2"
                 environment-image="neutral"
+                field-of-view="25deg" 
                 shadow-intensity="1"
+
                 onClick={(e: React.MouseEvent) => e.stopPropagation()}
                 style={{ width: '100%', height: '450px', backgroundColor: 'transparent' }} />
             ) : (
@@ -203,7 +205,7 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`, backgroundRepeat: 'repeat' }} />
 
       {/* ── Glass card ── */}
-      <div className="relative z-10 m-3 rounded-2xl overflow-hidden" style={glassCardBase}>
+      <div className="relative z-10 overflow-hidden" style={glassCardBase}>
 
         {/* Image mode: pure dark tint only */}
         {isImage && (
@@ -246,8 +248,9 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
 
             {modelVisible && modelUrl ? (
               // @ts-ignore
-              <model-viewer src={modelUrl} camera-controls auto-rotate autoplay animation-name="*"
-                exposure="1.15" environment-image="neutral" shadow-intensity="0.8"
+              <model-viewer 
+              src={modelUrl} camera-controls auto-rotate autoplay animation-name="*"
+                field-of-view="25deg" exposure="1.15" environment-image="neutral" shadow-intensity="0.8" 
                 onClick={(e: React.MouseEvent) => e.stopPropagation()}
                 style={{ width: '100%', height: '450px', backgroundColor: 'transparent' }} />
             ) : (
