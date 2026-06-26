@@ -158,7 +158,7 @@ app.use(
 
 app.use(
   "/api/webhooks",
-  webhookRoutes
+  RazorpayWebhookRouter
 );
 
 
