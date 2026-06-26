@@ -159,7 +159,7 @@ const ExePost: React.FC<ExePostProps> = ({
           />
 
           {description && (
-            <div className="mt-2 ">
+            <div>
               <p
                 className={`text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${
                   !isExpanded ? "line-clamp-2" : ""
@@ -196,6 +196,7 @@ const ExePost: React.FC<ExePostProps> = ({
                 animation-name="*"
                 exposure="1.2"
                 environment-image="neutral"
+                 field-of-view="25deg" 
                 shadow-intensity="1"
                 style={{ width: "100%", height: "100%" }}
               />
