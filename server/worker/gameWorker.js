@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import dns from "dns";
 import AllPost from "../models/Allposts.js";
-import { videoQueue } from "../queues/videoQueue.js";
+import { videoProcessingQueue } from "../queues/videoQueue.js";
 
 dotenv.config();
 
@@ -101,7 +101,7 @@ async function recoverPendingVideos() {
         continue;
 
       try {
-        await videoQueue.add(
+        await videoProcessingQueue.add(
           "processVideo",
           {
             entityType: "post",
