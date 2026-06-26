@@ -89,39 +89,39 @@ export const getStreamEligibility = async (): Promise<StreamEligibility> => {
     r.includes("Mobile support is coming soon")
   );
 
-  if (!mobileBlocked) {
-    try {
-      const speed = await runBackendSpeedTest();
+  // if (!mobileBlocked) {
+  //   try {
+  //     const speed = await runBackendSpeedTest();
 
-      if (speed.mbps < MIN_SPEED_MBPS) {
-        reasons.push(`Download speed is too low (${speed.mbps.toFixed(1)} Mbps).`);
-      }
+  //     if (speed.mbps < MIN_SPEED_MBPS) {
+  //       reasons.push(`Download speed is too low (${speed.mbps.toFixed(1)} Mbps).`);
+  //     }
 
-      if (speed.elapsedMs > MAX_TEST_MS) {
-        reasons.push(`Connection test took too long (${Math.round(speed.elapsedMs)} ms).`);
-      }
+  //     if (speed.elapsedMs > MAX_TEST_MS) {
+  //       reasons.push(`Connection test took too long (${Math.round(speed.elapsedMs)} ms).`);
+  //     }
 
-      return {
-        checked: true,
-        allowed: reasons.length === 0,
-        reasons,
-        speedMbps: speed.mbps,
-        testMs: speed.elapsedMs,
-      };
-    } catch {
-      return {
-        checked: true,
-        allowed: false,
-        reasons: ["Could not verify your internet right now."],
-        speedMbps: null,
-        testMs: null,
-      };
-    }
-  }
+  //     return {
+  //       checked: true,
+  //       allowed: reasons.length === 0,
+  //       reasons,
+  //       speedMbps: speed.mbps,
+  //       testMs: speed.elapsedMs,
+  //     };
+  //   } catch {
+  //     return {
+  //       checked: true,
+  //       allowed: false,
+  //       reasons: ["Could not verify your internet right now."],
+  //       speedMbps: null,
+  //       testMs: null,
+  //     };
+  //   }
+  // }
 
   return {
     checked: true,
-    allowed: false,
+    allowed: reasons.length === 0,
     reasons,
     speedMbps: null,
     testMs: null,
