@@ -35,7 +35,33 @@ async function updateDatabaseStatus(
      * NORMAL POST VIDEO
      */
 case "post": {
-  await AllPost.updateOne(
+  console.log(
+    "[VideoWorker] Updating post",
+    {
+      entityId,
+      url: payload.url,
+      status: payload.processingStatus,
+    }
+  );
+
+  const post = await AllPost.findById(entityId);
+
+  console.log(
+    "[VideoWorker] Post found:",
+    !!post
+  );
+
+  if (post) {
+    console.log(
+      "[VideoWorker] Assets:",
+      post.normalPost?.assets?.map(a => ({
+        url: a.url,
+        processingStatus: a.processingStatus,
+      }))
+    );
+  }
+
+  const result = await AllPost.updateOne(
     {
       _id: entityId,
       "normalPost.assets.url": payload.url,
@@ -62,6 +88,14 @@ case "post": {
             ? new Date()
             : null,
       },
+    }
+  );
+
+  console.log(
+    "[VideoWorker] Update result:",
+    {
+      matchedCount: result.matchedCount,
+      modifiedCount: result.modifiedCount,
     }
   );
 
