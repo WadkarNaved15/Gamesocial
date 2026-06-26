@@ -26,8 +26,11 @@ const userActivityEventSchema =
         type: String,
         enum: [
           "post",
+          "normal_post",
           "game_post",
           "model_post",
+          "ad_model_post",
+          "media_ad_post",
           "user",
           "comment",
           "ad",
