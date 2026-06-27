@@ -279,31 +279,37 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
               ? { background: `linear-gradient(90deg, transparent, rgba(${accentRgb},0.6), rgba(${accentRgb},0.3), transparent)` }
               : { background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.12), transparent)' }
             } />
-            
+
         </div>
-         {(description || adModelPost?.ctaText) && (
-        <div
-          className="px-4 pb-3 mt-3 relative z-10 text-sm leading-relaxed font-light tracking-wide"
-          style={{
-            color:
-              bgMode === "color" && bgColor && bgColor !== "transparent"
-                ? getContrastText(bgColor)
-                : "#ffffff",
-            textShadow:
-              bgMode === "image"
-                ? "0 1px 3px rgba(0,0,0,0.8)"
-                : "none",
-          }}
-        >
-          {adModelPost?.ctaText && (
-            <a
-              href={adModelPost?.ctaLink || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                className="
+        {(description || adModelPost?.ctaText) && (
+          <div
+            className="px-4 pb-3 mt-3 relative z-10 text-sm leading-relaxed tracking-wide text-gray-200"
+            style={{
+              background:
+                bgMode === "image"
+                  ? "rgba(0,0,0,0.22)"
+                  : "transparent",
+
+              backdropFilter:
+                bgMode === "image"
+                  ? "blur(10px)"
+                  : "none",
+
+              WebkitBackdropFilter:
+                bgMode === "image"
+                  ? "blur(10px)"
+                  : "none",
+            }}
+          >
+            {adModelPost?.ctaText && (
+              <a
+                href={adModelPost?.ctaLink || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  className="
                   float-right
                   ml-4
                   px-6
@@ -319,50 +325,50 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
                   shadow-lg
                   whitespace-nowrap
                 "
-                style={{
-                  backgroundColor:
-                    adModelPost?.style?.ctaColor || "#3D7A6E",
-                  color: getContrastText(
-                    adModelPost?.style?.ctaColor || "#3D7A6E"
-                  ),
-                }}
-              >
-                {adModelPost.ctaText}
-                <span className="ml-1 opacity-70">→</span>
-              </button>
-            </a>
-          )}
-
-          {description && (
-            <>
-              <span>{displayedText}</span>
-
-              {isLongText && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsExpanded(!isExpanded);
-                  }}
-                  className="text-[11px] font-bold tracking-wide uppercase ml-1 hover:bg-white/20 px-2 py-0.5 rounded-md inline-block align-middle cursor-pointer"
                   style={{
-                    color:
-                      bgMode === "color" &&
-                        bgColor &&
-                        bgColor !== "transparent"
-                        ? getContrastText(bgColor)
-                        : "#e6f0ee",
+                    backgroundColor:
+                      adModelPost?.style?.ctaColor || "#3D7A6E",
+                    color: getContrastText(
+                      adModelPost?.style?.ctaColor || "#3D7A6E"
+                    ),
                   }}
                 >
-                  {isExpanded ? "Show less" : "Show more"}
+                  {adModelPost.ctaText}
+                  <span className="ml-1 opacity-70">→</span>
                 </button>
-              )}
-            </>
-          )}
+              </a>
+            )}
 
-          <div className="clear-both" />
-        </div>
-      )}
+            {description && (
+              <>
+                <span>{displayedText}</span>
+
+                {isLongText && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsExpanded(!isExpanded);
+                    }}
+                    className="text-[11px] font-bold tracking-wide uppercase ml-1 hover:bg-white/20 px-2 py-0.5 rounded-md inline-block align-middle cursor-pointer"
+                    style={{
+                      color:
+                        bgMode === "color" &&
+                          bgColor &&
+                          bgColor !== "transparent"
+                          ? getContrastText(bgColor)
+                          : "#e6f0ee",
+                    }}
+                  >
+                    {isExpanded ? "Show less" : "Show more"}
+                  </button>
+                )}
+              </>
+            )}
+
+            <div className="clear-both" />
+          </div>
+        )}
       </div>
 
       {/* Description + CTA */}
