@@ -292,12 +292,12 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
 
               backdropFilter:
                 bgMode === "image"
-                  ? "blur(10px)"
+                  ? "blur(20px)"
                   : "none",
 
               WebkitBackdropFilter:
                 bgMode === "image"
-                  ? "blur(10px)"
+                  ? "blur(20px)"
                   : "none",
             }}
           >
