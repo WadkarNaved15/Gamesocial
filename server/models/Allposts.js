@@ -498,6 +498,22 @@ const AdModelPostSchema = new mongoose.Schema(
       type: AdModelAssetSchema,
       required: true,
     },
+    ctaText: {
+      type: String,
+      trim: true,
+      default: undefined, // Keeps it clean if no CTA text is provided
+    },
+    ctaLink: {
+      type: String,
+      trim: true,
+      default: undefined,
+    },
+    style: {
+      ctaColor: {
+        type: String,
+        default: '#3D7A6E', // Matches your default frontend accent color
+      },
+    },
   },
   { _id: false }
 );

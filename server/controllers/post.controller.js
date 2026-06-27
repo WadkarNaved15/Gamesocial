@@ -281,7 +281,7 @@ export const createPost = async (req, res) => {
         return res.status(400).json({ message: "adModelPost data is required" });
       }
 
-      const { brandName, bgMode, bgColor, bgImageUrl, bgImagePosition, bgImageSize, overlayOpacity, logoUrl, asset } = adModelPost;
+      const { brandName, bgMode, bgColor, bgImageUrl, bgImagePosition, bgImageSize, overlayOpacity, logoUrl, asset,  ctaText, ctaLink, style} = adModelPost;
 
       // ── Validate asset ───────────────────────────────────
       if (!asset || !asset.originalUrl || !asset.originalKey || !asset.name) {
@@ -350,7 +350,6 @@ export const createPost = async (req, res) => {
           optimization: { status: "pending" },
         };
       }
-
       const post = await AllPost.create({
         user: req.user.id,
         description: description || "",
@@ -365,6 +364,11 @@ export const createPost = async (req, res) => {
           bgImageSize: resolvedBgMode === 'image' ? (bgImageSize || 'cover') : 'cover',
           overlayOpacity: overlayOpacity !== undefined ? Math.max(0, Math.min(80, overlayOpacity)) : 30,
           asset: processedAsset,
+          ctaText: ctaText?.trim() || undefined,
+          ctaLink: ctaLink?.trim() || undefined,
+          style: {
+            ctaColor: style?.ctaColor || "#3D7A6E",
+          },
         },
       });
       // ✅ GORSE: sync new post (fire-and-forget)
@@ -412,7 +416,7 @@ export const createPost = async (req, res) => {
       }
 
       const isVideo = mediaAdPost.asset.type === "video";
-
+     
       // ───────── CREATE POST ─────────
       const post = await AllPost.create({
         user: req.user.id,

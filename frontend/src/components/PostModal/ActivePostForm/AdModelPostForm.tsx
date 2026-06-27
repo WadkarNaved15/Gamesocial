@@ -18,6 +18,8 @@ const hexToRgb = (hex: string): string | null => {
 const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) => {
   const { user } = useUser();
   const [description, setDescription] = useState('');
+  const [ctaText, setCtaText] = useState("");
+  const [ctaLink, setCtaLink] = useState("");
   const [asset, setAsset] = useState<AdAsset | null>(null);
   const [bgColor, setBgColor] = useState('transparent');
   const [bgImage, setBgImage] = useState<string | null>(null);
@@ -32,8 +34,10 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
   const [overlayOpacity, setOverlayOpacity] = useState(30);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingMetadata, setIsSavingMetadata] = useState(false);
-  const [activeTab, setActiveTab] = useState<'model' | 'brand' | 'background'>('model');
-
+  const [ctaColor, setCtaColor] = useState('#3D7A6E'); // Default green branding accent
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [activeTab, setActiveTab] =
+    useState<'model' | 'brand' | 'background' | 'cta'>('model');
   const modelInputRef = useRef<HTMLInputElement>(null);
   const bgImageInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -130,8 +134,8 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
         body: JSON.stringify({
           type: 'ad_model_post', description,
           adModelPost: {
-            brandName: user?.username, 
-            bgMode, 
+            brandName: user?.username,
+            bgMode,
             overlayOpacity,
             bgColor: bgMode === 'color' ? bgColor : undefined,
             bgImageUrl: bgMode === 'image' ? bgImageUrl : undefined,
@@ -139,9 +143,15 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
             bgImageSize: bgMode === 'image' ? bgImageSize : undefined,
             logoUrl: user?.avatar,
             asset: { name: asset.name, originalUrl: modelUrl, originalKey: mKey },
+            ctaText: ctaText || undefined,
+            ctaLink: ctaLink || undefined,
+            style: {
+              ctaColor: ctaText ? ctaColor : undefined,
+            }
           },
         }),
       });
+      console.log('Ad post creation response:', response);
       if (!response.ok) throw new Error('Database save failed');
       setIsSavingMetadata(false);
       setIsSubmitting(false);
@@ -211,7 +221,12 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
 
     return luminance > 186 ? "#000000" : "#ffffff";
   };
+  const CHARACTER_LIMIT = 150;
+  const isLongText = description.length > CHARACTER_LIMIT;
 
+  const displayedText = isLongText && !isExpanded
+    ? `${description.slice(0, CHARACTER_LIMIT)}... `
+    : description;
   return (
     <div className="w-full max-w-3xl mx-auto flex flex-col rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
 
@@ -239,7 +254,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
 
       {/* ── Tab Nav ─── */}
       <div className="flex border-b border-gray-100 px-4 bg-white">
-        {(['model', 'brand', 'background'] as const).map((tab) => (
+        {(['model', 'brand', 'background', 'cta'] as const).map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${activeTab === tab ? 'border-[#3D7A6E] text-[#3D7A6E]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
             {tab}
@@ -315,6 +330,67 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
+            </div>
+
+          </div>
+        )}
+        {/* ── CTA tab ─── */}
+        {activeTab === "cta" && (
+          <div className="p-4 flex flex-col gap-4">
+
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">
+                CTA Button Text
+              </label>
+              <input
+                type="text"
+                placeholder="Shop Now"
+                value={ctaText}
+                onChange={(e) => setCtaText(e.target.value)}
+                className="w-full text-sm bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#3D7A6E]/30"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block">
+                CTA Destination URL
+              </label>
+              <input
+                type="url"
+                placeholder="https://example.com"
+                value={ctaLink}
+                onChange={(e) => setCtaLink(e.target.value)}
+                className="w-full text-sm bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#3D7A6E]/30"
+              />
+            </div>
+
+            {/* ⚡ NEW: CTA Color Aura Hue Selection */}
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">
+                CTA Button Accent Color
+              </label>
+              <div className="flex flex-wrap gap-2 items-center">
+                {PRESET_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setCtaColor(color)}
+                    style={{ backgroundColor: color }}
+                    className={`w-9 h-9 rounded-full border-2 transition-all ${ctaColor === color ? 'border-zinc-800 scale-110 shadow-md' : 'border-transparent'
+                      }`}
+                  />
+                ))}
+                {/* Custom native color input matching presets */}
+                <label className="w-9 h-9 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-[#3D7A6E] transition overflow-hidden relative">
+                  <input
+                    type="color"
+                    className="opacity-0 absolute w-0 h-0"
+                    value={ctaColor}
+                    onChange={(e) => setCtaColor(e.target.value)}
+                  />
+                  <span className="text-xs text-gray-400 font-bold">+</span>
+                </label>
+              </div>
             </div>
 
           </div>
@@ -481,7 +557,20 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                   <div className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest text-gray-400"
                     style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.08)' }}>Ad</div>
                 </div>
-                {description && <p className="text-gray-800 text-sm leading-relaxed mb-3">{description}</p>}
+                {description && (
+                  <p className="text-gray-800 text-sm leading-relaxed mb-3">
+                    <span>{displayedText}</span>
+                    {isLongText && (
+                      <button
+                        type="button"
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="text-[11px] font-bold tracking-wide uppercase ml-1 bg-gray-200/60 hover:bg-gray-200 px-2 py-0.5 rounded-md inline-block align-middle cursor-pointer text-[#3D7A6E]"
+                      >
+                        {isExpanded ? "Show less" : "Show more"}
+                      </button>
+                    )}
+                  </p>
+                )}
                 <div className="relative overflow-hidden w-full h-[400px] rounded-xl bg-gray-100">
                   {asset ? (
                     // @ts-ignore
@@ -521,7 +610,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                 <div className="relative z-10">
                   <div className="flex items-center justify-between px-4 pt-4 pb-1">
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={glassPillStyle}>
-                      <img src={user?.avatar || "/default_avatar.png"} className="w-10 h-10 rounded-full object-cover"/>
+                      <img src={user?.avatar || "/default_avatar.png"} className="w-10 h-10 rounded-full object-cover" />
                       <span className="text-white text-xs font-bold tracking-wide drop-shadow-sm">{brandName || 'Brand Name'}</span>
                     </div>
                     <div className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest" style={glassAdBadgeStyle}>Ad</div>
@@ -553,23 +642,71 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                 </div>
               </div>
               {/* Description sits outside the overflow-hidden card — matches AdModelPost */}
-              {description && (
-                <div className="px-4 pb-3">
-                  <p
-                    className={`text-sm leading-relaxed font-light tracking-wide ${isTransparent || bgMode === "image" ? "text-gray-950" : ""}`}
-                    style={{
-                      color:
-                        bgMode === "color" && bgColor !== "transparent"
-                          ? getContrastText(bgColor)
-                          : undefined,
-                      textShadow:
-                        bgMode === "image"
-                          ? "0 1px 2px rgba(0,0,0,0.6)"
-                          : "none",
-                    }}
-                  >
-                    {description}
-                  </p>
+              {(description || ctaText) && (
+                <div
+                  className={`px-4 pb-4 text-sm leading-relaxed font-light tracking-wide ${isTransparent || bgMode === "image"
+                    ? "text-gray-950"
+                    : ""
+                    }`}
+                  style={{
+                    color:
+                      bgMode === "color" && bgColor !== "transparent"
+                        ? getContrastText(bgColor)
+                        : undefined,
+                    textShadow:
+                      bgMode === "image"
+                        ? "0 1px 2px rgba(0,0,0,0.6)"
+                        : "none",
+                  }}
+                >
+                  {ctaText && (
+                    <button
+                      className="
+                        float-right
+                        ml-4
+                        mb-1.5
+                        px-6
+                        py-2.5
+                        rounded-xl
+                        text-[11px]
+                        font-black
+                        uppercase
+                        tracking-widest
+                        transition
+                        hover:scale-[1.02]
+                        active:scale-[0.98]
+                        shadow-lg
+                        whitespace-nowrap
+                      "
+                      style={{
+                        backgroundColor: ctaColor,
+                        color: getContrastText(ctaColor),
+                      }}
+                    >
+                      {ctaText}
+                      <span className="ml-1 opacity-70">→</span>
+                    </button>
+                  )}
+
+                  {description ? (
+                    <>
+                      <span>{displayedText}</span>
+                      {isLongText && (
+                        <button
+                          type="button"
+                          onClick={() => setIsExpanded(!isExpanded)}
+                          className="text-[11px] font-bold tracking-wide uppercase ml-1 bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md inline-block align-middle cursor-pointer"
+                          style={{ color: bgMode === 'color' && bgColor !== 'transparent' ? getContrastText(bgColor) : '#3D7A6E' }}
+                        >
+                          {isExpanded ? "Show less" : "Show more"}
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <span className="italic text-gray-400">Draft your ad copy layout here...</span>
+                  )}
+
+                  <div className="clear-both" />
                 </div>
               )}
             </div>

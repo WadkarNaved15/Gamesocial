@@ -98,6 +98,11 @@ export interface AdModelPost {
   bgImagePosition?: string | null;
   bgImageSize?: string | null;
   overlayOpacity: number;
+  ctaText?: string | null;
+  ctaLink?: string | null;
+  style?: {
+    ctaColor?: string;
+  }
   asset: AdModelAsset;
 }
 

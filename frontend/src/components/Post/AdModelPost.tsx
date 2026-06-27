@@ -18,13 +18,23 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
   const modelRef = useRef<HTMLDivElement>(null);
   const viewStartTime = useRef<number | null>(null);
   const [modelVisible, setModelVisible] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
   if (!adModelPost) return null;
+  const CHARACTER_LIMIT = 150;
 
-  const { brandName, logoUrl, bgMode, bgColor, bgImageUrl, bgImagePosition, bgImageSize, overlayOpacity = 30, asset } = adModelPost;
+  const isLongText =
+    description && description.length > CHARACTER_LIMIT;
 
+  const displayedText =
+    isLongText && !isExpanded
+      ? `${description.slice(0, CHARACTER_LIMIT)}... `
+      : description;
+  const { brandName, logoUrl, bgMode, bgColor, bgImageUrl, bgImagePosition, bgImageSize, overlayOpacity = 30, asset, ctaText, ctaLink,
+    style } = adModelPost;
+  const ctaColor = style?.ctaColor || "#3D7A6E";
   const resolvedBgPos = bgImagePosition ?? '50% 50%';
   const resolvedBgSize = bgImageSize ?? 'cover';
 
@@ -120,7 +130,7 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
                 animation-name="*"
                 exposure="1.2"
                 environment-image="neutral"
-                field-of-view="25deg" 
+                field-of-view="25deg"
                 shadow-intensity="1"
 
                 onClick={(e: React.MouseEvent) => e.stopPropagation()}
@@ -180,9 +190,8 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
         if ((e.target as HTMLElement).closest('button')) return;
         onOpenDetails?.();
       }}
-      className={`relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r cursor-pointer transition-colors duration-200 overflow-hidden ${
-        isImage ? 'bg-transparent hover:bg-white/[0.03]' : ''
-      }`}
+      className={`relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r cursor-pointer transition-colors duration-200 overflow-hidden ${isImage ? 'bg-transparent hover:bg-white/[0.03]' : ''
+        }`}
       style={!isImage && bgColor ? { backgroundColor: bgColor } : undefined}
     >
       {/* ── Outer bg for image mode: blurred, low-opacity ── */}
@@ -248,9 +257,9 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
 
             {modelVisible && modelUrl ? (
               // @ts-ignore
-              <model-viewer 
-              src={modelUrl} camera-controls auto-rotate autoplay animation-name="*"
-                field-of-view="25deg" exposure="1.15" environment-image="neutral" shadow-intensity="0.8" 
+              <model-viewer
+                src={modelUrl} camera-controls auto-rotate autoplay animation-name="*"
+                field-of-view="25deg" exposure="1.15" environment-image="neutral" shadow-intensity="0.8"
                 onClick={(e: React.MouseEvent) => e.stopPropagation()}
                 style={{ width: '100%', height: '450px', backgroundColor: 'transparent' }} />
             ) : (
@@ -270,29 +279,175 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
               ? { background: `linear-gradient(90deg, transparent, rgba(${accentRgb},0.6), rgba(${accentRgb},0.3), transparent)` }
               : { background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.12), transparent)' }
             } />
+            
         </div>
-      </div>
-      
-      {/* Description */}
-      {description && (
-        <div className="px-4 pb-3 relative z-10">
-          <p
-            className="text-sm leading-relaxed font-light tracking-wide"
-            style={{
-              color:
-                bgMode === "color" && bgColor && bgColor !== "transparent"
-                  ? getContrastText(bgColor)
-                  : "#ffffff",
-              textShadow:
-                bgMode === "image"
-                  ? "0 1px 3px rgba(0,0,0,0.8)"
-                  : "none",
-            }}
-          >
-            {description}
-          </p>
+         {(description || adModelPost?.ctaText) && (
+        <div
+          className="px-4 pb-3 mt-3 relative z-10 text-sm leading-relaxed font-light tracking-wide"
+          style={{
+            color:
+              bgMode === "color" && bgColor && bgColor !== "transparent"
+                ? getContrastText(bgColor)
+                : "#ffffff",
+            textShadow:
+              bgMode === "image"
+                ? "0 1px 3px rgba(0,0,0,0.8)"
+                : "none",
+          }}
+        >
+          {adModelPost?.ctaText && (
+            <a
+              href={adModelPost?.ctaLink || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="
+                  float-right
+                  ml-4
+                  px-6
+                  py-2.5
+                  rounded-xl
+                  text-[11px]
+                  font-black
+                  uppercase
+                  tracking-widest
+                  transition
+                  hover:scale-[1.02]
+                  active:scale-[0.98]
+                  shadow-lg
+                  whitespace-nowrap
+                "
+                style={{
+                  backgroundColor:
+                    adModelPost?.style?.ctaColor || "#3D7A6E",
+                  color: getContrastText(
+                    adModelPost?.style?.ctaColor || "#3D7A6E"
+                  ),
+                }}
+              >
+                {adModelPost.ctaText}
+                <span className="ml-1 opacity-70">→</span>
+              </button>
+            </a>
+          )}
+
+          {description && (
+            <>
+              <span>{displayedText}</span>
+
+              {isLongText && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsExpanded(!isExpanded);
+                  }}
+                  className="text-[11px] font-bold tracking-wide uppercase ml-1 hover:bg-white/20 px-2 py-0.5 rounded-md inline-block align-middle cursor-pointer"
+                  style={{
+                    color:
+                      bgMode === "color" &&
+                        bgColor &&
+                        bgColor !== "transparent"
+                        ? getContrastText(bgColor)
+                        : "#e6f0ee",
+                  }}
+                >
+                  {isExpanded ? "Show less" : "Show more"}
+                </button>
+              )}
+            </>
+          )}
+
+          <div className="clear-both" />
         </div>
       )}
+      </div>
+
+      {/* Description + CTA */}
+      {/* {(description || adModelPost?.ctaText) && (
+        <div
+          className="px-4 pb-3 mt-3 relative z-10 text-sm leading-relaxed font-light tracking-wide"
+          style={{
+            color:
+              bgMode === "color" && bgColor && bgColor !== "transparent"
+                ? getContrastText(bgColor)
+                : "#ffffff",
+            textShadow:
+              bgMode === "image"
+                ? "0 1px 3px rgba(0,0,0,0.8)"
+                : "none",
+          }}
+        >
+          {adModelPost?.ctaText && (
+            <a
+              href={adModelPost?.ctaLink || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="
+                  float-right
+                  ml-4
+                  px-6
+                  py-2.5
+                  rounded-xl
+                  text-[11px]
+                  font-black
+                  uppercase
+                  tracking-widest
+                  transition
+                  hover:scale-[1.02]
+                  active:scale-[0.98]
+                  shadow-lg
+                  whitespace-nowrap
+                "
+                style={{
+                  backgroundColor:
+                    adModelPost?.style?.ctaColor || "#3D7A6E",
+                  color: getContrastText(
+                    adModelPost?.style?.ctaColor || "#3D7A6E"
+                  ),
+                }}
+              >
+                {adModelPost.ctaText}
+                <span className="ml-1 opacity-70">→</span>
+              </button>
+            </a>
+          )}
+
+          {description && (
+            <>
+              <span>{displayedText}</span>
+
+              {isLongText && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsExpanded(!isExpanded);
+                  }}
+                  className="text-[11px] font-bold tracking-wide uppercase ml-1 hover:bg-white/20 px-2 py-0.5 rounded-md inline-block align-middle cursor-pointer"
+                  style={{
+                    color:
+                      bgMode === "color" &&
+                        bgColor &&
+                        bgColor !== "transparent"
+                        ? getContrastText(bgColor)
+                        : "#e6f0ee",
+                  }}
+                >
+                  {isExpanded ? "Show less" : "Show more"}
+                </button>
+              )}
+            </>
+          )}
+
+          <div className="clear-both" />
+        </div>
+      )} */}
     </article>
   );
 };

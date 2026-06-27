@@ -198,7 +198,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
           />
 
           {description && (
-            <div className="mt-2">
+            <div>
               <p
                 className={`text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${
                   !isExpanded ? "line-clamp-2" : ""
