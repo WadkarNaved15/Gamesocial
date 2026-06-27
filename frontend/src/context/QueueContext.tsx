@@ -181,49 +181,52 @@ if (data.status === "allocation_ready") {
 
   newState.isDirectPlay = false;
 
-  const seconds = data.countdownSeconds || 30;
+  // ONLY initialize the countdown once
+  if (!prev.countdownStartsAt) {
+    console.log("[Queue SSE] Starting countdown");
 
-  newState.countdownStartsAt = data.countdownStartsAt
-    ? new Date(data.countdownStartsAt)
-    : new Date();
+    const seconds = data.countdownSeconds || 30;
 
-  newState.countdownSecondsRemaining = seconds;
+    newState.countdownStartsAt = data.countdownStartsAt
+      ? new Date(data.countdownStartsAt)
+      : new Date();
 
-  // Stop previous timer
-  if (countdownIntervalRef.current) {
-    clearInterval(countdownIntervalRef.current);
-    countdownIntervalRef.current = null;
-  }
+    newState.countdownSecondsRemaining = seconds;
 
-  // Start countdown
-  countdownIntervalRef.current = setInterval(() => {
-    setQueue(prev => {
-      if (prev.countdownSecondsRemaining == null) {
-        return prev;
-      }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
 
-      const next = prev.countdownSecondsRemaining - 1;
-
-      if (next <= 0) {
-        if (countdownIntervalRef.current) {
-          clearInterval(countdownIntervalRef.current);
-          countdownIntervalRef.current = null;
+    countdownIntervalRef.current = setInterval(() => {
+      setQueue(prev => {
+        if (prev.countdownSecondsRemaining == null) {
+          return prev;
         }
 
-        cancelSession();
+        const next = prev.countdownSecondsRemaining - 1;
+
+        if (next <= 0) {
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+
+          cancelSession();
+
+          return {
+            ...prev,
+            countdownSecondsRemaining: 0,
+          };
+        }
 
         return {
           ...prev,
-          countdownSecondsRemaining: 0,
+          countdownSecondsRemaining: next,
         };
-      }
-
-      return {
-        ...prev,
-        countdownSecondsRemaining: next,
-      };
-    });
-  }, 1000);
+      });
+    }, 1000);
+  }
 }
 
 // 🟢 DIRECT USER → skip countdown, show ads

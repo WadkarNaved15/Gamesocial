@@ -45,42 +45,61 @@ export async function callController(session, lease) {
     console.log(`[Controller] Calling http://${lease.ip}:4443/start-session`);
     console.log("BEFORE FETCH", Date.now());
 
-    fetch(`http://${lease.ip}:4443/start-session`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Session-Id": session._id.toString()
-      },
-      body: JSON.stringify(payload)
-    })
-      .then(async (r) => {
-        const text = await r.text();
-        console.log(`[Controller] Response ${r.status}: ${text}`);
-        console.log(
-          "HEADERS RECEIVED",
-          Date.now(),
-          r.status
-        );
+    // Execute in the background to prevent blocking the Express response
+    (async () => {
+      let success = false;
+      let lastErr = null;
 
-        console.log(
-          "BODY RECEIVED",
-          Date.now(),
-          text
-        );
-      })
-      .catch(async (err) => {
-        console.error(`[Controller] Fetch failed: ${err.message}`);
+      for (let i = 0; i < 5; i++) {
+        try {
+          const r = await fetch(`http://${lease.ip}:4443/start-session`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Session-Id": session._id.toString()
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const text = await r.text();
+          console.log(`[Controller] Response ${r.status}: ${text}`);
+          console.log("HEADERS RECEIVED", Date.now(), r.status);
+          console.log("BODY RECEIVED", Date.now(), text);
+
+          if (r.ok) {
+              success = true;
+              break;
+          }
+
+          lastErr = new Error(
+              `Controller returned ${r.status}`
+          );
+
+          if (i < 4) {
+              await new Promise(r => setTimeout(r, 3000));
+          }
+        } catch (err) {
+          lastErr = err;
+          console.warn(`[Controller] Fetch attempt ${i + 1} failed: ${err.message}`);
+          
+          if (i === 4) break; 
+
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      }
+
+      // If all 5 attempts failed or returned non-200, run the failure logic
+      if (!success) {
         console.error(
-          "FETCH FAILED",
+          "FETCH FAILED AFTER 5 RETRIES",
           Date.now(),
-          err
+          lastErr
         );
-        
 
         await GameSession.findByIdAndUpdate(session._id, {
           status: "failed",
           exitReason: "controller_error",
-          error: err.message,
+          error: lastErr ? lastErr.message : "Controller did not return 200 OK",
           endedAt: new Date()
         });
 
@@ -94,9 +113,10 @@ export async function callController(session, lease) {
             );
           }
         }
-      });
+      }
+    })();
 
-    console.log(`[Controller] Started session ${session._id}`);
+    console.log(`[Controller] Started session initialization for ${session._id}`);
   } catch (err) {
     console.error("[Controller] Error:", err);
     throw err;
