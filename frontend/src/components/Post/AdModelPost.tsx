@@ -93,7 +93,7 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
           if ((e.target as HTMLElement).closest('button')) return;
           onOpenDetails?.();
         }}
-        className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-transparent hover:bg-white/[0.03] cursor-pointer transition-colors duration-200"
+        className="relative w-full border border-white/[0.06] sm:border-l sm:border-r bg-transparent hover:bg-white/[0.03] cursor-pointer transition-colors duration-200"
       >
         <div className="p-4">
           <div className="flex items-center justify-between mb-3">
@@ -341,7 +341,7 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
 
             {description && (
               <>
-                <span>{displayedText}</span>
+                <span style={{ fontSize: '103%', fontWeight: '600' }}>{displayedText}</span>
 
                 {isLongText && (
                   <button
@@ -370,90 +370,6 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
           </div>
         )}
       </div>
-
-      {/* Description + CTA */}
-      {/* {(description || adModelPost?.ctaText) && (
-        <div
-          className="px-4 pb-3 mt-3 relative z-10 text-sm leading-relaxed font-light tracking-wide"
-          style={{
-            color:
-              bgMode === "color" && bgColor && bgColor !== "transparent"
-                ? getContrastText(bgColor)
-                : "#ffffff",
-            textShadow:
-              bgMode === "image"
-                ? "0 1px 3px rgba(0,0,0,0.8)"
-                : "none",
-          }}
-        >
-          {adModelPost?.ctaText && (
-            <a
-              href={adModelPost?.ctaLink || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                className="
-                  float-right
-                  ml-4
-                  px-6
-                  py-2.5
-                  rounded-xl
-                  text-[11px]
-                  font-black
-                  uppercase
-                  tracking-widest
-                  transition
-                  hover:scale-[1.02]
-                  active:scale-[0.98]
-                  shadow-lg
-                  whitespace-nowrap
-                "
-                style={{
-                  backgroundColor:
-                    adModelPost?.style?.ctaColor || "#3D7A6E",
-                  color: getContrastText(
-                    adModelPost?.style?.ctaColor || "#3D7A6E"
-                  ),
-                }}
-              >
-                {adModelPost.ctaText}
-                <span className="ml-1 opacity-70">→</span>
-              </button>
-            </a>
-          )}
-
-          {description && (
-            <>
-              <span>{displayedText}</span>
-
-              {isLongText && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsExpanded(!isExpanded);
-                  }}
-                  className="text-[11px] font-bold tracking-wide uppercase ml-1 hover:bg-white/20 px-2 py-0.5 rounded-md inline-block align-middle cursor-pointer"
-                  style={{
-                    color:
-                      bgMode === "color" &&
-                        bgColor &&
-                        bgColor !== "transparent"
-                        ? getContrastText(bgColor)
-                        : "#e6f0ee",
-                  }}
-                >
-                  {isExpanded ? "Show less" : "Show more"}
-                </button>
-              )}
-            </>
-          )}
-
-          <div className="clear-both" />
-        </div>
-      )} */}
     </article>
   );
 };
