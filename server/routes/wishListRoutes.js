@@ -44,11 +44,14 @@ router.post("/", verifyToken, async (req, res) => {
 
     await Wishlist.create({ post: postId, user: userId });
 
+    const sessionId =
+      req.headers["x-session-id"] || null;
+
     await onSaveAdded(postId);
 
     await trackEvent({
       user: userId,
-      sessionId: null,
+      sessionId,
       eventType: "wishlist_add",
       targetType: "post",
       targetId: postId,
@@ -75,11 +78,14 @@ router.delete("/", verifyToken, async (req, res) => {
 
   await Wishlist.deleteOne({ post: postId, user: userId });
 
+  const sessionId =
+    req.headers["x-session-id"] || null;
+
   await onSaveRemoved(postId);
 
   await trackEvent({
     user: userId,
-    sessionId: null,
+    sessionId,
     eventType: "wishlist_remove",
     targetType: "post",
     targetId: postId,

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { usePosts } from "../context/PostContext";
+import api from "../utils/api";
 
 export function useWishlist(
   postId: string,
@@ -25,13 +26,13 @@ export function useWishlist(
 
     try {
       if (!previous) {
-        await axios.post(
+        await api.post(
           `${BACKEND_URL}/api/wishlist`,
           { postId },
           { withCredentials: true }
         );
       } else {
-        await axios.delete(
+        await api.delete(
           `${BACKEND_URL}/api/wishlist`,
           {
             data: { postId },

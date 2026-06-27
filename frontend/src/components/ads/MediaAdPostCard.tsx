@@ -156,18 +156,6 @@ const MediaAdPostCard: React.FC<Props> = ({
           {asset ? (
             asset.type === "video" ? (
               <>
-                {(asset.processingStatus === 'pending' || asset.processingStatus === 'processing') && (
-                  <div className="absolute top-4 right-4 z-50 bg-black/70 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-md">
-                    <Loader2 size={12} className="animate-spin" style={{ color: accentColor }} />
-                    <span>Optimizing...</span>
-                  </div>
-                )}
-                {asset.processingStatus === 'failed' && (
-                  <div className="absolute top-4 right-4 z-50 bg-red-600/80 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10 backdrop-blur-md">
-                    <AlertCircle size={12} />
-                    <span>Opt Failed</span>
-                  </div>
-                )}
                 
                 <video 
                   src={asset.url} 

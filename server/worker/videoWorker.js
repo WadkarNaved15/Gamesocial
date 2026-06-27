@@ -8,6 +8,7 @@ import {
   generateThumbnail,
 } from "../services/ffmpegService.js";
 
+
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
@@ -35,21 +36,8 @@ async function updateDatabaseStatus(
      * NORMAL POST VIDEO
      */
 case "post": {
-  console.log(
-    "[VideoWorker] Updating post",
-    {
-      entityId,
-      url: payload.url,
-      status: payload.processingStatus,
-    }
-  );
 
   const post = await AllPost.findById(entityId);
-
-  console.log(
-    "[VideoWorker] Post found:",
-    !!post
-  );
 
   if (post) {
     console.log(
@@ -88,14 +76,6 @@ case "post": {
             ? new Date()
             : null,
       },
-    }
-  );
-
-  console.log(
-    "[VideoWorker] Update result:",
-    {
-      matchedCount: result.matchedCount,
-      modifiedCount: result.modifiedCount,
     }
   );
 

@@ -1,14 +1,13 @@
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useRef,
-} from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import { Loader2, ChevronRight, XCircle, AlertTriangle } from "lucide-react";
-import { useMemo } from "react";
 import PrerollAdPostCard from "../ads/PrerollAdPostCard";
-import { useAds  } from "../../context/AdContext";
+import { useAds } from "../../context/AdContext";
+
+// --- Static Constants ---
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const MAX_RETRIES = 5;
+const MAX_RECONNECT = 8;
 
 type AdWithStatusProps = {
   sessionId: string;
@@ -35,44 +34,72 @@ interface Ad {
 
 type SessionError = "failed" | "ended" | "stream_error" | null;
 
-const orderedSteps = [
-  "waiting",
-  "assigning",
-  "starting",
-  "downloading",
-  "launching",
-  "running",
-];
-
 export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const { ad, preloadAd, adFetchCompleted } = useAds();
+  
+  // --- State ---
   const [sessionStatus, setSessionStatus] = useState<string>("waiting");
-  const {
-  ad,
-  preloadAd,
-  adFetchCompleted,
-} = useAds();
-  const [canSkip, setCanSkip] = useState(false);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [streamUrlError, setStreamUrlError] = useState(false);
   const [sessionError, setSessionError] = useState<SessionError>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [adCountdown, setAdCountdown] = useState(20);
+  const [startedInRunningState, setStartedInRunningState] =
+  useState(false);
 
+  // --- Refs ---
   const fetchRetryCount = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const adRequested = useRef(false);
 
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+  // --- Effects ---
 
-const adRequested = useRef(false);
+  // 1. Initial Ad Fetch
+  useEffect(() => {
+    if (!ad && !adRequested.current) {
+      adRequested.current = true;
+      preloadAd();
+    }
+  }, [ad, preloadAd]);
 
+  // 2. Countdown Timer
 useEffect(() => {
-  if (!ad && !adRequested.current) {
-    adRequested.current = true;
-    preloadAd();
-  }
-}, [ad, preloadAd]);
-  
+  const interval = setInterval(() => {
+    setAdCountdown((prev) => {
+      if (prev <= 1) {
+        clearInterval(interval);
+        return 0;
+      }
+      return prev - 1;
+    });
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, []);
+
+  // 3. Heartbeat & Abandonment
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const interval = setInterval(() => {
+      navigator.sendBeacon(`${BACKEND_URL}/api/sessions/${sessionId}/heartbeat`);
+    }, 10_000);
+
+    const handleUnload = () => {
+      navigator.sendBeacon(
+        `${BACKEND_URL}/api/sessions/${sessionId}/abandon/${import.meta.env.VITE_ABANDON_SECRET}`,
+        new Blob([JSON.stringify({})], { type: "application/json" })
+      );
+    };
+
+    window.addEventListener("beforeunload", handleUnload);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("beforeunload", handleUnload);
+    };
+  }, [sessionId]);
+
+  // --- Callbacks ---
 
   const handleTerminalState = useCallback((state: "failed" | "ended") => {
     localStorage.removeItem("rigzer_queue_session");
@@ -94,24 +121,22 @@ useEffect(() => {
   }, []);
 
   const fetchStreamUrl = useCallback(async () => {
-    const MAX_RETRIES = 5;
     if (fetchRetryCount.current >= MAX_RETRIES) {
       setStreamUrlError(true);
       return;
     }
+
     try {
-      const res = await fetch(
-        `${BACKEND_URL}/api/sessions/${sessionId}/stream-token`,
-        { credentials: "include" }
-      );
+      const res = await fetch(`${BACKEND_URL}/api/sessions/${sessionId}/stream-token`, { 
+        credentials: "include" 
+      });
+      
       if (res.ok) {
         const data = await res.json();
         setStreamUrl(data.streamUrl);
         fetchRetryCount.current = 0;
       } else {
-        fetchRetryCount.current += 1;
-        const backoff = Math.min(1000 * 2 ** fetchRetryCount.current, 10000);
-        setTimeout(fetchStreamUrl, backoff);
+        throw new Error("Failed to fetch stream token");
       }
     } catch (err) {
       console.error("Failed to fetch stream URL:", err);
@@ -119,108 +144,89 @@ useEffect(() => {
       if (fetchRetryCount.current >= MAX_RETRIES) {
         setStreamUrlError(true);
       } else {
-        setTimeout(fetchStreamUrl, 3000);
+        const backoff = Math.min(1000 * 2 ** fetchRetryCount.current, 10000);
+        setTimeout(fetchStreamUrl, backoff);
       }
     }
-  }, [sessionId, BACKEND_URL]);
+  }, [sessionId]);
+
+  // Centralized status handler for both SSE and Polling
+  const handleSessionUpdate = useCallback(async (status: string, phase?: string) => {
+    const effectiveStatus = (status === "running" || status === "ended" || status === "failed") 
+      ? status 
+      : phase ?? status;
+
+    if (effectiveStatus === "failed" || effectiveStatus === "ended") {
+      handleTerminalState(effectiveStatus);
+      return;
+    }
+
+    setSessionStatus(effectiveStatus);
+
+    if (
+  effectiveStatus === "running" &&
+  sessionStatus !== "launching"
+) {
+  setStartedInRunningState(true);
+}
+
+if (effectiveStatus === "running") {
+  if (!streamUrl) {
+    await fetchStreamUrl();
+  }
+
+  if (pollRef.current) {
+    clearInterval(pollRef.current);
+    pollRef.current = null;
+  }
+}
+}, [
+  sessionStatus,
+  streamUrl,
+  fetchStreamUrl,
+  handleTerminalState,
+]);
 
   const startFallbackPoll = useCallback(() => {
     if (pollRef.current) return;
+    
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch(
-          `${BACKEND_URL}/api/sessions/${sessionId}/status`,
-          { credentials: "include" }
-        );
+        const res = await fetch(`${BACKEND_URL}/api/sessions/${sessionId}/status`, { 
+          credentials: "include" 
+        });
         if (!res.ok) return;
+        
         const { status, phase } = await res.json();
-
-        if (status === "failed") {
-          handleTerminalState("failed");
-        } else if (status === "ended") {
-          handleTerminalState("ended");
-        } else if (status === "running") {
-          setCanSkip(true);
-          setSessionStatus("running");
-          setCurrentStepIndex(orderedSteps.indexOf("running"));
-          fetchStreamUrl();
-        } else {
-          const effectiveStatus = phase ?? status;
-          const stepIndex = orderedSteps.indexOf(effectiveStatus);
-          if (stepIndex !== -1) {
-            setCurrentStepIndex(stepIndex);
-            setSessionStatus(effectiveStatus);
-          }
-        }
+        handleSessionUpdate(status, phase);
       } catch {
-        // silent — SSE is the primary channel
+        // Silent catch — SSE is the primary channel
       }
     }, 6000);
-  }, [sessionId, BACKEND_URL, handleTerminalState, fetchStreamUrl]);
+  }, [sessionId, handleSessionUpdate]);
 
-  useEffect(() => {
-    if (canSkip) return;
-
-    const interval = setInterval(() => {
-      setAdCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-
-    return () => clearInterval(interval);
-  }, [canSkip]);
-
+  // 4. SSE Connection Setup
   useEffect(() => {
     if (!sessionId) return;
 
     let es: EventSource;
     let reconnectTimer: ReturnType<typeof setTimeout>;
     let reconnectAttempts = 0;
-    const MAX_RECONNECT = 8;
 
     const connect = () => {
-      es = new EventSource(
-        `${BACKEND_URL}/api/sessions/${sessionId}/events`,
-        { withCredentials: true }
-      );
+      es = new EventSource(`${BACKEND_URL}/api/sessions/${sessionId}/events`, { 
+        withCredentials: true 
+      });
 
-      es.onmessage = (e) => {
+      es.onmessage = async (e) => {
         reconnectAttempts = 0;
         const { status, phase } = JSON.parse(e.data);
-
-        const effectiveStatus =
-          status === "running" || status === "ended" || status === "failed"
-            ? status
-            : phase ?? status;
-
-        if (effectiveStatus === "failed") {
-          handleTerminalState("failed");
+        
+        await handleSessionUpdate(status, phase);
+        
+        // Close ES on terminal states
+        if (status === "failed" || status === "ended") {
           es.close();
-          return;
-        }
-
-        if (effectiveStatus === "ended") {
-          handleTerminalState("ended");
-          es.close();
-          return;
-        }
-
-        setSessionStatus(effectiveStatus);
-        const stepIndex = orderedSteps.indexOf(effectiveStatus);
-        if (stepIndex !== -1) setCurrentStepIndex(stepIndex);
-
-        if (effectiveStatus === "running") {
-          setCanSkip(true);
-          fetchStreamUrl();
-          if (pollRef.current) {
-            clearInterval(pollRef.current);
-            pollRef.current = null;
-          }
         }
       };
 
@@ -249,38 +255,18 @@ useEffect(() => {
         pollRef.current = null;
       }
     };
-  }, [sessionId, BACKEND_URL, fetchStreamUrl, handleTerminalState, startFallbackPoll]);
+  }, [sessionId, startFallbackPoll, handleSessionUpdate]);
 
-  useEffect(() => {
-    if (!sessionId) return;
-
-    const interval = setInterval(() => {
-      navigator.sendBeacon(`${BACKEND_URL}/api/sessions/${sessionId}/heartbeat`);
-    }, 10_000);
-
-    const handleUnload = () => {
-      navigator.sendBeacon(
-        `${BACKEND_URL}/api/sessions/${sessionId}/abandon/${import.meta.env.VITE_ABANDON_SECRET}`,
-        new Blob([JSON.stringify({})], { type: "application/json" })
-      );
-    };
-
-    window.addEventListener("beforeunload", handleUnload);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("beforeunload", handleUnload);
-    };
-  }, [sessionId, BACKEND_URL]);
+  // --- Event Handlers ---
 
   const cancelSession = async () => {
     if (!sessionId) return;
     if (!confirm("Are you sure you want to cancel this session? Your game session will be terminated.")) return;
+    
     try {
-      await axios.post(
-        `${BACKEND_URL}/api/sessions/${sessionId}/cancel`,
-        {},
-        { withCredentials: true }
-      );
+      await axios.post(`${BACKEND_URL}/api/sessions/${sessionId}/cancel`, {}, { 
+        withCredentials: true 
+      });
       localStorage.removeItem("rigzer_queue_session");
       window.location.href = "/";
     } catch (err) {
@@ -299,7 +285,7 @@ useEffect(() => {
     window.location.href = "/";
   };
 
-  
+  // --- Renders ---
 
   if (sessionError === "failed" || sessionError === "stream_error") {
     return (
@@ -308,12 +294,8 @@ useEffect(() => {
           <div className="w-16 h-16 rounded-full bg-red-50 dark:bg-red-950 flex items-center justify-center">
             <AlertTriangle className="text-red-500" size={28} />
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Session Failed
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-            {errorMessage}
-          </p>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Session Failed</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{errorMessage}</p>
           <button
             onClick={handleRetry}
             className="mt-2 px-6 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-black rounded-xl text-sm font-semibold hover:opacity-90 transition"
@@ -332,12 +314,8 @@ useEffect(() => {
           <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
             <XCircle className="text-gray-400 dark:text-gray-500" size={28} />
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Session Ended
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {errorMessage}
-          </p>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Session Ended</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{errorMessage}</p>
           <button
             onClick={handleRetry}
             className="mt-2 px-6 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-black rounded-xl text-sm font-semibold hover:opacity-90 transition"
@@ -349,68 +327,56 @@ useEffect(() => {
     );
   }
 
+  if (!ad && !adFetchCompleted) {
+    return (
+      <div className="fixed inset-0 bg-white dark:bg-[#0a0a0a] z-50 flex flex-col items-center justify-center space-y-4">
+        <Loader2 className="animate-spin text-gray-400 dark:text-gray-600" size={32} />
+        <span className="text-gray-400 dark:text-gray-600 text-xs tracking-[0.3em] uppercase font-medium">
+          Loading Advertisement
+        </span>
+      </div>
+    );
+  }
 
-  
-
-  // ── Loading (no ad yet) ────────────────────────────────────────────────────
-if (!ad && !adFetchCompleted) {
-  return (
-    <div className="fixed inset-0 bg-white dark:bg-[#0a0a0a] z-50 flex flex-col items-center justify-center space-y-4">
-      <Loader2
-        className="animate-spin text-gray-400 dark:text-gray-600"
-        size={32}
-      />
-      <span className="text-gray-400 dark:text-gray-600 text-xs tracking-[0.3em] uppercase font-medium">
-        Loading Advertisement
-      </span>
-    </div>
+  const adData = ad?.data as Ad;
+  const showLaunchButton =
+  !!streamUrl &&
+  (
+    startedInRunningState ||
+    adCountdown === 0
   );
-}
 
+  const displayAsset = adData?.asset
+    ? {
+        ...adData.asset,
+        url: adData.asset.processingStatus === "completed" && adData.asset.optimizedUrl
+            ? adData.asset.optimizedUrl
+            : adData.asset.url,
+        processingStatus: undefined,
+      }
+    : undefined;
 
-  // 🔥 Type-safe extraction of your Ad payload
-  const adData = ad!.data as Ad;
-
-
-  // ─── OPTIMIZATION LOGIC ──────────────────────────────────────────────────────
-const displayAsset = adData.asset
-  ? {
-      ...adData.asset,
-      url:
-        adData.asset.processingStatus === "completed" &&
-        adData.asset.optimizedUrl
-          ? adData.asset.optimizedUrl
-          : adData.asset.url,
-      processingStatus: undefined,
-    }
-  : undefined;
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  // ── Main ad screen ─────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 bg-white dark:bg-black z-50 flex flex-col font-sans overflow-hidden select-none">
-      {/* AD CONTENT */}
+      
       <div className="relative flex-grow bg-black">
-
-        <PrerollAdPostCard
-          fullscreen
-          brandName={adData.brandName}
-          brandLogo={adData.brandLogo}
-          ctaText={adData.ctaText}
-          ctaLink={adData.ctaLink}
-          asset={displayAsset} // 🎉 Fully type-safe! No 'as any' needed.
-          duration={adData.mechanics?.duration || 15}
-        />
-
+        {adData && (
+          <PrerollAdPostCard
+            fullscreen
+            brandName={adData.brandName}
+            brandLogo={adData.brandLogo}
+            ctaText={adData.ctaText}
+            ctaLink={adData.ctaLink}
+            asset={displayAsset}
+            duration={adData.mechanics?.duration || 15}
+          />
+        )}
       </div>
 
-      {/* BOTTOM CONTROLS */}
       <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-white dark:from-black to-transparent z-20">
         <div className="w-full flex items-end justify-end">
-
-          {/* ACTION BUTTONS */}
           <div className="flex flex-col items-end gap-3">
-            {canSkip && adCountdown === 0 ? (
+            {showLaunchButton ? (
               <>
                 <button
                   onClick={handleLaunch}
@@ -429,6 +395,7 @@ const displayAsset = adData.asset
                     </>
                   )}
                 </button>
+                
                 {streamUrlError && (
                   <button
                     onClick={() => {
@@ -445,9 +412,8 @@ const displayAsset = adData.asset
             ) : (
               <div className="flex items-center space-x-3 bg-white/80 dark:bg-black/40 backdrop-blur-md px-6 py-3 rounded-xl border border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-500 text-[10px] font-bold tracking-widest uppercase shadow-sm">
                 <div className="w-3 h-3 border-2 border-gray-300 dark:border-gray-700 border-t-gray-600 dark:border-t-gray-300 rounded-full animate-spin" />
-
                 <span>
-                  {canSkip
+                  {sessionStatus === "running"
                     ? `Launch Available in ${adCountdown}s`
                     : "Preparing Session"}
                 </span>
@@ -461,7 +427,6 @@ const displayAsset = adData.asset
               Cancel Session
             </button>
           </div>
-
         </div>
       </div>
     </div>

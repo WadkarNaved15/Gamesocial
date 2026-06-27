@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import dns from "dns";
+import AllPost from "../models/Allposts.js";
+import { videoProcessingQueue } from "../queues/videoQueue.js";
 
 dotenv.config();
 
@@ -83,6 +85,83 @@ async function recoverStuckDrafts() {
   );
 }
 
+async function recoverPendingVideos() {
+  // recover videos stuck in pending/processing
+  // for less than 24h old posts only
+  const cutoff = new Date(
+    Date.now() - 24 * 60 * 60 * 1000
+  );
+
+  const posts = await AllPost.find(
+    {
+      createdAt: { $gte: cutoff },
+      "normalPost.assets.processingStatus": {
+        $in: ["pending", "processing"],
+      },
+    },
+    {
+      _id: 1,
+      normalPost: 1,
+    }
+  );
+
+  if (!posts.length) {
+    console.log(
+      "✅ No recoverable videos found"
+    );
+    return;
+  }
+
+  let recovered = 0;
+
+  for (const post of posts) {
+    for (const asset of post.normalPost?.assets || []) {
+      if (
+        !["pending", "processing"].includes(
+          asset.processingStatus
+        )
+      ) {
+        continue;
+      }
+
+      try {
+        await videoProcessingQueue.add(
+          "processVideo",
+          {
+            entityType: "post",
+            entityId: post._id.toString(),
+            key: asset.key,
+            url: asset.url,
+          },
+          {
+            // prevents duplicate recovery jobs
+            jobId: `video-recovery-${post._id}-${asset.key}`,
+            removeOnComplete: 100,
+            removeOnFail: 100,
+          }
+        );
+
+        recovered++;
+      } catch (err) {
+        console.error(
+          `❌ Failed recovering video ${post._id}`,
+          err
+        );
+      }
+    }
+  }
+
+  if (recovered > 0) {
+    console.log(
+      `✅ Recovered ${recovered} stuck video jobs`
+    );
+  } else {
+    console.log(
+      "✅ No stuck video jobs found"
+    );
+  }
+}
+
 try {
   await registerRepeatJobs();
 
@@ -91,6 +170,8 @@ try {
   );
 
   await recoverStuckDrafts();
+
+  await recoverPendingVideos();
 
   console.log(
     "🚀 Workers started"

@@ -43,7 +43,7 @@ export async function callController(session, lease) {
     };
 
     console.log(`[Controller] Calling http://${lease.ip}:4443/start-session`);
-    console.log(`[Controller] Payload`, JSON.stringify(payload, null, 2));
+    console.log("BEFORE FETCH", Date.now());
 
     fetch(`http://${lease.ip}:4443/start-session`, {
       method: "POST",
@@ -56,9 +56,26 @@ export async function callController(session, lease) {
       .then(async (r) => {
         const text = await r.text();
         console.log(`[Controller] Response ${r.status}: ${text}`);
+        console.log(
+          "HEADERS RECEIVED",
+          Date.now(),
+          r.status
+        );
+
+        console.log(
+          "BODY RECEIVED",
+          Date.now(),
+          text
+        );
       })
       .catch(async (err) => {
         console.error(`[Controller] Fetch failed: ${err.message}`);
+        console.error(
+          "FETCH FAILED",
+          Date.now(),
+          err
+        );
+        
 
         await GameSession.findByIdAndUpdate(session._id, {
           status: "failed",
