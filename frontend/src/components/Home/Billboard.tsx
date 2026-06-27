@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, Suspense } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ArrowDown, ArrowUp} from "lucide-react";
 const Tower = React.lazy(() => import("./Tower"));
 
 interface Pocket {
@@ -140,23 +140,6 @@ const Billboard: React.FC = () => {
       onMouseLeave={handleMouseLeave}
     >
 
-      <button
-        onClick={handlePrev}
-        className="
-      absolute
-      top-1/2
-      -translate-y-1/2
-      -left-12
-      z-50
-      w-10
-      h-10
-      rounded-full
-      text-white
-    "
-      >
-        <ArrowLeft size={18} />
-      </button>
-
       <div className="flex-1 overflow-hidden">
         <Suspense fallback={<div className="text-center text-white/60 pt-10">Loading...</div>}>
           {loadingPockets ? (
@@ -171,23 +154,23 @@ const Billboard: React.FC = () => {
           )}
         </Suspense>
       </div>
-      {/* RIGHT */}
-      <button
-        onClick={handleNext}
-        className="
-      absolute
-      top-1/2
-      -translate-y-1/2
-      -right-12
-      z-50
-      w-10
-      h-10
-      rounded-full
-      text-white
-    "
-      >
-        <ArrowRight size={18} />
-      </button>
+      <div className="absolute top-1/2 -translate-y-1/2 -right-14 z-50 flex flex-col items-center gap-2 bg-zinc-800/80 backdrop-blur-sm px-2 py-3 rounded-full shadow-lg border border-white/10">
+        <button
+          onClick={handleNext}
+          className="flex items-center justify-center w-10 h-10 rounded-full bg-transparent text-white hover:bg-white/10 transition-colors"
+        >
+          <ArrowDown className="-rotate-90" size={18} />
+        </button>
+
+        <div className="w-6 h-px bg-white/20" />
+
+        <button
+          onClick={handlePrev}
+          className="flex items-center justify-center w-10 h-10 rounded-full bg-transparent text-white hover:bg-white/10 transition-colors"
+        >
+          <ArrowUp className="-rotate-90" size={18} />
+        </button>
+      </div>
     </div>
   );
 };
