@@ -62,8 +62,6 @@ export async function callController(session, lease) {
           r.status
         );
 
-        const text = await r.text();
-
         console.log(
           "BODY RECEIVED",
           Date.now(),
