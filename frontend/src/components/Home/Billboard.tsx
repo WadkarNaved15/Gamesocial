@@ -154,23 +154,23 @@ const Billboard: React.FC = () => {
           )}
         </Suspense>
       </div>
-      <div className="absolute top-1/3 -translate-y-1/2 -right-10 z-50 flex flex-col items-center gap-1.5 bg-zinc-800/80 backdrop-blur-sm px-1.5 py-2 rounded-full shadow-lg border border-white/10">
-        <button
-          onClick={handleNext}
-          className="flex items-center justify-center w-7 h-7 rounded-full bg-transparent text-white hover:bg-white/10 transition-colors"
-        >
-          <ArrowDown className="-rotate-90" size={13} />
-        </button>
+      <div className="absolute top-1/3 -translate-y-1/2 -right-10 z-50 flex flex-col items-center bg-transparent rounded-full border border-white/10 overflow-hidden">
+  <button
+    onClick={handleNext}
+    className="flex items-center justify-center w-[31px] h-[31px] bg-transparent text-white hover:bg-white/10 transition-colors pt-2 pb-0.5 px-1.5"
+  >
+    <ArrowDown className="-rotate-90" size={14} />
+  </button>
 
-        <div className="w-4 h-px bg-white/20" />
+  <div className="w-full h-px bg-white/20" />
 
-        <button
-          onClick={handlePrev}
-          className="flex items-center justify-center w-7 h-7 rounded-full bg-transparent text-white hover:bg-white/10 transition-colors"
-        >
-          <ArrowUp className="-rotate-90" size={13} />
-        </button>
-      </div>
+  <button
+    onClick={handlePrev}
+    className="flex items-center justify-center w-[31px] h-[31px] bg-transparent text-white hover:bg-white/10 transition-colors pt-0.5 pb-2 px-1.5"
+  >
+    <ArrowUp className="-rotate-90" size={14} />
+  </button>
+</div>
     </div>
   );
 };
