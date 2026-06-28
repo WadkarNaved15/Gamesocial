@@ -6,6 +6,7 @@ import {
   useState,
   useCallback,
   useRef,
+  useEffect,
 } from "react";
 
 const BACKEND_URL =
@@ -32,14 +33,23 @@ export const AdProvider = ({
   children: React.ReactNode;
 }) => {
   const [ads, setAds] = useState<CachedAd[]>([]);
+  const adsRef = useRef<CachedAd[]>([]);
   const [adFetchCompleted, setAdFetchCompleted] =
     useState(false);
+
+  useEffect(() => {
+  adsRef.current = ads;
+}, [ads]);
 
   const loadingRef = useRef(false);
 
   const preloadAds = useCallback(async () => {
-    if (ads.length || loadingRef.current)
+    if (
+      adsRef.current.length ||
+      loadingRef.current
+    ) {
       return;
+    }
 
     loadingRef.current = true;
 

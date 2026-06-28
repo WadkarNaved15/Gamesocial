@@ -18,38 +18,18 @@ router.post("/", async (req, res) => {
 // ===============================
 // GET RANDOM ACTIVE AD
 // ===============================
-router.get("/fairads", async (req, res) => {
-  try {
-    const ads = await Ad.find({
-      isActive: true,
-    })
-      .sort({ impressions: 1 })
-      .limit(3);
+router.get("/fairadd", async (req, res) => {
+    try {
+    const ad = await Ad.findOne({ isActive: true }).sort({ impressions: 1 });
 
-    if (!ads.length) {
-      return res.status(404).json({
-        message: "No ads found",
-      });
-    }
+    if (!ad) return res.status(404).json({ message: "No ads found" });
 
-    await Ad.updateMany(
-      {
-        _id: {
-          $in: ads.map((a) => a._id),
-        },
-      },
-      {
-        $inc: {
-          impressions: 1,
-        },
-      }
-    );
-
-    res.json(ads);
-  } catch (err) {
-    res.status(500).json({
-      error: "Server error",
+    await Ad.findByIdAndUpdate(ad._id, {
+      $inc: { impressions: 1 },
     });
+    res.json(ad);
+  } catch (error) {
+    res.status(500).json({ error: "Server error" });
   }
 });
 

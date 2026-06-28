@@ -262,7 +262,7 @@ console.log("QUEUE UPDATE", newState);
   };
 
   setEventSource(es);
-}, [eventSource, clearSession,preloadAds]);
+}, [eventSource, clearSession]);
 
   // 🎮 Start Session
   const startSession = useCallback(

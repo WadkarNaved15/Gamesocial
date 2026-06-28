@@ -97,23 +97,43 @@ export const createPrerollAd = async (req, res) => {
 };
 export const getFairPrerollAd = async (req, res) => {
   try {
-    const ad = await PrerollAd.aggregate([
-      {
-        $sample: { size: 1 }
-      }
-    ]);
+    // Get up to 3 active ads with the lowest impressions
+    const ads = await PrerollAd.find({
+      "asset.processingStatus": "completed",
+    })
+      .sort({
+        "performance.impressions": 1,
+      })
+      .limit(3)
+      .lean();
 
-    if (!ad.length) {
+    if (!ads.length) {
       return res.status(404).json({
         message: "No active preroll ads found",
       });
     }
 
-    res.json(ad[0]);
+    // Increment impressions
+    await PrerollAd.updateMany(
+      {
+        _id: {
+          $in: ads.map((a) => a._id),
+        },
+      },
+      {
+        $inc: {
+          "performance.impressions": 1,
+        },
+      }
+    );
+
+    // Return array
+    return res.json(ads);
   } catch (err) {
     console.error(err);
-    res.status(500).json({
-      message: "Failed to fetch preroll ad",
+
+    return res.status(500).json({
+      message: "Failed to fetch preroll ads",
     });
   }
 };
