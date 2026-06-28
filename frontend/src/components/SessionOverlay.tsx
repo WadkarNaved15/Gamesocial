@@ -43,11 +43,6 @@ const showAds =
     queue.status === "running"
   );
 
-  console.log("SESSION OVERLAY", {
-  sessionId: queue.sessionId,
-  status: queue.status,
-  phase: queue.phase,
-});
   return createPortal(
     <>
       {showQueueNotification && (

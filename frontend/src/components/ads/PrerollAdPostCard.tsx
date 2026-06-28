@@ -84,27 +84,6 @@ const PrerollAdPostCard: React.FC<Props> = ({
         }
     };
 
-    console.log("PREROLL RENDER", {
-    asset,
-    assetUrl: asset?.url,
-    fullscreen,
-});
-
-useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-
-    console.log("MANUAL PLAY ATTEMPT");
-
-    v.play()
-      .then(() => {
-          console.log("MANUAL PLAY SUCCESS");
-      })
-      .catch(err => {
-          console.error("MANUAL PLAY FAILED", err);
-      });
-}, []);
-
 
     return (
         <div
@@ -141,7 +120,6 @@ useEffect(() => {
             <div className="w-full h-full flex items-center justify-center relative z-10">
                 {asset ? (
     <>
-        {console.log("VIDEO ASSET", asset)}
         <video
             ref={videoRef}
             src={asset.url}
@@ -150,39 +128,39 @@ useEffect(() => {
             preload="metadata"
             muted={false}
 
-            onLoadStart={() => {
-                console.log("VIDEO loadstart", asset.url);
-            }}
+            // onLoadStart={() => {
+            //     console.log("VIDEO loadstart", asset.url);
+            // }}
 
-            onLoadedMetadata={(e) => {
-                console.log(
-                    "VIDEO metadata",
-                    e.currentTarget.videoWidth,
-                    e.currentTarget.videoHeight,
-                    e.currentTarget.duration
-                );
-            }}
+            // onLoadedMetadata={(e) => {
+            //     console.log(
+            //         "VIDEO metadata",
+            //         e.currentTarget.videoWidth,
+            //         e.currentTarget.videoHeight,
+            //         e.currentTarget.duration
+            //     );
+            // }}
 
-            onLoadedData={() => {
-                console.log("VIDEO loadeddata");
-            }}
+            // onLoadedData={() => {
+            //     console.log("VIDEO loadeddata");
+            // }}
 
-            onCanPlay={() => {
-                console.log("VIDEO canplay");
-            }}
+            // onCanPlay={() => {
+            //     console.log("VIDEO canplay");
+            // }}
 
             onPlay={() => {
-                console.log("VIDEO play");
+                // console.log("VIDEO play");
                 setAudioFocusId(AD_AUDIO_ID);
                 startProgressLoop();
             }}
 
-            onPause={() => {
-                console.log("VIDEO pause");
-            }}
+            // onPause={() => {
+            //     console.log("VIDEO pause");
+            // }}
 
             onEnded={() => {
-                console.log("VIDEO ended");
+                // console.log("VIDEO ended");
 
                 setAudioFocusId(null);
                 stopProgressLoop();
@@ -190,16 +168,16 @@ useEffect(() => {
                 onEnded?.();
             }}
 
-            onError={(e) => {
-                const video = e.currentTarget;
+            // onError={(e) => {
+            //     const video = e.currentTarget;
 
-                console.log("VIDEO ERROR", {
-                    src: video.currentSrc,
-                    networkState: video.networkState,
-                    readyState: video.readyState,
-                    error: video.error,
-                });
-            }}
+            //     console.log("VIDEO ERROR", {
+            //         src: video.currentSrc,
+            //         networkState: video.networkState,
+            //         readyState: video.readyState,
+            //         error: video.error,
+            //     });
+            // }}
 
             className={`w-full h-full max-w-full max-h-full ${
                 fullscreen

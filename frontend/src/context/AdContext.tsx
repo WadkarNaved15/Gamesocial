@@ -110,7 +110,7 @@ export const AdProvider = ({
     } finally {
       loadingRef.current = false;
     }
-  }, [ads]);
+  }, []);
 
   const clearAds = useCallback(() => {
     setAds([]);

@@ -200,7 +200,6 @@ if (effectiveStatus === "running") {
   handleTerminalState,
 ]);
 
-console.log("AD COMPONENT MOUNTED");
 
   const startFallbackPoll = useCallback(() => {
     if (pollRef.current) return;
@@ -371,15 +370,7 @@ console.log("AD COMPONENT MOUNTED");
         processingStatus: undefined,
       }
     : undefined;
-
-    console.log("ADS", ads);
-
-console.log("CURRENT INDEX", currentAdIndex);
-
-console.log("CURRENT AD", currentAd);
-
-console.log("CURRENT AD DATA", currentAd?.data);
-
+    
   return (
     <div className="fixed inset-0 bg-white dark:bg-black z-50 flex flex-col font-sans overflow-hidden select-none">
       
