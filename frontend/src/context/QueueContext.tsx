@@ -250,6 +250,8 @@ if (data.status === "starting") {
 }
 
 
+console.log("QUEUE UPDATE", newState);
+
       return newState;
     });
   };

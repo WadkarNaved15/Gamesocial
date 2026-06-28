@@ -200,6 +200,8 @@ if (effectiveStatus === "running") {
   handleTerminalState,
 ]);
 
+console.log("AD COMPONENT MOUNTED");
+
   const startFallbackPoll = useCallback(() => {
     if (pollRef.current) return;
     
