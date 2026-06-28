@@ -34,6 +34,7 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
       : description;
   const { brandName, logoUrl, bgMode, bgColor, bgImageUrl, bgImagePosition, bgImageSize, overlayOpacity = 30, asset, ctaText, ctaLink,
     style } = adModelPost;
+  console.log("adModelPost", adModelPost);
   const ctaColor = style?.ctaColor || "#3D7A6E";
   const resolvedBgPos = bgImagePosition ?? '50% 50%';
   const resolvedBgSize = bgImageSize ?? 'cover';

@@ -45,21 +45,28 @@ function computeStyles(
   imgW: number,
   imgH: number,
 ): { backgroundSize: string; backgroundPosition: string } {
-  // Cover scale (zoom=1 baseline)
+  // Determine which axis dictates the cover scale baseline
   const scaleX = containerW / imgW;
   const scaleY = containerH / imgH;
   const coverScale = Math.max(scaleX, scaleY);
 
-  // With zoom applied
+  // Calculate the actual pixel size with zoom applied
   const renderedW = imgW * coverScale * zoom;
   const renderedH = imgH * coverScale * zoom;
 
-  // backgroundSize as a percentage of the container
-  // CSS bg-size % is relative to the container — so renderedW/containerW * 100
-  const bgSizeW = (renderedW / containerW) * 100;
-  const bgSizeH = (renderedH / containerH) * 100;
+  // Fix: Force aspect ratio safety by declaring only one axis percent scale, and 'auto' for the other.
+  let backgroundSize = 'cover';
+  if (scaleX >= scaleY) {
+    // Width-driven baseline: compute size % relative to container width
+    const bgSizeW = (renderedW / containerW) * 100;
+    backgroundSize = `${Math.round(bgSizeW)}% auto`;
+  } else {
+    // Height-driven baseline: compute size % relative to container height
+    const bgSizeH = (renderedH / containerH) * 100;
+    backgroundSize = `auto ${Math.round(bgSizeH)}%`;
+  }
 
-  // Overflow available for panning
+  // Overflow available for panning remains structurally accurate
   const overflowX = renderedW - containerW;
   const overflowY = renderedH - containerH;
 
@@ -77,7 +84,7 @@ function computeStyles(
   }
 
   return {
-    backgroundSize: `${Math.round(bgSizeW)}% ${Math.round(bgSizeH)}%`,
+    backgroundSize,
     backgroundPosition: `${Math.round(pctX)}% ${Math.round(pctY)}%`,
   };
 }
