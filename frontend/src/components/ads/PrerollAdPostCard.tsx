@@ -17,6 +17,7 @@ interface Props {
     asset?: VideoAsset | null;
     duration: number;
     fullscreen?: boolean;
+    onEnded?: () => void;
 }
 
 const PrerollAdPostCard: React.FC<Props> = ({
@@ -27,6 +28,7 @@ const PrerollAdPostCard: React.FC<Props> = ({
     asset,
     duration = 15,
     fullscreen,
+    onEnded,
 }) => {
     const currentTimeRef = useRef(0);
     const progressBarRef = useRef<HTMLDivElement>(null);
@@ -130,6 +132,8 @@ const PrerollAdPostCard: React.FC<Props> = ({
                         onEnded={() => {
                             setAudioFocusId(null); // 🔥 RELEASE AUDIO CONTROL
                             stopProgressLoop();
+
+                            onEnded?.();
                         }}
                         // CHANGED: Dynamic object-fit property based on fullscreen mode
                         className={`w-full h-full max-w-full max-h-full ${fullscreen ? "object-cover" : "object-contain"

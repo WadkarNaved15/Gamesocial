@@ -54,7 +54,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { preloadAd, clearAd } = useAds();
+  const {preloadAds,clearAds} = useAds();
   const adPreloadedRef = useRef(false);
 
 
@@ -151,7 +151,7 @@ const setupSSE = useCallback((sessionId: string) => {
     // 🔴 Session finished → clear everything
     if (data.status === "ended" || data.status === "failed") {
       adPreloadedRef.current = false;
-      clearAd();
+      clearAds();
       console.log("[Queue SSE] Session finished, clearing session");
       clearSession();
       return;
@@ -235,7 +235,7 @@ if (data.status === "starting") {
 
   if (!adPreloadedRef.current) {
     adPreloadedRef.current = true;
-    preloadAd();
+    preloadAds();
   }
 
   if (countdownIntervalRef.current) {
@@ -260,7 +260,7 @@ if (data.status === "starting") {
   };
 
   setEventSource(es);
-}, [eventSource, clearSession,preloadAd]);
+}, [eventSource, clearSession,preloadAds]);
 
   // 🎮 Start Session
   const startSession = useCallback(
