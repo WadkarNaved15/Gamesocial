@@ -1,6 +1,6 @@
 import User from "../models/User.js";
 import Follow from "../models/Follow.js";
-import AllPost from "../models/AllPosts.js";
+import AllPost from "../models/Allposts.js";
 import Comment from "../models/Comment.js";
 import Like from "../models/Like.js";
 import bcrypt from "bcryptjs";
