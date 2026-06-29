@@ -20,12 +20,12 @@ export const PublishedArticlesProvider: React.FC<{ children: React.ReactNode }> 
   const [articles, setArticles] = useState<ArticlePreview[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    axios
-      .get(`${import.meta.env.VITE_BACKEND_URL}/api/articles/published`)
-      .then(res => setArticles(res.data))
-      .finally(() => setLoading(false));
-  }, []);
+  // useEffect(() => {
+  //   axios
+  //     .get(`${import.meta.env.VITE_BACKEND_URL}/api/articles/published`)
+  //     .then(res => setArticles(res.data))
+  //     .finally(() => setLoading(false));
+  // }, []);
 
   return (
     <PublishedArticlesContext.Provider value={{ articles, loading }}>
