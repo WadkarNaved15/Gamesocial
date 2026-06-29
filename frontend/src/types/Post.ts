@@ -104,6 +104,7 @@ export interface AdModelPost {
     ctaColor?: string;
   }
   asset: AdModelAsset;
+  
 }
 
 export interface AdModelPostFormProps {

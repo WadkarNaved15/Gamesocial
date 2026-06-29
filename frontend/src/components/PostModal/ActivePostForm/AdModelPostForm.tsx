@@ -4,7 +4,7 @@ import '@google/model-viewer';
 import type { AdModelPostFormProps, AdAsset } from "../../../types/Post";
 import { useUser } from "../../../context/user";
 import ImageRegionSelector, { CropRegion } from './Imageregionselector';
-
+import AdModelPostPreview from "../../../components/ads/AdModelPostPreview";
 const PRESET_COLORS = [
   '#3D7A6E', '#8b5cf6', '#ec4899', '#f59e0b',
   '#10b981', '#14b8a6', '#ef4444', '#6366f1',
@@ -533,185 +533,24 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
             )}
           </div>
         )}
-
         {/* ── LIVE PREVIEW ── */}
-        <div className="px-4 pb-4">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Live Preview</p>
+        <AdModelPostPreview
+          asset={asset}
+          description={description}
+          brandName={brandName}
+          logoImage={logoImage}
+          bgMode={bgMode}
+          bgColor={bgColor}
+          bgImage={bgImage}
+          bgImagePosition={bgImagePosition}
+          bgImageSize={bgImageSize}
+          overlayOpacity={overlayOpacity}
+          ctaText={ctaText}
+          ctaColor={ctaColor}
+          isExpanded={isExpanded}
+          setIsExpanded={setIsExpanded}
+        />
 
-          {isTransparent ? (
-            <div className="relative w-full border border-gray-200 bg-[#F9FAFB] rounded-xl overflow-hidden">
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={transparentPillStyle}>
-                    {logoImage ? (
-                      <img src={logoImage} alt="Logo" className="w-5 h-5 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[8px] font-black text-gray-500">
-                        {(brandName || 'B').charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <span className="text-gray-700 text-xs font-bold tracking-wide">
-                      {user?.username || 'Brand Name'}
-                    </span>
-                  </div>
-                  <div className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest text-gray-400"
-                    style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.08)' }}>Ad</div>
-                </div>
-                {description && (
-                  <p className="text-gray-800 text-sm leading-relaxed mb-3">
-                    <span>{displayedText}</span>
-                    {isLongText && (
-                      <button
-                        type="button"
-                        onClick={() => setIsExpanded(!isExpanded)}
-                        className="text-[11px] font-bold tracking-wide uppercase ml-1 bg-gray-200/60 hover:bg-gray-200 px-2 py-0.5 rounded-md inline-block align-middle cursor-pointer text-[#3D7A6E]"
-                      >
-                        {isExpanded ? "Show less" : "Show more"}
-                      </button>
-                    )}
-                  </p>
-                )}
-                <div className="relative overflow-hidden w-full h-[400px] rounded-xl bg-gray-100">
-                  {asset ? (
-                    // @ts-ignore
-                    <model-viewer src={asset.previewUrl} camera-controls auto-rotate exposure="1.2" environment-image="neutral" shadow-intensity="1"
-                      style={{ width: '100%', height: '400px', backgroundColor: 'transparent' }} />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-30">
-                      <Upload size={28} className="text-gray-400" />
-                      <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">3D Model</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="relative w-full overflow-hidden" style={glassOuterStyle}>
-              {isImage && (
-                <>
-                  <div className="absolute inset-0 pointer-events-none" style={{
-                    backgroundImage: `url(${bgImage})`,
-                    backgroundSize: bgImageSize,
-                    backgroundPosition: bgImagePosition,
-                    backgroundRepeat: 'no-repeat',
-                    filter: 'blur(28px)',
-                    transform: 'scale(1.12)',
-                    opacity: 0.45,
-                  }} />
-                  <div className="absolute inset-0 pointer-events-none" style={{ background: `rgba(0,0,0,${overlayOpacity / 100 * 0.4})` }} />
-                </>
-              )}
-              <div className="relative z-10 m-3 rounded-2xl overflow-hidden" style={glassCardStyle}>
-                {isImage && (
-                  <div className="absolute inset-0 pointer-events-none" style={{
-                    background: `rgba(0,0,0,${overlayOpacity / 100})`,
-                  }} />
-                )}
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between px-4 pt-4 pb-1">
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={glassPillStyle}>
-                      <img src={user?.avatar || "/default_avatar.png"} className="w-10 h-10 rounded-full object-cover" />
-                      <span className="text-white text-xs font-bold tracking-wide drop-shadow-sm">{brandName || 'Brand Name'}</span>
-                    </div>
-                    <div className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest" style={glassAdBadgeStyle}>Ad</div>
-                  </div>
-                  <div className="relative w-full overflow-hidden" style={{ ...glassModelAreaStyle, height: '340px' }}>
-                    {accentRgb && (
-                      <div className="absolute inset-0 pointer-events-none"
-                        style={{ background: `radial-gradient(ellipse 60% 50% at 50% 60%, rgba(${accentRgb},0.2) 0%, transparent 70%)` }} />
-                    )}
-                    {asset ? (
-                      // @ts-ignore
-                      <model-viewer src={asset.previewUrl} camera-controls auto-rotate exposure="1.15" environment-image="neutral" shadow-intensity="0.8"
-                        style={{ width: '100%', height: '340px', backgroundColor: 'transparent' }} />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-25">
-                        <Upload size={28} className="text-white" />
-                        <span className="text-white text-[10px] font-bold uppercase tracking-widest">3D Model</span>
-                      </div>
-                    )}
-                    <div className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none"
-                      style={{ background: isImage ? 'linear-gradient(to top, rgba(0,0,0,0.3), transparent)' : `linear-gradient(to top, rgba(${accentRgb ?? '0,0,0'},0.12), transparent)` }} />
-                  </div>
-                  <div className="h-0.5 w-full"
-                    style={{
-                      background: accentRgb
-                        ? `linear-gradient(90deg, transparent, rgba(${accentRgb},0.6), rgba(${accentRgb},0.3), transparent)`
-                        : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), rgba(255,255,255,0.12), transparent)'
-                    }} />
-                </div>
-              </div>
-              {/* Description sits outside the overflow-hidden card — matches AdModelPost */}
-              {(description || ctaText) && (
-                <div
-                  className={`px-4 pb-4 text-sm leading-relaxed font-light tracking-wide ${isTransparent || bgMode === "image"
-                    ? "text-gray-950"
-                    : ""
-                    }`}
-                  style={{
-                    color:
-                      bgMode === "color" && bgColor !== "transparent"
-                        ? getContrastText(bgColor)
-                        : undefined,
-                    textShadow:
-                      bgMode === "image"
-                        ? "0 1px 2px rgba(0,0,0,0.6)"
-                        : "none",
-                  }}
-                >
-                  {ctaText && (
-                    <button
-                      className="
-                        float-right
-                        ml-4
-                        mb-1.5
-                        px-6
-                        py-2.5
-                        rounded-xl
-                        text-[11px]
-                        font-black
-                        uppercase
-                        tracking-widest
-                        transition
-                        hover:scale-[1.02]
-                        active:scale-[0.98]
-                        shadow-lg
-                        whitespace-nowrap
-                      "
-                      style={{
-                        backgroundColor: ctaColor,
-                        color: getContrastText(ctaColor),
-                      }}
-                    >
-                      {ctaText}
-                      <span className="ml-1 opacity-70">→</span>
-                    </button>
-                  )}
-
-                  {description ? (
-                    <>
-                      <span>{displayedText}</span>
-                      {isLongText && (
-                        <button
-                          type="button"
-                          onClick={() => setIsExpanded(!isExpanded)}
-                          className="text-[11px] font-bold tracking-wide uppercase ml-1 bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md inline-block align-middle cursor-pointer"
-                          style={{ color: bgMode === 'color' && bgColor !== 'transparent' ? getContrastText(bgColor) : '#3D7A6E' }}
-                        >
-                          {isExpanded ? "Show less" : "Show more"}
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <span className="italic text-gray-400">Draft your ad copy layout here...</span>
-                  )}
-
-                  <div className="clear-both" />
-                </div>
-              )}
-            </div>
-          )}
-        </div>
 
         {asset?.status === 'uploading' && (
           <div className="mx-4 mb-4 p-3 rounded-xl border border-[#3D7A6E]/20 bg-[#3D7A6E]/10">

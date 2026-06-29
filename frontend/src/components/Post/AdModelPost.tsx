@@ -149,12 +149,12 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
 
   // ── COLOR / IMAGE: glassmorphism ──────────────────────────────────────────
 
+  // ── BEFORE ───────────────────────────────────────────────────────────
+  // const glassCardBase: React.CSSProperties = isImage ? { backgroundImage: ... } : { ... };
+
+  // ── AFTER: Separate the image styles out so they match the layout logic ──
   const glassCardBase: React.CSSProperties = isImage
     ? {
-      backgroundImage: `url(${bgImageUrl})`,
-      backgroundSize: resolvedBgSize,
-      backgroundPosition: resolvedBgPos,
-      backgroundRepeat: 'no-repeat',
       border: '1px solid rgba(255,255,255,0.18)',
       boxShadow: '0 8px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)',
     }
@@ -163,6 +163,13 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
       border: `1px solid rgba(${accentRgb},0.3)`,
       boxShadow: `0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)`,
     };
+
+  const bgImageStyle: React.CSSProperties = {
+    backgroundImage: `url(${bgImageUrl})`,
+    backgroundSize: resolvedBgSize,
+    backgroundPosition: resolvedBgPos,
+    backgroundRepeat: 'no-repeat',
+  };
 
   const headerPillStyle: React.CSSProperties = {
     background: 'rgba(255,255,255,0.12)',
@@ -217,9 +224,17 @@ const AdModelPost: React.FC<AdModelPostProps> = ({
       {/* ── Glass card ── */}
       <div className="relative z-10 overflow-hidden" style={glassCardBase}>
 
-        {/* Image mode: pure dark tint only */}
+        {/* NEW: Dedicated absolute frame for the background image configuration */}
         {isImage && (
-          <div className="absolute inset-0 pointer-events-none" style={{ background: `rgba(0,0,0,${overlayOpacity / 100})` }} />
+          <div
+            className="absolute inset-0 pointer-events-none z-0"
+            style={bgImageStyle}
+          />
+        )}
+
+        {/* Image mode overlay tint */}
+        {isImage && (
+          <div className="absolute inset-0 pointer-events-none z-0" style={{ background: `rgba(0,0,0,${overlayOpacity / 100})` }} />
         )}
 
         {/* All content sits above the overlay */}
