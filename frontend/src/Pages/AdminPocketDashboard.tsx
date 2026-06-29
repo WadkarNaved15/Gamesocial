@@ -1,6 +1,6 @@
 // src/pages/AdminPocketDashboard.tsx
 // Unified admin dashboard — two modes:
-//   "review"      → existing pocket review queue (security scan, approve/reject with notes)
+//   "review"      → pocket review queue (security scan, approve/reject with notes)
 //   "eligibility" → search users, grant/revoke pocket eligibility
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -11,8 +11,7 @@ import {
   AlertCircle, Search, Copy, Check, ExternalLink,
   FileCode2, Activity, Ban, Globe, Database, Cpu,
   Users, UserCheck, UserX, UserPlus, LayoutDashboard,
-  ChevronDown, Mail, AtSign, ToggleLeft, ToggleRight,
-  Loader2, Info,
+  Mail, AtSign, Loader2, Info,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -24,12 +23,12 @@ interface Pocket {
 interface UserRecord {
   _id: string; username: string; email: string; avatar?: string;
   isPocketEligible: boolean; createdAt: string;
-  pocketStatus?: string; // populated if they have a pocket
+  pocketStatus?: string;
 }
 type MainTab   = "review" | "eligibility";
 type DetailTab = "security" | "preview" | "code";
 
-// ─── Security scanner (unchanged from original) ───────────────────────────────
+// ─── Security scanner ─────────────────────────────────────────────────────────
 interface SecurityFinding {
   severity: "critical" | "high" | "medium" | "low" | "info";
   category: string; message: string; line?: number; snippet?: string;
@@ -44,62 +43,69 @@ interface SecurityReport {
     domainRefs: string[];
   };
 }
-const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+const SEVERITY_ORDER: Record<SecurityFinding["severity"], number> = { critical:0,high:1,medium:2,low:3,info:4 };
 const SEVERITY_COLOR: Record<string, string> = {
-  critical: "#ef4444", high: "#f97316", medium: "#eab308", low: "#3b82f6", info: "#6b7280",
+  critical:"#ef4444",high:"#f97316",medium:"#eab308",low:"#3b82f6",info:"#6b7280",
 };
 const SEVERITY_BG: Record<string, string> = {
-  critical: "rgba(239,68,68,0.08)", high: "rgba(249,115,22,0.08)",
-  medium: "rgba(234,179,8,0.08)", low: "rgba(59,130,246,0.08)", info: "rgba(107,114,128,0.08)",
+  critical:"rgba(239,68,68,0.08)",high:"rgba(249,115,22,0.08)",
+  medium:"rgba(234,179,8,0.08)",low:"rgba(59,130,246,0.08)",info:"rgba(107,114,128,0.08)",
 };
 
 function scanCode(code: string): SecurityReport {
   const lines = code.split("\n");
   const findings: SecurityFinding[] = [];
   const scan = (pattern: RegExp, severity: SecurityFinding["severity"], category: string, message: string) => {
-    lines.forEach((line, i) => { if (line.match(pattern)) findings.push({ severity, category, message, line: i + 1, snippet: line.trim() }); });
+    lines.forEach((line, i) => {
+      if (line.match(pattern)) findings.push({ severity, category, message, line: i+1, snippet: line.trim() });
+    });
   };
-  scan(/\bfetch\s*\(/, "critical", "Network", "fetch() — blocked by CSP in production but indicates network intent");
-  scan(/new\s+XMLHttpRequest/, "critical", "Network", "XMLHttpRequest detected");
-  scan(/axios|superagent|got\b|node-fetch/, "high", "Network", "HTTP library import detected");
-  scan(/new\s+WebSocket\s*\(/, "high", "Network", "WebSocket connection attempt");
-  scan(/navigator\.sendBeacon/, "medium", "Network", "sendBeacon() may bypass connect-src");
-  scan(/\beval\s*\(/, "critical", "Code Execution", "Direct eval() — arbitrary code execution");
-  scan(/new\s+Function\s*\(/, "critical", "Code Execution", "new Function() — arbitrary code execution");
-  scan(/setTimeout\s*\(\s*['"`]/, "high", "Code Execution", "setTimeout with string arg — acts like eval");
-  scan(/\.innerHTML\s*=/, "medium", "XSS", "innerHTML assignment — potential XSS");
-  scan(/dangerouslySetInnerHTML/, "medium", "XSS", "dangerouslySetInnerHTML — ensure content is sanitised");
-  scan(/document\.write\s*\(/, "high", "XSS", "document.write() — potential XSS");
-  scan(/window\.parent/, "critical", "Sandbox Escape", "window.parent — attempts to reach parent frame");
-  scan(/window\.top/, "critical", "Sandbox Escape", "window.top — attempts to reach top frame");
-  scan(/parent\.postMessage|top\.postMessage/, "high", "Sandbox Escape", "postMessage to parent/top frame");
-  scan(/window\.opener/, "high", "Sandbox Escape", "window.opener access");
-  scan(/document\.cookie/, "high", "Data Exfil", "Cookie access detected");
-  scan(/localStorage|sessionStorage/, "high", "Data Exfil", "Storage access — blocked by sandbox");
-  scan(/createElement\s*\(\s*['"`]script['"`]\s*\)/, "high", "Script Injection", "Dynamic script element creation");
-  scan(/crypto|miner|mining|coinhive|monero/i, "critical", "Crypto Mining", "Potential cryptocurrency mining code");
-  scan(/\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}/, "medium", "Obfuscation", "Hex/unicode escapes — possible obfuscation");
-  scan(/atob\s*\(|btoa\s*\(/, "medium", "Obfuscation", "Base64 encode/decode detected");
+  scan(/\bfetch\s*\(/,                                   "critical", "Network",        "fetch() — blocked by CSP in production but indicates network intent");
+  scan(/new\s+XMLHttpRequest/,                           "critical", "Network",        "XMLHttpRequest detected");
+  scan(/axios|superagent|got\b|node-fetch/,              "high",     "Network",        "HTTP library import detected");
+  scan(/new\s+WebSocket\s*\(/,                           "high",     "Network",        "WebSocket connection attempt");
+  scan(/navigator\.sendBeacon/,                          "medium",   "Network",        "sendBeacon() may bypass connect-src");
+  scan(/\beval\s*\(/,                                    "critical", "Code Execution", "Direct eval() — arbitrary code execution");
+  scan(/new\s+Function\s*\(/,                            "critical", "Code Execution", "new Function() — arbitrary code execution");
+  scan(/setTimeout\s*\(\s*['"`]/,                        "high",     "Code Execution", "setTimeout with string arg — acts like eval");
+  scan(/\.innerHTML\s*=/,                                "medium",   "XSS",            "innerHTML assignment — potential XSS");
+  scan(/dangerouslySetInnerHTML/,                        "medium",   "XSS",            "dangerouslySetInnerHTML — ensure content is sanitised");
+  scan(/document\.write\s*\(/,                           "high",     "XSS",            "document.write() — potential XSS");
+  scan(/window\.parent/,                                 "critical", "Sandbox Escape", "window.parent — attempts to reach parent frame");
+  scan(/window\.top/,                                    "critical", "Sandbox Escape", "window.top — attempts to reach top frame");
+  scan(/parent\.postMessage|top\.postMessage/,           "high",     "Sandbox Escape", "postMessage to parent/top frame");
+  scan(/window\.opener/,                                 "high",     "Sandbox Escape", "window.opener access");
+  scan(/document\.cookie/,                               "high",     "Data Exfil",     "Cookie access detected");
+  scan(/localStorage|sessionStorage/,                    "high",     "Data Exfil",     "Storage access — blocked by sandbox");
+  scan(/createElement\s*\(\s*['"`]script['"`]\s*\)/,     "high",     "Script Injection","Dynamic script element creation");
+  scan(/crypto|miner|mining|coinhive|monero/i,           "critical", "Crypto Mining",  "Potential cryptocurrency mining code");
+  scan(/\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}/,          "medium",   "Obfuscation",    "Hex/unicode escapes — possible obfuscation");
+  scan(/atob\s*\(|btoa\s*\(/,                            "medium",   "Obfuscation",    "Base64 encode/decode detected");
+
   const urlRegex = /https?:\/\/[^\s'"`,)>]+/g;
   const externalUrls: string[] = [];
-  const domainRefs: string[] = [];
-  code.match(urlRegex)?.forEach((url) => {
+  const domainRefs: string[]   = [];
+  code.match(urlRegex)?.forEach(url => {
     if (!externalUrls.includes(url)) externalUrls.push(url);
     try { const d = new URL(url).hostname; if (!domainRefs.includes(d)) domainRefs.push(d); } catch {}
   });
-  externalUrls.forEach((url) => {
+  externalUrls.forEach(url => {
     const l = url.toLowerCase();
     if (l.includes("ngrok") || l.includes("localhost") || /\d+\.\d+\.\d+\.\d+/.test(l))
-      findings.push({ severity: "critical", category: "Suspicious URL", message: `Suspicious URL: ${url}` });
+      findings.push({ severity:"critical", category:"Suspicious URL", message:`Suspicious URL: ${url}` });
   });
-  const countMatches = (p: RegExp) => (code.match(new RegExp(p.source, "g")) || []).length;
+
+  const countMatches = (p: RegExp) => (code.match(new RegExp(p.source,"g")) || []).length;
   const stats = {
     lines: lines.length, chars: code.length, externalUrls, domainRefs,
-    fetchCalls: countMatches(/\bfetch\s*\(/), xhrCalls: countMatches(/new\s+XMLHttpRequest/),
-    evalUsage: countMatches(/\beval\s*\(/), windowAccess: countMatches(/\bwindow\./),
-    documentAccess: countMatches(/\bdocument\./), storageAccess: countMatches(/localStorage|sessionStorage/),
+    fetchCalls:     countMatches(/\bfetch\s*\(/),
+    xhrCalls:       countMatches(/new\s+XMLHttpRequest/),
+    evalUsage:      countMatches(/\beval\s*\(/),
+    windowAccess:   countMatches(/\bwindow\./),
+    documentAccess: countMatches(/\bdocument\./),
+    storageAccess:  countMatches(/localStorage|sessionStorage/),
   };
-  const deductions = findings.reduce((a, f) => a + ({ critical:30,high:15,medium:7,low:3,info:0 }[f.severity]), 0);
+  const deductions = findings.reduce((a, f) => a + ({critical:30,high:15,medium:7,low:3,info:0}[f.severity]), 0);
   findings.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
   return { score: Math.max(0, 100 - deductions), findings, stats };
 }
@@ -110,22 +116,69 @@ const BACKEND_URL   = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000
 
 function relativeTime(iso: string): string {
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  if (s < 60)    return `${s}s ago`;
+  if (s < 3600)  return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  return new Date(iso).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
 }
 
-function buildPreviewDoc(jsx: string): string {
-  return `<!DOCTYPE html><html><head>
+// ─── Preview iframe ────────────────────────────────────────────────────────────
+// No CSP meta (it blocks unpkg CDN scripts). UMD React loaded via <script src>,
+// not type="module", so window.React/ReactDOM are available to eval'd code.
+// Regex-strip imports + sourceType:"script" — no registerPlugin needed.
+function buildPreviewDoc(jsx: string, height: number): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
   <meta charset="UTF-8"/>
-  <meta http-equiv="Content-Security-Policy" content="script-src 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://esm.sh; style-src 'unsafe-inline'; img-src https: data: blob:; default-src 'none';"/>
-  <style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}html,body{width:100%;height:${POCKET_HEIGHT}px;overflow:hidden;background:#0a0a0a}#root{width:100%;height:${POCKET_HEIGHT}px;overflow:hidden}</style>
-  </head><body><div id="root"></div>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{width:100%;height:${height}px;overflow:hidden;background:transparent}
+    #root{width:100%;height:${height}px;overflow:hidden}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script type="module">import React from "https://esm.sh/react@18";import ReactDOM from "https://esm.sh/react-dom@18/client";window.React=React;window.ReactDOM=ReactDOM;</script>
-  <script>(function poll(){if(!window.React||!window.ReactDOM||!window.Babel)return setTimeout(poll,50);var src=${JSON.stringify(jsx)};try{var compiled=Babel.transform(src,{presets:["react"]}).code;var sloppy=compiled.replace(/^\\s*["']use strict["'];?\\s*/m,"");(0,eval)(sloppy+"\\n;if(typeof PocketApp!=='undefined'){window.PocketApp=PocketApp;}");var App=window.PocketApp;if(typeof App!=="function"){document.getElementById("root").innerHTML='<p style="color:#f87171;padding:16px;font-family:monospace;font-size:12px">No PocketApp found.</p>';}else{window.ReactDOM.createRoot(document.getElementById("root")).render(window.React.createElement(App));}}catch(err){document.getElementById("root").innerHTML='<pre style="color:#f87171;padding:12px;font-size:11px;font-family:monospace;white-space:pre-wrap">'+err.message.replace(/</g,"&lt;")+"</pre>";}})();</script>
-  </body></html>`;
+  <script>
+    (function run() {
+      if (!window.React || !window.ReactDOM || !window.Babel) return setTimeout(run, 50);
+      var src = ${JSON.stringify(jsx)};
+      try {
+        // Strip import/export lines before Babel parses — more reliable than registerPlugin
+        var stripped = src
+          .replace(/^\\s*import\\s+.*?from\\s+['"][^'"]*['"]\\s*;?\\s*$/gm, '')
+          .replace(/^\\s*import\\s+['"][^'"]*['"]\\s*;?\\s*$/gm, '')
+          .replace(/^\\s*export\\s+default\\s+/gm, '')
+          .replace(/^\\s*export\\s+\\{[^}]*\\}\\s*;?\\s*$/gm, '')
+          .replace(/^\\s*export\\s+(const|let|var|function|class)\\s+/gm, '$1 ');
+
+        // sourceType:"script" tells Babel this is not an ES module
+        var compiled = window.Babel.transform(stripped, {
+          presets: [["react", {"runtime":"classic"}]],
+          sourceType: "script"
+        }).code;
+
+        var wrapped = compiled + "\\n;if(typeof PocketApp!=='undefined'){window.PocketApp=PocketApp;}";
+        (0, eval)(wrapped);
+
+        var App = window.PocketApp;
+        if (typeof App !== "function") {
+          throw new Error("No PocketApp found. Declare 'const PocketApp = () => { ... }'");
+        }
+        window.ReactDOM.createRoot(document.getElementById("root")).render(window.React.createElement(App));
+      } catch (err) {
+        document.getElementById("root").innerHTML =
+          '<div style="color:#f87171;padding:12px;font-size:13px;font-family:monospace;white-space:pre-wrap;height:100%;overflow:auto">' +
+          '<strong>Babel Error:</strong><br/><br/>' + err.message + '</div>';
+      }
+    })();
+  </script>
+</body>
+</html>`;
 }
 
 function highlight(code: string): string {
@@ -144,9 +197,9 @@ function Toast({ msg, ok }: { msg: string; ok: boolean }) {
     <div style={{
       position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:9999,
       padding:"10px 18px",borderRadius:8,backdropFilter:"blur(12px)",
-      background: ok ? "rgba(118,185,0,0.15)" : "rgba(239,68,68,0.15)",
+      background:ok?"rgba(118,185,0,0.15)":"rgba(239,68,68,0.15)",
       border:`1px solid ${ok?"#76b900":"#ef4444"}`,
-      color: ok ? "#a3e635" : "#f87171",
+      color:ok?"#a3e635":"#f87171",
       fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:8,
       boxShadow:`0 8px 32px ${ok?"rgba(118,185,0,0.15)":"rgba(239,68,68,0.15)"}`,
       animation:"fadeIn 0.2s ease",
@@ -157,11 +210,12 @@ function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   );
 }
 
-function StatCard({ icon, label, value, warn }: { icon: React.ReactNode; label: string; value: string | number; warn?: boolean }) {
+function StatCard({ icon, label, value, warn }: { icon: React.ReactNode; label: string; value: string|number; warn?: boolean }) {
   const isWarn = warn && Number(value) > 0;
   return (
     <div style={{
-      flex:1,background:isWarn ? SEVERITY_BG.high : "rgba(255,255,255,0.03)",
+      flex:1,
+      background:isWarn?SEVERITY_BG.high:"rgba(255,255,255,0.03)",
       border:`1px solid ${isWarn?"rgba(249,115,22,0.2)":"rgba(255,255,255,0.07)"}`,
       borderRadius:8,padding:"10px 14px",display:"flex",flexDirection:"column",gap:4,
     }}>
@@ -208,13 +262,12 @@ function FindingRow({ f }: { f: SecurityFinding }) {
 function SecurityPanel({ report, code }: { report: SecurityReport; code: string }) {
   const { score, findings, stats } = report;
   const scoreColor = score>=80?"#76b900":score>=50?"#eab308":score>=25?"#f97316":"#ef4444";
-  const critical=findings.filter(f=>f.severity==="critical");
-  const high=findings.filter(f=>f.severity==="high");
-  const medium=findings.filter(f=>f.severity==="medium");
-  const low=findings.filter(f=>f.severity==="low");
+  const critical = findings.filter(f=>f.severity==="critical");
+  const high     = findings.filter(f=>f.severity==="high");
+  const medium   = findings.filter(f=>f.severity==="medium");
+  const low      = findings.filter(f=>f.severity==="low");
   return (
     <div style={{height:"100%",overflow:"auto",padding:20,display:"flex",flexDirection:"column",gap:16}}>
-      {/* Score */}
       <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)",
         borderRadius:12,padding:20,display:"flex",alignItems:"center",gap:20}}>
         <div style={{position:"relative",width:80,height:80,flexShrink:0}}>
@@ -254,20 +307,18 @@ function SecurityPanel({ report, code }: { report: SecurityReport; code: string 
         </div>
       </div>
 
-      {/* Stats */}
       <div>
         <p style={{fontSize:10,letterSpacing:1.5,textTransform:"uppercase",color:"rgba(255,255,255,0.3)",marginBottom:8}}>Code statistics</p>
         <div style={{display:"flex",gap:8}}>
           <StatCard icon={<FileCode2 size={12}/>} label="Lines"   value={stats.lines}/>
           <StatCard icon={<Cpu size={12}/>}       label="Chars"   value={stats.chars.toLocaleString()}/>
-          <StatCard icon={<Globe size={12}/>}     label="Fetches" value={stats.fetchCalls}     warn/>
-          <StatCard icon={<Activity size={12}/>}  label="Evals"   value={stats.evalUsage}      warn/>
-          <StatCard icon={<Database size={12}/>}  label="Storage" value={stats.storageAccess}  warn/>
+          <StatCard icon={<Globe size={12}/>}     label="Fetches" value={stats.fetchCalls}    warn/>
+          <StatCard icon={<Activity size={12}/>}  label="Evals"   value={stats.evalUsage}     warn/>
+          <StatCard icon={<Database size={12}/>}  label="Storage" value={stats.storageAccess} warn/>
           <StatCard icon={<Ban size={12}/>}       label="Parent"  value={(code.match(/window\.parent|window\.top/g)||[]).length} warn/>
         </div>
       </div>
 
-      {/* External URLs */}
       {stats.externalUrls.length > 0 && (
         <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,overflow:"hidden"}}>
           <div style={{padding:"10px 14px",borderBottom:"1px solid rgba(255,255,255,0.05)",display:"flex",alignItems:"center",gap:7}}>
@@ -294,7 +345,6 @@ function SecurityPanel({ report, code }: { report: SecurityReport; code: string 
         </div>
       )}
 
-      {/* Findings */}
       {findings.length > 0 ? (
         <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,overflow:"hidden"}}>
           <div style={{padding:"10px 14px",borderBottom:"1px solid rgba(255,255,255,0.05)",display:"flex",alignItems:"center",gap:7}}>
@@ -309,9 +359,7 @@ function SecurityPanel({ report, code }: { report: SecurityReport; code: string 
           <ShieldCheck size={18} color="#76b900"/>
           <div>
             <p style={{color:"#76b900",fontWeight:700,fontSize:13}}>No security issues detected</p>
-            <p style={{color:"rgba(255,255,255,0.35)",fontSize:11,marginTop:2}}>
-              Static scan found no patterns of concern. Review preview and source before approving.
-            </p>
+            <p style={{color:"rgba(255,255,255,0.35)",fontSize:11,marginTop:2}}>Static scan found no patterns of concern. Review preview and source before approving.</p>
           </div>
         </div>
       )}
@@ -329,9 +377,9 @@ function CodePanel({ code, findings }: { code: string; findings: SecurityFinding
   const highlightedLines = new Set(findings.map(f=>f.line).filter(Boolean) as number[]);
   const lines = code.split("\n");
   const matchLines = useMemo(()=>{
-    if(!search.trim()) return new Set<number>();
-    const s=search.toLowerCase();
-    return new Set(lines.map((l,i)=>l.toLowerCase().includes(s)?i+1:null).filter(Boolean) as number[]);
+    if (!search.trim()) return new Set<number>();
+    const s = search.toLowerCase();
+    return new Set(lines.map((l,i)=>l.toLowerCase().includes(s)?i+1:null).filter((n): n is number => n !== null));
   },[search,lines]);
   const copy = ()=>{ navigator.clipboard.writeText(code); setCopied(true); setTimeout(()=>setCopied(false),2000); };
   return (
@@ -344,8 +392,10 @@ function CodePanel({ code, findings }: { code: string; findings: SecurityFinding
         {search && <span style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>{matchLines.size} match{matchLines.size!==1?"es":""}</span>}
         <div style={{width:1,height:14,background:"rgba(255,255,255,0.08)"}}/>
         {highlightedLines.size>0 && <span style={{fontSize:10,color:"#f97316"}}>{highlightedLines.size} flagged</span>}
-        <button onClick={copy} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",
-          cursor:"pointer",color:copied?"#76b900":"rgba(255,255,255,0.3)",fontSize:10}}>
+        <button onClick={copy} style={{display:"flex",alignItems:"center",gap:4,
+          background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",
+          borderRadius:5,padding:"3px 9px",cursor:"pointer",
+          color:copied?"#76b900":"rgba(255,255,255,0.4)",fontSize:10,fontWeight:700}}>
           {copied?<Check size={11}/>:<Copy size={11}/>}{copied?"Copied":"Copy"}
         </button>
       </div>
@@ -386,9 +436,7 @@ function PocketRow({ pocket, selected, onClick }: { pocket: Pocket; selected: bo
         <div style={{color:"#fff",fontWeight:700,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:2}}>
           {pocket.brandName}
         </div>
-        <div style={{color:"rgba(255,255,255,0.35)",fontSize:10}}>
-          @{pocket.owner.username} · {relativeTime(pocket.updatedAt)}
-        </div>
+        <div style={{color:"rgba(255,255,255,0.35)",fontSize:10}}>@{pocket.owner.username} · {relativeTime(pocket.updatedAt)}</div>
       </div>
       <ChevronRight size={12} color={selected?"#76b900":"rgba(255,255,255,0.15)"}/>
     </button>
@@ -397,12 +445,12 @@ function PocketRow({ pocket, selected, onClick }: { pocket: Pocket; selected: bo
 
 // ─── Review tab ────────────────────────────────────────────────────────────────
 function ReviewTab({ showToast }: { showToast: (msg: string, ok: boolean)=>void }) {
-  const [pockets, setPockets]         = useState<Pocket[]>([]);
-  const [selected, setSelected]       = useState<Pocket | null>(null);
-  const [detailTab, setDetailTab]     = useState<DetailTab>("security");
-  const [rejectNote, setRejectNote]   = useState("");
+  const [pockets, setPockets]             = useState<Pocket[]>([]);
+  const [selected, setSelected]           = useState<Pocket|null>(null);
+  const [detailTab, setDetailTab]         = useState<DetailTab>("security");
+  const [rejectNote, setRejectNote]       = useState("");
   const [showRejectBox, setShowRejectBox] = useState(false);
-  const [loading, setLoading]         = useState(true);
+  const [loading, setLoading]             = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -417,12 +465,12 @@ function ReviewTab({ showToast }: { showToast: (msg: string, ok: boolean)=>void 
       setSelected(prev => prev ? (data.pockets??[]).find((p:Pocket)=>p._id===prev._id)??null : null);
     } catch { showToast("Failed to load queue",false); }
     finally { setLoading(false); }
-  },[]);
+  },[showToast]);
 
-  useEffect(()=>{ fetchPending(); },[]);
+  useEffect(()=>{ fetchPending(); },[fetchPending]);
 
   const handleApprove = async()=>{
-    if(!selected||actionLoading) return;
+    if (!selected||actionLoading) return;
     setActionLoading(true);
     try {
       const res  = await fetch(`${BACKEND_URL}/api/pockets/${selected._id}/review`,{
@@ -431,15 +479,15 @@ function ReviewTab({ showToast }: { showToast: (msg: string, ok: boolean)=>void 
         body:JSON.stringify({action:"approve"}),
       });
       const data = await res.json();
-      if(!res.ok) throw new Error(data.message);
+      if (!res.ok) throw new Error(data.message);
       showToast(`✓ ${selected.brandName} approved and live`,true);
       setSelected(null); setShowRejectBox(false); fetchPending();
-    } catch(err:any){ showToast(err.message??"Approval failed",false); }
+    } catch(err:unknown){ showToast((err as Error).message??"Approval failed",false); }
     finally { setActionLoading(false); }
   };
 
   const handleReject = async()=>{
-    if(!selected||actionLoading||!rejectNote.trim()) return;
+    if (!selected||actionLoading||rejectNote.trim().length<10) return;
     setActionLoading(true);
     try {
       const res  = await fetch(`${BACKEND_URL}/api/pockets/${selected._id}/review`,{
@@ -448,31 +496,32 @@ function ReviewTab({ showToast }: { showToast: (msg: string, ok: boolean)=>void 
         body:JSON.stringify({action:"reject",note:rejectNote.trim()}),
       });
       const data = await res.json();
-      if(!res.ok) throw new Error(data.message);
+      if (!res.ok) throw new Error(data.message);
       showToast(`Rejected: ${selected.brandName}`,false);
       setSelected(null); setShowRejectBox(false); setRejectNote(""); fetchPending();
-    } catch(err:any){ showToast(err.message??"Rejection failed",false); }
+    } catch(err:unknown){ showToast((err as Error).message??"Rejection failed",false); }
     finally { setActionLoading(false); }
   };
 
-  const previewSrc = selected ? `data:text/html;charset=utf-8,${encodeURIComponent(buildPreviewDoc(selected.sourceCode))}` : "";
+  const previewSrc = selected
+    ? `data:text/html;charset=utf-8,${encodeURIComponent(buildPreviewDoc(selected.sourceCode, POCKET_HEIGHT))}`
+    : "";
 
   const DETAIL_TABS = selected ? [
-    {id:"security" as DetailTab, icon:<Shield size={12}/>, label:"Security",
-      badge: secReport ? secReport.findings.filter(f=>f.severity==="critical"||f.severity==="high").length : 0},
-    {id:"preview"  as DetailTab, icon:<Eye size={12}/>,    label:"Preview"},
-    {id:"code"     as DetailTab, icon:<Terminal size={12}/>,label:"Source",
-      badge:`${selected.sourceCode.split("\n").length}L`},
+    { id:"security" as DetailTab, icon:<Shield size={12}/>,   label:"Security",
+      badge: secReport ? secReport.findings.filter(f=>f.severity==="critical"||f.severity==="high").length : 0 },
+    { id:"preview"  as DetailTab, icon:<Eye size={12}/>,      label:"Preview" },
+    { id:"code"     as DetailTab, icon:<Terminal size={12}/>, label:"Source",
+      badge:`${selected.sourceCode.split("\n").length}L` },
   ] : [];
 
-  // Quick-fill rejection templates
   const REJECT_TEMPLATES = [
-    { label: "Network calls",    text: "Your pocket contains fetch() or XHR calls which are blocked in production and not permitted in pocket code. Please remove all network requests." },
-    { label: "Sandbox escape",   text: "Your pocket attempts to access window.parent or window.top, which violates the sandbox isolation policy. Please remove these references." },
-    { label: "Eval / code exec", text: "Your pocket uses eval() or new Function(), which poses a security risk. Please refactor to avoid dynamic code execution." },
-    { label: "Broken layout",    text: "The pocket does not render correctly within the 480px canvas. Please check your root element height and ensure nothing overflows." },
-    { label: "Wrong name",       text: "Your root component must be named exactly 'PocketApp'. Please rename it and resubmit." },
-    { label: "Obfuscated code",  text: "Your pocket contains obfuscated or minified code which cannot be reviewed. Please submit readable source code." },
+    { label:"Network calls",    text:"Your pocket contains fetch() or XHR calls which are blocked in production. Please remove all network requests." },
+    { label:"Sandbox escape",   text:"Your pocket attempts to access window.parent or window.top, violating sandbox isolation. Please remove these references." },
+    { label:"Eval / code exec", text:"Your pocket uses eval() or new Function(), which poses a security risk. Please refactor to avoid dynamic code execution." },
+    { label:"Broken layout",    text:"The pocket does not render correctly within the 480px canvas. Please check your root element height and ensure nothing overflows." },
+    { label:"Wrong name",       text:"Your root component must be named exactly 'PocketApp'. Please rename it and resubmit." },
+    { label:"Obfuscated code",  text:"Your pocket contains obfuscated or minified code which cannot be reviewed. Please submit readable source code." },
   ];
 
   return (
@@ -499,8 +548,9 @@ function ReviewTab({ showToast }: { showToast: (msg: string, ok: boolean)=>void 
         <div style={{flex:1,overflowY:"auto"}}>
           {loading ? (
             <div style={{display:"flex",justifyContent:"center",padding:28}}>
-              <div style={{width:18,height:18,borderRadius:"50%",border:"2px solid rgba(118,185,0,0.2)",
-                borderTopColor:"#76b900",animation:"spin 0.8s linear infinite"}}/>
+              <div style={{width:18,height:18,borderRadius:"50%",
+                border:"2px solid rgba(118,185,0,0.2)",borderTopColor:"#76b900",
+                animation:"spin 0.8s linear infinite"}}/>
             </div>
           ) : pockets.length===0 ? (
             <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 20px",gap:10}}>
@@ -572,13 +622,19 @@ function ReviewTab({ showToast }: { showToast: (msg: string, ok: boolean)=>void 
             {detailTab==="preview" && (
               <div style={{height:"100%",overflow:"auto",background:"#111",padding:20}}>
                 <p style={{fontSize:9,color:"rgba(255,255,255,0.2)",letterSpacing:1.5,textTransform:"uppercase",marginBottom:10,fontFamily:"monospace"}}>
-                  LIVE PREVIEW — {POCKET_HEIGHT}px canvas · sandbox: allow-scripts only
+                  LIVE PREVIEW — {POCKET_HEIGHT}px canvas · fixed canvas · overflow: hidden
                 </p>
                 <div style={{maxWidth:720,borderRadius:12,overflow:"hidden",
                   border:"1px solid rgba(118,185,0,0.15)",height:POCKET_HEIGHT,boxShadow:"0 0 40px rgba(118,185,0,0.04)"}}>
-                  <iframe key={selected._id} title="pocket-preview" src={previewSrc}
-                    sandbox="allow-scripts allow-popups" referrerPolicy="no-referrer"
-                    style={{width:"100%",height:POCKET_HEIGHT,border:"none",display:"block"}}/>
+                  <iframe
+                    key={selected._id}
+                    title="pocket-preview"
+                    src={previewSrc}
+                    sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+                    referrerPolicy="no-referrer"
+                    style={{width:"100%",height:`${POCKET_HEIGHT}px`,border:"none",display:"block"}}
+                    loading="lazy"
+                  />
                 </div>
                 {secReport && secReport.findings.filter(f=>f.severity==="critical").length>0 && (
                   <div style={{maxWidth:720,marginTop:12,padding:"10px 14px",borderRadius:8,
@@ -603,22 +659,16 @@ function ReviewTab({ showToast }: { showToast: (msg: string, ok: boolean)=>void 
                   <AlertTriangle size={11} color="#f87171"/>
                   <span style={{color:"#f87171",fontSize:10,fontWeight:700}}>Rejection reason — visible to creator</span>
                 </div>
-
-                {/* Quick templates */}
                 <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:8}}>
                   {REJECT_TEMPLATES.map(t=>(
                     <button key={t.label} onClick={()=>setRejectNote(t.text)} style={{
                       fontSize:9,padding:"3px 9px",borderRadius:20,cursor:"pointer",
                       background:rejectNote===t.text?"rgba(239,68,68,0.18)":"rgba(255,255,255,0.04)",
                       border:`1px solid ${rejectNote===t.text?"rgba(239,68,68,0.4)":"rgba(255,255,255,0.08)"}`,
-                      color:rejectNote===t.text?"#f87171":"rgba(255,255,255,0.35)",fontWeight:700,
-                      transition:"all 0.12s",
-                    }}>
-                      {t.label}
-                    </button>
+                      color:rejectNote===t.text?"#f87171":"rgba(255,255,255,0.35)",fontWeight:700,transition:"all 0.12s",
+                    }}>{t.label}</button>
                   ))}
                 </div>
-
                 <textarea ref={textareaRef} value={rejectNote} onChange={e=>setRejectNote(e.target.value)}
                   placeholder="Explain clearly what needs to change so the creator can fix and resubmit…"
                   autoFocus rows={3} style={{
@@ -637,7 +687,6 @@ function ReviewTab({ showToast }: { showToast: (msg: string, ok: boolean)=>void 
                 </div>
               </div>
             )}
-
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <button onClick={handleApprove} disabled={actionLoading||showRejectBox} style={{
                 display:"flex",alignItems:"center",gap:6,
@@ -648,7 +697,6 @@ function ReviewTab({ showToast }: { showToast: (msg: string, ok: boolean)=>void 
               }}>
                 <CheckCircle2 size={13}/>{actionLoading?"Processing…":"Approve & Publish"}
               </button>
-
               {!showRejectBox ? (
                 <button onClick={()=>{ setShowRejectBox(true); setTimeout(()=>textareaRef.current?.focus(),40); }}
                   disabled={actionLoading} style={{
@@ -676,7 +724,6 @@ function ReviewTab({ showToast }: { showToast: (msg: string, ok: boolean)=>void 
                   }}>Cancel</button>
                 </>
               )}
-
               <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:10}}>
                 {secReport && secReport.findings.filter(f=>f.severity==="critical").length>0 && (
                   <span style={{fontSize:10,color:"#ef4444",display:"flex",alignItems:"center",gap:4}}>
@@ -698,17 +745,17 @@ function ReviewTab({ showToast }: { showToast: (msg: string, ok: boolean)=>void 
 
 // ─── Eligibility tab ──────────────────────────────────────────────────────────
 function EligibilityTab({ showToast }: { showToast: (msg: string, ok: boolean)=>void }) {
-  const [query, setQuery]           = useState("");
-  const [results, setResults]       = useState<UserRecord[]>([]);
-  const [searching, setSearching]   = useState(false);
-  const [toggling, setToggling]     = useState<string|null>(null);
-  const [selected, setSelected]     = useState<UserRecord|null>(null);
-  const [confirmAction, setConfirmAction] = useState<{user:UserRecord; grant:boolean}|null>(null);
-  const [note, setNote]             = useState("");
+  const [query, setQuery]                 = useState("");
+  const [results, setResults]             = useState<UserRecord[]>([]);
+  const [searching, setSearching]         = useState(false);
+  const [toggling, setToggling]           = useState<string|null>(null);
+  const [selected, setSelected]           = useState<UserRecord|null>(null);
+  const [confirmAction, setConfirmAction] = useState<{user:UserRecord;grant:boolean}|null>(null);
+  const [note, setNote]                   = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout>|null>(null);
 
   const searchUsers = useCallback(async(q:string)=>{
-    if(!q.trim()) { setResults([]); return; }
+    if (!q.trim()) { setResults([]); return; }
     setSearching(true);
     try {
       const res  = await fetch(`${BACKEND_URL}/api/admin/users/search?q=${encodeURIComponent(q)}`,{credentials:"include"});
@@ -716,13 +763,13 @@ function EligibilityTab({ showToast }: { showToast: (msg: string, ok: boolean)=>
       setResults(data.users ?? []);
     } catch { showToast("Search failed",false); }
     finally { setSearching(false); }
-  },[]);
+  },[showToast]);
 
   useEffect(()=>{
-    if(debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(()=>searchUsers(query), 350);
-    return ()=>{ if(debounceRef.current) clearTimeout(debounceRef.current); };
-  },[query]);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(()=>searchUsers(query),350);
+    return ()=>{ if (debounceRef.current) clearTimeout(debounceRef.current); };
+  },[query, searchUsers]);
 
   const handleToggle = async(user:UserRecord, grant:boolean)=>{
     setToggling(user._id);
@@ -733,13 +780,12 @@ function EligibilityTab({ showToast }: { showToast: (msg: string, ok: boolean)=>
         body:JSON.stringify({eligible:grant}),
       });
       const data = await res.json();
-      if(!res.ok) throw new Error(data.message);
+      if (!res.ok) throw new Error(data.message);
       showToast(grant?`✓ @${user.username} granted pocket access`:`✗ @${user.username} pocket access revoked`,grant);
-      // Update in-place
       setResults(prev=>prev.map(u=>u._id===user._id?{...u,isPocketEligible:grant}:u));
-      if(selected?._id===user._id) setSelected(s=>s?{...s,isPocketEligible:grant}:null);
+      if (selected?._id===user._id) setSelected(s=>s?{...s,isPocketEligible:grant}:null);
       setConfirmAction(null); setNote("");
-    } catch(err:any){ showToast(err.message??"Toggle failed",false); }
+    } catch(err:unknown){ showToast((err as Error).message??"Toggle failed",false); }
     finally { setToggling(null); }
   };
 
@@ -748,11 +794,9 @@ function EligibilityTab({ showToast }: { showToast: (msg: string, ok: boolean)=>
 
   return (
     <div style={{display:"flex",flex:1,overflow:"hidden"}}>
-      {/* Left — search + list */}
+      {/* Left — search */}
       <div style={{width:320,flexShrink:0,borderRight:"1px solid rgba(255,255,255,0.06)",
         display:"flex",flexDirection:"column",background:"#0d0d0d"}}>
-
-        {/* Search bar */}
         <div style={{padding:"14px 14px 10px",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
           <div style={{display:"flex",alignItems:"center",gap:7,background:"rgba(255,255,255,0.04)",
             border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,padding:"8px 12px"}}>
@@ -778,8 +822,6 @@ function EligibilityTab({ showToast }: { showToast: (msg: string, ok: boolean)=>
             </div>
           )}
         </div>
-
-        {/* Results list */}
         <div style={{flex:1,overflowY:"auto"}}>
           {!query.trim() ? (
             <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 20px",gap:10}}>
@@ -804,8 +846,7 @@ function EligibilityTab({ showToast }: { showToast: (msg: string, ok: boolean)=>
                 <img src={user.avatar||"/default_avatar.png"} alt={user.username}
                   style={{width:34,height:34,borderRadius:"50%",objectFit:"cover"}}/>
                 <div style={{position:"absolute",bottom:-2,right:-2,width:10,height:10,borderRadius:"50%",
-                  border:"2px solid #0d0d0d",
-                  background:user.isPocketEligible?"#76b900":"rgba(239,68,68,0.7)"}}/>
+                  border:"2px solid #0d0d0d",background:user.isPocketEligible?"#76b900":"rgba(239,68,68,0.7)"}}/>
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:1}}>
@@ -837,8 +878,6 @@ function EligibilityTab({ showToast }: { showToast: (msg: string, ok: boolean)=>
         </div>
       ) : (
         <div style={{flex:1,overflow:"auto",padding:28,display:"flex",flexDirection:"column",gap:20}}>
-
-          {/* User card */}
           <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)",
             borderRadius:14,padding:20,display:"flex",alignItems:"center",gap:18}}>
             <div style={{position:"relative",flexShrink:0}}>
@@ -879,7 +918,6 @@ function EligibilityTab({ showToast }: { showToast: (msg: string, ok: boolean)=>
             </div>
           </div>
 
-          {/* Grant / Revoke action */}
           {!confirmAction ? (
             <div style={{display:"flex",gap:12}}>
               {!selected.isPocketEligible ? (
@@ -912,23 +950,18 @@ function EligibilityTab({ showToast }: { showToast: (msg: string, ok: boolean)=>
                   : <><UserX size={15} color="#f87171"/><span style={{fontWeight:800,color:"#f87171",fontSize:13}}>Revoke pocket access from @{confirmAction.user.username}?</span></>
                 }
               </div>
-
-              {/* Optional note (shown to user if backend supports it) */}
               <div style={{marginBottom:14}}>
                 <label style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.35)",
                   letterSpacing:1,textTransform:"uppercase",display:"block",marginBottom:5}}>
                   Internal note <span style={{color:"rgba(255,255,255,0.2)"}}>(optional — admin-only)</span>
                 </label>
                 <textarea value={note} onChange={e=>setNote(e.target.value)} rows={2}
-                  placeholder={confirmAction.grant
-                    ? "e.g. Brand partner, approved by marketing team…"
-                    : "e.g. Policy violation, account suspended…"}
+                  placeholder={confirmAction.grant?"e.g. Brand partner, approved by marketing team…":"e.g. Policy violation, account suspended…"}
                   style={{width:"100%",background:"rgba(255,255,255,0.03)",
                     border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,
                     color:"#fff",fontSize:11,fontFamily:"'DM Sans',sans-serif",
                     padding:"9px 12px",resize:"none",outline:"none",lineHeight:1.5,boxSizing:"border-box"}}/>
               </div>
-
               <div style={{display:"flex",gap:8}}>
                 <button onClick={()=>handleToggle(confirmAction.user,confirmAction.grant)}
                   disabled={!!toggling} style={{
@@ -937,7 +970,7 @@ function EligibilityTab({ showToast }: { showToast: (msg: string, ok: boolean)=>
                     background:confirmAction.grant?"#76b900":"#ef4444",
                     color:confirmAction.grant?"#000":"#fff",opacity:toggling?0.5:1,
                   }}>
-                  {toggling ? <Loader2 size={13} style={{animation:"spin 0.8s linear infinite"}}/> : <Check size={13}/>}
+                  {toggling?<Loader2 size={13} style={{animation:"spin 0.8s linear infinite"}}/>:<Check size={13}/>}
                   {toggling?"Processing…":confirmAction.grant?"Confirm Grant":"Confirm Revoke"}
                 </button>
                 <button onClick={()=>{ setConfirmAction(null); setNote(""); }} style={{
@@ -948,7 +981,6 @@ function EligibilityTab({ showToast }: { showToast: (msg: string, ok: boolean)=>
             </div>
           )}
 
-          {/* Info box */}
           <div style={{padding:"14px 16px",background:"rgba(255,255,255,0.02)",
             border:"1px solid rgba(255,255,255,0.06)",borderRadius:10,
             display:"flex",alignItems:"flex-start",gap:10}}>
@@ -989,11 +1021,10 @@ const AdminPocketDashboard: React.FC = () => {
           <LayoutDashboard size={14} color="#76b900"/>
           <span style={{fontSize:13,fontWeight:800,letterSpacing:"-0.01em"}}>Pocket Admin</span>
         </div>
-
-        {[
-          {id:"review"      as MainTab, icon:<Clock size={13}/>,      label:"Review Queue"},
-          {id:"eligibility" as MainTab, icon:<UserCheck size={13}/>,  label:"User Eligibility"},
-        ].map(t=>(
+        {([
+          {id:"review"      as MainTab, icon:<Clock size={13}/>,     label:"Review Queue"},
+          {id:"eligibility" as MainTab, icon:<UserCheck size={13}/>, label:"User Eligibility"},
+        ] as const).map(t=>(
           <button key={t.id} onClick={()=>setMainTab(t.id)} style={{
             display:"flex",alignItems:"center",gap:6,padding:"0 16px",height:50,
             background:"none",border:"none",cursor:"pointer",
@@ -1006,7 +1037,6 @@ const AdminPocketDashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* Tab content */}
       <div style={{flex:1,display:"flex",overflow:"hidden"}}>
         {mainTab==="review"      && <ReviewTab      showToast={showToast}/>}
         {mainTab==="eligibility" && <EligibilityTab showToast={showToast}/>}
@@ -1014,8 +1044,8 @@ const AdminPocketDashboard: React.FC = () => {
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,700;0,9..40,800;0,9..40,900&family=DM+Mono:wght@400;500&display=swap');
-        @keyframes spin    { to { transform: rotate(360deg); } }
-        @keyframes fadeIn  { from { opacity:0; transform:translateX(-50%) translateY(-4px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+        @keyframes spin   { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity:0; transform:translateX(-50%) translateY(-4px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
         * { box-sizing:border-box; }
         ::-webkit-scrollbar { width:3px; height:3px; }
         ::-webkit-scrollbar-track { background:transparent; }

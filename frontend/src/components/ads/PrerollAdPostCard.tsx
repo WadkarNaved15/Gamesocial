@@ -17,7 +17,10 @@ interface Props {
     asset?: VideoAsset | null;
     duration: number;
     fullscreen?: boolean;
+    onEnded?: () => void;
 }
+
+
 
 const PrerollAdPostCard: React.FC<Props> = ({
     brandName,
@@ -27,6 +30,7 @@ const PrerollAdPostCard: React.FC<Props> = ({
     asset,
     duration = 15,
     fullscreen,
+    onEnded,
 }) => {
     const currentTimeRef = useRef(0);
     const progressBarRef = useRef<HTMLDivElement>(null);
@@ -81,7 +85,6 @@ const PrerollAdPostCard: React.FC<Props> = ({
     };
 
 
-
     return (
         <div
             className={
@@ -116,26 +119,74 @@ const PrerollAdPostCard: React.FC<Props> = ({
             {/* CORE VIDEO VIEWPORT */}
             <div className="w-full h-full flex items-center justify-center relative z-10">
                 {asset ? (
-                    <video
-                        ref={videoRef}
-                        src={asset.url}
-                        autoPlay
-                        playsInline
-                        preload="metadata"
-                        muted={false}   // ad should be audible
-                        onPlay={() => {
-                            setAudioFocusId(AD_AUDIO_ID); // 🔥 TAKE AUDIO CONTROL
-                            startProgressLoop();
-                        }}
-                        onEnded={() => {
-                            setAudioFocusId(null); // 🔥 RELEASE AUDIO CONTROL
-                            stopProgressLoop();
-                        }}
-                        // CHANGED: Dynamic object-fit property based on fullscreen mode
-                        className={`w-full h-full max-w-full max-h-full ${fullscreen ? "object-cover" : "object-contain"
-                            }`}
-                    />
-                ) : (
+    <>
+        <video
+            ref={videoRef}
+            src={asset.url}
+            autoPlay
+            playsInline
+            preload="metadata"
+            muted={false}
+
+            // onLoadStart={() => {
+            //     console.log("VIDEO loadstart", asset.url);
+            // }}
+
+            // onLoadedMetadata={(e) => {
+            //     console.log(
+            //         "VIDEO metadata",
+            //         e.currentTarget.videoWidth,
+            //         e.currentTarget.videoHeight,
+            //         e.currentTarget.duration
+            //     );
+            // }}
+
+            // onLoadedData={() => {
+            //     console.log("VIDEO loadeddata");
+            // }}
+
+            // onCanPlay={() => {
+            //     console.log("VIDEO canplay");
+            // }}
+
+            onPlay={() => {
+                // console.log("VIDEO play");
+                setAudioFocusId(AD_AUDIO_ID);
+                startProgressLoop();
+            }}
+
+            // onPause={() => {
+            //     console.log("VIDEO pause");
+            // }}
+
+            onEnded={() => {
+                // console.log("VIDEO ended");
+
+                setAudioFocusId(null);
+                stopProgressLoop();
+
+                onEnded?.();
+            }}
+
+            // onError={(e) => {
+            //     const video = e.currentTarget;
+
+            //     console.log("VIDEO ERROR", {
+            //         src: video.currentSrc,
+            //         networkState: video.networkState,
+            //         readyState: video.readyState,
+            //         error: video.error,
+            //     });
+            // }}
+
+            className={`w-full h-full max-w-full max-h-full ${
+                fullscreen
+                    ? "object-cover"
+                    : "object-contain"
+            }`}
+        />
+    </>
+) : (
                     <div className="text-center text-zinc-600 flex flex-col items-center gap-2">
                         <div className="w-10 h-10 rounded-full border border-dashed border-zinc-700 flex items-center justify-center animate-spin [animation-duration:16s]" />
                         <p className="text-[10px] uppercase font-bold tracking-widest text-zinc-500">Awaiting Video Node Payload</p>

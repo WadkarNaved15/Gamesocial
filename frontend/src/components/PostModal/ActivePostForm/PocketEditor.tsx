@@ -248,14 +248,6 @@ function buildPreviewDoc(jsx: string, height: number): string {
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <meta http-equiv="Content-Security-Policy" content="
-    script-src  'unsafe-inline' 'unsafe-eval' https://unpkg.com https://esm.sh;
-    style-src   'unsafe-inline' https://fonts.googleapis.com;
-    font-src    https://fonts.gstatic.com;
-    img-src     https: data: blob:;
-    media-src   https: blob:;
-    default-src 'none';
-  "/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100%; height: ${height}px; overflow: hidden; background: transparent; }
@@ -264,40 +256,60 @@ function buildPreviewDoc(jsx: string, height: number): string {
 </head>
 <body>
   <div id="root"></div>
-  <script type="module">
-    import React    from "https://esm.sh/react@18";
-    import ReactDOM from "https://esm.sh/react-dom@18/client";
-    window.React    = React;
-    window.ReactDOM = ReactDOM;
-  </script>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
   <script>
     (function run() {
       if (!window.React || !window.ReactDOM || !window.Babel) return setTimeout(run, 50);
+
       var src = ${JSON.stringify(jsx)};
+
       try {
-        var compiled = Babel.transform(src, { presets: ["react"] }).code;
-        var sloppy   = compiled.replace(/^\\s*["']use strict["'];?\\s*/m, "");
-        var wrapped  = sloppy + "\\n;if(typeof PocketApp!=='undefined'){window.PocketApp=PocketApp;}";
+        // Register plugin to strip imports/exports
+        window.Babel.registerPlugin('strip-imports', function() {
+          return {
+            visitor: {
+              ImportDeclaration: function(path) { path.remove(); },
+              ExportDefaultDeclaration: function(path) { path.remove(); },
+              ExportNamedDeclaration: function(path) { path.remove(); },
+              ExportAllDeclaration: function(path) { path.remove(); }
+            }
+          };
+        });
+
+        // FORCE "classic" runtime to stop the _jsxs error
+        var compiled = window.Babel.transform(src, { 
+          presets: [
+            ["react", { "runtime": "classic" }] 
+          ],
+          plugins: ["strip-imports"] 
+        }).code;
+        
+        var wrapped = compiled + "\\n;if(typeof PocketApp!=='undefined'){window.PocketApp=PocketApp;}";
+        
         (0, eval)(wrapped);
+        
         var App = window.PocketApp;
         if (typeof App !== "function") {
-          document.getElementById("root").innerHTML =
-            '<p style="color:#f87171;padding:16px;font-family:sans-serif;font-size:13px">No PocketApp found. Name your component exactly:<br><br><code style="background:#1a1a1a;padding:4px 8px;border-radius:4px">const PocketApp = () => { ... }</code></p>';
-          return;
+          throw new Error("No PocketApp function found. Ensure you declare 'const PocketApp = () => { ... }'");
         }
+
         window.ReactDOM.createRoot(document.getElementById("root")).render(window.React.createElement(App));
+        
       } catch (err) {
         document.getElementById("root").innerHTML =
-          '<pre style="color:#f87171;padding:12px;font-size:11px;font-family:monospace;white-space:pre-wrap;overflow:auto">' +
-          err.message.replace(/</g, "&lt;") + "</pre>";
+          '<div style="color:#f87171;padding:12px;font-size:13px;font-family:monospace;white-space:pre-wrap;height:100%;overflow:auto;">' +
+          '<strong>Babel Error:</strong><br/><br/>' +
+          err.message + '</div>';
       }
     })();
   </script>
 </body>
 </html>`;
 }
-
 // ─── Status config ────────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, { label: string; color: string; bannerBg?: string; bannerBorder?: string }> = {
   draft:          { label: "Draft",     color: "text-gray-400" },

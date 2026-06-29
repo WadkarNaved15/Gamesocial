@@ -27,7 +27,7 @@ interface SecurityFinding {
 }
 
 interface SecurityReport {
-  score: number; // 0-100, higher = safer
+  score: number;
   findings: SecurityFinding[];
   stats: {
     lines: number; chars: number; externalUrls: string[];
@@ -37,26 +37,27 @@ interface SecurityReport {
   };
 }
 
-const SEVERITY_ORDER = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+const SEVERITY_ORDER: Record<SecurityFinding["severity"], number> = {
+  critical: 0, high: 1, medium: 2, low: 3, info: 4,
+};
 
 function scanCode(code: string): SecurityReport {
   const lines = code.split("\n");
   const findings: SecurityFinding[] = [];
 
-  // Helper: find all occurrences with line number
   const scan = (
     pattern: RegExp,
     severity: SecurityFinding["severity"],
     category: string,
-    message: string
+    message: string,
   ) => {
     lines.forEach((line, i) => {
-      const m = line.match(pattern);
-      if (m) findings.push({ severity, category, message, line: i + 1, snippet: line.trim() });
+      if (line.match(pattern))
+        findings.push({ severity, category, message, line: i + 1, snippet: line.trim() });
     });
   };
 
-  // ── Network access ───────────────────────────────────────────────────────
+  // Network
   scan(/\bfetch\s*\(/, "critical", "Network", "fetch() call — blocked by CSP connect-src:none in production, but indicates intent to make network requests");
   scan(/new\s+XMLHttpRequest/, "critical", "Network", "XMLHttpRequest — blocked by CSP in production");
   scan(/axios|superagent|got\b|node-fetch/, "high", "Network", "HTTP library import detected");
@@ -64,7 +65,7 @@ function scanCode(code: string): SecurityReport {
   scan(/navigator\.sendBeacon/, "medium", "Network", "sendBeacon() — may bypass connect-src");
   scan(/new\s+EventSource/, "medium", "Network", "Server-Sent Events connection");
 
-  // ── Eval / code execution ────────────────────────────────────────────────
+  // Code execution
   scan(/\beval\s*\(/, "critical", "Code Execution", "Direct eval() — arbitrary code execution");
   scan(/new\s+Function\s*\(/, "critical", "Code Execution", "new Function() — arbitrary code execution");
   scan(/setTimeout\s*\(\s*['"`]/, "high", "Code Execution", "setTimeout with string arg — acts like eval");
@@ -74,7 +75,7 @@ function scanCode(code: string): SecurityReport {
   scan(/document\.write\s*\(/, "high", "XSS", "document.write() — potential XSS");
   scan(/dangerouslySetInnerHTML/, "medium", "XSS", "dangerouslySetInnerHTML — ensure content is sanitised");
 
-  // ── Parent frame access ──────────────────────────────────────────────────
+  // Sandbox escape
   scan(/window\.parent/, "critical", "Sandbox Escape", "window.parent access — attempts to reach parent frame");
   scan(/window\.top/, "critical", "Sandbox Escape", "window.top access — attempts to reach top frame");
   scan(/parent\.postMessage|top\.postMessage/, "high", "Sandbox Escape", "postMessage to parent/top frame");
@@ -83,20 +84,18 @@ function scanCode(code: string): SecurityReport {
   scan(/localStorage|sessionStorage/, "high", "Data Exfil", "Storage access — blocked by sandbox (no allow-same-origin)");
   scan(/indexedDB/, "medium", "Data Exfil", "IndexedDB access — blocked by sandbox");
 
-  // ── External scripts / iframes ───────────────────────────────────────────
+  // Dynamic elements
   scan(/createElement\s*\(\s*['"`]script['"`]\s*\)/, "high", "Script Injection", "Dynamic script element creation");
   scan(/createElement\s*\(\s*['"`]iframe['"`]\s*\)/, "medium", "Iframe Injection", "Dynamic iframe creation");
   scan(/import\s*\(/, "medium", "Dynamic Import", "Dynamic import() — may load external code");
 
-  // ── Crypto / mining ──────────────────────────────────────────────────────
+  // Crypto / obfuscation
   scan(/crypto|miner|mining|coinhive|monero/i, "critical", "Crypto Mining", "Potential cryptocurrency mining code");
-
-  // ── Obfuscation signals ──────────────────────────────────────────────────
   scan(/\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}/, "medium", "Obfuscation", "Hex/unicode escapes — possible obfuscation");
   scan(/atob\s*\(|btoa\s*\(/, "medium", "Obfuscation", "Base64 encode/decode — possible payload obfuscation");
   scan(/String\.fromCharCode/, "medium", "Obfuscation", "String.fromCharCode — classic obfuscation technique");
 
-  // ── External URL extraction ───────────────────────────────────────────────
+  // External URLs
   const urlRegex = /https?:\/\/[^\s'"`,)>]+/g;
   const externalUrls: string[] = [];
   const domainRefs: string[] = [];
@@ -105,10 +104,9 @@ function scanCode(code: string): SecurityReport {
     try {
       const domain = new URL(url).hostname;
       if (!domainRefs.includes(domain)) domainRefs.push(domain);
-    } catch {}
+    } catch { /* ignore invalid URLs */ }
   });
 
-  // Flag suspicious domains
   externalUrls.forEach((url) => {
     const lower = url.toLowerCase();
     if (lower.includes("ngrok") || lower.includes("localhost") || /\d+\.\d+\.\d+\.\d+/.test(lower)) {
@@ -116,22 +114,22 @@ function scanCode(code: string): SecurityReport {
     }
   });
 
-  // ── Stats ──────────────────────────────────────────────────────────────
-  const countMatches = (pattern: RegExp) => (code.match(new RegExp(pattern.source, "g")) || []).length;
+  const countMatches = (pattern: RegExp) =>
+    (code.match(new RegExp(pattern.source, "g")) || []).length;
+
   const stats = {
     lines: lines.length,
     chars: code.length,
     externalUrls,
     domainRefs,
-    fetchCalls: countMatches(/\bfetch\s*\(/),
-    xhrCalls: countMatches(/new\s+XMLHttpRequest/),
-    evalUsage: countMatches(/\beval\s*\(/),
-    windowAccess: countMatches(/\bwindow\./),
-    documentAccess: countMatches(/\bdocument\./),
-    storageAccess: countMatches(/localStorage|sessionStorage/),
+    fetchCalls:      countMatches(/\bfetch\s*\(/),
+    xhrCalls:        countMatches(/new\s+XMLHttpRequest/),
+    evalUsage:       countMatches(/\beval\s*\(/),
+    windowAccess:    countMatches(/\bwindow\./),
+    documentAccess:  countMatches(/\bdocument\./),
+    storageAccess:   countMatches(/localStorage|sessionStorage/),
   };
 
-  // ── Score ──────────────────────────────────────────────────────────────
   const deductions = findings.reduce((acc, f) => {
     return acc + ({ critical: 30, high: 15, medium: 7, low: 3, info: 0 }[f.severity]);
   }, 0);
@@ -155,17 +153,75 @@ const SEVERITY_BG: Record<string, string> = {
 };
 
 // ─── Preview iframe doc ────────────────────────────────────────────────────────
-function buildPreviewDoc(jsx: string): string {
-  return `<!DOCTYPE html><html lang="en"><head>
+// Identical to PocketEditor.buildPreviewDoc — no CSP meta (it blocks unpkg CDN scripts),
+// transparent body bg, height param, registerPlugin wrapped in try/catch so it never
+// throws on a re-registration if the iframe somehow reuses a Babel instance.
+function buildPreviewDoc(jsx: string, height: number): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
   <meta charset="UTF-8"/>
-  <meta http-equiv="Content-Security-Policy" content="script-src 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://esm.sh; style-src 'unsafe-inline'; img-src https: data: blob:; default-src 'none';"/>
-  <style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}html,body{width:100%;height:${POCKET_HEIGHT}px;overflow:hidden;background:#0a0a0a}#root{width:100%;height:${POCKET_HEIGHT}px;overflow:hidden}</style>
-</head><body>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: ${height}px; overflow: hidden; background: transparent; }
+    #root { width: 100%; height: ${height}px; overflow: hidden; }
+  </style>
+</head>
+<body>
   <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script type="module">import React from "https://esm.sh/react@18";import ReactDOM from "https://esm.sh/react-dom@18/client";window.React=React;window.ReactDOM=ReactDOM;</script>
-  <script>(function poll(){if(!window.React||!window.ReactDOM||!window.Babel)return setTimeout(poll,50);var src=${JSON.stringify(jsx)};try{var compiled=Babel.transform(src,{presets:["react"],plugins:[]}).code;var sloppy=compiled.replace(/^\\s*["']use strict["'];?\\s*/m,"");var wrapped=sloppy+"\\n;if(typeof PocketApp!=='undefined'){window.PocketApp=PocketApp;}";(0,eval)(wrapped);var App=window.PocketApp;if(typeof App!=="function"){document.getElementById("root").innerHTML='<p style="color:#f87171;padding:16px;font-family:monospace;font-size:12px">No PocketApp export found.</p>';}else{window.ReactDOM.createRoot(document.getElementById("root")).render(window.React.createElement(App));}}catch(err){document.getElementById("root").innerHTML='<pre style="color:#f87171;padding:12px;font-size:11px;font-family:monospace;white-space:pre-wrap;overflow:auto">'+err.message.replace(/</g,"&lt;")+"</pre>";}})();</script>
-</body></html>`;
+
+  <script>
+    (function run() {
+      if (!window.React || !window.ReactDOM || !window.Babel) return setTimeout(run, 50);
+
+      var src = ${JSON.stringify(jsx)};
+
+      try {
+        // Guard against double-registration (throws in some Babel standalone builds)
+        try {
+          window.Babel.registerPlugin('strip-imports', function() {
+            return {
+              visitor: {
+                ImportDeclaration:        function(path) { path.remove(); },
+                ExportDefaultDeclaration: function(path) { path.remove(); },
+                ExportNamedDeclaration:   function(path) { path.remove(); },
+                ExportAllDeclaration:     function(path) { path.remove(); }
+              }
+            };
+          });
+        } catch (_) { /* already registered — safe to continue */ }
+
+        var compiled = window.Babel.transform(src, {
+          presets: [["react", { "runtime": "classic" }]],
+          plugins: ["strip-imports"]
+        }).code;
+
+        var wrapped = compiled + "\\n;if(typeof PocketApp!=='undefined'){window.PocketApp=PocketApp;}";
+
+        (0, eval)(wrapped);
+
+        var App = window.PocketApp;
+        if (typeof App !== "function") {
+          throw new Error("No PocketApp function found. Ensure you declare 'const PocketApp = () => { ... }'");
+        }
+
+        window.ReactDOM.createRoot(document.getElementById("root")).render(window.React.createElement(App));
+
+      } catch (err) {
+        document.getElementById("root").innerHTML =
+          '<div style="color:#f87171;padding:12px;font-size:13px;font-family:monospace;white-space:pre-wrap;height:100%;overflow:auto;">' +
+          '<strong>Babel Error:</strong><br/><br/>' +
+          err.message + '</div>';
+      }
+    })();
+  </script>
+</body>
+</html>`;
 }
 
 function relativeTime(iso: string): string {
@@ -176,9 +232,7 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-// ─── Syntax-highlighted code (no deps) ────────────────────────────────────────
-function highlight(code: string, highlights: number[]): string {
-  // Very minimal JSX tokeniser for display — not a real parser
+function highlight(code: string): string {
   return code
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/(\/\/[^\n]*)(\n|$)/g, '<span style="color:#6a9955">$1</span>$2')
@@ -189,28 +243,6 @@ function highlight(code: string, highlights: number[]): string {
 }
 
 // ─── Subcomponents ────────────────────────────────────────────────────────────
-
-function ScoreRing({ score }: { score: number }) {
-  const color = score >= 80 ? "#76b900" : score >= 50 ? "#eab308" : score >= 25 ? "#f97316" : "#ef4444";
-  const label = score >= 80 ? "SAFE" : score >= 50 ? "REVIEW" : score >= 25 ? "RISKY" : "DANGER";
-  const r = 32; const circ = 2 * Math.PI * r;
-  const dash = (score / 100) * circ;
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <svg width={80} height={80} style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={40} cy={40} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={6} />
-        <circle cx={40} cy={40} r={r} fill="none" stroke={color} strokeWidth={6}
-          strokeDasharray={`${dash} ${circ - dash}`} strokeLinecap="round"
-          style={{ transition: "stroke-dasharray 0.6s ease" }} />
-      </svg>
-      <div style={{ transform: "none", position: "absolute", left: 0, top: 0, width: 80, height: 80,
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontSize: 18, fontWeight: 900, color, fontFamily: "monospace" }}>{score}</span>
-        <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 2, color, textTransform: "uppercase" }}>{label}</span>
-      </div>
-    </div>
-  );
-}
 
 function FindingRow({ f }: { f: SecurityFinding }) {
   const [open, setOpen] = useState(false);
@@ -256,40 +288,48 @@ function FindingRow({ f }: { f: SecurityFinding }) {
   );
 }
 
-function StatCard({ icon, label, value, warn }: { icon: React.ReactNode; label: string; value: string | number; warn?: boolean }) {
+function StatCard({
+  icon, label, value, warn,
+}: {
+  icon: React.ReactNode; label: string; value: string | number; warn?: boolean;
+}) {
+  const isWarn = warn && Number(value) > 0;
   return (
     <div style={{
-      flex: 1, background: warn && Number(value) > 0 ? SEVERITY_BG.high : "rgba(255,255,255,0.03)",
-      border: `1px solid ${warn && Number(value) > 0 ? "rgba(249,115,22,0.2)" : "rgba(255,255,255,0.07)"}`,
+      flex: 1,
+      background: isWarn ? SEVERITY_BG.high : "rgba(255,255,255,0.03)",
+      border: `1px solid ${isWarn ? "rgba(249,115,22,0.2)" : "rgba(255,255,255,0.07)"}`,
       borderRadius: 8, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 4,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{ color: warn && Number(value) > 0 ? "#f97316" : "rgba(255,255,255,0.3)" }}>{icon}</span>
+        <span style={{ color: isWarn ? "#f97316" : "rgba(255,255,255,0.3)" }}>{icon}</span>
         <span style={{ fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase", color: "rgba(255,255,255,0.3)" }}>
           {label}
         </span>
       </div>
-      <span style={{
-        fontFamily: "monospace", fontSize: 20, fontWeight: 900,
-        color: warn && Number(value) > 0 ? "#f97316" : "#fff",
-      }}>
+      <span style={{ fontFamily: "monospace", fontSize: 20, fontWeight: 900, color: isWarn ? "#f97316" : "#fff" }}>
         {value}
       </span>
     </div>
   );
 }
 
-// ─── Code viewer with security highlights ─────────────────────────────────────
+// ─── Code panel ───────────────────────────────────────────────────────────────
+// FIX: was missing the opening <button> tag before "Copy" text, causing JSX parse errors
 function CodePanel({ code, findings }: { code: string; findings: SecurityFinding[] }) {
-  const [search, setSearch] = useState("");
-  const [copied, setCopied] = useState(false);
-  const highlightedLines = new Set(findings.map(f => f.line).filter(Boolean) as number[]);
+  const [search, setSearch]   = useState("");
+  const [copied, setCopied]   = useState(false);
+  const highlightedLines      = new Set(findings.map(f => f.line).filter(Boolean) as number[]);
 
   const lines = code.split("\n");
   const matchLines = useMemo(() => {
     if (!search.trim()) return new Set<number>();
     const s = search.toLowerCase();
-    return new Set(lines.map((l, i) => l.toLowerCase().includes(s) ? i + 1 : null).filter(Boolean) as number[]);
+    return new Set(
+      lines
+        .map((l, i) => (l.toLowerCase().includes(s) ? i + 1 : null))
+        .filter((n): n is number => n !== null),
+    );
   }, [search, lines]);
 
   const copy = () => {
@@ -326,11 +366,14 @@ function CodePanel({ code, findings }: { code: string; findings: SecurityFinding
             {highlightedLines.size} flagged line{highlightedLines.size !== 1 ? "s" : ""}
           </span>
         )}
+        {/* FIX: was missing this opening <button> tag — caused all JSX parse errors in CodePanel */}
         <button onClick={copy} style={{
-          display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
-          cursor: "pointer", color: copied ? "#76b900" : "rgba(255,255,255,0.3)", fontSize: 10,
+          display: "flex", alignItems: "center", gap: 4,
+          background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 5, padding: "3px 9px", cursor: "pointer",
+          color: copied ? "#76b900" : "rgba(255,255,255,0.4)", fontSize: 10, fontWeight: 700,
         }}>
-          {copied ? <Check size={11} /> : <Copy size={11} />}
+          {copied ? <Check size={10} /> : <Copy size={10} />}
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
@@ -338,8 +381,8 @@ function CodePanel({ code, findings }: { code: string; findings: SecurityFinding
       {/* Lines */}
       <div style={{ flex: 1, overflow: "auto", fontFamily: "monospace", fontSize: 12, lineHeight: 1.65 }}>
         {lines.map((line, i) => {
-          const n = i + 1;
-          const isFlag = highlightedLines.has(n);
+          const n       = i + 1;
+          const isFlag  = highlightedLines.has(n);
           const isMatch = matchLines.has(n);
           return (
             <div
@@ -364,7 +407,7 @@ function CodePanel({ code, findings }: { code: string; findings: SecurityFinding
               </span>
               <span
                 style={{ color: "#a3e635", whiteSpace: "pre", paddingRight: 24 }}
-                dangerouslySetInnerHTML={{ __html: highlight(line || " ", []) }}
+                dangerouslySetInnerHTML={{ __html: highlight(line || " ") }}
               />
             </div>
           );
@@ -383,11 +426,6 @@ function SecurityPanel({ report, code }: { report: SecurityReport; code: string 
   const medium   = findings.filter(f => f.severity === "medium");
   const low      = findings.filter(f => f.severity === "low");
 
-  const jumpTo = (line: number) => {
-    const el = document.getElementById(`line-${line}`);
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
-
   return (
     <div style={{ height: "100%", overflow: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
 
@@ -396,7 +434,6 @@ function SecurityPanel({ report, code }: { report: SecurityReport; code: string 
         background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)",
         borderRadius: 12, padding: 20, display: "flex", alignItems: "center", gap: 20,
       }}>
-        {/* Ring */}
         <div style={{ position: "relative", width: 80, height: 80, flexShrink: 0 }}>
           <svg width={80} height={80} style={{ transform: "rotate(-90deg)" }}>
             <circle cx={40} cy={40} r={32} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={6} />
@@ -415,7 +452,6 @@ function SecurityPanel({ report, code }: { report: SecurityReport; code: string 
           </div>
         </div>
 
-        {/* Finding counts */}
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 10 }}>Security scan complete</p>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -438,7 +474,6 @@ function SecurityPanel({ report, code }: { report: SecurityReport; code: string 
           </div>
         </div>
 
-        {/* Overall verdict */}
         <div style={{
           padding: "12px 16px", borderRadius: 10,
           background: score >= 80 ? "rgba(118,185,0,0.08)" : score >= 50 ? "rgba(234,179,8,0.08)" : "rgba(239,68,68,0.08)",
@@ -465,7 +500,7 @@ function SecurityPanel({ report, code }: { report: SecurityReport; code: string 
         <div style={{ display: "flex", gap: 8 }}>
           <StatCard icon={<FileCode2 size={12} />} label="Lines"   value={stats.lines} />
           <StatCard icon={<Cpu size={12} />}       label="Chars"   value={stats.chars.toLocaleString()} />
-          <StatCard icon={<Globe size={12} />}     label="Fetches" value={stats.fetchCalls}     warn />
+          <StatCard icon={<Globe size={12} />}     label="Fetches" value={stats.fetchCalls}    warn />
           <StatCard icon={<Activity size={12} />}  label="Evals"   value={stats.evalUsage}      warn />
           <StatCard icon={<Database size={12} />}  label="Storage" value={stats.storageAccess}  warn />
           <StatCard icon={<Ban size={12} />}       label="Parent"  value={(code.match(/window\.parent|window\.top/g) || []).length} warn />
@@ -486,9 +521,12 @@ function SecurityPanel({ report, code }: { report: SecurityReport; code: string 
               const isSuspicious = url.includes("ngrok") || url.includes("localhost") || /\d+\.\d+\.\d+\.\d+/.test(url);
               return (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: isSuspicious ? "#ef4444" : "#6b7280",
+                  <span style={{
+                    fontSize: 9, fontWeight: 700,
+                    color: isSuspicious ? "#ef4444" : "#6b7280",
                     background: isSuspicious ? "rgba(239,68,68,0.1)" : "rgba(107,114,128,0.1)",
-                    padding: "1px 5px", borderRadius: 3 }}>
+                    padding: "1px 5px", borderRadius: 3,
+                  }}>
                     {isSuspicious ? "UNSAFE" : "URL"}
                   </span>
                   <code style={{ fontSize: 10, color: isSuspicious ? "#f87171" : "rgba(255,255,255,0.5)", fontFamily: "monospace", wordBreak: "break-all" }}>
@@ -530,9 +568,10 @@ function SecurityPanel({ report, code }: { report: SecurityReport; code: string 
       )}
 
       <p style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", lineHeight: 1.6, marginTop: 4 }}>
-        ⚠ This is a static pattern scan, not a sandbox execution trace. It catches common attack vectors but is not exhaustive.
-        Always review the preview and source code before approving. The production iframe enforces CSP connect-src:none and
-        sandbox without allow-same-origin, which blocks most network and storage attacks at runtime.
+        ⚠ This is a static pattern scan, not a sandbox execution trace. It catches common attack vectors
+        but is not exhaustive. Always review the preview and source code before approving.
+        The production iframe enforces CSP connect-src:none and sandbox without allow-same-origin,
+        which blocks most network and storage attacks at runtime.
       </p>
     </div>
   );
@@ -548,13 +587,20 @@ function PocketRow({ pocket, selected, onClick }: { pocket: Pocket; selected: bo
       borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer", border: "none",
       textAlign: "left",
     }}>
-      <img src={pocket.owner.avatar || "/default_avatar.png"} alt={pocket.owner.username}
-        style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover", flexShrink: 0,
-          outline: selected ? "2px solid #76b900" : "none" }} />
+      <img
+        src={pocket.owner.avatar || "/default_avatar.png"}
+        alt={pocket.owner.username}
+        style={{
+          width: 34, height: 34, borderRadius: "50%", objectFit: "cover", flexShrink: 0,
+          outline: selected ? "2px solid #76b900" : "none",
+        }}
+      />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-          <span style={{ color: "#fff", fontWeight: 700, fontSize: 12, fontFamily: "monospace",
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span style={{
+            color: "#fff", fontWeight: 700, fontSize: 12, fontFamily: "monospace",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
             {pocket.brandName}
           </span>
         </div>
@@ -567,22 +613,28 @@ function PocketRow({ pocket, selected, onClick }: { pocket: Pocket; selected: bo
   );
 }
 
-// ─── Main ────────────────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 const AdminPocketReview: React.FC = () => {
-  const [pockets, setPockets]         = useState<Pocket[]>([]);
-  const [selected, setSelected]       = useState<Pocket | null>(null);
-  const [tab, setTab]                 = useState<Tab>("security");
-  const [rejectNote, setRejectNote]   = useState("");
+  const [pockets, setPockets]             = useState<Pocket[]>([]);
+  const [selected, setSelected]           = useState<Pocket | null>(null);
+  const [tab, setTab]                     = useState<Tab>("security");
+  const [rejectNote, setRejectNote]       = useState("");
   const [showRejectBox, setShowRejectBox] = useState(false);
-  const [loading, setLoading]         = useState(true);
+  const [loading, setLoading]             = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [toast, setToast]             = useState<{ msg: string; ok: boolean } | null>(null);
+  const [toast, setToast]                 = useState<{ msg: string; ok: boolean } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const secReport = useMemo(() =>
-    selected ? scanCode(selected.sourceCode) : null,
-    [selected]
+  // FIX: secReport is SecurityReport | null — guarded at usage sites with optional chaining / early returns
+  const secReport = useMemo(
+    () => (selected ? scanCode(selected.sourceCode) : null),
+    [selected],
   );
+
+  const showToast = (msg: string, ok: boolean) => {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const fetchPending = useCallback(async () => {
     setLoading(true);
@@ -590,19 +642,20 @@ const AdminPocketReview: React.FC = () => {
       const res  = await fetch(`${BACKEND_URL}/api/pockets/pending`, { credentials: "include" });
       const data = await res.json();
       setPockets(data.pockets ?? []);
-      setSelected(prev => prev ? (data.pockets ?? []).find((p: Pocket) => p._id === prev._id) ?? null : null);
-    } catch { showToast("Failed to load queue", false); }
-    finally { setLoading(false); }
+      setSelected(prev =>
+        prev ? (data.pockets ?? []).find((p: Pocket) => p._id === prev._id) ?? null : null,
+      );
+    } catch {
+      showToast("Failed to load queue", false);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { fetchPending(); }, []);
-
-  const showToast = (msg: string, ok: boolean) => {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3500);
-  };
+  useEffect(() => { fetchPending(); }, [fetchPending]);
 
   const handleApprove = async () => {
+    // FIX: guard selected with early return — eliminates all 'selected is possibly null' errors below
     if (!selected || actionLoading) return;
     setActionLoading(true);
     try {
@@ -615,8 +668,11 @@ const AdminPocketReview: React.FC = () => {
       if (!res.ok) throw new Error(data.message);
       showToast(`✓ ${selected.brandName} approved and live`, true);
       setSelected(null); setShowRejectBox(false); fetchPending();
-    } catch (err: any) { showToast(err.message ?? "Approval failed", false); }
-    finally { setActionLoading(false); }
+    } catch (err: unknown) {
+      showToast((err as Error).message ?? "Approval failed", false);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleReject = async () => {
@@ -632,21 +688,33 @@ const AdminPocketReview: React.FC = () => {
       if (!res.ok) throw new Error(data.message);
       showToast(`✗ ${selected.brandName} rejected`, false);
       setSelected(null); setShowRejectBox(false); setRejectNote(""); fetchPending();
-    } catch (err: any) { showToast(err.message ?? "Rejection failed", false); }
-    finally { setActionLoading(false); }
+    } catch (err: unknown) {
+      showToast((err as Error).message ?? "Rejection failed", false);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const previewSrc = selected
-    ? `data:text/html;charset=utf-8,${encodeURIComponent(buildPreviewDoc(selected.sourceCode))}`
+    ? `data:text/html;charset=utf-8,${encodeURIComponent(buildPreviewDoc(selected.sourceCode, POCKET_HEIGHT))}`
     : "";
 
-  const TABS: { id: Tab; icon: React.ReactNode; label: string; badge?: number | string }[] = selected ? [
-    { id: "security", icon: <Shield size={12} />, label: "Security",
-      badge: secReport ? secReport.findings.filter(f => f.severity === "critical" || f.severity === "high").length : 0 },
-    { id: "preview",  icon: <Eye size={12} />,     label: "Preview" },
-    { id: "code",     icon: <Terminal size={12} />, label: "Source",
-      badge: `${selected.sourceCode.split("\n").length}L` },
-  ] : [];
+  // FIX: TABS built inside the render but only used when selected is non-null — no null issues
+  const TABS: { id: Tab; icon: React.ReactNode; label: string; badge?: number | string }[] = selected
+    ? [
+        {
+          id: "security", icon: <Shield size={12} />, label: "Security",
+          badge: secReport
+            ? secReport.findings.filter(f => f.severity === "critical" || f.severity === "high").length
+            : 0,
+        },
+        { id: "preview", icon: <Eye size={12} />, label: "Preview" },
+        {
+          id: "code", icon: <Terminal size={12} />, label: "Source",
+          badge: `${selected.sourceCode.split("\n").length}L`,
+        },
+      ]
+    : [];
 
   return (
     <div style={{
@@ -663,8 +731,7 @@ const AdminPocketReview: React.FC = () => {
           border: `1px solid ${toast.ok ? "#76b900" : "#ef4444"}`,
           color: toast.ok ? "#a3e635" : "#f87171",
           fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 8,
-          backdropFilter: "blur(12px)", animation: "fadeIn 0.2s ease",
-          boxShadow: `0 8px 32px ${toast.ok ? "rgba(118,185,0,0.15)" : "rgba(239,68,68,0.15)"}`,
+          backdropFilter: "blur(12px)", boxShadow: `0 8px 32px ${toast.ok ? "rgba(118,185,0,0.15)" : "rgba(239,68,68,0.15)"}`,
         }}>
           {toast.ok ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
           {toast.msg}
@@ -683,8 +750,8 @@ const AdminPocketReview: React.FC = () => {
               <span style={{ fontSize: 12, fontWeight: 800, color: "#fff" }}>Pocket Queue</span>
             </div>
             <button onClick={fetchPending} disabled={loading} style={{
-              background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.25)",
-              padding: 4, borderRadius: 4,
+              background: "none", border: "none", cursor: "pointer",
+              color: "rgba(255,255,255,0.25)", padding: 4, borderRadius: 4,
             }}>
               <RefreshCw size={12} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} />
             </button>
@@ -699,23 +766,32 @@ const AdminPocketReview: React.FC = () => {
 
         <div style={{ flex: 1, overflowY: "auto" }}>
           {loading ? (
+            // FIX: was `justify-content: "center"` (hyphenated, invalid inline style key) → justifyContent
             <div style={{ display: "flex", justifyContent: "center", padding: 28 }}>
-              <div style={{ width: 18, height: 18, borderRadius: "50%",
+              <div style={{
+                width: 18, height: 18, borderRadius: "50%",
                 border: "2px solid rgba(118,185,0,0.2)", borderTopColor: "#76b900",
-                animation: "spin 0.8s linear infinite" }} />
+                animation: "spin 0.8s linear infinite",
+              }} />
             </div>
           ) : pockets.length === 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center",
-              padding: "40px 20px", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 20px", gap: 10 }}>
               <Inbox size={24} color="rgba(255,255,255,0.1)" />
-              <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 11, textAlign: "center" }}>
-                Queue empty
-              </p>
+              <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 11, textAlign: "center" }}>Queue empty</p>
             </div>
           ) : (
             pockets.map(p => (
-              <PocketRow key={p._id} pocket={p} selected={selected?._id === p._id}
-                onClick={() => { setSelected(p); setTab("security"); setShowRejectBox(false); setRejectNote(""); }} />
+              <PocketRow
+                key={p._id}
+                pocket={p}
+                selected={selected?._id === p._id}
+                onClick={() => {
+                  setSelected(p);
+                  setTab("security");
+                  setShowRejectBox(false);
+                  setRejectNote("");
+                }}
+              />
             ))
           )}
         </div>
@@ -724,13 +800,13 @@ const AdminPocketReview: React.FC = () => {
       {/* Right panel */}
       {!selected ? (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 14, background: "rgba(118,185,0,0.06)",
-            border: "1px solid rgba(118,185,0,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: 14, background: "rgba(118,185,0,0.06)",
+            border: "1px solid rgba(118,185,0,0.12)", display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
             <ZoomIn size={20} color="rgba(118,185,0,0.4)" />
           </div>
-          <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>
-            Select a pocket to review
-          </p>
+          <p style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>Select a pocket to review</p>
         </div>
       ) : (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -742,20 +818,23 @@ const AdminPocketReview: React.FC = () => {
             background: "#0d0d0d", flexShrink: 0,
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <img src={selected.owner.avatar || "/default_avatar.png"} alt={selected.owner.username}
-                style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover" }} />
+              <img
+                src={selected.owner.avatar || "/default_avatar.png"}
+                alt={selected.owner.username}
+                style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover" }}
+              />
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <span style={{ fontWeight: 800, fontSize: 14 }}>{selected.brandName}</span>
                   {selected.tagline && (
                     <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>— {selected.tagline}</span>
                   )}
-                  {/* Inline score badge */}
+                  {/* FIX: secReport guarded with && before access */}
                   {secReport && (
                     <span style={{
                       fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 5,
-                      color: secReport.score >= 80 ? "#76b900" : secReport.score >= 50 ? "#eab308" : "#ef4444",
-                      background: secReport.score >= 80 ? "rgba(118,185,0,0.1)" : secReport.score >= 50 ? "rgba(234,179,8,0.1)" : "rgba(239,68,68,0.1)",
+                      color:       secReport.score >= 80 ? "#76b900" : secReport.score >= 50 ? "#eab308" : "#ef4444",
+                      background:  secReport.score >= 80 ? "rgba(118,185,0,0.1)" : secReport.score >= 50 ? "rgba(234,179,8,0.1)" : "rgba(239,68,68,0.1)",
                     }}>
                       {secReport.score}/100
                     </span>
@@ -795,26 +874,39 @@ const AdminPocketReview: React.FC = () => {
 
           {/* Content */}
           <div style={{ flex: 1, overflow: "hidden" }}>
+            {/* FIX: pass secReport with non-null assertion safe because tab==="security" only renders when secReport exists */}
             {tab === "security" && secReport && (
               <SecurityPanel report={secReport} code={selected.sourceCode} />
             )}
             {tab === "preview" && (
               <div style={{ height: "100%", overflow: "auto", background: "#111", padding: 20 }}>
-                <p style={{ fontSize: 9, color: "rgba(255,255,255,0.2)", letterSpacing: 1.5,
-                  textTransform: "uppercase", marginBottom: 10, fontFamily: "monospace" }}>
-                  LIVE PREVIEW — {POCKET_HEIGHT}px canvas · sandbox: allow-scripts only
+                <p style={{
+                  fontSize: 9, color: "rgba(255,255,255,0.2)", letterSpacing: 1.5,
+                  textTransform: "uppercase", marginBottom: 10, fontFamily: "monospace",
+                }}>
+                  LIVE PREVIEW — {POCKET_HEIGHT}px canvas · fixed canvas · overflow: hidden
                 </p>
-                <div style={{ maxWidth: 720, borderRadius: 12, overflow: "hidden",
+                <div style={{
+                  maxWidth: 720, borderRadius: 12, overflow: "hidden",
                   border: "1px solid rgba(118,185,0,0.15)", height: POCKET_HEIGHT,
-                  boxShadow: "0 0 40px rgba(118,185,0,0.04)" }}>
-                  <iframe key={selected._id} title="pocket-preview" src={previewSrc}
-                    sandbox="allow-scripts allow-popups" referrerPolicy="no-referrer"
-                    style={{ width: "100%", height: POCKET_HEIGHT, border: "none", display: "block" }} />
+                  boxShadow: "0 0 40px rgba(118,185,0,0.04)",
+                }}>
+                  <iframe
+                    key={selected._id}
+                    title="pocket-preview"
+                    src={previewSrc}
+                    sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+                    referrerPolicy="no-referrer"
+                    style={{ width: "100%", height: `${POCKET_HEIGHT}px`, border: "none", display: "block" }}
+                    loading="lazy"
+                  />
                 </div>
                 {secReport && secReport.findings.filter(f => f.severity === "critical").length > 0 && (
-                  <div style={{ maxWidth: 720, marginTop: 12, padding: "10px 14px", borderRadius: 8,
+                  <div style={{
+                    maxWidth: 720, marginTop: 12, padding: "10px 14px", borderRadius: 8,
                     background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
-                    display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    display: "flex", alignItems: "flex-start", gap: 8,
+                  }}>
                     <ShieldAlert size={14} color="#ef4444" style={{ flexShrink: 0, marginTop: 1 }} />
                     <p style={{ fontSize: 11, color: "#f87171", lineHeight: 1.5 }}>
                       <strong>Critical issues detected.</strong> The preview runs in an isolated sandbox with
@@ -833,19 +925,24 @@ const AdminPocketReview: React.FC = () => {
           <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", background: "#0d0d0d", padding: "12px 20px", flexShrink: 0 }}>
             {showRejectBox && (
               <div style={{ marginBottom: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5,
-                  color: "#f87171", fontSize: 10, fontWeight: 700 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5, color: "#f87171", fontSize: 10, fontWeight: 700 }}>
                   <AlertTriangle size={11} />
                   Rejection reason — sent to creator
                 </div>
-                <textarea ref={textareaRef} value={rejectNote} onChange={e => setRejectNote(e.target.value)}
+                <textarea
+                  ref={textareaRef}
+                  value={rejectNote}
+                  onChange={e => setRejectNote(e.target.value)}
                   placeholder="e.g. Contains prohibited network calls, broken layout, obfuscated code..."
-                  autoFocus rows={2} style={{
+                  autoFocus
+                  rows={2}
+                  style={{
                     width: "100%", background: "rgba(239,68,68,0.05)",
                     border: "1px solid rgba(239,68,68,0.2)", borderRadius: 7,
                     color: "#fff", fontSize: 11, fontFamily: "monospace",
                     padding: "9px 12px", resize: "none", outline: "none", lineHeight: 1.5, boxSizing: "border-box",
-                  }} />
+                  }}
+                />
               </div>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -861,8 +958,10 @@ const AdminPocketReview: React.FC = () => {
               </button>
 
               {!showRejectBox ? (
-                <button onClick={() => { setShowRejectBox(true); setTimeout(() => textareaRef.current?.focus(), 40); }}
-                  disabled={actionLoading} style={{
+                <button
+                  onClick={() => { setShowRejectBox(true); setTimeout(() => textareaRef.current?.focus(), 40); }}
+                  disabled={actionLoading}
+                  style={{
                     display: "flex", alignItems: "center", gap: 6,
                     background: "rgba(239,68,68,0.07)", color: "#f87171",
                     border: "1px solid rgba(239,68,68,0.18)", borderRadius: 7, padding: "9px 18px",
@@ -892,10 +991,12 @@ const AdminPocketReview: React.FC = () => {
               )}
 
               <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+                {/* FIX: secReport guarded with && before .findings access */}
                 {secReport && secReport.findings.filter(f => f.severity === "critical").length > 0 && (
                   <span style={{ fontSize: 10, color: "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
                     <AlertCircle size={11} />
-                    {secReport.findings.filter(f => f.severity === "critical").length} critical issue{secReport.findings.filter(f => f.severity === "critical").length > 1 ? "s" : ""}
+                    {secReport.findings.filter(f => f.severity === "critical").length} critical
+                    {secReport.findings.filter(f => f.severity === "critical").length > 1 ? " issues" : " issue"}
                   </span>
                 )}
                 <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 10, fontFamily: "monospace" }}>

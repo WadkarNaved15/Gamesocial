@@ -54,7 +54,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { preloadAd, clearAd } = useAds();
+  const {preloadAds,clearAds} = useAds();
   const adPreloadedRef = useRef(false);
 
 
@@ -64,7 +64,6 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (saved) {
       try {
         const data = JSON.parse(saved);
-        console.log('[Queue] Restored session from localStorage:', data.sessionId);
         
         // ✅ Restore queue state
         setQueue((prev) => ({
@@ -78,7 +77,6 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         // ✅ If session exists, reconnect to SSE
         if (data.sessionId && ['waiting', 'allocation_ready', 'starting'].includes(data.status)) {
-          console.log('[Queue] Reconnecting to SSE for session:', data.sessionId);
           setTimeout(() => setupSSE(data.sessionId), 500);
         }
       } catch (err) {
@@ -100,16 +98,13 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         isDirectPlay: queue.isDirectPlay,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-      console.log('[Queue] Saved session to localStorage:', toSave);
     } else if (queue.status === 'ended' || queue.status === 'failed') {
       localStorage.removeItem(STORAGE_KEY);
-      console.log('[Queue] Cleared session from localStorage');
     }
   }, [queue]);
 
       // 🧹 Clear Session
 const clearSession = useCallback(() => {
-  console.log("[Queue] Clearing session state");
 
   if (eventSource) eventSource.close();
   if (countdownIntervalRef.current) {
@@ -135,7 +130,6 @@ const clearSession = useCallback(() => {
 
 // 🔌 Setup SSE Connection
 const setupSSE = useCallback((sessionId: string) => {
-  console.log('[Queue SSE] Setting up for session', sessionId);
 
   if (eventSource) eventSource.close();
 
@@ -146,13 +140,11 @@ const setupSSE = useCallback((sessionId: string) => {
 
   es.onmessage = (e) => {
     const data = JSON.parse(e.data);
-    console.log('[Queue SSE] Received:', data);
 
     // 🔴 Session finished → clear everything
     if (data.status === "ended" || data.status === "failed") {
       adPreloadedRef.current = false;
-      clearAd();
-      console.log("[Queue SSE] Session finished, clearing session");
+      clearAds();
       clearSession();
       return;
     }
@@ -177,13 +169,11 @@ const setupSSE = useCallback((sessionId: string) => {
       // 🟡 QUEUED USER → show countdown modal
 // 🟡 QUEUED USER → show countdown modal
 if (data.status === "allocation_ready") {
-  console.log("[Queue SSE] allocation_ready → queued user");
 
   newState.isDirectPlay = false;
 
   // ONLY initialize the countdown once
   if (!prev.countdownStartsAt) {
-    console.log("[Queue SSE] Starting countdown");
 
     const seconds = data.countdownSeconds || 30;
 
@@ -231,11 +221,10 @@ if (data.status === "allocation_ready") {
 
 // 🟢 DIRECT USER → skip countdown, show ads
 if (data.status === "starting") {
-  console.log("[Queue SSE] starting → direct session");
 
   if (!adPreloadedRef.current) {
     adPreloadedRef.current = true;
-    preloadAd();
+    preloadAds();
   }
 
   if (countdownIntervalRef.current) {
@@ -260,7 +249,7 @@ if (data.status === "starting") {
   };
 
   setEventSource(es);
-}, [eventSource, clearSession,preloadAd]);
+}, [eventSource, clearSession]);
 
   // 🎮 Start Session
   const startSession = useCallback(
@@ -271,8 +260,6 @@ if (data.status === "starting") {
           console.warn('[Queue] Session already exists, cannot start new one');
           return null;
         }
-
-        console.log('[Queue] Starting session for game', gamePostId);
 
         setQueue((prev) => ({
           ...prev,
@@ -292,13 +279,6 @@ if (data.status === "starting") {
 
         if (res.ok || res.status === 202) {
           const sessionId = data.sessionId;
-          console.log('[Queue] Got sessionId:', sessionId);
-          console.log('[Queue] Queue info from 202:', {
-            queuePosition: data.queuePosition,
-            totalQueued: data.totalQueued,
-            estimatedWaitMinutes: data.estimatedWaitMinutes,
-          });
-
           // ✅ Update queue state with all data from 202 response
           setQueue((prev) => ({
             ...prev,
@@ -339,7 +319,6 @@ if (data.status === "starting") {
     if (!queue.sessionId) return;
 
     try {
-      console.log('[Queue] Cancelling session', queue.sessionId);
       const res = await fetch(`${BACKEND_URL}/api/sessions/${queue.sessionId}/cancel`, {
         method: 'POST',
         credentials: 'include',
@@ -360,7 +339,6 @@ if (data.status === "starting") {
     if (!queue.sessionId) return;
 
     try {
-      console.log('[Queue] Launching session', queue.sessionId);
 
       const res = await fetch(`${BACKEND_URL}/api/internal/session/launch`, {
         method: 'POST',
@@ -370,7 +348,6 @@ if (data.status === "starting") {
       });
 
       if (res.ok) {
-        console.log('[Queue] Launch triggered');
         setQueue((prev) => ({
           ...prev,
           status: 'starting',

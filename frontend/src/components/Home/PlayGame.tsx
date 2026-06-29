@@ -35,7 +35,17 @@ interface Ad {
 type SessionError = "failed" | "ended" | "stream_error" | null;
 
 export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
-  const { ad, preloadAd, adFetchCompleted } = useAds();
+  const {
+  ads,
+  preloadAds,
+  adFetchCompleted,
+} = useAds();
+
+const [currentAdIndex, setCurrentAdIndex] =
+  useState(0);
+
+const currentAd =
+  ads[currentAdIndex];
   
   // --- State ---
   const [sessionStatus, setSessionStatus] = useState<string>("waiting");
@@ -56,11 +66,14 @@ export default function AdWithStatus({ sessionId }: AdWithStatusProps) {
 
   // 1. Initial Ad Fetch
   useEffect(() => {
-    if (!ad && !adRequested.current) {
-      adRequested.current = true;
-      preloadAd();
-    }
-  }, [ad, preloadAd]);
+    if (
+  ads.length === 0 &&
+  !adRequested.current
+) {
+  adRequested.current = true;
+  preloadAds();
+}
+  }, [ads, preloadAds]);
 
   // 2. Countdown Timer
 useEffect(() => {
@@ -186,6 +199,7 @@ if (effectiveStatus === "running") {
   fetchStreamUrl,
   handleTerminalState,
 ]);
+
 
   const startFallbackPoll = useCallback(() => {
     if (pollRef.current) return;
@@ -327,7 +341,8 @@ if (effectiveStatus === "running") {
     );
   }
 
-  if (!ad && !adFetchCompleted) {
+  if (
+  ads.length === 0 && !adFetchCompleted) {
     return (
       <div className="fixed inset-0 bg-white dark:bg-[#0a0a0a] z-50 flex flex-col items-center justify-center space-y-4">
         <Loader2 className="animate-spin text-gray-400 dark:text-gray-600" size={32} />
@@ -338,7 +353,7 @@ if (effectiveStatus === "running") {
     );
   }
 
-  const adData = ad?.data as Ad;
+  const adData = currentAd?.data as Ad;
   const showLaunchButton =
   !!streamUrl &&
   (
@@ -355,7 +370,7 @@ if (effectiveStatus === "running") {
         processingStatus: undefined,
       }
     : undefined;
-
+    
   return (
     <div className="fixed inset-0 bg-white dark:bg-black z-50 flex flex-col font-sans overflow-hidden select-none">
       
@@ -369,6 +384,18 @@ if (effectiveStatus === "running") {
             ctaLink={adData.ctaLink}
             asset={displayAsset}
             duration={adData.mechanics?.duration || 15}
+            onEnded={() => {
+    if (
+      currentAdIndex <
+      ads.length - 1
+    ) {
+      setCurrentAdIndex(
+        prev => prev + 1
+      );
+    } else {
+      setAdCountdown(0);
+    }
+  }}
           />
         )}
       </div>
