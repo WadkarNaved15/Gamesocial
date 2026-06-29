@@ -36,8 +36,6 @@ const userSchema = new mongoose.Schema(
       default: "user",
     },
 
-    // General email verification
-    isVerified: { type: Boolean, default: false },
 
     // Granted manually by admin — only these accounts can create/edit a Pocket.
     // Being verified does NOT automatically grant this.
@@ -45,8 +43,6 @@ const userSchema = new mongoose.Schema(
 
     resetPasswordToken:       { type: String, select: false },
     resetPasswordExpires:     { type: Date },
-    emailVerificationOTP:     String,
-    emailVerificationExpires: Date,
   },
   { timestamps: true }
 );

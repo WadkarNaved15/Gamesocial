@@ -6,18 +6,39 @@ import {
     LogIn,
     Home,
     Settings,
+    ChevronDown,
+    Key,
+    Trash2
 } from "lucide-react";
-
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../../context/user";
 import { useNotification } from "../../context/Notifications";
 
 interface Props {
     onOpenWishlist: () => void;
+    onOpenSettings: (view: 'password' | 'delete') => void;
 }
+
+type NavItem = {
+    icon: React.ElementType;
+    label: string;
+    path: string;
+    activePath: string;
+    action: () => void;
+    isExpandable?: boolean;
+    isExpanded?: boolean;
+    subItems?: Array<{
+        icon: React.ElementType;
+        label: string;
+        action: () => void;
+        isDanger?: boolean; // <-- Added this flag
+    }>;
+};
 
 export default function SidebarNavigation({
     onOpenWishlist,
+    onOpenSettings,
 }: Props) {
     const navigate = useNavigate();
     const location = useLocation();
@@ -25,7 +46,9 @@ export default function SidebarNavigation({
     const { user, logout } = useUser();
     const { unreadCount } = useNotification();
 
-    const items = [
+    const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
+
+    const items: NavItem[] = [
         {
             icon: Home,
             label: "Home",
@@ -59,65 +82,93 @@ export default function SidebarNavigation({
             label: "Settings",
             path: "/settings",
             activePath: "/settings",
-            action: () => {},
+            isExpandable: true,
+            isExpanded: isSettingsExpanded,
+            action: () => setIsSettingsExpanded(!isSettingsExpanded),
+            subItems: [
+                {
+                    icon: Key,
+                    label: "Change Password",
+                    action: () => onOpenSettings('password')
+                },
+                {
+                    icon: Trash2,
+                    label: "Delete Account",
+                    action: () => onOpenSettings('delete'),
+                    isDanger: true // <-- Flagged as danger
+                }
+            ]
         },
-
     ];
 
     return (
-            <nav className="flex flex-col gap-1">
-                {items.map((item) => {
-                    const active =
-                        item.activePath === "/"
-                            ? location.pathname === "/"
-                            : location.pathname.startsWith(item.activePath);
+        <nav className="flex flex-col gap-1">
+            {items.map((item) => {
+                const active =
+                    item.activePath === "/"
+                        ? location.pathname === "/"
+                        : location.pathname.startsWith(item.activePath);
 
-                    return (
+                return (
+                    <div key={item.label} className="flex flex-col">
                         <button
-                            key={item.label}
                             onClick={item.action}
                             className={`
-                relative
-                flex items-center gap-3
-                px-4 py-3
-                rounded-lg
-                transition-all
-
-                ${active
-                                    ? "bg-white/10 text-white border-l-2 border-green-400"
+                                relative flex items-center justify-between
+                                px-4 py-3 rounded-lg transition-all
+                                ${active && !item.isExpandable
+                                    ? "bg-white/10 text-white border-l-2 border-[#62D4AE]"
                                     : "text-gray-400 hover:bg-white/5 hover:text-white"
                                 }
-              `}
+                            `}
                         >
-                            <item.icon size={18} />
+                            <div className="flex items-center gap-3">
+                                <item.icon size={18} />
+                                <span className="text-sm font-medium">
+                                    {item.label}
+                                </span>
+                            </div>
 
-                            <span className="text-sm font-medium">
-                                {item.label}
-                            </span>
+                            {item.label === "Notifications" && unreadCount > 0 && (
+                                <span className="ml-auto min-w-[20px] h-5 px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-xs">
+                                    {unreadCount}
+                                </span>
+                            )}
 
-                            {item.label === "Notifications" &&
-                                unreadCount > 0 && (
-                                    <span
-                                        className="
-                      ml-auto
-                      min-w-[20px]
-                      h-5
-                      px-1
-                      flex
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-red-500
-                      text-white
-                      text-xs
-                    "
-                                    >
-                                        {unreadCount}
-                                    </span>
-                                )}
+                            {item.isExpandable && (
+                                <ChevronDown 
+                                    size={16} 
+                                    className={`transition-transform duration-200 ${item.isExpanded ? "rotate-180" : ""}`} 
+                                />
+                            )}
                         </button>
-                    );
-                })}
-            </nav>
+
+                        {item.isExpandable && (
+                            <div 
+                                className={`
+                                    overflow-hidden transition-all duration-300 ease-in-out
+                                    ${item.isExpanded ? "max-h-40 opacity-100 mt-1" : "max-h-0 opacity-0"}
+                                `}
+                            >
+                                <div className="flex flex-col gap-1 pl-10 pr-2 pb-1">
+                                    {item.subItems?.map((sub) => (
+                                        <button
+                                            key={sub.label}
+                                            onClick={sub.action}
+                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-white/5 transition-all text-sm font-medium ${
+                                                sub.isDanger ? 'hover:text-red-500' : 'hover:text-[#62D4AE]'
+                                            }`}
+                                        >
+                                            <sub.icon size={16} />
+                                            {sub.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+        </nav>
     );
 }

@@ -770,4 +770,11 @@ PostSchema.index(
 );
 PostSchema.index({ createdAt: -1 });
 
-export default mongoose.model("AllPost", PostSchema);
+const AllPost =
+  mongoose.models.AllPost ||
+  mongoose.model(
+    "AllPost",
+    PostSchema
+  );
+
+export default AllPost;

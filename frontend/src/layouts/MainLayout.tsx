@@ -15,7 +15,8 @@ import AmbientBackground from "../components/AmbientBackground";
 import OrbBackground from "../components/OrbBacground";
 import AuthGateModal from "../components/Auth/AuthGateModal";
 import GuestSessionExpired from "../components/Auth/GuestSessionExpired";
-import LegalModal from "../Pages/LegalModal"; // Or adjust to your actual path
+import LegalModal from "../Pages/LegalModal"; 
+import SettingsModal from "../components/SettingsModal";
 
 const ProfileCover = lazy(() => import("../components/Home/Profile"));
 
@@ -31,11 +32,14 @@ function MainLayout() {
   const [feedLocked, setFeedLocked] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
-  // State for the legal modal now includes 'paid'
   const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | 'paid' | null>(null);
+  
+  // Track both the open state AND which view to show
+  const [settingsConfig, setSettingsConfig] = useState<{isOpen: boolean, view: 'password' | 'delete'}>({ 
+    isOpen: false, 
+    view: 'password' 
+  });
 
-  // Refs to measure the gap between sidebar and center feed.
-  // VerticalBackButton uses both to find the exact midpoint.
   const sidebarRef = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
 
@@ -67,12 +71,12 @@ function MainLayout() {
 
     if (minutes >= 2 && !bannerShown) {
       setBannerShown(true);
-
       openGate(
         "Join Rigzer to play games, follow creators, save favorites, and unlock the full platform."
       );
     }
   }, [minutes, bannerShown, user, openGate]);
+  
   useEffect(() => {
     if (user) return;
 
@@ -104,10 +108,6 @@ function MainLayout() {
         <main className="w-full px-0 sm:px-4 lg:px-8 2xl:px-16 pt-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 2xl:grid-cols-16 2xl:gap-x-12">
 
-            {/* ========================= */}
-            {/* LEFT SIDEBAR              */}
-            {/* ========================= */}
-
             <div
               ref={sidebarRef}
               className="lg:col-span-2 2xl:col-span-3 hidden lg:block"
@@ -119,13 +119,13 @@ function MainLayout() {
 
                 <SidebarNavigation
                   onOpenWishlist={handleWishlist}
+                  onOpenSettings={(view) => setSettingsConfig({ isOpen: true, view })}
                 />
 
                 <UploadBox
                   onUploadClick={handleUploadClick}
                 />
 
-                {/* Legal Links Footer */}
                 <div className="px-2 pt-2 pb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
                   <button
                     onClick={() => setActiveModal('terms')}
@@ -159,10 +159,6 @@ function MainLayout() {
               </div>
             </div>
 
-            {/* ========================= */}
-            {/* ARTICLE PAGE              */}
-            {/* ========================= */}
-
             {isArticlePage ? (
               <>
                 <div className="lg:col-span-7 2xl:col-span-9 flex flex-col items-stretch min-h-[80vh] w-full py-4">
@@ -182,10 +178,6 @@ function MainLayout() {
               </>
             ) : (
               <>
-                {/* ========================= */}
-                {/* CENTER CONTENT            */}
-                {/* ========================= */}
-
                 <div
                   ref={centerRef}
                   className={`
@@ -200,10 +192,6 @@ function MainLayout() {
                 >
                   <Outlet />
                 </div>
-
-                {/* ========================= */}
-                {/* RIGHT BILLBOARD           */}
-                {/* ========================= */}
 
                 <div
                   className={`
@@ -228,15 +216,13 @@ function MainLayout() {
           </div>
         </main>
 
-        {/* ========================= */}
-        {/* MESSAGING                 */}
-        {/* ========================= */}
-
         <MessagingComponent />
 
-        {/* ========================= */}
-        {/* LEGAL MODAL               */}
-        {/* ========================= */}
+        <SettingsModal 
+          isOpen={settingsConfig.isOpen} 
+          initialView={settingsConfig.view}
+          onClose={() => setSettingsConfig(prev => ({ ...prev, isOpen: false }))} 
+        />
 
         <LegalModal
           type={activeModal}

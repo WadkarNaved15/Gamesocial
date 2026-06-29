@@ -8,7 +8,9 @@ import Comment from "../models/Comment.js";
 import Wishlist from "../models/Wishlist.js";
 import Notification from "../models/Notifications.js";
 import { extractS3KeyFromUrl } from "../utils/extractS3Key.js";
-import { videoProcessingQueue } from "../queues/videoQueue.js"; // Adjust path
+import { videoProcessingQueue } from "../queues/videoQueue.js"; 
+import { deletePostAndAssets } from "../services/deletePost.js";
+
 
 function deriveBuildType(fileFormat) {
   if (fileFormat === "exe") return "executable";
@@ -502,118 +504,7 @@ export const deletePost = async (req, res) => {
       });
     }
 
-    // =====================================================
-    // COLLECT ALL S3 KEYS
-    // =====================================================
-
-    const keysToDelete = [];
-
-    const getThumbnailKey = (thumbUrl) => {
-      if (!thumbUrl) return null;
-      return extractS3KeyFromUrl(thumbUrl);
-    };
-
-    // NORMAL POST
-    if (post.type === "normal_post" && post.normalPost?.assets?.length) {
-      for (const asset of post.normalPost.assets) {
-        if (asset.key) keysToDelete.push(asset.key);
-        else if (asset.url) {
-          const extractedKey = extractS3KeyFromUrl(asset.url);
-          if (extractedKey) keysToDelete.push(extractedKey);
-        }
-
-        // Add optimized files & thumbnails to deletion array
-        if (asset.optimizedKey) keysToDelete.push(asset.optimizedKey);
-        if (asset.thumbnailUrl) {
-          const thumbKey = getThumbnailKey(asset.thumbnailUrl);
-          if (thumbKey) keysToDelete.push(thumbKey);
-        }
-      }
-    }
-
-    // =====================================================
-    // GAME POST FILE
-    // =====================================================
-
-   if (post.type === "game_post") {
-      // 1. Build File
-      if (post.gamePost?.file) {
-        if (post.gamePost.file.key) {
-          keysToDelete.push(post.gamePost.file.key);
-        } else if (post.gamePost.file.url) {
-          let extractedKey = post.gamePost.file.url.startsWith("/") 
-            ? post.gamePost.file.url.replace(/^\/+/, "")
-            : extractS3KeyFromUrl(post.gamePost.file.url);
-          if (extractedKey) keysToDelete.push(extractedKey);
-        }
-      }
-
-      // 2. Trailer Video
-      if (post.gamePost?.videoDemo) {
-        if (post.gamePost.videoDemo.key) keysToDelete.push(post.gamePost.videoDemo.key);
-        if (post.gamePost.videoDemo.optimizedKey) keysToDelete.push(post.gamePost.videoDemo.optimizedKey);
-        if (post.gamePost.videoDemo.thumbnailUrl) {
-          const thumbKey = getThumbnailKey(post.gamePost.videoDemo.thumbnailUrl);
-          if (thumbKey) keysToDelete.push(thumbKey);
-        }
-      }
-    }
-    // =====================================================
-    // MODEL POST FILES
-    // =====================================================
-
-    if (
-      post.type === "model_post" &&
-      post.modelPost?.assets?.length
-    ) {
-
-      for (const asset of post.modelPost.assets) {
-
-        // ORIGINAL FILE
-        if (asset.originalKey) {
-          keysToDelete.push(asset.originalKey);
-        }
-
-        // OPTIMIZED FILE
-        if (asset.optimizedKey) {
-          keysToDelete.push(asset.optimizedKey);
-        }
-
-      }
-    }
-    // =====================================================
-    // DELETE S3 FILES
-    // =====================================================
-
-    if (keysToDelete.length > 0) {
-      await Promise.all(
-        keysToDelete.map((key) =>
-          s3.send(
-            new DeleteObjectCommand({
-              Bucket: process.env.AWS_BUCKET_NAME,
-              Key: key,
-            })
-          )
-        )
-      );
-    }
-
-    // =====================================================
-    // DELETE RELATED COLLECTION DATA
-    // =====================================================
-
-    await Promise.all([
-      Like.deleteMany({ post: postId }),
-      Comment.deleteMany({ post: postId }),
-      Wishlist.deleteMany({ post: postId }),
-      Notification.deleteMany({ postId }),
-    ]);
-
-    // =====================================================
-    // DELETE POST
-    // =====================================================
-
-    await AllPost.findByIdAndDelete(postId);
+   await deletePostAndAssets(post);
 
     res.json({
       success: true,
