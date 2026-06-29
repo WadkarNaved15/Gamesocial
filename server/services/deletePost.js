@@ -1,6 +1,6 @@
 // services/deletePost.service.js
 
-import AllPost from "../models/AllPosts.js";
+import AllPost from "../models/Allposts.js";
 import Like from "../models/Like.js";
 import Comment from "../models/Comment.js";
 import Wishlist from "../models/Wishlist.js";
