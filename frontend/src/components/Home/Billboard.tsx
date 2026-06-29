@@ -25,7 +25,9 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 function buildFaces(pockets: Pocket[]): FaceDescriptor[] {
-  const statics: FaceDescriptor[] = [{ type: "follow" }, { type: "reading" }];
+  const statics: FaceDescriptor[] = [{ type: "follow" }, 
+  // { type: "reading" }
+  ];
   const pocketFaces: FaceDescriptor[] = pockets.map((p) => ({ type: "pocket", pocket: p }));
   return shuffle([...statics, ...pocketFaces]);
 }
@@ -38,7 +40,9 @@ function faceLabel(face: FaceDescriptor): string {
 
 const Billboard: React.FC = () => {
   const [pockets, setPockets] = useState<Pocket[]>([]);
-  const [faces, setFaces] = useState<FaceDescriptor[]>([{ type: "follow" }, { type: "reading" }]);
+  const [faces, setFaces] = useState<FaceDescriptor[]>([{ type: "follow" },
+  // { type: "reading" }
+]);
   const [loadingPockets, setLoadingPockets] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
 
