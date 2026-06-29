@@ -87,7 +87,7 @@ interface AdModelCardProps {
     return (
         <>
             {isTransparent ? (
-                <div className="relative w-full border border-gray-200 bg-[#F9FAFB] rounded-xl overflow-hidden">
+                <div className="relative w-full border border-gray-200 bg-[#F9FAFB] overflow-hidden">
                     <div className="p-4">
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={transparentPillStyle}>
@@ -119,13 +119,13 @@ interface AdModelCardProps {
                                 )}
                             </p>
                         )}
-                        <div className="relative overflow-hidden w-full h-[400px] rounded-xl bg-gray-100">
+                        <div className="relative overflow-hidden w-full h-[400px] bg-gray-100">
                             {modelViewer}
                         </div>
                     </div>
                 </div>
             ) : (
-                <div className="relative w-full overflow-hidden rounded-2xl flex flex-col" style={glassOuterStyle}>
+                <div className="relative w-full overflow-hidden flex flex-col" style={glassOuterStyle}>
                     {isImage && (
                         <>
                             <div className="absolute inset-0 pointer-events-none" style={{
@@ -142,7 +142,7 @@ interface AdModelCardProps {
                     )}
 
                     {/* Clean Unified Card Area Container */}
-                    <div className="relative z-10 rounded-2xl overflow-hidden w-full h-[600px] flex flex-col bg-neutral-900/40" style={glassCardStyle}>
+                    <div className="relative z-10 overflow-hidden w-full h-[600px] flex flex-col bg-neutral-900/40" style={glassCardStyle}>
                         {isImage && (
                             <div
                                 className="absolute inset-0 pointer-events-none"
