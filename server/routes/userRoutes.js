@@ -1,6 +1,6 @@
 import express from "express";
 import User from "../models/User.js";  // adjust path if needed
-import {getProfileByUsername} from "../controllers/user.controller.js";
+import {getProfileByUsername , updatePassword , deleteAccount} from "../controllers/user.controller.js";
 import verifyToken from "../middlewares/authMiddleware.js";
 const router = express.Router();
 
@@ -16,5 +16,9 @@ router.get("/", async (req, res) => {
   }
 });
 router.get("/username/:username",verifyToken, getProfileByUsername);
+
+router.put("/update-password", verifyToken, updatePassword);
+
+router.delete("/delete-account", verifyToken, deleteAccount);
 
 export default router;

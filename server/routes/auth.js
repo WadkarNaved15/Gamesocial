@@ -5,12 +5,14 @@ import Session from "../models/Session.js";
 import crypto from "crypto";
 import { createRateLimiter, ipRateLimiter } from "../middlewares/rateLimiter.js";
 import dotenv from "dotenv";
-import User from "../models/User.js"; // Correct import after fixing export
+import User from "../models/User.js"; 
+import PendingRegistration from "../models/PendingRegistration.js";
 import passport from "passport";
 import { sendResetEmail } from "../services/sendResetEmail.js";
 import { onUserCreated } from "../services/gorse.hooks.js";
 import { sendVerificationEmail } from "../services/sendVerificationEmail.js";
 import verifyToken from "../middlewares/authMiddleware.js";
+
 
 dotenv.config();
 const router = express.Router();
@@ -73,49 +75,64 @@ router.post("/register", authLimiter, async (req, res) => {
     const { username, email, password } = req.body;
 
     // Check if user already exists
-    const [emailExists, usernameExists] = await Promise.all([
-      User.findOne({ email }),
-      User.findOne({ username })
-    ]);
+    const [
+        emailExists,
+        usernameExists,
+      ] = await Promise.all([
+        User.findOne({ email }),
+        User.findOne({ username }),
+      ]);
 
-    if (emailExists) {
-      return res.status(400).json({ error: "Email already registered" });
-    }
+      if (emailExists) {
+        return res.status(400).json({
+          error: "Email already in use",
+        });
+      }
 
-    if (usernameExists) {
-      return res.status(400).json({ error: "Username already taken" });
-    }
+      if (usernameExists) {
+        return res.status(400).json({
+          error: "Username already taken",
+        });
+      }
+
+
+      await PendingRegistration.deleteMany({
+        $or: [
+          { email },
+          { username },
+        ],
+      });
 
     // Hash the password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     // 🔐 Generate 6 digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    console.log("otp", otp)
     // 🔐 Hash the OTP
     const hashedOTP = crypto
-      .createHash("sha256")
+      .createHmac("sha256", process.env.OTP_SECRET)
       .update(otp)
       .digest("hex");
-    // Create user
-    const newUser = new User({
-      username,
-      email,
-      password: hashedPassword,
-      isVerified: false,
-      emailVerificationOTP: hashedOTP,
-      emailVerificationExpires: Date.now() + 10 * 60 * 1000, // 10 mins
-    });
+    // Create user in PendingRegistration
 
-    await newUser.save();
-    res.status(200).json({
-      message: "OTP sent to email",
-      requiresVerification: true,
-      email
-    });
-    sendVerificationEmail(email, otp).catch(err =>
-      console.error("Email send failed:", err)
-    );
+const pending = new PendingRegistration({
+  username,
+  email,
+  password: hashedPassword,
+  emailVerificationOTP: hashedOTP,
+  emailVerificationExpires: Date.now() + 10 * 60 * 1000,
+  expiresAt: Date.now() + 10 * 60 * 1000,
+});
+
+await pending.save();
+
+await sendVerificationEmail(email, otp);
+
+return res.status(200).json({
+  message: "OTP sent",
+  requiresVerification: true,
+  email,
+});
     // const token = jwt.sign({ id: newUser._id },process.env.JWT_SECRET, { expiresIn: "30d" });
     // const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
@@ -139,26 +156,32 @@ router.post("/verify-email", verifyLimiter, async (req, res) => {
     const { email, otp } = req.body;
 
     const hashedOTP = crypto
-      .createHash("sha256")
+      .createHmac("sha256", process.env.OTP_SECRET)
       .update(otp)
       .digest("hex");
 
-    const user = await User.findOne({
+    const pending = await PendingRegistration.findOne({
       email,
       emailVerificationOTP: hashedOTP,
       emailVerificationExpires: { $gt: Date.now() },
-    });
+    }).select("+password");
 
-    if (!user) {
-      return res.status(400).json({ error: "Invalid or expired OTP" });
+    if (!pending) {
+      return res.status(400).json({
+        error: "Invalid or expired OTP",
+      });
     }
 
-    // ✅ Mark verified
-    user.isVerified = true;
-    user.emailVerificationOTP = undefined;
-    user.emailVerificationExpires = undefined;
 
-    await user.save();
+    const user = await User.create({
+      username: pending.username,
+      email: pending.email,
+      password: pending.password,
+    });
+
+    await PendingRegistration.deleteOne({
+      _id: pending._id,
+    });
 
     // 🔥 Now create session (ONLY AFTER VERIFY)
     const token = jwt.sign(
@@ -195,59 +218,73 @@ router.post("/login", authLimiter, async (req, res) => {
     const { emailOrUsername, password } = req.body;
 
     const user = await User.findOne({
-      $or: [{ email: emailOrUsername }, { username: emailOrUsername }],
-    }).select("+password"); // ✅ include password field explicitly
+      $or: [
+        { email: emailOrUsername.toLowerCase() },
+        { username: emailOrUsername }
+      ]
+    }).select("+password");
+
     if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-    if (!user.isVerified) {
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-      const hashedOTP = crypto
-        .createHash("sha256")
-        .update(otp)
-        .digest("hex");
-
-      user.emailVerificationOTP = hashedOTP;
-      user.emailVerificationExpires = Date.now() + 10 * 60 * 1000;
-
-      await user.save();
-
-      await sendVerificationEmail(user.email, otp);
-
-      return res.status(403).json({
-        error: "Please verify your email before logging in",
-        requiresVerification: true,
-        email: user.email
+      return res.status(401).json({
+        error: "Invalid credentials"
       });
     }
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ error: "Invalid credentials" });
+
+    const passwordValid = await bcrypt.compare(
+      password,
+      user.password
+    );
+
+    if (!passwordValid) {
+      return res.status(401).json({
+        error: "Invalid credentials"
+      });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "30d" });
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
 
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
 
     await Session.create({
       userId: user._id,
       deviceId: req.deviceId,
       tokenHash,
       userAgent: req.headers["user-agent"],
-      ip: req.ip
+      ip: req.ip,
     });
-    console.log("Session created for userId", user._id);
 
-    res.cookie("token", token, cookieOptions);
+    console.log(
+      "Session created for userId",
+      user._id
+    );
 
+    res.cookie(
+      "token",
+      token,
+      cookieOptions
+    );
 
-    res.status(200).json({ message: "Login successful", token, user });
+    return res.status(200).json({
+      message: "Login successful",
+      token,
+      user,
+    });
+
   } catch (err) {
     console.error("Error in login:", err);
-    res.status(500).json({ error: "Login failed" });
+
+    return res.status(500).json({
+      error: "Login failed",
+    });
   }
 });
-
 
 // Verify Token Route
 router.get("/verify", verifyToken, (req, res) => {

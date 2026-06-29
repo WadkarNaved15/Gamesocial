@@ -206,7 +206,7 @@ await callController(updatedSession, {
       if (send) {
         send({
           status: assignedInstance ? "starting" : "waiting",
-          phase: assignedInstance ? "downloading" : null
+          phase: assignedInstance ? "downloading" : null 
         });
       }
 
