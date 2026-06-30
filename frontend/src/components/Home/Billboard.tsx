@@ -65,12 +65,13 @@ const Billboard: React.FC = () => {
 
   const totalFaces = faces.length;
   const activeFace = faces[activeIndex];
-  const headerData =
+const headerData =
     activeFace?.type === "pocket"
       ? {
         title: activeFace.pocket.brandName,
         subtitle: activeFace.pocket.tagline,
-        avatar: activeFace.pocket.user.avatar,
+        // 👇 Add optional chaining to 'user' here:
+        avatar: activeFace.pocket.user?.avatar, 
       }
       : activeFace?.type === "follow"
         ? {
