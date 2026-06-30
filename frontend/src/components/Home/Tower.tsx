@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { PlusCircle } from "lucide-react";
 import FollowFace from "./FollowFace";
 import PocketPost from "../Post/PocketPost";
-import { usePublishedArticles } from "../../context/PublishedArticleContext";
+// import { usePublishedArticles } from "../../context/PublishedArticleContext";
 
 interface Pocket {
   _id: string;
@@ -24,7 +24,7 @@ const Tower: React.FC<{
   onPrev?: () => void;
   onNext?: () => void;
 }> = ({ activeFaceIndex, faces, onPrev, onNext }) => {
-  const { articles } = usePublishedArticles();
+  // const { articles } = usePublishedArticles();
   const cubeRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [translateZ, setTranslateZ] = useState(150);
@@ -90,7 +90,7 @@ const Tower: React.FC<{
                 className="absolute inset-0 bg-transparent text-white overflow-y-auto backface-hidden"
                 style={{ transform: faceTransform }}
               >
-                <div className="grid grid-cols-2 gap-4 px-3 py-6">
+                {/* <div className="grid grid-cols-2 gap-4 px-3 py-6">
                   {articles.map((canvas) => (
                     <div
                       key={canvas._id}
@@ -126,7 +126,7 @@ const Tower: React.FC<{
                       </div>
                     </div>
                   ))}
-                </div>
+                </div> */}
               </div>
             );
           }
