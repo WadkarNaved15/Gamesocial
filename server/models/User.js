@@ -88,12 +88,6 @@ const userSchema = new mongoose.Schema(
       minlength: 1,
       maxlength: 30,
     },
-    displayName: {
-      type: String,
-      trim: true,
-      default: "",
-      maxlength: 50,
-    },
     email: { type: String, unique: true, required: true, lowercase: true },
     password: {
       type: String,
@@ -134,24 +128,11 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
-    birthDate: {
-      type: Date,
-      default: null,
-    },
-
     jobTitle: {
       type: String,
       trim: true,
       default: "",
       maxlength: 100,
-    avatar: { type: String, default: "" },
-    banner: { type: String, default: "" },
-    bio: { type: String, maxlength: 160, default: "" },
-    socials: {
-      twitter: String,
-      instagram: String,
-      youtube: String,
-      discord: String,
     },
     followersCount: { type: Number, default: 0 },
     followingCount: { type: Number, default: 0 },
