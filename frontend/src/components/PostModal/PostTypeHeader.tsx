@@ -30,11 +30,11 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 };
 
 function getActiveClass(): string {
-  return "text-[#3D7A6E] bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/10 shadow-sm";
+  return "text-white bg-white/10 dark:bg-white/10 shadow-sm";
 }
 
 function getBarClass(): string {
-  return "bg-[#3D7A6E]";
+  return "bg-white dark:bg-white";
 }
 
 const PostTypeHeader: React.FC<PostTypeHeaderProps> = ({ active, onChange, onCancel }) => {

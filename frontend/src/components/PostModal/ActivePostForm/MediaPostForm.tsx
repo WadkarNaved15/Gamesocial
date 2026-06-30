@@ -356,22 +356,6 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
         ))}
       </div>
 
-      {/* Footer Tools */}
-      <div className="px-6 py-4 border-t border-gray-100 dark:border-white/[0.06] bg-transparent flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={assets.length >= 4}
-            className={`p-2.5 rounded-full transition ${assets.length >= 4 ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-[#3D7A6E] hover:bg-[#3D7A6E]/10 dark:hover:bg-[#3D7A6E]/20'}`}
-            title="Add Media"
-          >
-            <Film size={22} />
-          </button>
-        </div>
-        <div className={`text-xs font-bold ${assets.length === 4 ? 'text-orange-500' : 'text-gray-400 dark:text-gray-500'}`}>
-          {assets.length} / 4 Assets
-        </div>
-      </div>
 
       <input
         type="file"

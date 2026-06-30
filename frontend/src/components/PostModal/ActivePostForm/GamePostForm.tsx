@@ -1150,17 +1150,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
         </div>
       )}
 
-      {/* ── Footer counter ── */}
-      <div className="border-t border-gray-100 dark:border-white/[0.06] bg-transparent px-6 py-4 flex items-center justify-between shrink-0">
-        <div className="text-xs font-bold text-gray-400 dark:text-gray-500">
-          {asset ? '1' : '0'} / 1 Build • {videoUpload ? '1' : '0'} / 1 Media
-        </div>
-        {activeTab === 'payment' && totalDollars >= 100 && (
-          <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500">
-            $1 = 40 Credits &nbsp;·&nbsp; 10 Credits = 1 session
-          </div>
-        )}
-      </div>
+
 
     </div>
   );

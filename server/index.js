@@ -115,14 +115,51 @@ redisIoSubClient.on("error", (err) => console.error("❌ Redis IO Sub Client Err
 // MIDDLEWARE
 // ============================================
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   const host = req.headers.host?.split(":")[0];
 
-  if (host?.endsWith(".stream.rigzer.com")) {
-    return streamProxyRouter(req, res, next);
+  if (!host?.endsWith(".stream.rigzer.com")) {
+    return next();
   }
 
-  next();
+  const token = host.replace(".stream.rigzer.com", "");
+
+  try {
+    // Check if this stream token exists
+    const stream = await cacheService.get(`stream:${token}`);
+
+    if (!stream) {
+      console.log(`[STREAM] Invalid token: ${token}`);
+      return res.redirect(302, "https://rigzer.com");
+    }
+
+    // Optional: verify session still active
+    const session = await GameSession.findById(stream.sessionId)
+      .select("status")
+      .lean();
+
+    if (
+      !session ||
+      !["allocation_ready", "starting", "running"].includes(session.status)
+    ) {
+      console.log(
+        `[STREAM] Invalid session for token ${token}`
+      );
+
+      return res.redirect(302, "https://rigzer.com");
+    }
+
+    // Valid stream → continue to proxy
+    return streamProxyRouter(req, res, next);
+
+  } catch (err) {
+    console.error(
+      "[STREAM] Validation error:",
+      err
+    );
+
+    return res.redirect(302, "https://rigzer.com");
+  }
 });
 
 // EXPRESS CORS
