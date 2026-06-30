@@ -264,7 +264,7 @@ const ProfilePage: React.FC = () => {
 
             {/* LEFT: Profile Card */}
             <div className="flex-1 pt-0 bg-white/[0.03] rounded-3xl">
-              <div className={`${glassCard} relative overflow-hidden h-full min-h-[400px] flex flex-col`}>
+              <div className={`${glassCard} relative overflow-hidden h-full min-h-[350px] flex flex-col`}>
 
                 {/* Banner */}
                 <div className="relative h-32 md:h-48 shrink-0 overflow-hidden rounded-t-3xl">
@@ -313,7 +313,7 @@ const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mt-12 pb-112">
+      <div className="max-w-7xl mt-6 pb-112">
           <div className="min-w-0 flex flex-col">
             {loadingPosts && (
               <div className="text-white/40 text-sm">Loading your posts...</div>
