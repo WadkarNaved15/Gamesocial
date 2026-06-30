@@ -5,7 +5,11 @@ import Session from "../models/Session.js";
 import crypto from "crypto";
 import { createRateLimiter, ipRateLimiter } from "../middlewares/rateLimiter.js";
 import dotenv from "dotenv";
-import User from "../models/User.js"; 
+import User, {
+  validateUsernameFormat,
+  calculateAge,
+  MIN_AGE,
+} from "../models/User.js";
 import PendingRegistration from "../models/PendingRegistration.js";
 import passport from "passport";
 import { sendResetEmail } from "../services/sendResetEmail.js";
@@ -20,6 +24,8 @@ const url = process.env.FRONTEND_URL
 const isProduction = process.env.NODE_ENV === "production";
 const authLimiter = createRateLimiter("sessionStart");
 const verifyLimiter = ipRateLimiter(10, 60);
+// Generous but abuse-resistant limit for live typing checks
+const usernameCheckLimiter = ipRateLimiter(30, 60);
 
 const cookieOptions = {
   httpOnly: true,
@@ -42,13 +48,34 @@ const clearCookieOptions = {
 router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
 // Handle Google OAuth callback
+// ... existing imports
+
+// Handle Google OAuth callback
 router.get(
   "/google/callback",
-  passport.authenticate("google", { failureRedirect: `${url}/login` }),
+  passport.authenticate("google", { session: false, failureRedirect: `${url}/login` }),
   async (req, res) => {
     try {
-      const { user, token } = req.user;
+      // 1️⃣ Catch new user payload from passport
+      if (req.user.isNew) {
+        // Encode google profile into a temporary, short-lived JWT token to pass to frontend
+        const tempToken = jwt.sign(
+          { email: req.user.googleProfile.email },
+          process.env.JWT_SECRET,
+          { expiresIn: "1h" }
+        );
+        
+        // Redirect to Frontend `/login` but with params so it shows the "Complete Profile" setup form
+        const redirectUrl = new URL(`${url}/login`);
+        redirectUrl.searchParams.set("googleSetup", "true");
+        redirectUrl.searchParams.set("tempToken", tempToken);
+        redirectUrl.searchParams.set("name", encodeURIComponent(req.user.googleProfile.displayName));
+        
+        return res.redirect(redirectUrl.toString());
+      }
 
+      // 2️⃣ Existing user continues login...
+      const { user, token } = req.user;
       const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
       await Session.create({
@@ -69,10 +96,149 @@ router.get(
   }
 );
 
+// ─────────────────────────────────────────────────────────────
+// Finalize Google Account Creation (Called from frontend)
+// ─────────────────────────────────────────────────────────────
+router.post("/google-complete", authLimiter, async (req, res) => {
+  try {
+    const { username, displayName, birthdate, tempToken } = req.body;
+
+    if (!tempToken) return res.status(400).json({ error: "Missing authorization token" });
+
+    // Verify temp JWT token payload to retrieve the authenticated email
+    let decoded;
+    try {
+      decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: "Token expired or invalid. Please try logging in with Google again." });
+    }
+    const email = decoded.email;
+
+    // Validate incoming details
+    const cleanUsername = username.trim().toLowerCase();
+    const usernameError = validateUsernameFormat(cleanUsername);
+    if (usernameError) return res.status(400).json({ error: usernameError });
+
+    const parsedBirthdate = new Date(birthdate);
+    if (isNaN(parsedBirthdate.getTime()) || parsedBirthdate > new Date()) {
+      return res.status(400).json({ error: "Invalid birthdate" });
+    }
+    if (calculateAge(parsedBirthdate) < MIN_AGE) {
+      return res.status(403).json({ error: `You must be at least ${MIN_AGE} years old.` });
+    }
+
+    // Check collisions
+    const existingUser = await User.findOne({ $or: [{ email }, { username: cleanUsername }] });
+    if (existingUser) {
+      if (existingUser.email === email) return res.status(400).json({ error: "Account already exists with this email." });
+      return res.status(400).json({ error: "Username already taken." });
+    }
+
+    // Create the finalized user
+    const user = await User.create({
+      username: cleanUsername,
+      displayName: displayName.trim(),
+      email: email,
+      birthdate: parsedBirthdate,
+      isGoogleUser: true
+    });
+
+    // Create session / token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "30d" });
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    await Session.create({
+      userId: user._id,
+      deviceId: req.deviceId,
+      tokenHash,
+      userAgent: req.headers["user-agent"],
+      ip: req.ip
+    });
+
+    onUserCreated(user._id.toString());
+    res.cookie("token", token, cookieOptions);
+
+    return res.status(200).json({
+      message: "Account created successfully",
+      token,
+      user,
+    });
+  } catch (error) {
+    console.error("Error finalizing Google setup:", error);
+    res.status(500).json({ error: "Failed to create account" });
+  }
+});
+
+
+// ─────────────────────────────────────────────────────────────
+// Real-time username availability check (used by signup form)
+// ─────────────────────────────────────────────────────────────
+router.get("/check-username", usernameCheckLimiter, async (req, res) => {
+  try {
+    const raw = req.query.username;
+
+    if (!raw || typeof raw !== "string") {
+      return res.status(400).json({ available: false, error: "Username is required" });
+    }
+
+    const username = raw.trim().toLowerCase();
+
+    const formatError = validateUsernameFormat(username);
+    if (formatError) {
+      return res.status(200).json({ available: false, error: formatError });
+    }
+
+    const [userExists, pendingExists] = await Promise.all([
+      User.exists({ username }),
+      PendingRegistration.exists({ username }),
+    ]);
+
+    if (userExists || pendingExists) {
+      return res.status(200).json({ available: false, error: "Username is already taken" });
+    }
+
+    return res.status(200).json({ available: true });
+  } catch (error) {
+    console.error("Error checking username:", error);
+    res.status(500).json({ available: false, error: "Could not check username right now" });
+  }
+});
 
 router.post("/register", authLimiter, async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username: rawUsername, displayName, email, password, birthdate } = req.body;
+    const username = typeof rawUsername === "string" ? rawUsername.trim().toLowerCase() : rawUsername;
+
+    // ── Basic presence checks ──
+    if (!displayName || !displayName.trim()) {
+      return res.status(400).json({ error: "Display name is required" });
+    }
+    if (displayName.trim().length > 30) {
+      return res.status(400).json({ error: "Display name must be 30 characters or fewer" });
+    }
+    if (!birthdate) {
+      return res.status(400).json({ error: "Birthdate is required" });
+    }
+
+    // ── Username format validation ──
+    const usernameError = validateUsernameFormat(username);
+    if (usernameError) {
+      return res.status(400).json({ error: usernameError });
+    }
+
+    // ── Age gate (13+) ──
+    const parsedBirthdate = new Date(birthdate);
+    if (isNaN(parsedBirthdate.getTime())) {
+      return res.status(400).json({ error: "Invalid birthdate" });
+    }
+    if (parsedBirthdate > new Date()) {
+      return res.status(400).json({ error: "Birthdate cannot be in the future" });
+    }
+    if (calculateAge(parsedBirthdate) < MIN_AGE) {
+      return res.status(403).json({
+        error: `You must be at least ${MIN_AGE} years old to create an account`,
+      });
+    }
 
     // Check if user already exists
     const [
@@ -117,8 +283,10 @@ router.post("/register", authLimiter, async (req, res) => {
 
 const pending = new PendingRegistration({
   username,
+  displayName: displayName.trim(),
   email,
   password: hashedPassword,
+  birthdate: parsedBirthdate,
   emailVerificationOTP: hashedOTP,
   emailVerificationExpires: Date.now() + 10 * 60 * 1000,
   expiresAt: Date.now() + 10 * 60 * 1000,
@@ -133,20 +301,12 @@ return res.status(200).json({
   requiresVerification: true,
   email,
 });
-    // const token = jwt.sign({ id: newUser._id },process.env.JWT_SECRET, { expiresIn: "30d" });
-    // const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-
-    // await Session.create({
-    //   userId: newUser._id,
-    //   deviceId: req.deviceId,
-    //   tokenHash,
-    //   userAgent: req.headers["user-agent"],
-    //   ip: req.ip
-    // });
-    // res.cookie("token", token, cookieOptions);
-    // res.status(201).json({ message: "User registered & authenticated successfully", user: newUser, token });
   } catch (error) {
     console.error("Error in registration:", error);
+    if (error.name === "ValidationError") {
+      const firstError = Object.values(error.errors)[0]?.message || "Invalid input";
+      return res.status(400).json({ error: firstError });
+    }
     res.status(500).json({ error: "Registration failed" });
   }
 });
@@ -164,7 +324,7 @@ router.post("/verify-email", verifyLimiter, async (req, res) => {
       email,
       emailVerificationOTP: hashedOTP,
       emailVerificationExpires: { $gt: Date.now() },
-    }).select("+password");
+    }).select("+password +emailVerificationOTP +emailVerificationExpires");
 
     if (!pending) {
       return res.status(400).json({
@@ -175,8 +335,10 @@ router.post("/verify-email", verifyLimiter, async (req, res) => {
 
     const user = await User.create({
       username: pending.username,
+      displayName: pending.displayName,
       email: pending.email,
       password: pending.password,
+      birthdate: pending.birthdate,
     });
 
     await PendingRegistration.deleteOne({
