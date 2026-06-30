@@ -606,7 +606,7 @@ export default function Auth() {
       </div>
 
       {/* ── RIGHT PANE ── */}
-      <div className="relative z-10 w-full md:w-[480px] lg:w-[540px] bg-[#080A09]/90 backdrop-blur-2xl border-l border-white/5 min-h-screen flex flex-col justify-center px-8 sm:px-12 py-12 overflow-y-auto shadow-2xl">
+      <div className="relative z-10 w-full md:w-[480px] lg:w-[540px] bg-[#080A09]/90 backdrop-blur-2xl border-l border-white/5 min-h-screen flex flex-col justify-start px-8 sm:px-12 py-12 overflow-y-auto shadow-2xl">
         <div className="flex md:hidden items-center gap-3 mb-10">
           <Logo className="w-7 h-7" style={{ color: "#62D4AE" }} />
           <span className="text-lg font-bold tracking-[0.1em] uppercase text-white">Rigzer</span>
@@ -621,7 +621,7 @@ export default function Auth() {
           </h2>
           <p className="text-sm text-white/50">
             {mode === 'login' && 'Enter your details to sign in.'}
-            {mode === 'signup' && 'Get started with email or phone number.'}
+            {mode === 'signup' && 'Get started with your email address'}
             {mode === 'google-setup' && 'Just a few more details to finish setting up your account.'}
             {mode === 'forgot-password' && (resetSent ? 'Check your inbox!' : 'Enter your email to receive a reset link.')}
           </p>
