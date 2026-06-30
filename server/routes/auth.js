@@ -53,20 +53,19 @@ router.get("/google", passport.authenticate("google", { scope: ["profile", "emai
 // Handle Google OAuth callback
 router.get(
   "/google/callback",
-  passport.authenticate("google", { session: false, failureRedirect: `${url}/login` }),
+  // 1. UPDATE FAILURE REDIRECT
+  passport.authenticate("google", { session: false, failureRedirect: `${url}/auth` }),
   async (req, res) => {
     try {
-      // 1️⃣ Catch new user payload from passport
       if (req.user.isNew) {
-        // Encode google profile into a temporary, short-lived JWT token to pass to frontend
         const tempToken = jwt.sign(
           { email: req.user.googleProfile.email },
           process.env.JWT_SECRET,
           { expiresIn: "1h" }
         );
         
-        // Redirect to Frontend `/login` but with params so it shows the "Complete Profile" setup form
-        const redirectUrl = new URL(`${url}/login`);
+        // 2. UPDATE NEW USER REDIRECT
+        const redirectUrl = new URL(`${url}/auth`);
         redirectUrl.searchParams.set("googleSetup", "true");
         redirectUrl.searchParams.set("tempToken", tempToken);
         redirectUrl.searchParams.set("name", encodeURIComponent(req.user.googleProfile.displayName));
@@ -74,7 +73,7 @@ router.get(
         return res.redirect(redirectUrl.toString());
       }
 
-      // 2️⃣ Existing user continues login...
+      // Existing user continues login...
       const { user, token } = req.user;
       const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
@@ -91,7 +90,8 @@ router.get(
 
     } catch (err) {
       console.error("Google login error:", err);
-      res.redirect(`${url}/login`);
+      // 3. UPDATE ERROR REDIRECT
+      res.redirect(`${url}/auth`);
     }
   }
 );
