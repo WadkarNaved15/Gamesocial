@@ -401,6 +401,14 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (showOTP) {
+      if (otp.length === 6) {
+        handleVerifyOTP();
+      }
+      return;
+    }
+
     setIsLoading(true);
     setStatus(null);
     try {
@@ -636,7 +644,28 @@ export default function Auth() {
           </div>
         )}
 
-        <form onSubmit={mode === 'forgot-password' ? handleForgotPassword : handleSubmit} className="space-y-4 animate-fade-up " style={{ animationDelay: '0.1s' }}>
+        <form 
+  onSubmit={(e) => {
+    e.preventDefault();
+    // If we already sent the reset email or are showing OTP, don't let the main actions re-fire
+    if (mode === 'forgot-password' && resetSent) {
+      setMode('login');
+      setResetSent(false);
+      setResetEmail("");
+      setStatus(null);
+      return;
+    }
+    
+    // Otherwise, pass through to your regular handlers
+    if (mode === 'forgot-password') {
+      handleForgotPassword(e);
+    } else {
+      handleSubmit(e);
+    }
+  }} 
+  className="space-y-4 animate-fade-up" 
+  style={{ animationDelay: '0.1s' }}
+>
           {showOTP ? (
             <div className="space-y-5">
               <div className="text-center">
