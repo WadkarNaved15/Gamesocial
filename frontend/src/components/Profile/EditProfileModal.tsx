@@ -10,7 +10,7 @@ interface EditProfileModalProps {
   onSaved: () => void;
 }
 
-const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose,onSaved}) => {
+const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved }) => {
   const { user, refreshUser } = useUser();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -24,15 +24,17 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose,onSaved}) =
   if (!user) return null;
 
   const [form, setForm] = useState({
+    displayName: user.displayName || "",
     username: user.username || "",
     bio: user.bio || "",
+    location: user.location || "",
+    website: user.website || "",
+    birthDate: user.birthDate
+      ? user.birthDate.slice(0, 10)
+      : "",
+    jobTitle: user.jobTitle || "",
     avatar: user.avatar || null,
     banner: user.banner || null,
-    twitter: user.socials?.twitter || "",
-    instagram: user.socials?.instagram || "",
-    youtube: user.socials?.youtube || "",
-    steam: user.socials?.steam || "",
-    discord: user.socials?.discord || "",
   });
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>, type: 'avatar' | 'banner') => {
@@ -47,78 +49,76 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose,onSaved}) =
   };
   const uploadToS3 = async (file: Blob, type: "avatar" | "banner") => {
 
-  const res = await axios.post(`${BACKEND_URL}/api/upload/presigned-url`, {
-    fileName: `${type}.jpg`,
-    fileType: file.type,
-    category: "media",
-  });
+    const res = await axios.post(`${BACKEND_URL}/api/upload/presigned-url`, {
+      fileName: `${type}.jpg`,
+      fileType: file.type,
+      category: "media",
+    });
 
-  await axios.put(res.data.uploadUrl, file, {
-    headers: { "Content-Type": file.type },
-  });
+    await axios.put(res.data.uploadUrl, file, {
+      headers: { "Content-Type": file.type },
+    });
 
-  return res.data.fileUrl as string;
-};
+    return res.data.fileUrl as string;
+  };
 
   const onCropComplete = useCallback((_: any, clippedPixels: any) => {
     setCroppedAreaPixels(clippedPixels);
   }, []);
 
   const applyCrop = async () => {
-  if (!editingImage || !croppedAreaPixels) return;
+    if (!editingImage || !croppedAreaPixels) return;
 
-  try {
-    const croppedBlob = await getCroppedImage(
-      editingImage.url,
-      croppedAreaPixels
-    );
+    try {
+      const croppedBlob = await getCroppedImage(
+        editingImage.url,
+        croppedAreaPixels
+      );
 
-    const uploadedUrl = await uploadToS3(
-      croppedBlob,
-      editingImage.type
-    );
+      const uploadedUrl = await uploadToS3(
+        croppedBlob,
+        editingImage.type
+      );
 
-    setForm((prev) => ({
-      ...prev,
-      [editingImage.type]: uploadedUrl,
-    }));
+      setForm((prev) => ({
+        ...prev,
+        [editingImage.type]: uploadedUrl,
+      }));
 
-    setEditingImage(null);
-    setZoom(1);
-  } catch (err) {
-    console.error("Image upload failed", err);
-  }
-};
+      setEditingImage(null);
+      setZoom(1);
+    } catch (err) {
+      console.error("Image upload failed", err);
+    }
+  };
 
   const saveProfile = async () => {
-  try {
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+    try {
+      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-    await axios.patch(
-      `${BACKEND_URL}/api/me`,
-      {
-        username: form.username,
-        bio: form.bio,
-        avatar: form.avatar,
-        banner: form.banner,
-        socials: {
-          twitter: form.twitter,
-          instagram: form.instagram,
-          youtube: form.youtube,
-          steam: form.steam,
-          discord: form.discord,
+      await axios.patch(
+        `${BACKEND_URL}/api/me`,
+        {
+          displayName: form.displayName,
+          username: form.username,
+          bio: form.bio,
+          location: form.location,
+          website: form.website,
+          birthDate: form.birthDate,
+          jobTitle: form.jobTitle,
+          avatar: form.avatar,
+          banner: form.banner,
         },
-      },
-      { withCredentials: true }
-    );
+        { withCredentials: true }
+      );
 
-    await refreshUser();
-    onSaved?.(); // ← call if provided (handles cache clear + modal close)
-    if (!onSaved) onClose(); // ← fallback for any usage without onSaved
-  } catch (err) {
-    console.error("Update failed", err);
-  }
-};
+      await refreshUser();
+      onSaved?.(); // ← call if provided (handles cache clear + modal close)
+      if (!onSaved) onClose(); // ← fallback for any usage without onSaved
+    } catch (err) {
+      console.error("Update failed", err);
+    }
+  };
 
 
   return (
@@ -199,27 +199,81 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose,onSaved}) =
 
           {/* Rest of the Fields (Same as before) */}
           <div className="p-4 pt-0 space-y-6">
+            {/* Display Name */}
             <div className="group border border-zinc-800 rounded p-2 focus-within:border-blue-500">
-              <label className="text-xs text-zinc-500">Name</label>
-              <input value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} className="w-full bg-transparent text-white outline-none" />
+              <label className="text-xs text-zinc-500">Display Name</label>
+              <input
+                type="text"
+                value={form.displayName || ''}
+                onChange={e => setForm({ ...form, displayName: e.target.value })}
+                className="w-full bg-transparent text-white outline-none pt-1"
+              />
             </div>
-            {/* Add Bio and Social inputs here... */}
-            <div className="px-4 space-y-6 pb-10">
-              {/* Bio, Social Links, etc. */}
-              <h3 className="text-zinc-500 font-bold text-sm uppercase tracking-widest pt-4">Social Links</h3>
-              <div className="grid grid-cols-1 gap-4">
-                {['twitter', 'instagram', 'youtube', 'steam', 'discord'].map((id) => (
-                  <div key={id} className="group border border-zinc-700 rounded-md p-2 focus-within:border-blue-500">
-                    <label className="block text-xs text-zinc-500 capitalize">{id} URL</label>
-                    <input
-                      type="text"
-                      value={(form as any)[id]}
-                      onChange={(e) => setForm({ ...form, [id]: e.target.value })}
-                      className="w-full bg-transparent text-white outline-none pt-1"
-                    />
-                  </div>
-                ))}
-              </div>
+
+            {/* Username */}
+            <div className="group border border-zinc-800 rounded p-2 focus-within:border-blue-500">
+              <label className="text-xs text-zinc-500">Username</label>
+              <input
+                type="text"
+                value={form.username || ''}
+                onChange={e => setForm({ ...form, username: e.target.value })}
+                className="w-full bg-transparent text-white outline-none pt-1"
+              />
+            </div>
+
+            {/* Bio */}
+            <div className="group border border-zinc-800 rounded p-2 focus-within:border-blue-500">
+              <label className="text-xs text-zinc-500">Bio</label>
+              <textarea
+                rows={3}
+                value={form.bio || ''}
+                onChange={e => setForm({ ...form, bio: e.target.value })}
+                className="w-full bg-transparent text-white outline-none pt-1 resize-none"
+              />
+            </div>
+
+            {/* Location */}
+            <div className="group border border-zinc-800 rounded p-2 focus-within:border-blue-500">
+              <label className="text-xs text-zinc-500">Location</label>
+              <input
+                type="text"
+                value={form.location || ''}
+                onChange={e => setForm({ ...form, location: e.target.value })}
+                className="w-full bg-transparent text-white outline-none pt-1"
+              />
+            </div>
+
+            {/* Website */}
+            <div className="group border border-zinc-800 rounded p-2 focus-within:border-blue-500">
+              <label className="text-xs text-zinc-500">Website</label>
+              <input
+                type="url"
+                value={form.website || ''}
+                onChange={e => setForm({ ...form, website: e.target.value })}
+                className="w-full bg-transparent text-white outline-none pt-1"
+              />
+            </div>
+
+            {/* Birth Date */}
+            <div className="group border border-zinc-800 rounded p-2 focus-within:border-blue-500">
+              <label className="text-xs text-zinc-500 block">Birth Date</label>
+              <input
+                type="date"
+                value={form.birthDate || ''}
+                onChange={e => setForm({ ...form, birthDate: e.target.value })}
+                className="w-full bg-transparent text-white outline-none pt-1 [color-scheme:dark]"
+              />
+            </div>
+
+            {/* Job Title */}
+            <div className="group border border-zinc-800 rounded p-2 focus-within:border-blue-500 pb-4">
+              <label className="text-xs text-zinc-500">Job Title</label>
+              <input
+                type="text"
+                value={form.jobTitle || ''}
+                onChange={e => setForm({ ...form, jobTitle: e.target.value })}
+                className="w-full bg-transparent text-white outline-none pt-1"
+              />
             </div>
           </div>
         </div>

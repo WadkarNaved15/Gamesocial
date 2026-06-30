@@ -6,6 +6,12 @@ const userSchema = new mongoose.Schema(
     username: {
       type: String, required: true, trim: true, unique: true
     },
+    displayName: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 50,
+    },
     email: { type: String, unique: true, required: true, lowercase: true },
     password: {
       type: String,
@@ -16,23 +22,40 @@ const userSchema = new mongoose.Schema(
     },
     isGoogleUser: { type: Boolean, default: false },
 
-    avatar:  { type: String, default: "" },
-    banner:  { type: String, default: "" },
-    bio:     { type: String, maxlength: 160, default: "" },
+    avatar: { type: String, default: "" },
+    banner: { type: String, default: "" },
+    bio: { type: String, maxlength: 160, default: "" },
+    location: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 100,
+    },
 
-    socials: {
-      twitter:   String,
-      instagram: String,
-      youtube:   String,
-      discord:   String,
+    website: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    birthDate: {
+      type: Date,
+      default: null,
+    },
+
+    jobTitle: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 100,
     },
 
     followersCount: { type: Number, default: 0 },
     followingCount: { type: Number, default: 0 },
 
     role: {
-      type:    String,
-      enum:    ["user", "admin"],
+      type: String,
+      enum: ["user", "admin"],
       default: "user",
     },
 
@@ -41,8 +64,8 @@ const userSchema = new mongoose.Schema(
     // Being verified does NOT automatically grant this.
     isPocketEligible: { type: Boolean, default: false },
 
-    resetPasswordToken:       { type: String, select: false },
-    resetPasswordExpires:     { type: Date },
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpires: { type: Date },
   },
   { timestamps: true }
 );

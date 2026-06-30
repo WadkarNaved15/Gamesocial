@@ -7,16 +7,17 @@ import { saveAccount, removeAccount } from "../utils/accountRegistry";
 type User = {
   _id: string;
   username: string;
+  displayName?: string;
+  location?: string;
+  website?: string;
+  birthDate?: string;
+  jobTitle?: string;
   email: string;
   avatar?: string;
   banner?: string;
   bio?: string;
   role?: "user" | "admin";
   isPocketEligible?: boolean;
-  socials?: {
-    twitter?: string; instagram?: string;
-    youtube?: string; discord?: string; steam?: string;
-  };
   followersCount?: number;
   followingCount?: number;
 };
