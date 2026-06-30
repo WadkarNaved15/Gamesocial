@@ -1,6 +1,6 @@
 // src/pages/ProfilePage.tsx
 import React from "react";
-import { Youtube, Instagram, MessageSquare } from "lucide-react";
+import { MessageSquare, MapPin, Link as LinkIcon, Cake, Briefcase } from "lucide-react";
 import FollowButton from "../FollowButton";
 import type { ArticleProps } from "../../types/Article";
 import FollowersList from "../FollowersList";
@@ -33,7 +33,7 @@ const ProfilePage: React.FC = () => {
 
   const cachedRef = useRef(username ? getProfileCache(username) : null);
   const cached = cachedRef.current;
-
+  const [bioExpanded, setBioExpanded] = useState(false);
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(cached?.profileUser ?? null);
   const [profileNotFound, setProfileNotFound] = useState(false);
   const [userPosts, setUserPosts] = useState<PostProps[]>(cached?.posts ?? []);
@@ -53,7 +53,7 @@ const ProfilePage: React.FC = () => {
 
   const contentReady = !loadingProfile && userPosts.length > 0;
   const savedScrollY = cached?.scrollY ?? 0;
-
+  const isBioLong = (profileUser?.bio?.length ?? 0) > 60;
   useScrollRestoration(`profile_${username}`, savedScrollY, contentReady);
 
   // ── Save to cache on unmount ──────────────────────────────────────────────
@@ -202,7 +202,7 @@ const ProfilePage: React.FC = () => {
               {/* Name row */}
               <div className="flex items-center gap-5 flex-wrap">
                 <h1 className="text-4xl font-black tracking-tight text-white italic uppercase leading-none">
-                  {profileUser?.username}
+                  {profileUser?.displayName ?? profileUser?.username}
                 </h1>
 
                 {isOwnProfile ? (
@@ -281,7 +281,7 @@ const ProfilePage: React.FC = () => {
                 </div>
 
                 {/* Avatar + bio overlap */}
-                <div className="relative px-8 -mt-14 md:-mt-20 flex flex-col items-center text-center md:flex-row md:items-end md:text-left gap-6 z-10">
+                <div className="relative px-8 -mt-14 md:-mt-20 flex flex-col items-center text-center md:flex-row md:items-start md:text-left gap-6 z-10">
                   <div className="relative group shrink-0">
                     <img
                       src={profileUser?.avatar || "/default_avatar.png"}
@@ -290,22 +290,79 @@ const ProfilePage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Tagline */}
-                  <div className="md:mb-4">
-                    <p className="text-white/50 font-medium text-xs md:text-sm leading-relaxed max-w-sm">
-                      With an{" "}
-                      <span className="text-white font-bold">authoritative voice</span> and
-                      calm demeanor...
+                  {/* Bio body (Aligned next to avatar on desktop, pushes down safely with toggle) */}
+                  <div className="md:pt-24 max-w-xl flex flex-col items-center md:items-start">
+                    <p className="text-white font-medium text-sm leading-relaxed break-words whitespace-pre-line">
+                      {profileUser?.bio
+                        ? (isBioLong && !bioExpanded
+                          ? `${profileUser.bio.slice(0, 60)}...`
+                          : profileUser.bio)
+                        : "Additional profile content or bio details can go here."
+                      }
                     </p>
+
+                    {/* Show More / Show Less Button */}
+                    {profileUser?.bio && profileUser.bio.length > 60 && (
+                      <button
+                        onClick={() => setBioExpanded(!bioExpanded)}
+                        className="mt-1.5 text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline transition-all focus:outline-none"
+                      >
+                        {bioExpanded ? "Show less" : "Show more"}
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* Bio body */}
-                <div className="p-8 flex-grow">
-                  <p className="text-white/40 text-sm leading-relaxed">
-                    {profileUser?.bio || "Additional profile content or bio details can go here."}
-                  </p>
-                </div>
+                {/* Additional metadata info */}
+                {(profileUser?.location || profileUser?.website || profileUser?.birthdate || profileUser?.jobTitle) && (
+                  <div className="px-8 pb-8 flex flex-col gap-3 text-sm text-white/50 font-medium mt-2">
+
+                    {/* Job Title */}
+                    {profileUser?.jobTitle && (
+                      <div className="flex items-center gap-2.5">
+                        <Briefcase size={16} className="text-white/40 shrink-0" />
+                        <span>{profileUser.jobTitle}</span>
+                      </div>
+                    )}
+
+                    {/* Location */}
+                    {profileUser?.location && (
+                      <div className="flex items-center gap-2.5">
+                        <MapPin size={16} className="text-white/40 shrink-0" />
+                        <span>{profileUser.location}</span>
+                      </div>
+                    )}
+
+                    {/* Website */}
+                    {profileUser?.website && (
+                      <div className="flex items-center gap-2.5">
+                        <LinkIcon size={16} className="text-white/40 shrink-0" />
+                        <a
+                          href={profileUser.website.startsWith('http') ? profileUser.website : `https://${profileUser.website}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:underline transition-all"
+                        >
+                          {profileUser.website.replace(/(^\w+:|^)\/\//, '')}
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Birthdate */}
+                    {profileUser?.birthdate && (
+                      <div className="flex items-center gap-2.5">
+                        <Cake size={16} className="text-white/40 shrink-0" />
+                        <span>
+                          Born {new Date(profileUser.birthdate).toLocaleDateString(undefined, {
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -314,48 +371,48 @@ const ProfilePage: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mt-6 pb-112">
-          <div className="min-w-0 flex flex-col">
-            {loadingPosts && (
-              <div className="text-white/40 text-sm">Loading your posts...</div>
-            )}
+        <div className="min-w-0 flex flex-col">
+          {loadingPosts && (
+            <div className="text-white/40 text-sm">Loading your posts...</div>
+          )}
 
-            {!loadingPosts && userPosts.length === 0 && (
-              <div className="text-white/40 text-sm">
-                You haven't uploaded any posts yet.
+          {!loadingPosts && userPosts.length === 0 && (
+            <div className="text-white/40 text-sm">
+              You haven't uploaded any posts yet.
+            </div>
+          )}
+
+          <div className="flex flex-col">
+            {userPosts.map((post) => (
+              <Post
+                key={post._id}
+                {...post}
+                viewSource="profile"
+                onDeleteSuccess={(postId) => {
+                  setUserPosts((prev) => prev.filter((p) => p._id !== postId));
+                }}
+                onOpenDetails={() => {
+                  trackEvent({
+                    eventType: "content_view",
+                    targetType: post.type,
+                    targetId: post._id,
+                    metadata: {
+                      source: "profile",
+                      profileOwnerId: profileUser?._id,
+                    },
+                  });
+                  navigate(`/post/${post._id}`, { state: { post } });
+                }}
+              />
+            ))}
+
+            {hasMorePosts && (
+              <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
+                <span className="text-xs text-white/30">Loading more posts...</span>
               </div>
             )}
-
-            <div className="flex flex-col">
-              {userPosts.map((post) => (
-                <Post
-                  key={post._id}
-                  {...post}
-                  viewSource="profile"
-                  onDeleteSuccess={(postId) => {
-                    setUserPosts((prev) => prev.filter((p) => p._id !== postId));
-                  }}
-                  onOpenDetails={() => {
-                    trackEvent({
-                      eventType: "content_view",
-                      targetType: post.type,
-                      targetId: post._id,
-                      metadata: {
-                        source: "profile",
-                        profileOwnerId: profileUser?._id,
-                      },
-                    });
-                    navigate(`/post/${post._id}`, { state: { post } });
-                  }}
-                />
-              ))}
-
-              {hasMorePosts && (
-                <div ref={loadMoreRef} className="h-10 flex items-center justify-center">
-                  <span className="text-xs text-white/30">Loading more posts...</span>
-                </div>
-              )}
-            </div>
           </div>
+        </div>
       </div>
     </div>
   );

@@ -7,13 +7,11 @@ export interface ProfileUser {
   avatar?: string;
   banner?: string;
   bio?: string;
-  socials?: {
-    twitter?: string;
-    youtube?: string;
-    instagram?: string;
-    steam?: string;
-    discord?: string;
-  };
+  displayName?: string;
+  location?: string;
+  website?: string;
+  birthdate?: string;
+  jobTitle?: string;
   isFollowing?: boolean;
 }
 
