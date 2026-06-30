@@ -267,7 +267,7 @@ const ProfilePage: React.FC = () => {
               <div className={`${glassCard} relative overflow-hidden h-full min-h-[350px] flex flex-col`}>
 
                 {/* Banner */}
-                <div className="relative h-32 md:h-48 shrink-0 overflow-hidden rounded-t-3xl">
+                <div className="relative h-32 md:h-40 shrink-0 overflow-hidden rounded-t-3xl">
                   <img
                     src={
                       profileUser?.banner ||
@@ -285,7 +285,7 @@ const ProfilePage: React.FC = () => {
                   <div className="relative group shrink-0">
                     <img
                       src={profileUser?.avatar || "/default_avatar.png"}
-                      className="relative w-28 h-28 md:w-40 md:h-40 rounded-full object-cover border-4 md:border-[6px] border-white/20 shadow-2xl hover:scale-105 transition-transform duration-300 cursor-pointer"
+                      className="relative w-24 h-24 md:w-36 md:h-36 rounded-full object-cover border-4 md:border-[6px] border-white/20 shadow-2xl hover:scale-105 transition-transform duration-300 cursor-pointer"
                       alt="Avatar"
                     />
                   </div>
