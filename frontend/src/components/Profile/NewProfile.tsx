@@ -190,10 +190,10 @@ const ProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="relative pt-2 min-h-screen text-white">
+    <div className="relative min-h-screen text-white">
 
       {/* Max-width wrapper */}
-      <div className="max-w-6xl px-4 ">
+      <div className="max-w-6xl">
 
         {/* ── Header: Username + Actions + Followers ── */}
         <div className="w-full pb-6 pt-4 ">
@@ -252,7 +252,7 @@ const ProfilePage: React.FC = () => {
               )}
             </div>
 
-            <div className="shrink-0">
+            <div className="shrink-0 mb-3">
               <FollowersList userId={profileUser ? profileUser._id : ""} />
             </div>
           </div>
@@ -313,7 +313,7 @@ const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 mt-12 pb-112">
+      <div className="max-w-7xl mt-12 pb-112">
           <div className="min-w-0 flex flex-col">
             {loadingPosts && (
               <div className="text-white/40 text-sm">Loading your posts...</div>
