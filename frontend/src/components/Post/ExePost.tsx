@@ -113,23 +113,19 @@ const ExePost: React.FC<ExePostProps> = ({
     if (detailed) setShowComments(true);
   }, [detailed]);
 
-  return (
+return (
     <article
       ref={postRef}
       onClick={(e) => {
         if (detailed) return;
-
-        // prevent interaction clicks
         if ((e.target as HTMLElement).closest("button")) return;
-
-        // 🔥 OPEN DETAILS IN HOME (NO ROUTING)
         onOpenDetails?.();
       }}
-      // className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-transparent hover:bg-white/[0.03] cursor-pointer transition-colors duration-200"
-      className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-white/[0.03] cursor-pointer transition-colors duration-200"
+      className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-white/[0.03] cursor-pointer transition-colors duration-200 py-4"
     >
-      <div className="flex gap-3 p-4">
-        {/* LEFT COLUMN — Avatar stays here */}
+      {/* 1. TOP SECTION: Avatar, Header & Description */}
+      <div className="flex gap-3 px-4">
+        {/* Avatar */}
         <img
           src={user.avatar || "/default_avatar.png"}
           alt={user.username}
@@ -139,16 +135,17 @@ const ExePost: React.FC<ExePostProps> = ({
               eventType: "profile_view",
               targetType: "user",
               targetId: user._id,
-              metadata: { from: "post" },
+              metadata: { from: "post",
+                postId: _id,
+               },
             });
             navigate(`/profile/${user.username}`);
           }}
-          className="h-10 w-10 rounded-full object-cover mt-1"
+          className="h-10 w-10 shrink-0 rounded-full object-cover mt-1"
         />
 
-        {/* RIGHT COLUMN — Header + content */}
+        {/* Text Content */}
         <div className="flex flex-col flex-1 min-w-0">
-          {/* Username + Date + Menu + Price */}
           <PostHeader
             username={user.username}
             timestamp={timestamp}
@@ -156,23 +153,29 @@ const ExePost: React.FC<ExePostProps> = ({
             type='model_post'
             isOwner={isOwner}
             onDelete={() => setDeleteOpen(true)}
+             onProfileClick={() => {
+                trackEvent({
+                  eventType: "profile_view",
+                  targetType: "user",
+                  targetId: user._id,
+                  metadata: { from: "post" ,
+                    postId: _id,
+                  },
+                });
+
+                navigate(`/profile/${user.username}`);
+              }}
           />
 
           {description && (
             <div>
-              <p
-                className={`text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${
-                  !isExpanded ? "line-clamp-2" : ""
-                }`}
-              >
+              <p className={`text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${!isExpanded ? "line-clamp-2" : ""}`}>
                 {description}
               </p>
-
-              {/* Only show button if description is long enough to need it */}
               {description.length > 100 && (
                 <button
                   onClick={(e) => {
-                    e.stopPropagation(); // Prevents opening post details when clicking the button
+                    e.stopPropagation();
                     setIsExpanded(!isExpanded);
                   }}
                   className="text-sky-400 hover:text-sky-300 font-semibold text-sm mt-1 focus:outline-none"
@@ -182,28 +185,39 @@ const ExePost: React.FC<ExePostProps> = ({
               )}
             </div>
           )}
+        </div>
+      </div>
 
-          {/* 3D MODEL */}
-          {modelUrl && (
-            <div className="group relative mt-3 flex justify-center overflow-hidden w-full h-[450px] rounded-2xl border border-white/[0.08] bg-black/20">
-              {/* @ts-ignore */}
-              <model-viewer
-                src={modelUrl}
-                onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                camera-controls
-                auto-rotate
-                autoplay
-                animation-name="*"
-                exposure="1.2"
-                environment-image="neutral"
-                field-of-view="25deg" 
-                shadow-intensity="1"
-                style={{ width: "100%", height: "100%" }}
-              />
-            </div>
-          )}
+      {/* 2. MIDDLE SECTION: Full-Width 3D Model (No Borders) */}
+      {modelUrl && (
+        <div 
+          className={`group relative mt-3 flex justify-center overflow-hidden w-full h-[450px] bg-black/20 ${
+            detailed ? "grayscale" : ""
+          }`}
+        >
+          {/* @ts-ignore */}
+          <model-viewer
+            src={modelUrl}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            camera-controls
+            auto-rotate
+            autoplay
+            animation-name="*"
+            exposure="1.2"
+            environment-image="neutral"
+            field-of-view="25deg" 
+            shadow-intensity="1"
+            style={{ width: "100%", height: "100%" }}
+          />
+        </div>
+      )}
 
-          {/* Post Interactions */}
+      {/* 3. BOTTOM SECTION: Post Interactions & Comments */}
+      <div className="flex gap-3 px-4 mt-3">
+        {/* Invisible spacer to keep interactions aligned with the text column above (Twitter style) */}
+        <div className="h-10 w-10 shrink-0 opacity-0 hidden sm:block"></div>
+        
+        <div className="flex flex-col flex-1 min-w-0">
           <div onClick={(e) => e.stopPropagation()}>
             <PostInteractions
               postId={_id}
@@ -214,13 +228,12 @@ const ExePost: React.FC<ExePostProps> = ({
               onLike={handleLike}
               isWishlisted={localIsWishlisted}
               onWishlist={handleWishlist}
-              onCommentToggle={() => onOpenDetails?.()} // ✅ toggle
+              onCommentToggle={() => onOpenDetails?.()} 
             />
           </div>
 
-          {/* Comment Section (shown only if showComments is true) */}
           {showComments && (
-            <div onClick={(e) => e.stopPropagation()}>
+            <div onClick={(e) => e.stopPropagation()} className="mt-2">
               <CommentSection postId={_id} BACKEND_URL={BACKEND_URL} />
             </div>
           )}

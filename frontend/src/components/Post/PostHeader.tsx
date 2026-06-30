@@ -9,6 +9,7 @@ interface PostHeaderProps {
   price: number;
   isOwner?: boolean;
   onDelete?: () => void;
+  onProfileClick?: () => void;
 }
 
 const PostHeader: React.FC<PostHeaderProps> = ({
@@ -17,7 +18,8 @@ const PostHeader: React.FC<PostHeaderProps> = ({
   timestamp,
   price,
   isOwner,
-  onDelete
+  onDelete,
+  onProfileClick,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -52,7 +54,19 @@ const PostHeader: React.FC<PostHeaderProps> = ({
       <div className="flex items-center gap-3">
 
         <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-gray-900 dark:text-white">{username}</h3>
+          <h3
+  onClick={(e) => {
+    e.stopPropagation();
+    onProfileClick?.();
+  }}
+  className="
+    font-semibold
+    text-gray-900 dark:text-white
+    cursor-pointer
+  "
+>
+  {username}
+</h3>
           <span className="text-gray-400">•</span>
           <p className="text-sm text-gray-500 dark:text-gray-400">{timestamp}</p>
         </div>

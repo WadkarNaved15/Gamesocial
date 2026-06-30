@@ -291,7 +291,9 @@ const GamePost: React.FC<GamePostProps> = ({
                 eventType: "profile_view",
                 targetType: "user",
                 targetId: user._id,
-                metadata: { from: "post" },
+                metadata: { from: "post",
+                  postId: _id,
+                 },
               });
               navigate(`/profile/${user.username}`);
             }}
@@ -305,6 +307,17 @@ const GamePost: React.FC<GamePostProps> = ({
               timestamp={timestamp}
               price={gamePost?.price || 0}
               isOwner={isOwner}
+              onProfileClick={() => {
+                trackEvent({
+                  eventType: "profile_view",
+                  targetType: "user",
+                  targetId: user._id,
+                  metadata: { from: "post",
+                    postId: _id,
+                   },
+                });
+                navigate(`/profile/${user.username}`);
+              }}
               onDelete={() => setDeleteOpen(true)}
             />
 

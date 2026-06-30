@@ -179,7 +179,9 @@ const NormalPost: React.FC<NormalPostProps> = ({
               eventType: "profile_view",
               targetType: "user",
               targetId: user._id,
-              metadata: { from: "post" },
+              metadata: { from: "post" ,
+                postId: _id,
+              },
             });
             navigate(`/profile/${user.username}`);
           }}
@@ -195,6 +197,17 @@ const NormalPost: React.FC<NormalPostProps> = ({
             type="normal_post"
             isOwner={isOwner}
             onDelete={() => setDeleteOpen(true)}
+            onProfileClick={() => {
+                trackEvent({
+                  eventType: "profile_view",
+                  targetType: "user",
+                  targetId: user._id,
+                  metadata: { from: "post" ,
+                    postId: _id,
+                  },
+                });
+                navigate(`/profile/${user.username}`);
+              }}
           />
 
           {description && (
