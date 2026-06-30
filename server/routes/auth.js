@@ -163,10 +163,24 @@ router.post("/google-complete", authLimiter, async (req, res) => {
       token,
       user,
     });
-  } catch (error) {
-    console.error("Error finalizing Google setup:", error);
-    res.status(500).json({ error: "Failed to create account" });
+// Inside /google-complete route in auth.js
+} catch (error) {
+  console.error("Error finalizing Google setup:", error);
+
+  // ADD THIS: Explicitly check for Mongoose Validation Errors
+  if (error.name === 'ValidationError') {
+    // Get the first error message from the validation object
+    const firstError = Object.values(error.errors)[0]?.message || "Invalid input";
+    return res.status(400).json({ error: firstError });
   }
+
+  // Handle MongoDB duplicate key errors (code 11000)
+  if (error.code === 11000) {
+    return res.status(400).json({ error: "Username or email is already taken." });
+  }
+
+  res.status(500).json({ error: "Failed to create account. Please try again." });
+}
 });
 
 
