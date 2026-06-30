@@ -15,7 +15,7 @@ import AmbientBackground from "../components/AmbientBackground";
 import OrbBackground from "../components/OrbBacground";
 import AuthGateModal from "../components/Auth/AuthGateModal";
 import GuestSessionExpired from "../components/Auth/GuestSessionExpired";
-import LegalModal from "../Pages/LegalModal"; 
+import LegalModal from "../Pages/LegalModal";
 import SettingsModal from "../components/SettingsModal";
 
 const ProfileCover = lazy(() => import("../components/Home/Profile"));
@@ -33,11 +33,11 @@ function MainLayout() {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | 'paid' | null>(null);
-  
+
   // Track both the open state AND which view to show
-  const [settingsConfig, setSettingsConfig] = useState<{isOpen: boolean, view: 'password' | 'delete'}>({ 
-    isOpen: false, 
-    view: 'password' 
+  const [settingsConfig, setSettingsConfig] = useState<{ isOpen: boolean, view: 'password' | 'delete' }>({
+    isOpen: false,
+    view: 'password'
   });
 
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -64,7 +64,7 @@ function MainLayout() {
   };
 
   const hideBillboard =
-    isProfilePage || isModelPost || isCreatePage || isArticlePage;
+    isModelPost || isCreatePage || isArticlePage;
 
   useEffect(() => {
     if (user) return;
@@ -76,7 +76,7 @@ function MainLayout() {
       );
     }
   }, [minutes, bannerShown, user, openGate]);
-  
+
   useEffect(() => {
     if (user) return;
 
@@ -181,14 +181,12 @@ function MainLayout() {
                 <div
                   ref={centerRef}
                   className={`
-                    flex flex-col w-full
-                    ${isProfilePage
+                      flex flex-col w-full
+                      ${hideBillboard
                       ? "lg:col-span-10 2xl:col-span-13"
-                      : hideBillboard
-                        ? "lg:col-span-10 2xl:col-span-13"
-                        : "lg:col-span-6 2xl:col-span-8"
+                      : "lg:col-span-6 2xl:col-span-8"
                     }
-                  `}
+                 `}
                 >
                   <Outlet />
                 </div>
@@ -218,10 +216,10 @@ function MainLayout() {
 
         <MessagingComponent />
 
-        <SettingsModal 
-          isOpen={settingsConfig.isOpen} 
+        <SettingsModal
+          isOpen={settingsConfig.isOpen}
           initialView={settingsConfig.view}
-          onClose={() => setSettingsConfig(prev => ({ ...prev, isOpen: false }))} 
+          onClose={() => setSettingsConfig(prev => ({ ...prev, isOpen: false }))}
         />
 
         <LegalModal

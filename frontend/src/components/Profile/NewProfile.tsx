@@ -193,7 +193,7 @@ const ProfilePage: React.FC = () => {
     <div className="relative pt-2 min-h-screen text-white">
 
       {/* Max-width wrapper */}
-      <div className="max-w-3xl px-4 ">
+      <div className="max-w-6xl px-4 ">
 
         {/* ── Header: Username + Actions + Followers ── */}
         <div className="w-full pb-6 pt-4 ">
@@ -259,7 +259,7 @@ const ProfilePage: React.FC = () => {
         </div>
 
         {/* ── Profile Hero ── */}
-        <div className="max-w-3xl">
+        <div className="max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-stretch gap-6 ">
 
             {/* LEFT: Profile Card */}
@@ -313,11 +313,7 @@ const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Posts + Sidebar ── */}
-      <div className="max-w-7xl mx-auto px-4 mt-12 pb-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-8 items-start">
-
-          {/* LEFT COLUMN: Posts */}
+      <div className="max-w-7xl mx-auto px-4 mt-12 pb-112">
           <div className="min-w-0 flex flex-col">
             {loadingPosts && (
               <div className="text-white/40 text-sm">Loading your posts...</div>
@@ -360,8 +356,6 @@ const ProfilePage: React.FC = () => {
               )}
             </div>
           </div>
-        </div>
-
       </div>
     </div>
   );
