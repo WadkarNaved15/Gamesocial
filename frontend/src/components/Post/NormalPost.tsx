@@ -213,14 +213,14 @@ const NormalPost: React.FC<NormalPostProps> = ({
           {description && (
             <div>
               <p
-                className={`text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${
-                  !isExpanded ? "line-clamp-2" : ""
+                className={`text-gray-200 leading-normal whitespace-pre-wrap transition-all ${
+                  !isExpanded ? "line-clamp-6" : ""
                 }`}
               >
                 {description}
               </p>
 
-              {description.length > 100 && (
+              {description.length > 300 && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

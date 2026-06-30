@@ -38,8 +38,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
     const files = e.target.files;
     if (!files) return;
 
-    const remainingSlots = 4 - assets.length;
-    const filesToProcess = Array.from(files).slice(0, remainingSlots);
+    const filesToProcess = [files[0]];
 
     const newAssets: Asset[] = [];
 
@@ -55,8 +54,8 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
     });
 
     if (newAssets.length) {
-      setAssets((prev) => [...prev, ...newAssets]);
-      if (assets.length === 0) setActiveIndex(0);
+      setAssets(newAssets);
+      setActiveIndex(0);
     }
 
     e.target.value = "";
@@ -253,7 +252,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
           {assets.length > 0 ? (
             <div className="flex flex-col gap-3">
               {/* Asset Selector Tabs */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {/* <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 {assets.map((asset, index) => (
                   <button
                     key={asset.id}
@@ -281,7 +280,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
                     <ImageIcon size={18} />
                   </button>
                 )}
-              </div>
+              </div> */}
 
               {/* Main Preview Area */}
               <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-black/20 group">
@@ -310,7 +309,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
               <div className="p-3 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 text-[#3D7A6E] group-hover:scale-110 transition-transform">
                 <ImageIcon size={32} />
               </div>
-              <p className="text-gray-500 font-medium">Upload up to 4 .glb assets</p>
+              <p className="text-gray-500 font-medium">Upload a .glb assets</p>
             </div>
           )}
         </div>
@@ -356,44 +355,12 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
         ))}
       </div>
 
-      {/* Footer Tools */}
-      <div className="px-6 py-4 border-t border-gray-100 dark:border-white/[0.06] bg-transparent flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {/* Price Input Container */}
-          <div className="flex items-center bg-gray-100 dark:bg-white/[0.04] rounded-full px-4 py-2 border border-transparent focus-within:border-[#3D7A6E] text-[#3D7A6E] transition-all">
-            <DollarSign size={16} />
-            <input
-              type="number"
-              placeholder="Price"
-              min="0"
-              className="bg-transparent border-none outline-none text-sm w-24 text-black dark:text-white placeholder-gray-500 focus:ring-0 ml-1 appearance-none"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-            />
-          </div>
-
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className={`p-2.5 rounded-full transition ${assets.length >= 4 ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-[#3D7A6E] hover:bg-[#3D7A6E]/10 dark:hover:bg-[#3D7A6E]/20'}`}
-            disabled={assets.length >= 4}
-            title="Add Asset"
-          >
-            <ImageIcon size={22} />
-          </button>
-        </div>
-
-        <div className={`text-xs font-bold ${assets.length === 4 ? 'text-orange-500' : 'text-gray-400 dark:text-gray-500'}`}>
-          {assets.length} / 4 Assets
-        </div>
-      </div>
-
       <input
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
         className="hidden"
         accept=".glb"
-        multiple
       />
     </div>
   );
