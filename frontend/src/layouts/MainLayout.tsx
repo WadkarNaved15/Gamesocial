@@ -72,7 +72,7 @@ function MainLayout() {
     if (minutes >= 2 && !bannerShown) {
       setBannerShown(true);
       openGate(
-        "Join Rigzer to play games, follow creators, save favorites, and unlock the full platform."
+        "Embed 3D models, play cloud game demos instantly (no downloads), code in your pocket, follow creators, and build your audience."
       );
     }
   }, [minutes, bannerShown, user, openGate]);

@@ -77,13 +77,6 @@ export default function AuthGateModal() {
 
           {/* ── Content ── */}
           <div className="relative z-[1]">
-
-            {/* Eyebrow pill */}
-            <div className="inline-flex items-center gap-[6px] text-[10px] font-semibold tracking-[0.16em] uppercase text-[#4FA98B] bg-[#62D4AE]/[0.08] border border-[#62D4AE]/[0.18] px-[11px] py-[5px] rounded-full mb-[18px]">
-              <span className="ag-dot w-[4px] h-[4px] rounded-full bg-[#62D4AE]" />
-              Rigzer
-            </div>
-
             {/* Heading */}
             <h2
               className="text-[26px] font-bold tracking-[-0.02em] leading-[1.1] mb-[10px]"
@@ -107,8 +100,8 @@ export default function AuthGateModal() {
               {[
                 { label: "Play instantly",   icon: <PlayIcon /> },
                 { label: "Follow creators",  icon: <FollowIcon /> },
-                { label: "Save favorites",   icon: <StarIcon /> },
-                { label: "Your feed",        icon: <FeedIcon /> },
+                { label: "Interactive feed", icon: <FeedIcon /> },
+                { label: "Save favourites",  icon: <StarIcon /> },
               ].map(({ label, icon }) => (
                 <div
                   key={label}
