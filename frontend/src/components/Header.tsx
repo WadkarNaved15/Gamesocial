@@ -125,12 +125,12 @@ export function Header() {
           <div className="flex items-center justify-end space-x-4">
             {/* Ads Campaign */}
             {/* Ads Campaign */}
-            <button
+            {/* <button
               onClick={handleAdsClick}
               className="flex items-center justify-center p-1.5 rounded-md text-white hover:text-white/80 transition-all mt-1"
             >
               <ExternalLinkIcon className="h-7 w-auto" />
-            </button>
+            </button> */}
             {/* Search Bar */}
             <form onSubmit={handleSearch} className="relative hidden md:block w-full max-w-[250px]">
               <div className="relative">
