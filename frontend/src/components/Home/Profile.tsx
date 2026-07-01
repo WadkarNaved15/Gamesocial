@@ -218,13 +218,19 @@ shadow-[0_0_25px_rgba(255,255,255,0.10)]
         </div>
 
         {/* Content */}
-        {/* Content */}
         <div className="mt-10 px-4 pb-8 flex flex-col items-start">
-          <h4 className="text-md font-bold text-gray-900 dark:text-gray-100">
-            {user?.username || "John Developer"}
+          {/* Display Name */}
+          <h4 className="text-md font-bold text-gray-900 dark:text-gray-100 leading-tight">
+            {user?.displayName || user?.username || "John Developer"}
           </h4>
 
-          <p className="text-gray-400 text-sm mt-1 break-words whitespace-pre-line max-w-full">
+          {/* Username Handle */}
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5 lowercase">
+            @{user?.username?.replace(/\s+/g, "") || "johndeveloper"}
+          </p>
+
+          {/* Bio */}
+          <p className="text-gray-400 text-sm mt-3 break-words whitespace-pre-line max-w-full">
             {isBioLong && !bioExpanded
               ? `${userBio.slice(0, 40)}...`
               : userBio

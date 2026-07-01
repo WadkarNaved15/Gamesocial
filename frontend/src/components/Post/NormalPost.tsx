@@ -192,6 +192,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
         <div className="flex flex-col flex-1 min-w-0">
           <PostHeader
             username={user.username}
+            displayName={user.displayName || user.username} // Use displayName if available, otherwise fallback to username
             timestamp={timestamp}
             price={0}
             type="normal_post"

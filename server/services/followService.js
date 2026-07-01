@@ -115,7 +115,7 @@ class FollowService {
     if (cached) return parseInt(cached, 10);
 
     const count = await Follow.countDocuments({ following: userId });
-    await redis.set(cacheKey, count, { EX: 300 }); // cache 5 min
+    await redis.set(cacheKey, count, { EX: 120 }); // cache 2 min
     return count;
   }
 
@@ -125,7 +125,7 @@ class FollowService {
     if (cached) return parseInt(cached, 10);
 
     const count = await Follow.countDocuments({ follower: userId });
-    await redis.set(cacheKey, count, { EX: 300 });
+    await redis.set(cacheKey, count, { EX: 120 }); // cache 2 min
     return count;
   }
 
@@ -134,24 +134,28 @@ class FollowService {
     const cached = await redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
 
-    // ✅ get following set
+    // Get following set
     const following = await Follow.find({ follower: userId }).select("following");
     const followingSet = new Set(following.map(f => f.following.toString()));
 
-    const suggested = await User.find({
-      _id: { $nin: [...followingSet, userId] },
-    })
-      .select("_id username avatar name")
-      .limit(5)
-      .lean();
+    // Convert string/ObjectId array to proper ObjectIds for the aggregation pipeline
+    const excludeIds = [...followingSet, userId].map(id => new mongoose.Types.ObjectId(id));
 
-    // ✅ inject isFollowing
+    // Use aggregation with $sample to get RANDOM users, not just the first 5 in the DB
+    const suggested = await User.aggregate([
+      { $match: { _id: { $nin: excludeIds } } },
+      { $sample: { size: 5 } },
+      { $project: { _id: 1, username: 1, avatar: 1, name: 1 } }
+    ]);
+
+    // Inject isFollowing (will be false for all since we excluded them, but good for consistency)
     const enriched = suggested.map(user => ({
       ...user,
-      isFollowing: followingSet.has(user._id.toString()),
+      isFollowing: false, 
     }));
 
-    await redis.set(cacheKey, JSON.stringify(enriched), "EX", 600);
+    // Cache for 2 minutes instead of 10
+    await redis.set(cacheKey, JSON.stringify(enriched), { EX: 120 });
 
     return enriched;
   }

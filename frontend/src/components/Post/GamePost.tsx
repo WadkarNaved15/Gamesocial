@@ -304,6 +304,7 @@ const GamePost: React.FC<GamePostProps> = ({
             <PostHeader
               type='game_post'
               username={user.username}
+              displayName={user.displayName || user.username} 
               timestamp={timestamp}
               price={gamePost?.price || 0}
               isOwner={isOwner}

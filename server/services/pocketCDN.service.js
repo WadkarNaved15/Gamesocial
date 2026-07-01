@@ -9,7 +9,7 @@ import {
   CreateInvalidationCommand,
 } from "@aws-sdk/client-cloudfront";
 
-const s3 = new S3Client({ region: process.env.AWS_REGION });
+const s3 = new S3Client({ region: "ap-south-1", });
 const cf = new CloudFrontClient({ region: "us-east-1" }); // CloudFront is global, always us-east-1
 
 const BUCKET           = process.env.AWS_BUCKET_NAME;

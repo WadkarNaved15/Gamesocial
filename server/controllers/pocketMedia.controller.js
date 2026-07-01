@@ -11,8 +11,8 @@ import crypto          from "crypto";
 import path            from "path";
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import Pocket          from "../models/Pocket.js";
+import s3 from "../s3.js";
 
-const s3       = new S3Client({ region: process.env.AWS_REGION });
 const BUCKET   = process.env.AWS_BUCKET_NAME;
 const CDN_BASE = process.env.GAMES_STORAGE_PRIVATE_CLOUDFRONT;
 
@@ -45,6 +45,7 @@ export const uploadPocketMedia = async (req, res) => {
     const listRes = await s3.send(new ListObjectsV2Command({
       Bucket: BUCKET,
       Prefix: `pockets/${pocket._id}/media/`,
+      
     }));
     const existingCount = listRes.KeyCount ?? 0;
     if (existingCount + files.length > MAX_FILES) {

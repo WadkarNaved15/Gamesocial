@@ -50,7 +50,7 @@ export default function OrbBackground() {
             maxWidth: 560,
             maxHeight: 560,
             borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(61,122,110,0.28) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(61,122,110,0.22) 0%, transparent 58%)",
             animation: "orb-drift-1 18s ease-in-out infinite",
             filter: "blur(2px)",
           }}
@@ -66,7 +66,7 @@ export default function OrbBackground() {
             maxWidth: 464,
             maxHeight: 464,
             borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(100,60,180,0.20) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(100,60,180,0.16) 0%, transparent 70%)",
             animation: "orb-drift-2 22s ease-in-out infinite",
             filter: "blur(2px)",
           }}
@@ -88,7 +88,7 @@ export default function OrbBackground() {
           }}
         />
         {/* Teal/cyan accent orb — bottom-right */}
-        <div
+        {/* <div
           style={{
             position: "absolute",
             bottom: "-5%",
@@ -102,7 +102,7 @@ export default function OrbBackground() {
             animation: "orb-drift-4 20s ease-in-out infinite",
             filter: "blur(2px)",
           }}
-        />
+        /> */}
         {/* Top dark fade */}
         <div
           style={{
