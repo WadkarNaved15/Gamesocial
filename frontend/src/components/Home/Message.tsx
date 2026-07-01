@@ -552,12 +552,13 @@ const MessagingComponent = () => {
             bg-black
             text-white
             p-4 
-            rounded-2xl
+            rounded-full
             border border-solid border-white/40
             shadow-5xl   
             transition-all duration-300 transform
             hover:scale-110
             group relative
+            flex items-center justify-center
           "
         >
           <MessageCircle

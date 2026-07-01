@@ -51,7 +51,7 @@ const PostHeader: React.FC<PostHeaderProps> = ({
 
   return (
     // mb-3 creates the space between this header and the description below it
-    <div className="flex items-center justify-between w-full mb-3">
+    <div className="flex items-center justify-between w-full mb-1">
 
       {/* LEFT: Identity + Date */}
       <div className="flex items-center gap-3">

@@ -179,7 +179,7 @@ return (
                     e.stopPropagation();
                     setIsExpanded(!isExpanded);
                   }}
-                  className="text-sky-400 hover:text-sky-300 font-semibold text-sm mt-1 focus:outline-none"
+                  className="text-sky-400 hover:text-sky-300 font-semibold text-sm focus:outline-none"
                 >
                   {isExpanded ? "Show less" : "Show more"}
                 </button>
@@ -192,7 +192,7 @@ return (
       {/* 2. MIDDLE SECTION: Full-Width 3D Model (No Borders) */}
       {modelUrl && (
         <div 
-          className={`group relative mt-3 flex justify-center overflow-hidden w-full h-[450px] bg-black/20 ${
+          className={`group relative mt-2 flex justify-center overflow-hidden w-full h-[450px] bg-black/20 ${
             detailed ? "grayscale" : ""
           }`}
         >
