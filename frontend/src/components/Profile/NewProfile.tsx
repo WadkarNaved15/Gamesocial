@@ -26,7 +26,7 @@ const glassCard =
 const ProfilePage: React.FC = () => {
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
   const { username } = useParams<{ username: string }>();
-  const { user } = useUser();
+  const { user, refreshUser } = useUser();
   const { addPosts } = usePosts();
   const navigate = useNavigate();
   const { openChatWith } = useChat();
@@ -243,9 +243,20 @@ const ProfilePage: React.FC = () => {
               {editOpen && (
                 <EditProfileModal
                   onClose={() => setEditOpen(false)}
-                  onSaved={() => {
+                  onSaved={(updatedProfile) => {
                     if (username) clearProfileCache(username);
                     cachedRef.current = null;
+
+                    setProfileUser((prev) => {
+                      if (!prev) return prev;
+
+                      return {
+                        ...prev,
+                        ...updatedProfile,
+                      };
+                    });
+
+                    refreshUser();
                     setEditOpen(false);
                   }}
                 />

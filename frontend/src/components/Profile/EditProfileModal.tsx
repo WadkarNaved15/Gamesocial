@@ -7,7 +7,17 @@ import { useUser } from "../../context/user";
 
 interface EditProfileModalProps {
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (profile: {
+    displayName: string;
+    username: string;
+    bio: string;
+    location: string;
+    website: string;
+    birthdate: string;
+    jobTitle: string;
+    avatar?: string;
+    banner?: string;
+  }) => void;
 }
 
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved }) => {
@@ -121,8 +131,17 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
       );
 
       await refreshUser();
-      onSaved?.(); // ← call if provided (handles cache clear + modal close)
-      if (!onSaved) onClose(); // ← fallback for any usage without onSaved
+      onSaved({
+        displayName: form.displayName,
+        username: form.username,
+        bio: form.bio,
+        location: form.location,
+        website: form.website,
+        birthdate: form.birthDate,
+        jobTitle: form.jobTitle,
+        avatar: form.avatar ?? undefined,
+        banner: form.banner ?? undefined,
+      });// ← call if provided (handles cache clear + modal close)
     } catch (err) {
       console.error("Update failed", err);
     }
