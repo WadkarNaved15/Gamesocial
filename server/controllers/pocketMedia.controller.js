@@ -11,7 +11,7 @@ import crypto          from "crypto";
 import path            from "path";
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import Pocket          from "../models/Pocket.js";
-import { s3 }          from "../s3.js";
+import s3 from "../s3.js";
 
 const BUCKET   = process.env.AWS_BUCKET_NAME;
 const CDN_BASE = process.env.GAMES_STORAGE_PRIVATE_CLOUDFRONT;
