@@ -1,5 +1,5 @@
 import { X, Camera, Check } from "lucide-react";
-import { useState, useRef, ChangeEvent, useCallback } from "react";
+import { useState, useRef, ChangeEvent, useCallback, useEffect } from "react";
 import Cropper from "react-easy-crop"; // Import the cropper
 import axios from "axios";
 import { getCroppedImage } from "../../utils/cropImage";
@@ -7,7 +7,17 @@ import { useUser } from "../../context/user";
 
 interface EditProfileModalProps {
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (profile: {
+    displayName: string;
+    username: string;
+    bio: string;
+    location: string;
+    website: string;
+    birthdate: string;
+    jobTitle: string;
+    avatar?: string;
+    banner?: string;
+  }) => void;
 }
 
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved }) => {
@@ -19,8 +29,15 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
   const [editingImage, setEditingImage] = useState<{ url: string; type: 'avatar' | 'banner' } | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [isSaving, setIsSaving] = useState(false);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [usernameStatus, setUsernameStatus] = useState<
+    "idle" | "checking" | "available" | "taken"
+  >("idle");
 
+  const [usernameMessage, setUsernameMessage] = useState("");
+  const usernameCache = useRef(new Map());
+  const controllerRef = useRef<AbortController | null>(null);
   if (!user) return null;
 
   const [form, setForm] = useState({
@@ -29,8 +46,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
     bio: user.bio || "",
     location: user.location || "",
     website: user.website || "",
-    birthDate: user.birthDate
-      ? user.birthDate.slice(0, 10)
+    birthDate: user.birthdate
+      ? user.birthdate.slice(0, 10)
       : "",
     jobTitle: user.jobTitle || "",
     avatar: user.avatar || null,
@@ -94,6 +111,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
 
   const saveProfile = async () => {
     try {
+      setIsSaving(true);
       const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
       await axios.patch(
@@ -104,7 +122,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
           bio: form.bio,
           location: form.location,
           website: form.website,
-          birthDate: form.birthDate,
+          birthdate: form.birthDate,
           jobTitle: form.jobTitle,
           avatar: form.avatar,
           banner: form.banner,
@@ -113,14 +131,87 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
       );
 
       await refreshUser();
-      onSaved?.(); // ← call if provided (handles cache clear + modal close)
-      if (!onSaved) onClose(); // ← fallback for any usage without onSaved
+      onSaved({
+        displayName: form.displayName,
+        username: form.username,
+        bio: form.bio,
+        location: form.location,
+        website: form.website,
+        birthdate: form.birthDate,
+        jobTitle: form.jobTitle,
+        avatar: form.avatar ?? undefined,
+        banner: form.banner ?? undefined,
+      });// ← call if provided (handles cache clear + modal close)
     } catch (err) {
       console.error("Update failed", err);
     }
+    finally {
+      setIsSaving(false);
+    }
   };
 
+  useEffect(() => {
+    if (!user) return;
 
+    const username = form.username.trim().toLowerCase();
+    // User didn't change username
+    if (username === user.username.toLowerCase()) {
+      setUsernameStatus("idle");
+      setUsernameMessage("");
+      return;
+    }
+
+    // Too short, don't hit backend
+    if (username.length < 3) {
+      setUsernameStatus("idle");
+      setUsernameMessage("");
+      return;
+    }
+    const timeout = setTimeout(async () => {
+
+      // Cache hit
+      if (usernameCache.current.has(username)) {
+        const cached: any = usernameCache.current.get(username);
+        setUsernameStatus(
+          cached.available ? "available" : "taken"
+        );
+        setUsernameMessage(cached.error || "");
+        return;
+      }
+      try {
+        setUsernameStatus("checking");
+        controllerRef.current?.abort();
+        const controller = new AbortController();
+        controllerRef.current = controller;
+        const res = await axios.get(
+          `${BACKEND_URL}/api/auth/check-username`,
+          {
+            params: { username },
+            signal: controller.signal,
+          }
+        );
+
+        usernameCache.current.set(username, res.data);
+
+        if (res.data.available) {
+          setUsernameStatus("available");
+          setUsernameMessage("");
+        } else {
+          setUsernameStatus("taken");
+          setUsernameMessage(res.data.error);
+        }
+
+      } catch (err) {
+        if (axios.isCancel(err)) return;
+        console.error(err);
+        setUsernameStatus("idle");
+      }
+
+    }, 500);
+
+    return () => clearTimeout(timeout);
+
+  }, [form.username, BACKEND_URL, user]);
   return (
     <div className="fixed inset-0 z-[100] bg-[#5b7083]/40 backdrop-blur-[2px] flex items-center justify-center p-4">
 
@@ -167,7 +258,17 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
             </button>
             <h2 className="text-xl font-bold text-white">Edit profile</h2>
           </div>
-          <button onClick={saveProfile} className="bg-white text-black px-4 py-1.5 rounded-full font-bold text-sm">Save</button>
+          <button
+            onClick={saveProfile}
+            disabled={
+              isSaving ||
+              usernameStatus === "checking" ||
+              usernameStatus === "taken"
+            }
+            className="bg-white text-black px-4 py-1.5 rounded-full font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed min-w-[70px] text-center"
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -206,6 +307,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
                 type="text"
                 value={form.displayName || ''}
                 onChange={e => setForm({ ...form, displayName: e.target.value })}
+                maxLength={30}
                 className="w-full bg-transparent text-white outline-none pt-1"
               />
             </div>
@@ -213,12 +315,36 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
             {/* Username */}
             <div className="group border border-zinc-800 rounded p-2 focus-within:border-blue-500">
               <label className="text-xs text-zinc-500">Username</label>
+
               <input
                 type="text"
-                value={form.username || ''}
-                onChange={e => setForm({ ...form, username: e.target.value })}
+                value={form.username || ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    username: e.target.value.toLowerCase(),
+                  })
+                }
                 className="w-full bg-transparent text-white outline-none pt-1"
               />
+
+              {usernameStatus === "checking" && (
+                <p className="text-xs text-zinc-500 mt-1">
+                  Checking username...
+                </p>
+              )}
+
+              {usernameStatus === "available" && (
+                <p className="text-xs text-green-500 mt-1">
+                  Username available ✓
+                </p>
+              )}
+
+              {usernameStatus === "taken" && (
+                <p className="text-xs text-red-500 mt-1">
+                  {usernameMessage}
+                </p>
+              )}
             </div>
 
             {/* Bio */}
@@ -228,6 +354,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
                 rows={3}
                 value={form.bio || ''}
                 onChange={e => setForm({ ...form, bio: e.target.value })}
+                maxLength={160}
                 className="w-full bg-transparent text-white outline-none pt-1 resize-none"
               />
             </div>
@@ -239,6 +366,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
                 type="text"
                 value={form.location || ''}
                 onChange={e => setForm({ ...form, location: e.target.value })}
+                maxLength={100}
                 className="w-full bg-transparent text-white outline-none pt-1"
               />
             </div>
@@ -272,6 +400,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
                 type="text"
                 value={form.jobTitle || ''}
                 onChange={e => setForm({ ...form, jobTitle: e.target.value })}
+                maxLength={100}
                 className="w-full bg-transparent text-white outline-none pt-1"
               />
             </div>

@@ -13,71 +13,67 @@ export default function ProfileCover({
 }: ProfileCoverProps) {
   const [accountOverlayOpen, setAccountOverlayOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
-
+  const [bioExpanded, setBioExpanded] = useState(false);
   const navigate = useNavigate();
   const { unreadCount } = useNotification();
   const { user, logout } = useUser();
+  const userBio = user?.bio || "Bio goes here...";
+  const isBioLong = userBio.length > 40;
   // If user is NOT logged in → Show login prompt card
   if (!user) {
     return (
       <div className="max-w-3xl mx-auto">
         <div
           className="
-relative overflow-visible
-rounded-t-[0.5rem]
+            relative overflow-visible
+            rounded-t-[0.5rem]
 
-bg-gradient-to-br
-from-white/[0.08]
-via-white/[0.04]
-to-white/[0.01]
+            bg-gradient-to-br
+            from-white/[0.08]
+            via-white/[0.04]
+            to-white/[0.01]
 
-border border-white/10
+            border border-white/10
 
-shadow-[0_8px_32px_rgba(0,0,0,0.45)]
-shadow-white/[0.02]
+            shadow-[0_8px_32px_rgba(0,0,0,0.45)]
+            shadow-white/[0.02]
 
-transition-all duration-300
+            transition-all duration-300
 
-before:absolute
-before:inset-0
-before:rounded-t-[0.5rem]
-before:pointer-events-none
+            before:absolute
+            before:inset-0
+            before:rounded-t-[0.5rem]
+            before:pointer-events-none
 
-before:bg-gradient-to-b
-before:from-white/[0.12]
-before:via-white/[0.03]
-before:to-transparent
-"
+            before:bg-gradient-to-b
+            before:from-white/[0.12]
+            before:via-white/[0.03]
+            before:to-transparent
+            "
         >
 
           <div
             className="
-    absolute inset-0
-    rounded-t-[0.5rem]
-    pointer-events-none
-
-    bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.08),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.04),transparent_45%)]
-  "
+              absolute inset-0
+              rounded-t-[0.5rem]
+              pointer-events-none
+              bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.08),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.04),transparent_45%)]
+            "
           />
 
           <div
             className="
-    absolute
-    top-0
-    left-1/2
-    -translate-x-1/2
-
-    h-24
-    w-40
-
-    bg-white/[0.05]
-
-    rounded-full
-
-    blur-3xl
-
-    pointer-events-none
-  "
+              absolute
+              top-0
+              left-1/2
+              -translate-x-1/2
+              h-24
+              w-40
+              bg-white/[0.05]
+              rounded-full
+              blur-3xl
+              pointer-events-none
+            "
           />
           {/* Content */}
           <div className="px-4 pt-5 pb-5 text-center">
@@ -127,7 +123,7 @@ before:to-transparent
   return (
     <div className="max-w-3xl mx-auto">
       <div
-  className="
+        className="
   relative overflow-hidden
   rounded-xl
 
@@ -152,9 +148,9 @@ before:to-transparent
   before:via-transparent
   before:to-transparent
 "
->
-  <div
-  className="
+      >
+        <div
+          className="
     absolute
     top-0
     left-0
@@ -168,7 +164,7 @@ before:to-transparent
 
     z-20
   "
-/>
+        />
         {/* Cover Image for profile */}
         <div className="relative rounded-t-[0.5rem]">
           <div
@@ -222,13 +218,28 @@ shadow-[0_0_25px_rgba(255,255,255,0.10)]
         </div>
 
         {/* Content */}
-        <div className="mt-10 px-4 pb-8">
+        {/* Content */}
+        <div className="mt-10 px-4 pb-8 flex flex-col items-start">
           <h4 className="text-md font-bold text-gray-900 dark:text-gray-100">
             {user?.username || "John Developer"}
           </h4>
-          <p className="text-gray-400 text-sm mt-1">
-            {user?.bio || "Game Developer"}
+
+          <p className="text-gray-400 text-sm mt-1 break-words whitespace-pre-line max-w-full">
+            {isBioLong && !bioExpanded
+              ? `${userBio.slice(0, 40)}...`
+              : userBio
+            }
           </p>
+
+          {/* Show More / Show Less Button */}
+          {isBioLong && (
+            <button
+              onClick={() => setBioExpanded(!bioExpanded)}
+              className="mt-1 text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline transition-all focus:outline-none"
+            >
+              {bioExpanded ? "Show less" : "Show more"}
+            </button>
+          )}
         </div>
 
         {accountOverlayOpen && (

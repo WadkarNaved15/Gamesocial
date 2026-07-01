@@ -14,14 +14,38 @@ export const updateMe = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+    // ✅ Check username only if user changed it
+    if (
+      req.body.username &&
+      req.body.username !== user.username
+    ) {
+      const username = req.body.username.trim().toLowerCase();
 
+      const exists = await User.exists({
+        username,
+        _id: { $ne: user._id },
+      });
+
+      if (exists) {
+        return res.status(400).json({
+          message: "Username already taken",
+        });
+      }
+
+      // Normalize username before saving
+      req.body.username = username;
+    }
     // ✅ ALLOWED FIELDS ONLY
     const allowedUpdates = [
+      "displayName",
       "username",
       "bio",
       "avatar",
       "banner",
-      "socials",
+      "location",
+      "website",
+      "birthdate",
+      "jobTitle",
     ];
 
     allowedUpdates.forEach((field) => {
@@ -45,10 +69,10 @@ export const updateMe = async (req, res) => {
 export const getProfileByUsername = async (req, res) => {
   try {
     const { username } = req.params;
-    const currentUserId = req.user?._id; 
+    const currentUserId = req.user?._id;
 
     const user = await User.findOne({ username })
-      .select("username avatar banner bio socials")
+      .select("username displayName location website birthdate jobTitle avatar banner bio")
       .lean();
 
     if (!user) {

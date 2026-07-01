@@ -10,7 +10,7 @@ type User = {
   displayName?: string;
   location?: string;
   website?: string;
-  birthDate?: string;
+  birthdate?: string;
   jobTitle?: string;
   email: string;
   avatar?: string;
