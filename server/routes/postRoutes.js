@@ -14,6 +14,7 @@ import { getFeedPage } from "../services/feed.service.js";
 import { trackPostView } from "../controllers/postView.controller.js";
 import verifyToken from "../middlewares/authMiddleware.js";
 import { enrichDemoConsumed } from "../utils/enrichDemoConsumed.js";
+import Follow from "../models/Follow.js"; // Adjust the path/name based on your actual schema
 dotenv.config();
 
 const router = express.Router();
@@ -188,20 +189,51 @@ router.get("/user_posts/:userId", optionalAuthMiddleware, async (req, res) => {
 });
 
 // ── GET /api/posts/:postId ────────────────────────────────────────────────────
+// ── GET /api/posts/:postId ────────────────────────────────────────────────────
 router.get("/:postId", optionalAuthMiddleware, async (req, res) => {
   try {
     const post = await Post.findById(req.params.postId)
-      .populate("user", "username avatar")
+      .populate("user", "username avatar displayName")
       .lean();
+
     if (!post) return res.status(404).json({ deleted: true });
+
+    const viewerId = req.user?._id?.toString();
+
+    // 1. Initialize isFollowing to false by default
+    post.user.isFollowing = false;
+
+    // 2. If a user is logged in, check if they follow the post author
+    if (viewerId && post.user._id) {
+      
+      // OPTION A: If you use a separate 'Follow' collection (Most Common)
+      const isFollowing = await Follow.exists({
+        follower: viewerId,
+        following: post.user._id
+      });
+      
+      post.user.isFollowing = !!isFollowing;
+
+      /* // OPTION B: If you store following as an array of ObjectIds in the User model:
+      // import User from "../models/User.js";
+      // const currentUser = await User.findById(viewerId).select("following").lean();
+      // post.user.isFollowing = currentUser?.following?.some(id => id.toString() === post.user._id.toString()) || false;
+      */
+    }
+
+    // (Optional) You might also want to check isLiked and isWishlisted here 
+    // for the Post Detail view, just like you did in the user_posts route!
+
     if (post) {
       await enrichDemoConsumed(
         [post],
-        req.user?._id?.toString()
+        viewerId
       );
     }
+
     res.json(post);
   } catch (err) {
+    console.error("Error fetching single post:", err);
     res.status(500).json({ error: "Failed to fetch post" });
   }
 });

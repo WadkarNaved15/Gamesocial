@@ -79,10 +79,20 @@ const FollowFace = ({ translateZ, faceAngle }: { translateZ: number; faceAngle: 
                       className="w-9 h-9 lg:w-10 lg:h-10 2xl:w-11 2xl:h-11 rounded-full border border-white/[0.08] object-cover cursor-pointer hover:border-white/20 transition-colors flex-shrink-0"
                     />
                     <div className="min-w-0">
-                      <h3 className="font-semibold truncate text-xs lg:text-sm text-gray-200">
+                      <h3 className="font-semibold truncate text-xs lg:text-sm text-gray-200 cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/profile/${u.username}`);
+                        }}
+                      >
                         {u.name || u.username}
                       </h3>
-                      <p className="text-white/50 truncate text-[9px] lg:text-[10px]">
+                      <p className="text-white/50 truncate text-[9px] lg:text-[10px] cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/profile/${u.username}`);
+                        }}
+                      >
                         @{u.username}
                       </p>
                     </div>

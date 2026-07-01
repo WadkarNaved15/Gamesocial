@@ -12,8 +12,10 @@ export type PostType =
 export interface UserSummary {
   _id: string;
   username: string;
+  displayName: string;
   email: string;
   avatar?: string;
+  isFollowing?: boolean; // optional, only present if the current user is logged in and has a following relationship with this user
 }
 
 export interface ModelMetadata {

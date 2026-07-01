@@ -17,10 +17,20 @@ import { useUser } from "./context/user";
 import { SearchProvider } from "./components/Home/SearchContext";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./router";
+
+import ComingSoon from "./Pages/ErrorHandling/ComingSoon";
+import { isMobileOrTablet } from "./utils/device";
+
 // import AppRoutes from "./AppRoutes";
 const queryClient = new QueryClient();
 function App() {
   const { user } = useUser();
+
+    // Block phones and tablets
+  if (isMobileOrTablet()) {
+    return <ComingSoon />;
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       <UIProvider>
