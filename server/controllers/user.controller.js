@@ -72,7 +72,7 @@ export const getProfileByUsername = async (req, res) => {
     const currentUserId = req.user?._id;
 
     const user = await User.findOne({ username })
-      .select("username displayName location website birthdate jobTitle avatar banner bio")
+      .select("username displayName location website jobTitle avatar banner bio")
       .lean();
 
     if (!user) {

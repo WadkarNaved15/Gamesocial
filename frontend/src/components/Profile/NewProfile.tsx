@@ -33,7 +33,6 @@ const ProfilePage: React.FC = () => {
 
   const cachedRef = useRef(username ? getProfileCache(username) : null);
   const cached = cachedRef.current;
-  const [bioExpanded, setBioExpanded] = useState(false);
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(cached?.profileUser ?? null);
   const [profileNotFound, setProfileNotFound] = useState(false);
   const [userPosts, setUserPosts] = useState<PostProps[]>(cached?.posts ?? []);
@@ -53,7 +52,6 @@ const ProfilePage: React.FC = () => {
 
   const contentReady = !loadingProfile && userPosts.length > 0;
   const savedScrollY = cached?.scrollY ?? 0;
-  const isBioLong = (profileUser?.bio?.length ?? 0) > 60;
   useScrollRestoration(`profile_${username}`, savedScrollY, contentReady);
 
   // ── Save to cache on unmount ──────────────────────────────────────────────
@@ -302,30 +300,18 @@ const ProfilePage: React.FC = () => {
                   </div>
 
                   {/* Bio body (Aligned next to avatar on desktop, pushes down safely with toggle) */}
-                  <div className="md:pt-24 max-w-xl flex flex-col items-center md:items-start">
+                  <div className="md:pt-24 max-w-xl flex flex-col items-center md:items-start md:ml-6"> {/* Added md:ml-6 */}
                     <p className="text-white font-medium text-sm leading-relaxed break-words whitespace-pre-line">
                       {profileUser?.bio
-                        ? (isBioLong && !bioExpanded
-                          ? `${profileUser.bio.slice(0, 60)}...`
-                          : profileUser.bio)
-                        : "Additional profile content or bio details can go here."
+                        ? profileUser.bio
+                        : ""
                       }
                     </p>
-
-                    {/* Show More / Show Less Button */}
-                    {profileUser?.bio && profileUser.bio.length > 60 && (
-                      <button
-                        onClick={() => setBioExpanded(!bioExpanded)}
-                        className="mt-1.5 text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline transition-all focus:outline-none"
-                      >
-                        {bioExpanded ? "Show less" : "Show more"}
-                      </button>
-                    )}
                   </div>
                 </div>
 
                 {/* Additional metadata info */}
-                {(profileUser?.location || profileUser?.website || profileUser?.birthdate || profileUser?.jobTitle) && (
+                {(profileUser?.location || profileUser?.website || profileUser?.jobTitle) && (
                   <div className="px-8 pb-8 flex flex-col gap-3 text-sm text-white/50 font-medium mt-2">
 
                     {/* Job Title */}
@@ -359,19 +345,6 @@ const ProfilePage: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Birthdate */}
-                    {profileUser?.birthdate && (
-                      <div className="flex items-center gap-2.5">
-                        <Cake size={16} className="text-white/40 shrink-0" />
-                        <span>
-                          Born {new Date(profileUser.birthdate).toLocaleDateString(undefined, {
-                            month: 'long',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>

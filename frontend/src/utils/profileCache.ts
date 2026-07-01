@@ -10,7 +10,6 @@ export interface ProfileUser {
   displayName?: string;
   location?: string;
   website?: string;
-  birthdate?: string;
   jobTitle?: string;
   isFollowing?: boolean;
 }

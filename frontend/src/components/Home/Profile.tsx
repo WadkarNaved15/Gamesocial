@@ -124,46 +124,46 @@ export default function ProfileCover({
     <div className="max-w-3xl mx-auto">
       <div
         className="
-  relative overflow-hidden
-  rounded-xl
+          relative overflow-hidden
+          rounded-xl
 
-  bg-white/[0.04]
+          bg-white/[0.04]
 
-  backdrop-blur-xl
-  backdrop-saturate-150
+          backdrop-blur-xl
+          backdrop-saturate-150
 
-  border border-white/10
+          border border-white/10
 
-  shadow-[0_8px_32px_rgba(0,0,0,0.45)]
-  shadow-white/[0.02]
+          shadow-[0_8px_32px_rgba(0,0,0,0.45)]
+          shadow-white/[0.02]
 
-  transition-all duration-300
+          transition-all duration-300
 
-  before:absolute
-  before:inset-0
-  before:pointer-events-none
+          before:absolute
+          before:inset-0
+          before:pointer-events-none
 
-  before:bg-gradient-to-b
-  before:from-white/[0.08]
-  before:via-transparent
-  before:to-transparent
-"
+          before:bg-gradient-to-b
+          before:from-white/[0.08]
+          before:via-transparent
+          before:to-transparent
+        "
       >
         <div
           className="
-    absolute
-    top-0
-    left-0
-    w-full
-    h-px
+            absolute
+            top-0
+            left-0
+            w-full
+            h-px
 
-    bg-gradient-to-r
-    from-transparent
-    via-white/30
-    to-transparent
+            bg-gradient-to-r
+            from-transparent
+            via-white/30
+            to-transparent
 
-    z-20
-  "
+            z-20
+          "
         />
         {/* Cover Image for profile */}
         <div className="relative rounded-t-[0.5rem]">
@@ -194,24 +194,24 @@ export default function ProfileCover({
                 alt="Profile"
                 onClick={handleAvatarClick}
                 className={`
-  w-16 h-16
-  rounded-full
-  object-cover
-  cursor-pointer
-  border border-white/20
+                  w-16 h-16
+                  rounded-full
+                  object-cover
+                  cursor-pointer
+                  border border-white/20
 
-bg-white/[0.08]
+                  bg-white/[0.08]
 
-shadow-[0_0_0_1px_rgba(255,255,255,0.08)]
-shadow-[0_0_25px_rgba(255,255,255,0.10)]
+                  shadow-[0_0_0_1px_rgba(255,255,255,0.08)]
+                  shadow-[0_0_25px_rgba(255,255,255,0.10)]
 
-  hover:brightness-95
-  hover:scale-105
+                  hover:brightness-95
+                  hover:scale-105
 
-  transition-all duration-300
+                  transition-all duration-300
 
-  ${accountOverlayOpen ? "opacity-0" : "opacity-100"}
-`}
+                  ${accountOverlayOpen ? "opacity-0" : "opacity-100"}
+                `}
               />
             </div>
           </div>
@@ -221,31 +221,14 @@ shadow-[0_0_25px_rgba(255,255,255,0.10)]
         <div className="mt-10 px-4 pb-8 flex flex-col items-start">
           {/* Display Name */}
           <h4 className="text-md font-bold text-gray-900 dark:text-gray-100 leading-tight">
-            {user?.displayName || user?.username || "John Developer"}
+            {user?.displayName || user?.username || ""}
           </h4>
 
           {/* Username Handle */}
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5 lowercase">
-            @{user?.username?.replace(/\s+/g, "") || "johndeveloper"}
+            @{user?.username?.replace(/\s+/g, "") || ""}
           </p>
 
-          {/* Bio */}
-          <p className="text-gray-400 text-sm mt-3 break-words whitespace-pre-line max-w-full">
-            {isBioLong && !bioExpanded
-              ? `${userBio.slice(0, 40)}...`
-              : userBio
-            }
-          </p>
-
-          {/* Show More / Show Less Button */}
-          {isBioLong && (
-            <button
-              onClick={() => setBioExpanded(!bioExpanded)}
-              className="mt-1 text-xs font-bold text-blue-400 hover:text-blue-300 hover:underline transition-all focus:outline-none"
-            >
-              {bioExpanded ? "Show less" : "Show more"}
-            </button>
-          )}
         </div>
 
         {accountOverlayOpen && (
