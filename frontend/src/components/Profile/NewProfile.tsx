@@ -362,7 +362,7 @@ const ProfilePage: React.FC = () => {
 
           {!loadingPosts && userPosts.length === 0 && (
             <div className="text-white/40 text-sm">
-              You haven't uploaded any posts yet.
+              No posts to see here
             </div>
           )}
 

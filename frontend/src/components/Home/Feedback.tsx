@@ -138,7 +138,7 @@ export default function FeedbackModal({ isOpen, onClose }: FeedbackModalProps) {
               >
                 {/* Keep native option backgrounds dark for readability */}
                 <option value="" className="bg-[#0A1714]">Select a category</option>
-                <option value="Feature Request" className="bg-[#0A1714]">Feature Request</option>
+                <option value="Feature Request" className="bg-[#0A1714]">Suggestions</option>
                 <option value="Bug Report" className="bg-[#0A1714]">Bug Report</option>
                 <option value="Purchase and Payment Issue" className="bg-[#0A1714]">Purchase & Payment Issue</option>
                 <option value="Other" className="bg-[#0A1714]">Other</option>
