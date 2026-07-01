@@ -121,7 +121,7 @@ return (
         if ((e.target as HTMLElement).closest("button")) return;
         onOpenDetails?.();
       }}
-      className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-white/[0.03] cursor-pointer transition-colors duration-200 py-4"
+      className="relative w-full border border-white/[0.06] border-l-0 border-r-0 sm:border-l sm:border-r bg-black/[0.03] cursor-pointer transition-colors duration-200 py-4"
     >
       {/* 1. TOP SECTION: Avatar, Header & Description */}
       <div className="flex gap-3 px-4">
@@ -192,7 +192,7 @@ return (
       {/* 2. MIDDLE SECTION: Full-Width 3D Model (No Borders) */}
       {modelUrl && (
         <div 
-          className={`group relative mt-2 flex justify-center overflow-hidden w-full h-[450px] bg-black/20 ${
+          className={`group relative mt-2 flex justify-center overflow-hidden w-full h-[450px] ${
             detailed ? "grayscale" : ""
           }`}
         >
