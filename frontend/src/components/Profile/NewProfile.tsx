@@ -338,7 +338,7 @@ const ProfilePage: React.FC = () => {
                           href={profileUser.website.startsWith('http') ? profileUser.website : `https://${profileUser.website}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-400 hover:underline transition-all"
+                          className="text-[rgb(98,212,174)] font-semibold hover:underline transition-all" // Custom color and weight applied here
                         >
                           {profileUser.website.replace(/(^\w+:|^)\/\//, '')}
                         </a>

@@ -69,7 +69,10 @@ export default function NotificationCard({ notification, onRead }: Props) {
 
         {/* Timestamp */}
         <p className="text-xs text-gray-500 mt-2">
-          {new Date(notification.createdAt).toLocaleString()}
+          {new Date(notification.createdAt).toLocaleString(undefined, {
+            dateStyle: "short",
+            timeStyle: "short"
+          })}
         </p>
       </div>
     </div>

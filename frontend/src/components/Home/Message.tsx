@@ -23,6 +23,7 @@ import {
   Maximize2,
   Square,
 } from "lucide-react";
+import { MeshGpuData } from "pixi.js";
 interface ApiUser {
   _id: string;
   username: string;
@@ -523,10 +524,6 @@ const MessagingComponent = () => {
     setCurrentChatId(null);
   };
 
-  const toggleMinimize = () => {
-    setIsMinimized(true);
-  };
-
   const toggleMaximize = () => {
     setIsMaximized(prev => !prev);
   };
@@ -638,21 +635,6 @@ const MessagingComponent = () => {
               // Full/Maximized Header"
               <>
                 <div className="flex items-center space-x-3">
-                  {activeChat && (
-
-                    <button
-                      className="hover:bg-white/20 p-1 rounded"
-                      onClick={() => {
-                        if (currentChatId && socket) {
-                          socket.emit("leave_chat", currentChatId);
-                        }
-                        setActiveChat(null);
-                      }}
-                    >
-
-                      <ArrowLeft size={16} />
-                    </button>
-                  )}
                   <div
                     className={`${isMaximized
                       ? "w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white"
@@ -682,12 +664,14 @@ const MessagingComponent = () => {
                     >
                       {activeUser ? activeUser.name : "Messages"}
                     </h3>
-                    <p
-                      className={`text-xs ${isMaximized ? "text-white/80" : "text-gray-500 dark:text-gray-400"
-                        }`}
-                    >
-                      {activeUser ? activeUser.lastSeen : `${users.length} contacts`}
-                    </p>
+                    {!activeUser && (
+                      <p
+                        className={`text-xs ${isMaximized ? "text-white/80" : "text-gray-500 dark:text-gray-400"
+                          }`}
+                      >
+                        {users.length} contacts
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -699,15 +683,6 @@ const MessagingComponent = () => {
                   >
                     {isMaximized ? <Square size={16} /> : <Maximize2 size={16} />}
                   </button>
-
-                  {!isMaximized && (
-                    <button
-                      onClick={toggleMinimize}
-                      className="hover:bg-gray-200 dark:hover:bg-gray-700 p-1 rounded"
-                    >
-                      <Minus size={16} />
-                    </button>
-                  )}
 
                   <button
                     onClick={toggleClose}
@@ -726,7 +701,7 @@ const MessagingComponent = () => {
             <div className="w-full flex-1 flex overflow-hidden">
               {!activeChat ? (
                 <div className={`flex w-full ${isMaximized ? "max-w-6xl mx-auto" : "flex-col"}`}>
-                  <div className={`${isMaximized ? "w-80 border-r border-white/20 flex flex-col" : "w-full flex flex-col"}`}>
+                  <div className={`${isMaximized ? "w-80 border border-white/20 flex flex-col" : "w-full flex flex-col"}`}>
                     {/* Search */}
                     <div className={`p-4 border-b ${isMaximized ? "border-white/20" : "border-gray-200 dark:border-gray-700"} flex-shrink-0`}>
                       <div className="relative">
@@ -747,8 +722,7 @@ const MessagingComponent = () => {
                         />
                       </div>
                     </div>
-
-                    {/* Users List */}
+                    
                     {/* Users List */}
                     <div className="flex-1 overflow-y-auto">
                       {loading ? (
@@ -838,12 +812,6 @@ const MessagingComponent = () => {
                                   </div>
                                 )}
                               </div>
-                              <p
-                                className={`${isMaximized ? "text-white/70" : "text-gray-500 dark:text-gray-400"
-                                  } text-xs mt-1`}
-                              >
-                                {u.lastSeen || "Never messaged"}
-                              </p>
                             </div>
                           </div>
                         ))
@@ -867,7 +835,7 @@ const MessagingComponent = () => {
                 <div className={`flex w-full ${isMaximized ? "max-w-6xl mx-auto" : "flex-col"}`}>
                   {/* Sidebar for Maximized Chat View */}
                   {isMaximized && (
-                    <aside className="w-80 border-r border-white/20 flex flex-col">
+                    <aside className="w-80 border border-white/20 flex flex-col">
                       {/* Search */}
                       <div className="p-4 border-b border-white/20 flex-shrink-0">
                         <div className="relative">
@@ -914,7 +882,6 @@ const MessagingComponent = () => {
                                   </div>
                                 )}
                               </div>
-                              <p className="text-xs text-white/70 mt-1">{u.lastSeen}</p>
                             </div>
                           </div>
                         ))}
@@ -1084,7 +1051,9 @@ const MessagingComponent = () => {
                                   : "text-gray-500"
                                   }`}
                               >
-                                {new Date(msg.createdAt).toLocaleTimeString()}
+                                {new Date(msg.createdAt).toLocaleString(undefined, {
+                                  timeStyle: "short"
+                                })}
                               </p>
                             </div>
                           </div>
