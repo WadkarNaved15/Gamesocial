@@ -25,7 +25,7 @@ const LegalModal: React.FC<LegalModalProps> = ({ type, onClose}) => {
     subtitle = 'Our Approach to Your Privacy';
   } else if (isPaid) {
     title = 'Paid Services Policy';
-    subtitle = 'Cloud Stream Services (Effective Date: June 03, 2026)';
+    subtitle = 'Understanding Cloud Stream Services';
   }
 
   return (
@@ -376,11 +376,10 @@ const LegalModal: React.FC<LegalModalProps> = ({ type, onClose}) => {
 
                 <section>
                   <h3 className="text-lg font-bold mb-2">12. CONTACT US</h3>
-                  <p className="text-sm leading-relaxed text-gray-800">
-                    For support, billing questions, or refund requests:<br/>
-                    Preferred: In-app support ticket<br/>
-                    Email: support@rigzer.com
-                  </p>
+             <p className="text-sm leading-relaxed text-gray-800">
+              For support, billing questions, or refund requests, just use our feedback form! It doubles as our support desk, and we'll get right back to you.<br />
+              We encourage lazy writing—just write to us.
+            </p>
                 </section>
               </>
             )}
