@@ -115,7 +115,7 @@ class FollowService {
     if (cached) return parseInt(cached, 10);
 
     const count = await Follow.countDocuments({ following: userId });
-    await redis.set(cacheKey, count, { EX: 300 }); // cache 5 min
+    await redis.set(cacheKey, count, { EX: 120 }); // cache 2 min
     return count;
   }
 
@@ -125,7 +125,7 @@ class FollowService {
     if (cached) return parseInt(cached, 10);
 
     const count = await Follow.countDocuments({ follower: userId });
-    await redis.set(cacheKey, count, { EX: 300 });
+    await redis.set(cacheKey, count, { EX: 120 }); // cache 2 min
     return count;
   }
 
@@ -151,7 +151,7 @@ class FollowService {
       isFollowing: followingSet.has(user._id.toString()),
     }));
 
-    await redis.set(cacheKey, JSON.stringify(enriched), "EX", 600);
+    await redis.set(cacheKey, JSON.stringify(enriched), { EX: 120 }); // cache 2 min
 
     return enriched;
   }
