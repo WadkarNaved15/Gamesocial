@@ -2,7 +2,7 @@ import Follow from "../models/Follow.js";
 import User from "../models/User.js";
 import redis from "../config/redis.js";
 import mongoose from "mongoose";
-
+console.log("FollowService loaded");
 class FollowService {
   static async followUser(followerId, followingId) {
     if (!mongoose.Types.ObjectId.isValid(followerId) || !mongoose.Types.ObjectId.isValid(followingId))
@@ -130,14 +130,16 @@ class FollowService {
   }
 
   static async getSuggestedUsers(userId) {
+    console.log("ENTERED getSuggestedUsers");
     const cacheKey = `suggested:${userId}`;
+    console.log("Checking cache", cacheKey);
     const cached = await redis.get(cacheKey);
+    console.log("Cached value", cached);
     if (cached) return JSON.parse(cached);
-
+    console.log("Cache miss");
     // Get following set
     const following = await Follow.find({ follower: userId }).select("following");
     const followingSet = new Set(following.map(f => f.following.toString()));
-
     // Convert string/ObjectId array to proper ObjectIds for the aggregation pipeline
     const excludeIds = [...followingSet, userId].map(id => new mongoose.Types.ObjectId(id));
 
@@ -147,7 +149,7 @@ class FollowService {
       { $sample: { size: 5 } },
       { $project: { _id: 1, username: 1, avatar: 1, name: 1 } }
     ]);
-
+    console.log("Aggregation returned", suggested.length);
     // Inject isFollowing (will be false for all since we excluded them, but good for consistency)
     const enriched = suggested.map(user => ({
       ...user,

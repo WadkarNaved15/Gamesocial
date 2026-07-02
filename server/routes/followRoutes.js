@@ -82,9 +82,12 @@ router.get("/:id/following", async (req, res) => {
 router.get("/:id/suggested", async (req, res) => {
   try {
     const userId = req.params.id; // current logged-in user
+    console.log("Getting suggested users for user ID:", userId);
+    console.log(FollowService);
     const suggested = await FollowService.getSuggestedUsers(userId);
     res.json({ users: suggested });
   } catch (err) {
+    console.error("Error getting suggested users:", err);
     res.status(500).json({ error: err.message });
   }
 });
