@@ -89,7 +89,7 @@ const POST_PROJECTION = {
 // preserved in JS via postMap. Sort only applies for the chronological path
 // where _id ordering is the intent.
 
-async function fetchPostsByIds(ids) {
+async function fetchPostsByIds(ids , isAdmin = false) {
   // Used by Gorse path: fetch exact IDs, no sort (JS preserves Gorse rank)
   const filter = {
   _id: { $in: ids },
@@ -108,7 +108,7 @@ return AllPost.find(filter)
     .lean();
 }
 
-async function fetchChronological(filter, limit) {
+async function fetchChronological(filter, limit , isAdmin = false) {
   // Used by guest/fallback path: sort by _id desc
   const query = {
   ...filter,
@@ -217,7 +217,7 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
 
       if (safeIds.length > 0) {
         // Now fetch posts from Atlas — pockets are still running in parallel
-        const docs = await fetchPostsByIds(safeIds);
+        const docs = await fetchPostsByIds(safeIds, isAdmin);
 
         // Preserve Gorse's rank order using a Map (Atlas returns in _id order)
         const postMap = new Map(docs.map((p) => [p._id.toString(), p]));
@@ -233,14 +233,14 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
     // Gorse returned nothing or failed — fall back to chronological
     if (!usedGorse) {
       // Pockets are already in-flight; fetch posts in parallel with them
-      allPosts = await fetchChronological(allPostFilter, fetchLimit);
+      allPosts = await fetchChronological(allPostFilter, fetchLimit , isAdmin);
     }
   } else {
     // ── Guest: chronological posts + pockets fully in parallel ──────────────
     // pocketPromise is already running from line ~60.
     // Fire the Atlas query right now so both run concurrently.
     [allPosts] = await Promise.all([
-      fetchChronological(allPostFilter, fetchLimit),
+      fetchChronological(allPostFilter, fetchLimit ,isAdmin),
       // pocketPromise resolves on its own — collected below
     ]);
   }
