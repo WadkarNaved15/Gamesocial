@@ -38,7 +38,7 @@ function getBarClass(): string {
 }
 
 const PostTypeHeader: React.FC<PostTypeHeaderProps> = ({ active, onChange, onCancel }) => {
-  const { user } = useUser();
+  const { user, isAdmin } = useUser();
 
   // Filter out Ad Models completely, and Pocket if the user isn't eligible
   const visibleTypes = POST_TYPES.filter((t) => {
@@ -53,7 +53,10 @@ const PostTypeHeader: React.FC<PostTypeHeaderProps> = ({ active, onChange, onCan
       <div className="flex flex-col items-center gap-6 w-full">
         {visibleTypes.map((t) => {
           // ADDED t.id === "game" to the disabled condition
-          const isDisabled = t.id === "game" || t.id === "devlog" || t.id === "article";
+          const isDisabled =
+            (t.id === "game" && !isAdmin) ||
+            t.id === "devlog" ||
+            t.id === "article";
 
           return (
             <div

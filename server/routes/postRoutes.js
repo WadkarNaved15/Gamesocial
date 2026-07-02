@@ -86,6 +86,12 @@ router.get("/filter_posts", optionalAuthMiddleware, async (req, res) => {
       $text: { $search: query },
     };
 
+    if (req.user?.role !== "admin") {
+      filter.type = {
+        $ne: "game_post",
+      };
+    }
+
     if (cursor) {
       filter._id = { $lt: cursor };
     }
@@ -128,9 +134,13 @@ router.get("/user_posts/:userId", optionalAuthMiddleware, async (req, res) => {
 
     const query = {
       user: userId,
-      type: { $ne: "canvas_article" },
       ...(cursor && { _id: { $lt: cursor } }),
     };
+
+    query.type =
+      req.user?.role === "admin"
+        ? { $ne: "canvas_article" }
+        : { $nin: ["canvas_article", "game_post"] };
 
     const posts = await Post.find(query)
       .populate("user", "username avatar")
@@ -189,7 +199,6 @@ router.get("/user_posts/:userId", optionalAuthMiddleware, async (req, res) => {
 });
 
 // ── GET /api/posts/:postId ────────────────────────────────────────────────────
-// ── GET /api/posts/:postId ────────────────────────────────────────────────────
 router.get("/:postId", optionalAuthMiddleware, async (req, res) => {
   try {
     const post = await Post.findById(req.params.postId)
@@ -197,6 +206,15 @@ router.get("/:postId", optionalAuthMiddleware, async (req, res) => {
       .lean();
 
     if (!post) return res.status(404).json({ deleted: true });
+
+    if (
+      post.type === "game_post" &&
+      req.user?.role !== "admin"
+    ) {
+      return res.status(404).json({
+        deleted: true,
+      });
+    }
 
     const viewerId = req.user?._id?.toString();
 
