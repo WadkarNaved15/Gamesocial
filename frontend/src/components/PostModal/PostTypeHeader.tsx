@@ -38,7 +38,7 @@ function getBarClass(): string {
 }
 
 const PostTypeHeader: React.FC<PostTypeHeaderProps> = ({ active, onChange, onCancel }) => {
-  const { user } = useUser();
+  const { user, isAdmin } = useUser();
 
   // Filter out Ad Models completely, and Pocket if the user isn't eligible
   const visibleTypes = POST_TYPES.filter((t) => {
@@ -54,7 +54,7 @@ const PostTypeHeader: React.FC<PostTypeHeaderProps> = ({ active, onChange, onCan
         {visibleTypes.map((t) => {
           // ADDED t.id === "game" to the disabled condition
           const isDisabled =
-            (t.id === "game" && user?.role !== "admin") ||
+            (t.id === "game" && !isAdmin) ||
             t.id === "devlog" ||
             t.id === "article";
 
