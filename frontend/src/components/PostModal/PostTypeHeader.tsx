@@ -53,7 +53,10 @@ const PostTypeHeader: React.FC<PostTypeHeaderProps> = ({ active, onChange, onCan
       <div className="flex flex-col items-center gap-6 w-full">
         {visibleTypes.map((t) => {
           // ADDED t.id === "game" to the disabled condition
-          const isDisabled = t.id === "game" || t.id === "devlog" || t.id === "article";
+          const isDisabled =
+            (t.id === "game" && user?.role !== "admin") ||
+            t.id === "devlog" ||
+            t.id === "article";
 
           return (
             <div

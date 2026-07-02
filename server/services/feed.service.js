@@ -14,6 +14,7 @@ import AllPost from "../models/Allposts.js";
 import PocketFeedEntry from "../models/PocketFeedEntry.js";
 import Like from "../models/Like.js";
 import Wishlist from "../models/Wishlist.js";
+import User from "../models/User.js";
 import {
   getRecommendations,
   recordServed,
@@ -90,10 +91,18 @@ const POST_PROJECTION = {
 
 async function fetchPostsByIds(ids) {
   // Used by Gorse path: fetch exact IDs, no sort (JS preserves Gorse rank)
-  return AllPost.find({
-    _id: { $in: ids },
-    type: { $ne: "canvas_article" },
-  })
+  const filter = {
+  _id: { $in: ids },
+  type: { $ne: "canvas_article" },
+};
+
+if (!isAdmin) {
+  filter.type = {
+    $nin: ["canvas_article", "game_post"],
+  };
+}
+
+return AllPost.find(filter)
     .select(POST_PROJECTION)
     .populate("user", "username avatar")
     .lean();
@@ -101,7 +110,15 @@ async function fetchPostsByIds(ids) {
 
 async function fetchChronological(filter, limit) {
   // Used by guest/fallback path: sort by _id desc
-  return AllPost.find({ ...filter, type: { $ne: "canvas_article" } })
+  const query = {
+  ...filter,
+};
+
+query.type = !isAdmin
+  ? { $nin: ["canvas_article", "game_post"] }
+  : { $ne: "canvas_article" };
+
+return AllPost.find(query)
     .select(POST_PROJECTION)
     .populate("user", "username avatar")
     .sort({ _id: -1 })
@@ -115,6 +132,15 @@ async function fetchChronological(filter, limit) {
  * @param {{ cursor?: string, limit?: number, userId?: string|null }} opts
  */
 export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
+  let isAdmin = false;
+
+  if (userId) {
+    const user = await User.findById(userId)
+      .select("role")
+      .lean();
+
+    isAdmin = user?.role === "admin";
+  }
   // Fetch a small buffer over limit to account for the pocket merge/slice.
   // Previously this was limit*2 (20 docs for a page of 10) — wasteful over Atlas.
   const fetchLimit = limit + 3;
