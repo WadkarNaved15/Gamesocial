@@ -30,6 +30,7 @@ import PublisherForm from "./Pages/PublisherForm";
 import Analytics from "./Pages/Analytics";
 import CreditOperations from "./Pages/CreditOperations";
 import SessionMonitoringDashboard from "./Pages/SessionMonitoringDashboard";
+import FeedbackPage from "./Pages/admin/FeedbackPage";
 import AdminIntelligenceCenter from "./Pages/AdminIntelligenceCenter";
 
 //Error Handling
@@ -51,13 +52,13 @@ export const router = createBrowserRouter([
         element: <MainLayout />,
         children: [
           { path: "/", element: <Home /> },
-          { path: "/search", element:<GuestProtectedRoute> <Home /> </GuestProtectedRoute> },
-          { path: "/post/:postId", element:<GuestProtectedRoute> <PostDetailsPage /> </GuestProtectedRoute> },
-          { path: "/profile/:username", element:<GuestProtectedRoute> <ProfilePageWrapper /> </GuestProtectedRoute> },
-          { path: "/articles/:canvasId", element:<GuestProtectedRoute> <ArticleOverlay /> </GuestProtectedRoute> },
-          { path: "/create", element:<GuestProtectedRoute> <PostModal /> </GuestProtectedRoute> },
-          { path: "/wishlist", element:<GuestProtectedRoute> <WishlistPage /> </GuestProtectedRoute> },
-          { path: "/notifications", element:<GuestProtectedRoute> <NotificationsPage /> </GuestProtectedRoute> },
+          { path: "/search", element: <GuestProtectedRoute> <Home /> </GuestProtectedRoute> },
+          { path: "/post/:postId", element: <GuestProtectedRoute> <PostDetailsPage /> </GuestProtectedRoute> },
+          { path: "/profile/:username", element: <GuestProtectedRoute> <ProfilePageWrapper /> </GuestProtectedRoute> },
+          { path: "/articles/:canvasId", element: <GuestProtectedRoute> <ArticleOverlay /> </GuestProtectedRoute> },
+          { path: "/create", element: <GuestProtectedRoute> <PostModal /> </GuestProtectedRoute> },
+          { path: "/wishlist", element: <GuestProtectedRoute> <WishlistPage /> </GuestProtectedRoute> },
+          { path: "/notifications", element: <GuestProtectedRoute> <NotificationsPage /> </GuestProtectedRoute> },
         ],
       },
 
@@ -66,28 +67,28 @@ export const router = createBrowserRouter([
       { path: "/reset-password", element: <ResetPassword /> },
       { path: "/verify-email", element: <VerifyEmail /> },
 
-      { path: "/stream/:sessionId", element:<GuestProtectedRoute> <StreamPage /> </GuestProtectedRoute> },
-      { path: "/publisher", element:<GuestProtectedRoute> <PublisherForm /> </GuestProtectedRoute> },
-      { path: "/createpost", element:<GuestProtectedRoute> <CreatePostPage /> </GuestProtectedRoute> },
-      { path: "/playgame", element:<GuestProtectedRoute> <PlayGame sessionId=""/> </GuestProtectedRoute> },
+      { path: "/stream/:sessionId", element: <GuestProtectedRoute> <StreamPage /> </GuestProtectedRoute> },
+      { path: "/publisher", element: <GuestProtectedRoute> <PublisherForm /> </GuestProtectedRoute> },
+      { path: "/createpost", element: <GuestProtectedRoute> <CreatePostPage /> </GuestProtectedRoute> },
+      { path: "/playgame", element: <GuestProtectedRoute> <PlayGame sessionId="" /> </GuestProtectedRoute> },
 
       // { path: "/devlogs", element: <DevLogs /> },
-      { path: "/devlogs/view/:id", element:<GuestProtectedRoute> <DevLogsView /> </GuestProtectedRoute> },
-      { path: "/devlogCanvas", element:<GuestProtectedRoute> <DevLogCanvas /> </GuestProtectedRoute> },
-      { path: "/devlogviewer/:devlogId", element:<GuestProtectedRoute> <DevlogViewer /> </GuestProtectedRoute> },
+      { path: "/devlogs/view/:id", element: <GuestProtectedRoute> <DevLogsView /> </GuestProtectedRoute> },
+      { path: "/devlogCanvas", element: <GuestProtectedRoute> <DevLogCanvas /> </GuestProtectedRoute> },
+      { path: "/devlogviewer/:devlogId", element: <GuestProtectedRoute> <DevlogViewer /> </GuestProtectedRoute> },
 
-      { path: "/models", element:<GuestProtectedRoute> <ModelViewer /> </GuestProtectedRoute> },
-      { path: "/gameshow", element:<GuestProtectedRoute> <GameShowcase /> </GuestProtectedRoute> },
-      { path: "/gameupload", element:<GuestProtectedRoute> <UploadGame /> </GuestProtectedRoute> },
-      { path: "/games", element:<GuestProtectedRoute> <GamePost /> </GuestProtectedRoute> },
+      { path: "/models", element: <GuestProtectedRoute> <ModelViewer /> </GuestProtectedRoute> },
+      { path: "/gameshow", element: <GuestProtectedRoute> <GameShowcase /> </GuestProtectedRoute> },
+      { path: "/gameupload", element: <GuestProtectedRoute> <UploadGame /> </GuestProtectedRoute> },
+      { path: "/games", element: <GuestProtectedRoute> <GamePost /> </GuestProtectedRoute> },
 
       // { path: "/puck", element: <Puck /> },
-      { path: "/recommendations", element:<GuestProtectedRoute> <Recommendations /> </GuestProtectedRoute> },
-      { path: "/recommendationsposts", element:<GuestProtectedRoute> <RecommendationPosts /> </GuestProtectedRoute> },
+      { path: "/recommendations", element: <GuestProtectedRoute> <Recommendations /> </GuestProtectedRoute> },
+      { path: "/recommendationsposts", element: <GuestProtectedRoute> <RecommendationPosts /> </GuestProtectedRoute> },
 
-      { path: "/analytics", element:<GuestProtectedRoute> <Analytics /> </GuestProtectedRoute> },
+      { path: "/analytics", element: <GuestProtectedRoute> <Analytics /> </GuestProtectedRoute> },
 
-      { path: "/ads", element:<GuestProtectedRoute> <AdsPage /> </GuestProtectedRoute> },
+      { path: "/ads", element: <GuestProtectedRoute> <AdsPage /> </GuestProtectedRoute> },
 
       // ── Admin routes ───────────────────────────────────────────────────────────
       // AdminRoute checks:  not logged in → /login?next=…  |  not admin → 403 page
@@ -98,6 +99,14 @@ export const router = createBrowserRouter([
         element: (
           <AdminRoute>
             <AdminPocketDashboard />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/admin/feedback",
+        element: (
+          <AdminRoute>
+            <FeedbackPage />
           </AdminRoute>
         ),
       },
@@ -131,6 +140,6 @@ export const router = createBrowserRouter([
         path: "*",
         element: <PageNotFound />,
       },
-    ], 
-  },  
+    ],
+  },
 ]);    
