@@ -1,5 +1,5 @@
 import { NotificationType } from "../../context/Notifications";
-import { Link } from "react-router-dom";
+import { Link,useNavigate} from "react-router-dom";
 
 interface Props {
   notification: NotificationType;
@@ -8,7 +8,7 @@ interface Props {
 
 export default function NotificationCard({ notification, onRead }: Props) {
   const actor = notification.actorsPreview?.[0];
-
+  const navigate = useNavigate();
   // ✅ Safe description fallback
   const postDescription = notification.postId?.description ?? "";
 
@@ -39,6 +39,10 @@ export default function NotificationCard({ notification, onRead }: Props) {
       <img
         src={actor?.avatar || "/default_avatar.png"}
         className="h-11 w-11 rounded-full object-cover"
+        onClick={(e)=>{
+          e.stopPropagation();
+          navigate(`/profile/${actor?.username}`);
+        }}
       />
 
       {/* Content */}
