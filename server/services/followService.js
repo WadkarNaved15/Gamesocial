@@ -135,6 +135,8 @@ class FollowService {
     console.log("Checking cache", cacheKey);
     const cached = await redis.get(cacheKey);
     console.log("Cached value", cached);
+    const ttl = await redis.ttl(cacheKey);
+    console.log("Current TTL:", ttl);
     if (cached) return JSON.parse(cached);
     console.log("Cache miss");
     // Get following set
@@ -153,11 +155,15 @@ class FollowService {
     // Inject isFollowing (will be false for all since we excluded them, but good for consistency)
     const enriched = suggested.map(user => ({
       ...user,
-      isFollowing: false, 
+      isFollowing: false,
     }));
 
     // Cache for 2 minutes instead of 10
-    await redis.set(cacheKey, JSON.stringify(enriched), { EX: 120 });
+    if (enriched.length > 0) {
+      await redis.set(cacheKey, JSON.stringify(enriched), { EX: 120 });
+    }
+    ttl = await redis.ttl(cacheKey);
+    console.log("TTL after set:", ttl);
 
     return enriched;
   }
