@@ -135,8 +135,6 @@ class FollowService {
     console.log("Checking cache", cacheKey);
     const cached = await redis.get(cacheKey);
     console.log("Cached value", cached);
-    await redis.del(cacheKey);
-    console.log("Deleted cache");
     const ttl = await redis.ttl(cacheKey);
     console.log("Current TTL:", ttl);
     if (cached) return JSON.parse(cached);
