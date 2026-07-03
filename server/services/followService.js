@@ -2,7 +2,6 @@ import Follow from "../models/Follow.js";
 import User from "../models/User.js";
 import redis from "../config/redis.js";
 import mongoose from "mongoose";
-console.log("FollowService loaded");
 class FollowService {
   static async followUser(followerId, followingId) {
     if (!mongoose.Types.ObjectId.isValid(followerId) || !mongoose.Types.ObjectId.isValid(followingId))
@@ -132,10 +131,7 @@ class FollowService {
   static async getSuggestedUsers(userId) {
     const cacheKey = `suggested:${userId}`;
     const cached = await redis.get(cacheKey);
-    const ttl = await redis.ttl(cacheKey);
-    console.log("Current TTL:", ttl);
     if (cached) return JSON.parse(cached);
-    console.log("Cache miss");
     // Get following set
     const following = await Follow.find({ follower: userId }).select("following");
     const followingSet = new Set(following.map(f => f.following.toString()));
@@ -148,7 +144,6 @@ class FollowService {
       { $sample: { size: 5 } },
       { $project: { _id: 1, username: 1, avatar: 1, name: 1 } }
     ]);
-    console.log("Aggregation returned", suggested.length);
     // Inject isFollowing (will be false for all since we excluded them, but good for consistency)
     const enriched = suggested.map(user => ({
       ...user,
@@ -159,8 +154,6 @@ class FollowService {
     if (enriched.length > 0) {
       await redis.set(cacheKey, JSON.stringify(enriched), { EX: 120 });
     }
-
-
     return enriched;
   }
 }
