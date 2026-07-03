@@ -130,11 +130,8 @@ class FollowService {
   }
 
   static async getSuggestedUsers(userId) {
-    console.log("ENTERED getSuggestedUsers");
     const cacheKey = `suggested:${userId}`;
-    console.log("Checking cache", cacheKey);
     const cached = await redis.get(cacheKey);
-    console.log("Cached value", cached);
     const ttl = await redis.ttl(cacheKey);
     console.log("Current TTL:", ttl);
     if (cached) return JSON.parse(cached);
