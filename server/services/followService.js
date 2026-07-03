@@ -150,7 +150,7 @@ class FollowService {
       isFollowing: false,
     }));
 
-    // Cache for 2 minutes instead of 10
+    // Cache for 2 minutes instead of 10 seconds and avoid empty arrays
     if (enriched.length > 0) {
       await redis.set(cacheKey, JSON.stringify(enriched), { EX: 120 });
     }
