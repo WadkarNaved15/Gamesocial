@@ -10,7 +10,8 @@ import {
     Key,
     Trash2
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useAccountSwitcherContext } from "../../context/AccountSwitcherContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useUser } from "../../context/user";
 import { useNotification } from "../../context/Notifications";
@@ -47,6 +48,9 @@ export default function SidebarNavigation({
     const { unreadCount } = useNotification();
 
     const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
+    const logoutButtonRef = useRef<HTMLButtonElement>(null);
+
+    const { openAccountSwitcher } = useAccountSwitcherContext();
 
     const items: NavItem[] = [
         {
@@ -96,6 +100,17 @@ export default function SidebarNavigation({
                     label: "Delete Account",
                     action: () => onOpenSettings('delete'),
                     isDanger: true // <-- Flagged as danger
+                },
+                {
+                    icon: LogOut,
+                    label: "Logout Session",
+                    action: () => {
+                        if (!logoutButtonRef.current) return;
+
+                        openAccountSwitcher(
+                            logoutButtonRef.current.getBoundingClientRect()
+                        );
+                    },
                 }
             ]
         },
@@ -136,15 +151,15 @@ export default function SidebarNavigation({
                             )}
 
                             {item.isExpandable && (
-                                <ChevronDown 
-                                    size={16} 
-                                    className={`transition-transform duration-200 ${item.isExpanded ? "rotate-180" : ""}`} 
+                                <ChevronDown
+                                    size={16}
+                                    className={`transition-transform duration-200 ${item.isExpanded ? "rotate-180" : ""}`}
                                 />
                             )}
                         </button>
 
                         {item.isExpandable && (
-                            <div 
+                            <div
                                 className={`
                                     overflow-hidden transition-all duration-300 ease-in-out
                                     ${item.isExpanded ? "max-h-40 opacity-100 mt-1" : "max-h-0 opacity-0"}
@@ -154,10 +169,10 @@ export default function SidebarNavigation({
                                     {item.subItems?.map((sub) => (
                                         <button
                                             key={sub.label}
+                                            ref={sub.label === "Logout Session" ? logoutButtonRef : undefined}
                                             onClick={sub.action}
-                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-white/5 transition-all text-sm font-medium ${
-                                                sub.isDanger ? 'hover:text-red-500' : 'hover:text-[#62D4AE]'
-                                            }`}
+                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-white/5 transition-all text-sm font-medium ${sub.isDanger ? 'hover:text-red-500' : 'hover:text-[#62D4AE]'
+                                                }`}
                                         >
                                             <sub.icon size={16} />
                                             {sub.label}

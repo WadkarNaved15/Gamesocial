@@ -3,6 +3,7 @@ import { Plus, LogOut, LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../context/user";
 import { useAccountSwitch } from "../../hooks/useAccountSwitch";
+
 interface Account {
   userId: string;
   username: string;
@@ -27,10 +28,31 @@ export default function AccountSwitcherOverlay({
   const allAccounts: Account[] = JSON.parse(localStorage.getItem("accounts") || "[]")
     .filter((acc: Account) => acc.userId !== user?._id);
 
-  // Configuration for the vertical connection
-  const centerX = anchorRect.left + anchorRect.width / 2;
-  const startY = anchorRect.bottom;
-  const LINE_DROP = 120; // How far down the line goes
+  const IMAGE_SIZE = 65; // Matches ProfileCover avatar size perfectly
+
+  // Detect if triggered by wide Sidebar row button vs square Profile avatar image
+  const isSidebarTrigger = anchorRect.width > 100;
+
+  let imgLeft = 0;
+  let imgTop = 0;
+  let centerX = 0;
+
+  if (isSidebarTrigger) {
+    // SIDEBAR CONFIG: Shift up and right next to the menu row
+    imgLeft = anchorRect.right-200; 
+    imgTop = anchorRect.top + (anchorRect.height / 2) - (IMAGE_SIZE / 2)-200;
+    centerX = imgLeft + (IMAGE_SIZE / 2);
+  } else {
+    // PROFILE COVER CONFIG: Standard perfect mathematical overlap overlay
+    centerX = anchorRect.left + anchorRect.width / 2;
+    const centerY = anchorRect.top + anchorRect.height / 2;
+    imgLeft = centerX - IMAGE_SIZE / 2;
+    imgTop = centerY - IMAGE_SIZE / 2;
+  }
+
+  // Vertical line geometry calculations 
+  const startY = imgTop + IMAGE_SIZE;
+  const LINE_DROP = 120; 
   const endY = startY + LINE_DROP;
 
   return createPortal(
@@ -59,7 +81,7 @@ export default function AccountSwitcherOverlay({
         style={{
           position: "fixed",
           top: endY,
-          left: centerX - 20, // Center the 40px wide div
+          left: centerX - 20, 
           width: 40,
           height: 40,
           zIndex: 102,
@@ -77,10 +99,10 @@ export default function AccountSwitcherOverlay({
       <div 
         style={{
           position: "fixed",
-          top: anchorRect.top,
-          left: anchorRect.left,
-          width: anchorRect.width,
-          height: anchorRect.height,
+          top: imgTop,
+          left: imgLeft,
+          width: IMAGE_SIZE,
+          height: IMAGE_SIZE,
           zIndex: 102,
         }}
       >
@@ -92,12 +114,12 @@ export default function AccountSwitcherOverlay({
         />
       </div>
 
-      {/* 5. Account Selection Row */}
+      {/* 5. Account Selection Row - Shifted downward subtly (+6px) for pristine visual balance */}
       <div
         style={{
           position: "fixed",
-          top: anchorRect.top + 6, 
-          left: anchorRect.right + 20,
+          top: imgTop + 6, 
+          left: imgLeft + IMAGE_SIZE + 20,
           zIndex: 102,
         }}
         className="flex items-start gap-4 animate-in fade-in slide-in-from-left-4 duration-300"
@@ -122,6 +144,7 @@ export default function AccountSwitcherOverlay({
           </button>
         ))}
 
+        {/* Add Account Icon Button */}
         <button
           onClick={() => navigate("/auth?add=true")}
           className="flex flex-col items-center gap-2 group transition-transform active:scale-95"

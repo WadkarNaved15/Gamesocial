@@ -4,6 +4,8 @@ import { Header } from "../components/Header";
 import Billboard from "../components/Home/Billboard";
 import UploadBox from "../components/Home/Upload";
 import { useUser } from "../context/user";
+import AccountSwitcherOverlay from "../components/Home/AccountSwitchOverlay";
+import { useAccountSwitcherContext } from "../context/AccountSwitcherContext";
 import { useGuestSession } from "../hooks/useGuestSession";
 import FeedbackModal from "../components/Home/Feedback";
 import { useAuthGate } from "../context/AuthGate";
@@ -27,7 +29,11 @@ function MainLayout() {
   const { user } = useUser();
   const { openGate } = useAuthGate();
   const { minutes } = useGuestSession();
-
+  const {
+    isOpen,
+    anchorRect,
+    closeAccountSwitcher,
+  } = useAccountSwitcherContext();
   const [bannerShown, setBannerShown] = useState(false);
   const [feedLocked, setFeedLocked] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
@@ -35,7 +41,7 @@ function MainLayout() {
   const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | 'paid' | null>(null);
 
   // Track both the open state AND which view to show
-  const [settingsConfig, setSettingsConfig] = useState<{ isOpen: boolean, view: 'password' | 'delete' }>({
+  const [settingsConfig, setSettingsConfig] = useState<{ isOpen: boolean, view: 'password' | 'delete'}>({
     isOpen: false,
     view: 'password'
   });
@@ -215,11 +221,17 @@ function MainLayout() {
         </main>
 
         <MessagingComponent />
-
+        {isOpen && (
+          <AccountSwitcherOverlay
+            anchorRect={anchorRect}
+            onClose={closeAccountSwitcher}
+          />
+        )}
         <SettingsModal
           isOpen={settingsConfig.isOpen}
           initialView={settingsConfig.view}
           onClose={() => setSettingsConfig(prev => ({ ...prev, isOpen: false }))}
+          // onManageAccounts={openAccountSwitcher}
         />
 
         <LegalModal

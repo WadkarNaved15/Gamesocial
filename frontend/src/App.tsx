@@ -9,6 +9,7 @@ import { FollowProvider } from "./context/FollowContext";
 import { FeedProvider } from "./context/FeedContext";
 import { ChatProvider } from "./context/ChatContext";
 import FeedbackProvider from "./context/FeedbackProvider";
+import { AccountSwitcherProvider } from "./context/AccountSwitcherContext";
 import { PostProvider } from "./context/PostContext";
 import { NotificationProvider } from "./context/Notifications";
 import { SocketProvider } from "./context/SocketContext";
@@ -35,6 +36,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <UIProvider>
         <SocketProvider userId={user?._id}>
+          <AccountSwitcherProvider>
           <PostProvider>
             <FollowProvider>
               <ChatProvider>
@@ -59,6 +61,7 @@ function App() {
               </ChatProvider>
             </FollowProvider>
           </PostProvider>
+          </AccountSwitcherProvider>
         </SocketProvider>
       </UIProvider>
     </QueryClientProvider>

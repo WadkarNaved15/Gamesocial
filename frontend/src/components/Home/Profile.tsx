@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useAccountSwitcherContext } from "../../context/AccountSwitcherContext";
 import { useNavigate } from "react-router-dom";
 import { CircleUser, Bookmark, LogIn, LogOut, Bell, User } from "lucide-react";
 import AccountSwitcherOverlay from "./AccountSwitchOverlay";
@@ -11,14 +12,20 @@ interface ProfileCoverProps {
 export default function ProfileCover({
   onOpenWishlist,
 }: ProfileCoverProps) {
-  const [accountOverlayOpen, setAccountOverlayOpen] = useState(false);
-  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const [bioExpanded, setBioExpanded] = useState(false);
   const navigate = useNavigate();
   const { unreadCount } = useNotification();
   const { user, logout } = useUser();
   const userBio = user?.bio || "Bio goes here...";
   const isBioLong = userBio.length > 40;
+  const avatarRef = useRef<HTMLImageElement>(null);
+  const {
+    isOpen: accountOverlayOpen,
+    anchorRect,
+    openAccountSwitcher,
+    closeAccountSwitcher,
+  } = useAccountSwitcherContext();
+
   // If user is NOT logged in → Show login prompt card
   if (!user) {
     return (
@@ -115,8 +122,7 @@ export default function ProfileCover({
   const bannerUrl = user?.banner || 'https://fastly.picsum.photos/id/299/800/200.jpg?hmac=xMdRbjiNM_IogJDEgKIJ0GeCxZ8nwOGd5_Wf_ODZ94s';
 
   const handleAvatarClick = (e: React.MouseEvent<HTMLImageElement>) => {
-    setAnchorRect(e.currentTarget.getBoundingClientRect());
-    setAccountOverlayOpen(true);
+    openAccountSwitcher(e.currentTarget.getBoundingClientRect());
   };
 
 
@@ -190,6 +196,7 @@ export default function ProfileCover({
           <div className="absolute -bottom-8 left-4 flex items-end z-10">
             <div className="relative">
               <img
+                ref={avatarRef}
                 src={user?.avatar || "/default_avatar.png"}
                 alt="Profile"
                 onClick={handleAvatarClick}
@@ -234,7 +241,7 @@ export default function ProfileCover({
         {accountOverlayOpen && (
           <AccountSwitcherOverlay
             anchorRect={anchorRect}
-            onClose={() => setAccountOverlayOpen(false)}
+            onClose={closeAccountSwitcher}
           />
         )}
       </div>
