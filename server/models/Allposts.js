@@ -14,17 +14,33 @@ const ModelAssetSchema = new mongoose.Schema(
 
     sizeMB: Number,
 
-    optimization: {
-      status: {
-        type: String,
-        enum: ["pending", "processing", "completed", "failed"],
-        default: "pending",
-      },
-      optimizedSizeMB: Number,
-      compressionRatio: Number,
-      error: String,
-      processedAt: Date,
-    },
+optimization: {
+  status: {
+    type: String,
+    enum: [
+      "pending",
+      "processing",
+      "completed",
+      "failed",
+    ],
+    default: "pending",
+  },
+
+  retryCount: {
+    type: Number,
+    default: 0,
+  },
+
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+
+  optimizedSizeMB: Number,
+  compressionRatio: Number,
+  error: String,
+  processedAt: Date,
+},
 
     metadata: {
       fileName: String,
@@ -386,17 +402,33 @@ const AdModelAssetSchema = new mongoose.Schema(
 
     sizeMB: Number,
 
-    optimization: {
-      status: {
-        type: String,
-        enum: ["pending", "processing", "completed", "failed"],
-        default: "pending",
-      },
-      optimizedSizeMB: Number,
-      compressionRatio: Number,
-      error: String,
-      processedAt: Date,
-    },
+optimization: {
+  status: {
+    type: String,
+    enum: [
+      "pending",
+      "processing",
+      "completed",
+      "failed",
+    ],
+    default: "pending",
+  },
+
+  retryCount: {
+    type: Number,
+    default: 0,
+  },
+
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+
+  optimizedSizeMB: Number,
+  compressionRatio: Number,
+  error: String,
+  processedAt: Date,
+},
 
     metadata: {
       fileName: String,
@@ -769,6 +801,15 @@ PostSchema.index(
   }
 );
 PostSchema.index({ createdAt: -1 });
+PostSchema.index({
+  "modelPost.assets.optimization.status": 1,
+  "modelPost.assets.optimization.updatedAt": 1,
+});
+
+PostSchema.index({
+  "adModelPost.asset.optimization.status": 1,
+  "adModelPost.asset.optimization.updatedAt": 1,
+});
 
 const AllPost =
   mongoose.models.AllPost ||
