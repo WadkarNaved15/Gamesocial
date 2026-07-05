@@ -31,6 +31,8 @@ import {
   calculateSessionDuration,
   determineCleanupPolicy
 } from "../helper/session.js";
+import UserSession from "../models/UserSession.js";
+import { selectRegion } from "../services/regionSelector.js";
 
 const router = express.Router();
 const metrics = new SessionMetrics();
@@ -140,8 +142,30 @@ router.post(
 
       let assignedInstance = null;
 
+              const userSession = await UserSession
+            .findOne({
+                user: userId
+            })
+            .sort({
+                lastActivityAt: -1
+            })
+            .lean();
+
+        const preferredRegion =
+            selectRegion(userSession);
+
+        console.log(
+            "[Region]",
+            userSession?.geo?.countryCode,
+            "->",
+            preferredRegion
+        );
+
       try {
-        const leaseResult = await assignOrStartInstance({});
+        const leaseResult =
+          await assignOrStartInstance({
+              preferredRegion
+          });
 
         if (leaseResult?.status === "ASSIGNED") {
           assignedInstance = leaseResult;
@@ -176,6 +200,7 @@ router.post(
         phase: assignedInstance ? "downloading" : null,
         maxDurationSeconds,
         queueType,
+        instanceRegion: assignedInstance?.region || preferredRegion,
         metadata: {
           gameVersion: game.version,
           platform: game.platform,
@@ -501,7 +526,8 @@ router.post("/heartbeat-by-token/:token", async (req, res) => {
       ) {
         await releaseInstance(
           session.instanceId,
-          session.leaseToken
+          session.leaseToken,
+          session.instanceRegion
         );
       }
 
@@ -549,7 +575,8 @@ router.post("/:sessionId/cancel", verifyToken, async (req, res) => {
       try {
         const releaseResult = await releaseInstance(
           session.instanceId,
-          session.leaseToken
+          session.leaseToken,
+          session.instanceRegion
         );
         console.log("[Cancel] Release result:", releaseResult);
       } catch (err) {
@@ -604,7 +631,7 @@ router.post("/cancel-by-token/:token", async (req, res) => {
     // Release the EC2/Bare metal instance if allocated
     if (session.instanceId && session.leaseToken) {
       try {
-        await releaseInstance(session.instanceId, session.leaseToken);
+        await releaseInstance(session.instanceId, session.leaseToken, session.instanceRegion);
       } catch (err) {
         console.error("[Cancel by Token] Error releasing instance:", err.message);
       }
@@ -769,7 +796,7 @@ router.post("/complete", async (req, res) => {
       // Release instance
       if (session.instanceId && session.leaseToken) {
         try {
-          await releaseInstance(session.instanceId, session.leaseToken);
+          await releaseInstance(session.instanceId, session.leaseToken, session.instanceRegion);
         } catch (err) {
           console.error("Error releasing instance:", err);
         }
@@ -852,7 +879,7 @@ router.post("/violation", async (req, res) => {
     // Release instance
     if (session.instanceId && session.leaseToken) {
       try {
-        await releaseInstance(session.instanceId, session.leaseToken);
+        await releaseInstance(session.instanceId, session.leaseToken, session.instanceRegion);
       } catch (err) {
         console.error("Violation release error:", err);
       }
