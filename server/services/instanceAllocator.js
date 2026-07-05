@@ -1,17 +1,24 @@
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import { DynamoDBClient, UpdateItemCommand ,GetItemCommand} from "@aws-sdk/client-dynamodb";
-const lambdaClient = new LambdaClient({
-  region: process.env.AWS_REGION || "ap-south-1",
-});
+function getLambdaClient(region) {
+  return new LambdaClient({
+    region
+  });
+}
 
 const LEASE_LAMBDA_NAME = process.env.LEASE_LAMBDA_NAME || "leaseGpuWorker";
 const RELEASE_LAMBDA_NAME = process.env.RELEASE_LAMBDA_NAME || "releaseGpuWorker";
 const WORKERS_TABLE = process.env.WORKERS_TABLE || "gpu_instances_workers";
 
-const dynamo = new DynamoDBClient({ region: process.env.AWS_REGION || "ap-south-1" });
+function getDynamo(region) {
+    return new DynamoDBClient({
+        region
+    });
+}
 
 
-export async function claimWorkerInDynamo(workerId, leaseToken, leaseExpiresAt) {
+export async function claimWorkerInDynamo(workerId, leaseToken, leaseExpiresAt, region) {
+  const dynamo = getDynamo(region);
   const state = await dynamo.send(new GetItemCommand({
   TableName: WORKERS_TABLE,
   Key: { worker_id: { S: workerId } }
@@ -42,15 +49,35 @@ console.log("Dynamo BEFORE claim:", state.Item);
  * Lease a GPU instance
  * ✅ FIXED: Distinguishes SCALING from WAITING
  */
-export async function assignOrStartInstance(requirements = {}) {
+export async function assignOrStartInstance(
+    requirements = {}
+) {
   try {
-    const command = new InvokeCommand({
-      FunctionName: LEASE_LAMBDA_NAME,
-      InvocationType: "RequestResponse",
-      Payload: Buffer.from(JSON.stringify(requirements)),
-    });
+        const region =
+        requirements.preferredRegion ||
+        "us-east-1";
 
-    const response = await lambdaClient.send(command);
+    const lambdaClient =
+        getLambdaClient(region);
+
+    const command =
+        new InvokeCommand({
+            FunctionName:
+                LEASE_LAMBDA_NAME,
+            InvocationType:
+                "RequestResponse",
+            Payload:
+                Buffer.from(
+                    JSON.stringify(
+                        requirements
+                    )
+                ),
+        });
+
+    const response =
+        await lambdaClient.send(
+            command
+        );
     const payload = response.Payload
   ? JSON.parse(Buffer.from(response.Payload).toString())
   : {};
@@ -114,7 +141,7 @@ export async function assignOrStartInstance(requirements = {}) {
  * Release a GPU instance
  * ✅ Already correct
  */
-export async function releaseInstance(workerId, leaseToken) {
+export async function releaseInstance(workerId, leaseToken ,region) {
   if (!workerId || !leaseToken) {
     console.warn("[Allocator] Cannot release: missing workerId or leaseToken");
     return { success: false, reason: "Missing parameters" };
@@ -122,7 +149,8 @@ export async function releaseInstance(workerId, leaseToken) {
 
   try {
     console.log("[Allocator] Releasing instance:", { workerId });
-
+    const lambdaClient =
+    getLambdaClient(region);
     const command = new InvokeCommand({
       FunctionName: RELEASE_LAMBDA_NAME,
       InvocationType: "RequestResponse",

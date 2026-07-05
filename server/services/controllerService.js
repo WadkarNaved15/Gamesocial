@@ -105,7 +105,7 @@ export async function callController(session, lease) {
 
         if (session.instanceId && session.leaseToken) {
           try {
-            await releaseInstance(session.instanceId, session.leaseToken);
+            await releaseInstance(session.instanceId, session.leaseToken, session.instanceRegion);
           } catch (releaseErr) {
             console.error(
               "Release after controller failure failed:",

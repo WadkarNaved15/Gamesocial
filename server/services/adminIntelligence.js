@@ -344,22 +344,15 @@ UserSession.aggregate([
   {
     $match: {
       startedAt: {
-        $gte:
-          dateMatch.createdAt?.$gte ??
-          new Date(0),
-
-        $lte:
-          dateMatch.createdAt?.$lte ??
-          new Date(),
+        $gte: dateMatch.createdAt?.$gte ?? new Date(0),
+        $lte: dateMatch.createdAt?.$lte ?? new Date(),
       },
     },
   },
   {
     $group: {
-      _id: "$deviceType",
-      count: {
-        $sum: 1,
-      },
+      _id: "$device.deviceType",
+      count: { $sum: 1 },
     },
   },
 ]),
@@ -368,22 +361,15 @@ UserSession.aggregate([
   {
     $match: {
       startedAt: {
-        $gte:
-          dateMatch.createdAt?.$gte ??
-          new Date(0),
-
-        $lte:
-          dateMatch.createdAt?.$lte ??
-          new Date(),
+        $gte: dateMatch.createdAt?.$gte ?? new Date(0),
+        $lte: dateMatch.createdAt?.$lte ?? new Date(),
       },
     },
   },
   {
     $group: {
-      _id: "$browser",
-      sessions: {
-        $sum: 1,
-      },
+      _id: "$device.browser",
+      sessions: { $sum: 1 },
     },
   },
   {
@@ -397,22 +383,15 @@ UserSession.aggregate([
   {
     $match: {
       startedAt: {
-        $gte:
-          dateMatch.createdAt?.$gte ??
-          new Date(0),
-
-        $lte:
-          dateMatch.createdAt?.$lte ??
-          new Date(),
+        $gte: dateMatch.createdAt?.$gte ?? new Date(0),
+        $lte: dateMatch.createdAt?.$lte ?? new Date(),
       },
     },
   },
   {
     $group: {
-      _id: "$operatingSystem",
-      sessions: {
-        $sum: 1,
-      },
+      _id: "$device.operatingSystem",
+      sessions: { $sum: 1 },
     },
   },
   {
