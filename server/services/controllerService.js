@@ -52,7 +52,8 @@ export async function callController(session, lease) {
 
       for (let i = 0; i < 5; i++) {
         try {
-          const r = await fetch(`http://${lease.ip}:4443/start-session`, {
+          console.log(`lease: ${lease}`);
+          const r = await fetch(`http://${lease.publicIp}:4443/start-session`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
