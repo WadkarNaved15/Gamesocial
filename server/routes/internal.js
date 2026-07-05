@@ -39,13 +39,20 @@ router.post("/instance-ready", verifyInternalKey, async (req, res) => {
     // Find next waiting session (FIFO, queued first)
     const session = await GameSession.findOneAndUpdate(
       {
-  status: "waiting",
-  leasing: { $ne: true },
-  endedAt: null
-},
-      { $set: { leasing: true, lastAllocationAttempt: new Date() } },
-      { sort: { createdAt: 1 }, new: true }
-    );
+          status: "waiting",
+          leasing: { $ne: true },
+          endedAt: null
+      },
+      {
+          $set: {
+              leasing: true,
+              lastAllocationAttempt: new Date()
+          }
+      },
+      {
+          sort: { createdAt: 1 },
+          new: true
+      });
 
     if (!session) {
       log(`[Instance Ready] No waiting sessions, ${workerId} stays IDLE`);
@@ -67,7 +74,12 @@ console.log(`[DEBUG] Attempting claim for worker ${workerId}`);
 
     // ✅ Atomically claim the IDLE worker
     try {
-      await claimWorkerInDynamo(workerId, leaseToken, leaseExpiresAt);
+      await claimWorkerInDynamo(
+    workerId,
+    leaseToken,
+    leaseExpiresAt,
+    session.instanceRegion
+);
     } catch (err) {
   console.error("Dynamo claim failed:", err.name, err.message);
 
@@ -215,7 +227,7 @@ const { status, error } = req.body;    console.log("[Controller Update] Body:", 
 
         if (session.instanceId && session.leaseToken) {
           try {
-            const releaseResult = await releaseInstance(session.instanceId, session.leaseToken);
+            const releaseResult = await releaseInstance(session.instanceId, session.leaseToken, session.instanceRegion);
             const token = await cacheService.get(`streamtoken:${sessionId}`);
 
               if (token) {
@@ -238,7 +250,7 @@ const { status, error } = req.body;    console.log("[Controller Update] Body:", 
 
         if (session.instanceId && session.leaseToken) {
           try {
-            const releaseResult = await releaseInstance(session.instanceId, session.leaseToken);
+            const releaseResult = await releaseInstance(session.instanceId, session.leaseToken, session.instanceRegion);
             const token = await cacheService.get(`streamtoken:${sessionId}`);
 
             if (token) {
