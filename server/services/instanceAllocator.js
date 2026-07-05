@@ -24,6 +24,15 @@ export async function claimWorkerInDynamo(workerId, leaseToken, leaseExpiresAt, 
   Key: { worker_id: { S: workerId } }
 }));
 
+console.log(
+    "[CLAIM]",
+    {
+        workerId,
+        region,
+        table: WORKERS_TABLE
+    }
+);
+
 if (!state.Item) {
   throw new Error(`Worker ${workerId} not found in DynamoDB`);
 }
