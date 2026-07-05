@@ -2,7 +2,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
 import crypto from "crypto";
-import { body, validationResult } from "express-validator";
+import { body, validationResult, param} from "express-validator";
 import { publishSessionEvent } from "../services/sessionPubSub.js";
 import DemoConsumption from "../models/DemoConsumption.js";
 import AllPost from "../models/Allposts.js";
@@ -19,6 +19,7 @@ import { callController } from "../services/controllerService.js";
 import PostAnalytics from "../models/postAnalytics.js";
 import { processBilling } from "../services/creditBilling.js";
 import CreditAudit from "../models/CreditAudit.js";
+import GameFeedback from "../models/GameFeedback.js";
 import {
   getQueueData,
   finalizeSession,
@@ -71,7 +72,7 @@ router.post(
       const userId = req.user.id;
       const { gamePostId } = req.body;
 
-      
+
 
       const alreadyUsed = await DemoConsumption.findOne({
         user: userId,
@@ -129,7 +130,7 @@ router.post(
           error: "Credits exhausted",
         });
       }
-      
+
       const maxDurationSeconds = calculateSessionDuration(game);
 
       let queueType = "direct";
@@ -141,7 +142,7 @@ router.post(
 
       try {
         const leaseResult = await assignOrStartInstance({});
-        
+
         if (leaseResult?.status === "ASSIGNED") {
           assignedInstance = leaseResult;
           response202.status = "starting";
@@ -155,7 +156,7 @@ router.post(
             wait: leaseResult.estimatedWaitMinutes
           });
           queueType = "queued";
-          
+
           response202.queuePosition = leaseResult.queuePosition;
           response202.totalQueued = leaseResult.totalQueued;
           response202.estimatedWaitMinutes = leaseResult.estimatedWaitMinutes;
@@ -184,29 +185,29 @@ router.post(
       response202.sessionId = session._id;
 
       if (assignedInstance) {
-      const updatedSession = await GameSession.findByIdAndUpdate(
-  session._id,
-  {
-    instanceId: assignedInstance.workerId,
-    instanceIp: assignedInstance.instanceIp,
-    leaseToken: assignedInstance.leaseToken,
-    leaseExpiresAt: new Date(assignedInstance.leaseExpiresAt * 1000)
-  },
-  { new: true }
-);
+        const updatedSession = await GameSession.findByIdAndUpdate(
+          session._id,
+          {
+            instanceId: assignedInstance.workerId,
+            instanceIp: assignedInstance.instanceIp,
+            leaseToken: assignedInstance.leaseToken,
+            leaseExpiresAt: new Date(assignedInstance.leaseExpiresAt * 1000)
+          },
+          { new: true }
+        );
 
-await callController(updatedSession, {
-  id: assignedInstance.workerId,
-  ip: assignedInstance.instanceIp,
-  leaseToken: assignedInstance.leaseToken
-});
-    }
+        await callController(updatedSession, {
+          id: assignedInstance.workerId,
+          ip: assignedInstance.instanceIp,
+          leaseToken: assignedInstance.leaseToken
+        });
+      }
 
       const send = sessionStreams.get(session._id.toString());
       if (send) {
         send({
           status: assignedInstance ? "starting" : "waiting",
-          phase: assignedInstance ? "downloading" : null 
+          phase: assignedInstance ? "downloading" : null
         });
       }
 
@@ -223,7 +224,7 @@ await callController(updatedSession, {
     }
   }
 );
- 
+
 /**
  * GET /api/sessions/status/:sessionId
  * ✅ Returns current session status including queue info
@@ -232,26 +233,26 @@ router.get("/:sessionId/status", verifyToken, async (req, res) => {
   try {
     const { sessionId } = req.params;
     const userId = req.user.id;
- 
+
     const session = await GameSession.findById(sessionId)
       .select(
         "user status phase countdownStartsAt countdownSeconds startedAt expiresAt maxDurationSeconds"
       )
       .lean();
- 
+
     if (!session) {
       return res.status(404).json({ error: "Session not found" });
     }
- 
+
     if (session.user.toString() !== userId) {
       return res.status(403).json({ error: "Unauthorized" });
     }
- 
+
     const now = Date.now();
     const remainingSeconds = session.expiresAt
       ? Math.max(0, Math.floor((new Date(session.expiresAt) - now) / 1000))
       : session.maxDurationSeconds;
- 
+
     return res.json({
       sessionId,
       status: session.status,
@@ -267,7 +268,92 @@ router.get("/:sessionId/status", verifyToken, async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
- 
+//Feedback eligibility check
+
+router.get(
+  "/check/:sessionId",
+  verifyToken,
+  [
+    param("sessionId")
+      .isMongoId()
+      .withMessage("Invalid session id"),
+  ],
+  async (req, res) => {
+    try {
+      // Validation
+      const errors = validationResult(req);
+
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: errors.array(),
+        });
+      }
+
+      const { sessionId } = req.params;
+      const userId = req.user.id;
+
+      // Find session
+      const session = await GameSession.findOne({
+        _id: sessionId,
+        user: userId,
+      })
+        .populate({
+          path: "gamePost",
+          select: "gamePost.gameName",
+        })
+        .select("status gamePost metrics.totalPlayTime")
+        .lean();
+
+      if (!session) {
+        return res.status(404).json({
+          error: "Session not found",
+        });
+      }
+
+      // Session must be completed
+      if (session.status !== "ended") {
+        return res.json({
+          eligible: false,
+        });
+      }
+
+      // Played less than 5 minutes
+      if (
+        (session.metrics?.totalPlayTime || 0) < 300
+      ) {
+        return res.json({
+          eligible: false,
+        });
+      }
+
+      // Prevent duplicate feedback
+      const alreadySubmitted =
+        await GameFeedback.exists({
+          session: session._id,
+        });
+
+      if (alreadySubmitted) {
+        return res.json({
+          eligible: false,
+        });
+      }
+
+      return res.json({
+        eligible: true,
+        sessionId: session._id,
+        gameId: session.gamePost._id,
+        gameName: session.gamePost.gamePost.gameName,
+      });
+    } catch (err) {
+      console.error("Feedback eligibility error:", err);
+
+      return res.status(500).json({
+        error: "Internal server error",
+      });
+    }
+  }
+);
 /**
  * GET /api/sessions/:sessionId/events
  * ✅ SSE stream for real-time updates
@@ -277,59 +363,59 @@ router.get("/:sessionId/events", verifyToken, async (req, res) => {
   const userId = req.user.id;
 
   console.log(`[SSE (Session)] User ${userId} requested events for session ${sessionId}`);
- 
+
   const session = await GameSession.findById(sessionId)
     .select("user status phase countdownStartsAt")
     .lean();
- 
+
   if (!session || session.user.toString() !== userId) {
     return res.sendStatus(403);
   }
- 
+
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
- 
+
   const send = (data) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
- 
- const sendCurrentState = async () => {
-  const fresh = await GameSession.findById(sessionId).lean();
 
-  if (!fresh) return;
+  const sendCurrentState = async () => {
+    const fresh = await GameSession.findById(sessionId).lean();
 
-  let queueData = {};
+    if (!fresh) return;
 
-  if (
-    fresh.status === "waiting" &&
-    fresh.queueType === "queued"
-  ) {
-    queueData = await getQueueData(fresh);
-  }
+    let queueData = {};
 
-  send({
-    status: fresh.status,
-    phase: fresh.phase,
-    countdownStartsAt: fresh.countdownStartsAt,
-    ...queueData,
-  });
-};
+    if (
+      fresh.status === "waiting" &&
+      fresh.queueType === "queued"
+    ) {
+      queueData = await getQueueData(fresh);
+    }
 
-await sendCurrentState();
+    send({
+      status: fresh.status,
+      phase: fresh.phase,
+      countdownStartsAt: fresh.countdownStartsAt,
+      ...queueData,
+    });
+  };
 
-const interval = setInterval(async () => {
-  try {
-    await sendCurrentState();
-  } catch (err) {
-    console.error("Queue SSE update error:", err);
-  }
-}, 5000);
- 
+  await sendCurrentState();
+
+  const interval = setInterval(async () => {
+    try {
+      await sendCurrentState();
+    } catch (err) {
+      console.error("Queue SSE update error:", err);
+    }
+  }, 5000);
+
   sessionStreams.set(sessionId.toString(), send);
- 
+
   req.on("close", () => {
     clearInterval(interval);
     sessionStreams.delete(sessionId.toString());
@@ -445,15 +531,15 @@ router.post("/:sessionId/cancel", verifyToken, async (req, res) => {
   try {
     const { sessionId } = req.params;
     const userId = req.user.id;
- 
+
     const session = await GameSession.findById(sessionId);
 
-      console.log(`[Session Cancel] User requested cancel for session ${sessionId}`);
- 
+    console.log(`[Session Cancel] User requested cancel for session ${sessionId}`);
+
     if (!session) {
       return res.status(404).json({ error: "Session not found" });
     }
- 
+
     if (session.user.toString() !== userId) {
       return res.status(403).json({ error: "Unauthorized" });
     }
@@ -470,7 +556,7 @@ router.post("/:sessionId/cancel", verifyToken, async (req, res) => {
         console.error("[Cancel] Error releasing instance:", err.message);
       }
     }
- 
+
     // ✅ Mark as ended
     const reason =
       session.status === "allocation_ready"
@@ -478,16 +564,16 @@ router.post("/:sessionId/cancel", verifyToken, async (req, res) => {
         : "user_abandoned";
 
     console.log(`[Session Cancel] User cancelled session ${sessionId} with reason ${reason}`);
- 
+
     await finalizeSession(
       session,
       reason
     );
 
- 
+
     const send = sessionStreams.get(sessionId.toString());
     if (send) send({ status: "ended", reason });
- 
+
     return res.json({ message: "Session cancelled", sessionId });
   } catch (err) {
     console.error("Session cancel error:", err);
@@ -608,14 +694,14 @@ router.post("/running", async (req, res) => {
         }
       );
 
-const existingSession =
-  await GameSession.exists({
-    gamePost: session.gamePost,
-    user: session.user,
-    _id: { $ne: session._id }
-  });
+      const existingSession =
+        await GameSession.exists({
+          gamePost: session.gamePost,
+          user: session.user,
+          _id: { $ne: session._id }
+        });
 
-  console.log(`[Running] Session ${session_id} is now streaming`);
+      console.log(`[Running] Session ${session_id} is now streaming`);
 
       // Notify SSE clients
       const send = sessionStreams.get(session_id.toString());
@@ -669,18 +755,18 @@ router.post("/complete", async (req, res) => {
     console.log(`[Session Complete] Completing session ${session_id} with reason ${exit_reason} and duration ${duration_seconds}s`);
 
     if (session.status !== "ended") {
-      
+
       const playTimeMs =
         session?.billing?.billedPlayTimeMs || 0;
       console.log(`[Session Complete] Ending session ${session_id} with reason ${exit_reason}`);
-      
+
 
       await finalizeSession(
         session,
         exit_reason || "user_exit"
       );
 
-            // Release instance
+      // Release instance
       if (session.instanceId && session.leaseToken) {
         try {
           await releaseInstance(session.instanceId, session.leaseToken);

@@ -19,6 +19,8 @@ import AuthGateModal from "../components/Auth/AuthGateModal";
 import GuestSessionExpired from "../components/Auth/GuestSessionExpired";
 import LegalModal from "../Pages/LegalModal";
 import SettingsModal from "../components/SettingsModal";
+import { useQueue } from "../context/QueueContext";
+import GameFeedbackModal from "../components/Home/GameFeedbackModal";
 
 const ProfileCover = lazy(() => import("../components/Home/Profile"));
 
@@ -27,6 +29,7 @@ function MainLayout() {
   const location = useLocation();
   const { canvasId } = useParams();
   const { user } = useUser();
+  const { feedback, setFeedback, clearSession } = useQueue();
   const { openGate } = useAuthGate();
   const { minutes } = useGuestSession();
   const {
@@ -41,7 +44,7 @@ function MainLayout() {
   const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | 'paid' | null>(null);
 
   // Track both the open state AND which view to show
-  const [settingsConfig, setSettingsConfig] = useState<{ isOpen: boolean, view: 'password' | 'delete'}>({
+  const [settingsConfig, setSettingsConfig] = useState<{ isOpen: boolean, view: 'password' | 'delete' }>({
     isOpen: false,
     view: 'password'
   });
@@ -231,7 +234,7 @@ function MainLayout() {
           isOpen={settingsConfig.isOpen}
           initialView={settingsConfig.view}
           onClose={() => setSettingsConfig(prev => ({ ...prev, isOpen: false }))}
-          // onManageAccounts={openAccountSwitcher}
+        // onManageAccounts={openAccountSwitcher}
         />
 
         <LegalModal
@@ -242,6 +245,18 @@ function MainLayout() {
         <FeedbackModal
           isOpen={isFeedbackOpen}
           onClose={() => setIsFeedbackOpen(false)}
+        />
+        <GameFeedbackModal
+          open={feedback.open}
+          onClose={() =>
+            setFeedback({
+              open: false,
+              sessionId: null,
+              gameId: null,
+              gameName: null,
+            })
+          }
+          gameName={feedback.gameName || ""}
         />
 
       </div>

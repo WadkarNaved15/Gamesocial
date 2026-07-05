@@ -1,30 +1,38 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { useAds } from './AdContext';
 
+interface FeedbackState {
+  open: boolean;
+  sessionId: string | null;
+  gameId: string | null;
+  gameName: string | null;
+}
 export interface QueueState {
   // Session
   sessionId: string | null;
-  
+
   // Status
   status: 'waiting' | 'allocation_ready' | 'starting' | 'running' | 'ended' | 'failed';
   phase: 'countdown' | 'downloading' | 'launching' | null;
-  
+
   // Queue Info
   queuePosition: number | null;
   totalQueued: number | null;
   estimatedWaitMinutes: number | null;
-  
+
   // Ready Modal (ONLY for queued users)
   countdownStartsAt: Date | null;
   countdownSecondsRemaining: number | null;
   isDirectPlay: boolean;
-  
+
   // Error
   errorMessage: string | null;
 }
 
 interface QueueContextType {
   queue: QueueState;
+  feedback: FeedbackState;
+  setFeedback: React.Dispatch<React.SetStateAction<FeedbackState>>;
   startSession: (gamePostId: string) => Promise<string | null>;
   cancelSession: () => Promise<void>;
   launchSession: () => Promise<void>;
@@ -50,11 +58,16 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     isDirectPlay: false,
     errorMessage: null,
   });
-
+  const [feedback, setFeedback] = useState<FeedbackState>({
+    open: false,
+    sessionId: null,
+    gameId: null,
+    gameName: null,
+  });
   const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const {preloadAds,clearAds} = useAds();
+  const { preloadAds, clearAds } = useAds();
   const adPreloadedRef = useRef(false);
 
 
@@ -64,7 +77,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     if (saved) {
       try {
         const data = JSON.parse(saved);
-        
+
         // ✅ Restore queue state
         setQueue((prev) => ({
           ...prev,
@@ -86,6 +99,36 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, []);
 
+  const checkFeedbackEligibility = async (sessionId: string) => {
+    try {
+      const res = await fetch(
+        `${BACKEND_URL}/api/feedback/check/${sessionId}`,
+        {
+          credentials: "include",
+        }
+      );
+      if (!res.ok) {
+        clearSession();
+        return;
+      }
+      const data = await res.json();
+      if (data.eligible) {
+        setFeedback({
+          open: true,
+          sessionId: data.sessionId,
+          gameId: data.gameId,
+          gameName: data.gameName,
+        });
+        // DON'T clear session yet.
+        return;
+      }
+      clearSession();
+    } catch (err) {
+      console.error(err);
+      clearSession();
+    }
+  };
+
   // ✅ Save session to localStorage whenever it changes
   useEffect(() => {
     if (queue.sessionId && queue.status !== 'ended' && queue.status !== 'failed') {
@@ -103,153 +146,160 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [queue]);
 
-      // 🧹 Clear Session
-const clearSession = useCallback(() => {
+  // 🧹 Clear Session
+  const clearSession = useCallback(() => {
 
-  if (eventSource) eventSource.close();
-  if (countdownIntervalRef.current) {
-    clearInterval(countdownIntervalRef.current);
-    countdownIntervalRef.current = null;
-  }
-
-  setQueue({
-    sessionId: null,
-    status: "ended",
-    phase: null,
-    queuePosition: null,
-    totalQueued: null,
-    estimatedWaitMinutes: null,
-    countdownStartsAt: null,
-    countdownSecondsRemaining: null,
-    isDirectPlay: false,
-    errorMessage: null,
-  });
-
-  localStorage.removeItem(STORAGE_KEY);
-}, [eventSource]);
-
-// 🔌 Setup SSE Connection
-const setupSSE = useCallback((sessionId: string) => {
-
-  if (eventSource) eventSource.close();
-
-  const es = new EventSource(
-    `${BACKEND_URL}/api/sessions/${sessionId}/events`,
-    { withCredentials: true }
-  );
-
-  es.onmessage = (e) => {
-    const data = JSON.parse(e.data);
-
-    // 🔴 Session finished → clear everything
-    if (data.status === "ended" || data.status === "failed") {
-      adPreloadedRef.current = false;
-      clearAds();
-      clearSession();
-      return;
-    }
-
-    setQueue((prev) => {
-      const newState = { ...prev };
-
-      // Update status + phase
-      if (data.status) newState.status = data.status;
-      if (data.phase !== undefined) newState.phase = data.phase;
-
-      // Update queue info
-      if (data.queuePosition !== undefined)
-        newState.queuePosition = data.queuePosition;
-
-      if (data.totalQueued !== undefined)
-        newState.totalQueued = data.totalQueued;
-
-      if (data.estimatedWaitMinutes !== undefined)
-        newState.estimatedWaitMinutes = data.estimatedWaitMinutes;
-
-      // 🟡 QUEUED USER → show countdown modal
-// 🟡 QUEUED USER → show countdown modal
-if (data.status === "allocation_ready") {
-
-  newState.isDirectPlay = false;
-
-  // ONLY initialize the countdown once
-  if (!prev.countdownStartsAt) {
-
-    const seconds = data.countdownSeconds || 30;
-
-    newState.countdownStartsAt = data.countdownStartsAt
-      ? new Date(data.countdownStartsAt)
-      : new Date();
-
-    newState.countdownSecondsRemaining = seconds;
-
+    if (eventSource) eventSource.close();
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
       countdownIntervalRef.current = null;
     }
 
-    countdownIntervalRef.current = setInterval(() => {
-      setQueue(prev => {
-        if (prev.countdownSecondsRemaining == null) {
-          return prev;
+    setQueue({
+      sessionId: null,
+      status: "ended",
+      phase: null,
+      queuePosition: null,
+      totalQueued: null,
+      estimatedWaitMinutes: null,
+      countdownStartsAt: null,
+      countdownSecondsRemaining: null,
+      isDirectPlay: false,
+      errorMessage: null,
+    });
+
+    localStorage.removeItem(STORAGE_KEY);
+  }, [eventSource]);
+
+  // 🔌 Setup SSE Connection
+  const setupSSE = useCallback((sessionId: string) => {
+
+    if (eventSource) eventSource.close();
+
+    const es = new EventSource(
+      `${BACKEND_URL}/api/sessions/${sessionId}/events`,
+      { withCredentials: true }
+    );
+
+    es.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+
+      // 🔴 Session finished → clear everything
+      if (data.status === "failed") {
+        adPreloadedRef.current = false;
+        clearAds();
+        clearSession();
+        return;
+      }
+
+      if (data.status === "ended") {
+        adPreloadedRef.current = false;
+        clearAds();
+        checkFeedbackEligibility(sessionId);
+        return;
+      }
+
+      setQueue((prev) => {
+        const newState = { ...prev };
+
+        // Update status + phase
+        if (data.status) newState.status = data.status;
+        if (data.phase !== undefined) newState.phase = data.phase;
+
+        // Update queue info
+        if (data.queuePosition !== undefined)
+          newState.queuePosition = data.queuePosition;
+
+        if (data.totalQueued !== undefined)
+          newState.totalQueued = data.totalQueued;
+
+        if (data.estimatedWaitMinutes !== undefined)
+          newState.estimatedWaitMinutes = data.estimatedWaitMinutes;
+
+        // 🟡 QUEUED USER → show countdown modal
+        // 🟡 QUEUED USER → show countdown modal
+        if (data.status === "allocation_ready") {
+
+          newState.isDirectPlay = false;
+
+          // ONLY initialize the countdown once
+          if (!prev.countdownStartsAt) {
+
+            const seconds = data.countdownSeconds || 30;
+
+            newState.countdownStartsAt = data.countdownStartsAt
+              ? new Date(data.countdownStartsAt)
+              : new Date();
+
+            newState.countdownSecondsRemaining = seconds;
+
+            if (countdownIntervalRef.current) {
+              clearInterval(countdownIntervalRef.current);
+              countdownIntervalRef.current = null;
+            }
+
+            countdownIntervalRef.current = setInterval(() => {
+              setQueue(prev => {
+                if (prev.countdownSecondsRemaining == null) {
+                  return prev;
+                }
+
+                const next = prev.countdownSecondsRemaining - 1;
+
+                if (next <= 0) {
+                  if (countdownIntervalRef.current) {
+                    clearInterval(countdownIntervalRef.current);
+                    countdownIntervalRef.current = null;
+                  }
+
+                  cancelSession();
+
+                  return {
+                    ...prev,
+                    countdownSecondsRemaining: 0,
+                  };
+                }
+
+                return {
+                  ...prev,
+                  countdownSecondsRemaining: next,
+                };
+              });
+            }, 1000);
+          }
         }
 
-        const next = prev.countdownSecondsRemaining - 1;
+        // 🟢 DIRECT USER → skip countdown, show ads
+        if (data.status === "starting") {
 
-        if (next <= 0) {
+          if (!adPreloadedRef.current) {
+            adPreloadedRef.current = true;
+            preloadAds();
+          }
+
           if (countdownIntervalRef.current) {
             clearInterval(countdownIntervalRef.current);
             countdownIntervalRef.current = null;
           }
 
-          cancelSession();
-
-          return {
-            ...prev,
-            countdownSecondsRemaining: 0,
-          };
+          newState.isDirectPlay = true;
+          newState.countdownStartsAt = null;
+          newState.countdownSecondsRemaining = null;
+          newState.phase = data.phase || "downloading";
         }
 
-        return {
-          ...prev,
-          countdownSecondsRemaining: next,
-        };
+
+        return newState;
       });
-    }, 1000);
-  }
-}
+    };
 
-// 🟢 DIRECT USER → skip countdown, show ads
-if (data.status === "starting") {
+    es.onerror = () => {
+      console.warn("[Queue SSE] Connection lost, retrying...");
+      setTimeout(() => setupSSE(sessionId), 3000);
+    };
 
-  if (!adPreloadedRef.current) {
-    adPreloadedRef.current = true;
-    preloadAds();
-  }
-
-  if (countdownIntervalRef.current) {
-    clearInterval(countdownIntervalRef.current);
-    countdownIntervalRef.current = null;
-  }
-
-  newState.isDirectPlay = true;
-  newState.countdownStartsAt = null;
-  newState.countdownSecondsRemaining = null;
-  newState.phase = data.phase || "downloading";
-}
-
-
-      return newState;
-    });
-  };
-
-  es.onerror = () => {
-    console.warn("[Queue SSE] Connection lost, retrying...");
-    setTimeout(() => setupSSE(sessionId), 3000);
-  };
-
-  setEventSource(es);
-}, [eventSource, clearSession]);
+    setEventSource(es);
+  }, [eventSource, clearSession]);
 
   // 🎮 Start Session
   const startSession = useCallback(
@@ -271,6 +321,8 @@ if (data.status === "starting") {
         const res = await fetch(`${BACKEND_URL}/api/sessions/start`, {
           method: 'POST',
           credentials: 'include',
+
+
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ gamePostId }),
         });
@@ -408,6 +460,8 @@ if (data.status === "starting") {
 
   const value: QueueContextType = {
     queue,
+    feedback,
+    setFeedback,
     startSession,
     cancelSession,
     launchSession,
