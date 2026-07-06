@@ -12,7 +12,6 @@ export function useLikes(
 
   const currentPost = postsById[postId];
   console.log(
-    "RENDER",
     postId,
     currentPost?.isLiked,
     currentPost?.likesCount

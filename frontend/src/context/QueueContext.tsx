@@ -73,6 +73,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // ✅ Load session from localStorage on mount
   useEffect(() => {
+    console.log("[Queue] Loading session from localStorage");
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
@@ -144,6 +145,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
     } else if (queue.status === 'ended' || queue.status === 'failed') {
+      console.log("Removing queue items")
       localStorage.removeItem(STORAGE_KEY);
     }
   }, [queue]);

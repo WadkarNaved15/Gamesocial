@@ -46,7 +46,6 @@ const PostDetail = ({ post: initialPost, onClose }: { post: ExePostProps; onClos
     );
   }
 
-  console.log("PostDetail rendering with post:", post);
 
   const assets = post.modelPost?.assets ?? [];
   const title = post.modelPost?.title;
