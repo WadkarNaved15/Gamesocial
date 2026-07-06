@@ -100,6 +100,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   const checkFeedbackEligibility = async (sessionId: string) => {
+    console.log(`[Queue] Checking feedback eligibility for session ${sessionId}`);
     try {
       const res = await fetch(
         `${BACKEND_URL}/api/feedback/check/${sessionId}`,
@@ -112,6 +113,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return;
       }
       const data = await res.json();
+      console.log("Response of the sessions:", data);
       if (data.eligible) {
         setFeedback({
           open: true,
@@ -183,7 +185,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     es.onmessage = (e) => {
       const data = JSON.parse(e.data);
-
+      
       // 🔴 Session finished → clear everything
       if (data.status === "failed") {
         adPreloadedRef.current = false;
@@ -193,6 +195,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
 
       if (data.status === "ended") {
+        console.log("Session ended")
         adPreloadedRef.current = false;
         clearAds();
         checkFeedbackEligibility(sessionId);

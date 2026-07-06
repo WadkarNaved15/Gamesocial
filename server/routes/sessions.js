@@ -2,7 +2,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import fetch from "node-fetch";
 import crypto from "crypto";
-import { body, validationResult, param} from "express-validator";
+import { body, validationResult, param } from "express-validator";
 import { publishSessionEvent } from "../services/sessionPubSub.js";
 import DemoConsumption from "../models/DemoConsumption.js";
 import AllPost from "../models/Allposts.js";
@@ -142,29 +142,29 @@ router.post(
 
       let assignedInstance = null;
 
-              const userSession = await UserSession
-            .findOne({
-                user: userId
-            })
-            .sort({
-                lastActivityAt: -1
-            })
-            .lean();
+      const userSession = await UserSession
+        .findOne({
+          user: userId
+        })
+        .sort({
+          lastActivityAt: -1
+        })
+        .lean();
 
-        const preferredRegion =
-            selectRegion(userSession);
+      const preferredRegion =
+        selectRegion(userSession);
 
-        console.log(
-            "[Region]",
-            userSession?.geo?.countryCode,
-            "->",
-            preferredRegion
-        );
+      console.log(
+        "[Region]",
+        userSession?.geo?.countryCode,
+        "->",
+        preferredRegion
+      );
 
       try {
         const leaseResult =
           await assignOrStartInstance({
-              preferredRegion
+            preferredRegion
           });
 
         if (leaseResult?.status === "ASSIGNED") {
@@ -306,6 +306,7 @@ router.get(
   async (req, res) => {
     try {
       // Validation
+      console.log("Hitting check endpoint");
       const errors = validationResult(req);
 
       if (!errors.isEmpty()) {
@@ -316,6 +317,7 @@ router.get(
       }
 
       const { sessionId } = req.params;
+      console.log("Session ID in checking endpoint:", sessionId);
       const userId = req.user.id;
 
       // Find session
@@ -329,13 +331,12 @@ router.get(
         })
         .select("status gamePost metrics.totalPlayTime")
         .lean();
-
-      if (!session) {
+      console.log("Session found:", session);
+      if (!session){
         return res.status(404).json({
           error: "Session not found",
         });
       }
-
       // Session must be completed
       if (session.status !== "ended") {
         return res.json({
