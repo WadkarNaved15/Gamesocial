@@ -185,7 +185,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     es.onmessage = (e) => {
       const data = JSON.parse(e.data);
-      
+      console.log("[Queue] Event:", data);
       // 🔴 Session finished → clear everything
       if (data.status === "failed") {
         adPreloadedRef.current = false;
