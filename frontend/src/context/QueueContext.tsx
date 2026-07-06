@@ -347,7 +347,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           isDirectPlay: false,
           errorMessage: null,
         }));
-
+        console.log('[Queue] Starting session...');
         const res = await fetch(`${BACKEND_URL}/api/sessions/start`, {
           method: 'POST',
           credentials: 'include',
@@ -358,8 +358,9 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         });
 
         const data = await res.json();
-
+  
         if (res.ok || res.status === 202) {
+          console.log("Setting up feedback...");
           const sessionId = data.sessionId;
           const feedbackStorage: FeedbackStorage = {
             sessionId,
