@@ -7,6 +7,11 @@ interface FeedbackState {
   gameId: string | null;
   gameName: string | null;
 }
+interface FeedbackStorage {
+  sessionId: string;
+  gameId: string;
+  createdAt: number;
+}
 export interface QueueState {
   // Session
   sessionId: string | null;
@@ -44,6 +49,7 @@ const QueueContext = createContext<QueueContextType | undefined>(undefined);
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const STORAGE_KEY = 'rigzer_queue_session';
+const FEEDBACK_STORAGE_KEY = "rigzer_feedback_session";
 
 export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [queue, setQueue] = useState<QueueState>({
@@ -99,7 +105,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }
   }, []);
-
+  // Check if feedback is eligible
   const checkFeedbackEligibility = async (sessionId: string) => {
     console.log(`[Queue] Checking feedback eligibility for session ${sessionId}`);
     try {
@@ -110,6 +116,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       );
       if (!res.ok) {
+        localStorage.removeItem(FEEDBACK_STORAGE_KEY);
         clearSession();
         return;
       }
@@ -125,12 +132,32 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         // DON'T clear session yet.
         return;
       }
+      localStorage.removeItem(FEEDBACK_STORAGE_KEY);
       clearSession();
     } catch (err) {
+      localStorage.removeItem(FEEDBACK_STORAGE_KEY);
       console.error(err);
       clearSession();
     }
   };
+
+  // Check feedback token on mount
+  useEffect(() => {
+    const raw = localStorage.getItem(FEEDBACK_STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const saved: FeedbackStorage = JSON.parse(raw);
+      // Ignore stale sessions (optional)
+      const THIRTY_MINUTES = 30 * 60 * 1000;
+      if (Date.now() - saved.createdAt > THIRTY_MINUTES) {
+        localStorage.removeItem(FEEDBACK_STORAGE_KEY);
+        return;
+      }
+      checkFeedbackEligibility(saved.sessionId);
+    } catch {
+      localStorage.removeItem(FEEDBACK_STORAGE_KEY);
+    }
+  }, []);
 
   // ✅ Save session to localStorage whenever it changes
   useEffect(() => {
@@ -187,7 +214,6 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     es.onmessage = (e) => {
       const data = JSON.parse(e.data);
-      console.log("[Queue] Event:", data);
       // 🔴 Session finished → clear everything
       if (data.status === "failed") {
         adPreloadedRef.current = false;
@@ -200,7 +226,6 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         console.log("Session ended")
         adPreloadedRef.current = false;
         clearAds();
-        checkFeedbackEligibility(sessionId);
         return;
       }
 
@@ -336,6 +361,16 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         if (res.ok || res.status === 202) {
           const sessionId = data.sessionId;
+          const feedbackStorage: FeedbackStorage = {
+            sessionId,
+            gameId: gamePostId,
+            createdAt: Date.now(),
+          };
+
+          localStorage.setItem(
+            FEEDBACK_STORAGE_KEY,
+            JSON.stringify(feedbackStorage)
+          );
           // ✅ Update queue state with all data from 202 response
           setQueue((prev) => ({
             ...prev,
