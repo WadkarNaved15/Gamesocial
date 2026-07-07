@@ -144,6 +144,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Check feedback token on mount
   useEffect(() => {
     const raw = localStorage.getItem(FEEDBACK_STORAGE_KEY);
+    console.log(`[Queue] Checking feedback token ${raw}`);
     if (!raw) return;
     try {
       const saved: FeedbackStorage = JSON.parse(raw);
