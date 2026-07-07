@@ -110,7 +110,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     console.log(`[Queue] Checking feedback eligibility for session ${sessionId}`);
     try {
       const res = await fetch(
-        `${BACKEND_URL}/api/feedback/check/${sessionId}`,
+        `${BACKEND_URL}/api/sessions/check/${sessionId}`,
         {
           credentials: "include",
         }
