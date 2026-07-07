@@ -17,11 +17,12 @@ export default function GameFeedbackModal({
     onClose,
     gameName,
 }: Props) {
+    const FEEDBACK_STORAGE_KEY = "rigzer_feedback_session";
     const { feedback, setFeedback, clearSession } = useQueue();
     const [loading, setLoading] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
-
+    
     const [form, setForm] = useState({
         overall: 0, // Scale 1 to 10
         comment: "",
@@ -30,6 +31,7 @@ export default function GameFeedbackModal({
     if (!open) return null;
 
     const handleCloseAction = () => {
+        localStorage.removeItem(FEEDBACK_STORAGE_KEY);
         setFeedback({
             open: false,
             sessionId: null,
