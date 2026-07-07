@@ -218,6 +218,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (data.status === "failed") {
         adPreloadedRef.current = false;
         clearAds();
+        localStorage.removeItem(FEEDBACK_STORAGE_KEY);
         clearSession();
         return;
       }
@@ -347,7 +348,6 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           isDirectPlay: false,
           errorMessage: null,
         }));
-        console.log('[Queue] Starting session...');
         const res = await fetch(`${BACKEND_URL}/api/sessions/start`, {
           method: 'POST',
           credentials: 'include',
@@ -360,9 +360,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const data = await res.json();
   
         if (res.ok || res.status === 202) {
-          console.log("Setting up feedback...");
           const sessionId = data.sessionId;
-          console.log(`[Queue] Started session ${sessionId}`);
           const feedbackStorage: FeedbackStorage = {
             sessionId,
             gameId: gamePostId,
@@ -419,6 +417,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
 
       if (res.ok) {
+        localStorage.removeItem(FEEDBACK_STORAGE_KEY);
         clearSession();
       } else {
         console.error('[Queue] Cancel failed');
