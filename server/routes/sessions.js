@@ -346,7 +346,7 @@ router.get(
 
       // Played less than 5 minutes
       if (
-        (session.metrics?.totalPlayTime || 0) < 300000
+        (session.metrics?.totalPlayTime || 0) < 120000
       ) {
         return res.json({
           eligible: false,
