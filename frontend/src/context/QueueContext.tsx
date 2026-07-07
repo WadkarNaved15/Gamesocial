@@ -362,6 +362,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (res.ok || res.status === 202) {
           console.log("Setting up feedback...");
           const sessionId = data.sessionId;
+          console.log(`[Queue] Started session ${sessionId}`);
           const feedbackStorage: FeedbackStorage = {
             sessionId,
             gameId: gamePostId,

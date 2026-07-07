@@ -11,11 +11,6 @@ export function useLikes(
   const [loading, setLoading] = useState(false);
 
   const currentPost = postsById[postId];
-  console.log(
-    postId,
-    currentPost?.isLiked,
-    currentPost?.likesCount
-  );
   const handleLike = async () => {
     if (!currentPost || loading) return;
 
