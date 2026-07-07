@@ -219,7 +219,6 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (data.status === "failed") {
         adPreloadedRef.current = false;
         clearAds();
-        localStorage.removeItem(FEEDBACK_STORAGE_KEY);
         clearSession();
         return;
       }
@@ -418,7 +417,6 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
 
       if (res.ok) {
-        localStorage.removeItem(FEEDBACK_STORAGE_KEY);
         clearSession();
       } else {
         console.error('[Queue] Cancel failed');
