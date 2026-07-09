@@ -90,11 +90,13 @@ export default function SidebarNavigation({
             isExpanded: isSettingsExpanded,
             action: () => setIsSettingsExpanded(!isSettingsExpanded),
             subItems: [
-                {
-                    icon: Key,
-                    label: "Change Password",
-                    action: () => onOpenSettings('password')
-                },
+                ...(!user?.isGoogleUser
+                    ? [{
+                        icon: Key,
+                        label: "Change Password",
+                        action: () => onOpenSettings("password"),
+                    }]
+                    : []),
                 {
                     icon: Trash2,
                     label: "Delete Account",

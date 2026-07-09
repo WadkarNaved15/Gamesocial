@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
-
+import { useUser } from "../context/user";
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -13,6 +13,7 @@ type ViewState = 'password' | 'delete';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 export default function SettingsModal({ isOpen, onClose, initialView }: SettingsModalProps) {
+   const { user } = useUser();
   const [view, setView] = useState<ViewState>(initialView);
   
   // Sync the view state when the modal is opened with a specific initialView
@@ -116,7 +117,7 @@ export default function SettingsModal({ isOpen, onClose, initialView }: Settings
         )}
 
         {/* VIEW: Password */}
-        {view === 'password' && (
+        {view === 'password' && !user?.isGoogleUser && (
           <form onSubmit={handleUpdatePassword} className="p-6 space-y-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-700 dark:text-white/70">Current Password</label>

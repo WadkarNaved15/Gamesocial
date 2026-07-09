@@ -18,6 +18,7 @@ type User = {
   bio?: string;
   role?: "user" | "admin";
   isPocketEligible?: boolean;
+  isGoogleUser?: boolean;
   followersCount?: number;
   followingCount?: number;
 };

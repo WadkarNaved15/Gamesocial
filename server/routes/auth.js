@@ -551,7 +551,7 @@ router.post("/reset-password", authLimiter, async (req, res) => {
   }
 });
 
-router.post("/switch-account", async (req, res) => {
+router.post("/switch-account", authLimiter, async (req, res) => {
   try {
     const { userId } = req.body;
     const deviceId = req.deviceId;
