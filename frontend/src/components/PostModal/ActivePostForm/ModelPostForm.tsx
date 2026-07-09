@@ -167,6 +167,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
             name: a.name,
             originalUrl: a.uploadedUrl,
             originalKey: a.originalKey,
+            fieldOfView: a.fieldOfView || "25deg",
           })),
         }),
       });

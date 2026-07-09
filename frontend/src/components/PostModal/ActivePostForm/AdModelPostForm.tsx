@@ -123,7 +123,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
         setAsset((prev) => prev ? { ...prev, progress: p } : prev);
       });
       modelKey = mKey;
-      setAsset((prev) => prev ? { ...prev, status: 'done', progress: 100, uploadedUrl: modelUrl, originalKey: mKey } : prev);
+      setAsset((prev) => prev ? { ...prev, status: 'done', progress: 100, uploadedUrl: modelUrl, originalKey: mKey , fieldOfView: asset.fieldOfView || "25deg"} : prev);
 
       let bgImageUrl: string | undefined;
       if (bgMode === 'image' && bgImageFile) {
