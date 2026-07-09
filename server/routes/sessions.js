@@ -332,7 +332,7 @@ router.get(
         .select("status gamePost metrics.totalPlayTime")
         .lean();
       console.log("Session found:", session);
-      if (!session){
+      if (!session) {
         return res.status(404).json({
           error: "Session not found",
         });
@@ -354,12 +354,7 @@ router.get(
       }
 
       // Prevent duplicate feedback
-      const alreadySubmitted =
-        await GameFeedback.exists({
-          session: session._id,
-        });
-
-      if (alreadySubmitted) {
+      if (session.feedback?.submitted) {
         return res.json({
           eligible: false,
         });
