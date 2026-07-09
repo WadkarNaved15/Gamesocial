@@ -13,4 +13,5 @@ router.get(
    requireAdmin,
    getAllFeedback
 );
+
 export default router;

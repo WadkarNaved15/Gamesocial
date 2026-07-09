@@ -46,10 +46,10 @@ const GameSessionSchema = new mongoose.Schema(
       index: true,
     },
     queueType: {
-    type: String,
-    enum: ["direct", "queued"],
-    default: "direct"
-  },
+      type: String,
+      enum: ["direct", "queued"],
+      default: "direct"
+    },
 
     // ✅ INSTANCE ALLOCATION
     instanceId: {
@@ -183,6 +183,17 @@ const GameSessionSchema = new mongoose.Schema(
         default: 0,
       },
     },
+
+    //Feedback
+    feedback: {
+      submitted: {
+        type: Boolean,
+        default: false,
+      },
+
+      submittedAt: Date,
+    },
+    
     billing: {
       creditsConsumed: {
         type: Number,
@@ -203,7 +214,7 @@ const GameSessionSchema = new mongoose.Schema(
       },
     },
   },
-  { 
+  {
     timestamps: true,
     // createdAt added by timestamps
   }

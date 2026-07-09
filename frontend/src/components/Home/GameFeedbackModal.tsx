@@ -22,7 +22,7 @@ export default function GameFeedbackModal({
     const [loading, setLoading] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
-    
+
     const [form, setForm] = useState({
         overall: 0, // Scale 1 to 10
         comment: "",
@@ -82,7 +82,7 @@ export default function GameFeedbackModal({
         try {
             setLoading(true);
             const res = await fetch(
-                `${import.meta.env.VITE_BACKEND_URL}/api/feedback`,
+                `${import.meta.env.VITE_BACKEND_URL}/api/game-feedback`,
                 {
                     method: "POST",
                     credentials: "include",
@@ -107,13 +107,13 @@ export default function GameFeedbackModal({
     };
 
     // 10 distinct bar heights scaled to look organic matching a maximum height of ~82px
-   // Starts small at 14px, climbing smoothly by 4-5px per step up to 52px
-const waveHeights = [14, 18, 22, 27, 31, 36, 40, 44, 48, 52];
+    // Starts small at 14px, climbing smoothly by 4-5px per step up to 52px
+    const waveHeights = [14, 18, 22, 27, 31, 36, 40, 44, 48, 52];
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl flex flex-col relative select-none">
-                
+
                 {/* Close Button */}
                 <button
                     onClick={handleCloseAction}
@@ -127,14 +127,15 @@ const waveHeights = [14, 18, 22, 27, 31, 36, 40, 44, 48, 52];
                     <h2 className="text-xl font-bold text-zinc-900">
                         Rate Your Session
                     </h2>
-                    <p className="text-sm font-medium text-emerald-600 mt-0.5">
+                    {/* Updated game name styles for better visibility */}
+                    <p className="text-lg font-bold text-zinc-700 mt-1">
                         {gameName}
                     </p>
                 </div>
 
                 {/* Form Body */}
                 <div className="space-y-6">
-                    
+
                     {/* Voice Note Waveform Rating */}
                     <div className="flex flex-col items-center justify-center gap-3 py-2">
                         <div className="flex items-baseline gap-1">
@@ -162,11 +163,10 @@ const waveHeights = [14, 18, 22, 27, 31, 36, 40, 44, 48, 52];
                                     <div
                                         key={index}
                                         style={{ height: `${height}px` }}
-                                        className={`w-2.5 rounded-full transition-all duration-150 origin-center ${
-                                            isActive
+                                        className={`w-2.5 rounded-full transition-all duration-150 origin-center ${isActive
                                                 ? "bg-emerald-500 scale-y-105"
                                                 : "bg-zinc-200 group-hover/wave:bg-zinc-300"
-                                        }`}
+                                            }`}
                                     />
                                 );
                             })}
