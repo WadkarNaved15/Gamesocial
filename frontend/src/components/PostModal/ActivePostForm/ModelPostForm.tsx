@@ -1,5 +1,5 @@
 import React, { useState, useRef, ChangeEvent } from 'react';
-import { X, Image as ImageIcon, DollarSign } from 'lucide-react';
+import { X, Image as ImageIcon, DollarSign ,ZoomIn } from 'lucide-react';
 import '@google/model-viewer';
 import { useUser } from '../../../context/user';
 
@@ -14,6 +14,7 @@ interface Asset {
 
   uploadedUrl?: string;   // CloudFront URL
   originalKey?: string;   // S3 key (CRITICAL)
+  fieldOfView?: string;
 
   name: string;
   progress?: number;
@@ -50,6 +51,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
         file,
         previewUrl: URL.createObjectURL(file),
         name: file.name,
+        fieldOfView: "25deg",
       });
     });
 
@@ -59,6 +61,19 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
     }
 
     e.target.value = "";
+  };
+
+  const handleZoomChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const newValue = `${e.target.value}deg`;
+    
+    // Use a proper immutable update so React detects the deep change
+    setAssets((prevAssets) =>
+      prevAssets.map((asset, idx) =>
+        idx === activeIndex
+          ? { ...asset, fieldOfView: newValue } // Create a new object for the active asset
+          : asset
+      )
+    );
   };
 
   const uploadAssetToS3 = async (
@@ -73,6 +88,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
         fileType: asset.file.type || "model/gltf-binary",
         category: "original",
         fileSize: asset.file.size,
+        fieldOfView: asset.fieldOfView,
       }),
     });
 
@@ -285,6 +301,8 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
               {/* Main Preview Area */}
               <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-black/20 group">
                 {/* @ts-ignore */}
+                {/* @ts-ignore */}
+                {/* @ts-ignore */}
                 <model-viewer
                   src={assets[activeIndex].uploadedUrl || assets[activeIndex].previewUrl}
                   camera-controls
@@ -292,11 +310,33 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
                   exposure="1.0"
                   environment-image="neutral"
                   shadow-intensity="1"
+                  field-of-view={assets[activeIndex].fieldOfView || "25deg"}
+                  // 👇 Lower this to 1deg for maximum zoom-in
+                  min-field-of-view="1deg" 
+                  max-field-of-view="90deg" 
                   style={{ width: "100%", height: "400px", backgroundColor: "transparent" }}
                 />
 
                 <div className="absolute top-4 right-4 pointer-events-none bg-black/40 backdrop-blur-md px-3 py-1 rounded-lg text-white text-[10px] font-bold uppercase tracking-wider">
                   Previewing: {assets[activeIndex].name.substring(0, 15)}{assets[activeIndex].name.length > 15 ? '...' : ''}
+                </div>
+              </div>
+              <div className="flex items-center gap-4 px-2 py-3 bg-gray-50 dark:bg-white/[0.02] rounded-xl border border-gray-200 dark:border-white/[0.06]">
+                <ZoomIn size={18} className="text-gray-400" />
+                <div className="flex-1 flex flex-col gap-1">
+                  <div className="flex justify-between text-xs font-semibold text-gray-500">
+                    <span>Zoomed In</span>
+                    <span>Zoomed Out</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1" 
+                    max="90" 
+                    // We parse the integer out of "25deg"
+                    value={parseInt(assets[activeIndex].fieldOfView || "25")}
+                    onChange={handleZoomChange}
+                    className="w-full accent-[#3D7A6E] cursor-pointer"
+                  />
                 </div>
               </div>
             </div>

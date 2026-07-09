@@ -78,7 +78,7 @@ function MainLayout() {
   useEffect(() => {
     if (user) return;
 
-    if (minutes >= 2 && !bannerShown) {
+    if (minutes >= 1 && !bannerShown) {
       setBannerShown(true);
       openGate(
         "Embed 3D models, play cloud game demos instantly (no downloads), code in your pocket, follow creators, and build your audience."
@@ -89,7 +89,7 @@ function MainLayout() {
   useEffect(() => {
     if (user) return;
 
-    if (minutes >= 5) {
+    if (minutes >= 2) {
       setFeedLocked(true);
     }
   }, [minutes, user]);

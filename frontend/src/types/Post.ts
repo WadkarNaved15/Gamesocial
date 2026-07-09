@@ -67,6 +67,7 @@ export interface ModelAsset {
   originalUrl: string;
   optimizedUrl?: string | null;
   sizeMB?: number;
+  fieldOfView?: string;
   optimization?: OptimizationInfo;
   metadata?: ModelMetadata;
 }
@@ -87,6 +88,7 @@ export interface AdModelAsset {
   originalUrl: string;
   optimizedUrl?: string | null;
   sizeMB?: number;
+  fieldOfView?: string;
   optimization?: OptimizationInfo;
   metadata?: ModelMetadata;
 }
@@ -121,6 +123,7 @@ export interface AdAsset {
   uploadedUrl?: string;
   originalKey?: string;
   name: string;
+  fieldOfView?: string;
   progress?: number;
   status?: 'pending' | 'uploading' | 'done' | 'error';
 }

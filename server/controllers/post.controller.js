@@ -11,7 +11,6 @@ import { extractS3KeyFromUrl } from "../utils/extractS3Key.js";
 import { videoProcessingQueue } from "../queues/videoQueue.js"; 
 import { deletePostAndAssets } from "../services/deletePost.js";
 
-
 function deriveBuildType(fileFormat) {
   if (fileFormat === "exe") return "executable";
   return "archive";
@@ -115,6 +114,7 @@ export const createPost = async (req, res) => {
           optimizedKey: null,
           originalUrl: asset.originalUrl,
           optimizedUrl: null,
+          fieldOfView: asset.fieldOfView || "25deg",
           sizeMB: Number(metadata.fileSizeMB),
           optimization: { status: "pending" },
           metadata: {
@@ -312,6 +312,7 @@ export const createPost = async (req, res) => {
           optimizedKey: null,
           originalUrl: asset.originalUrl,
           optimizedUrl: null,
+          fieldOfView: asset.fieldOfView || "25deg",
           sizeMB: Number(metadata.fileSizeMB),
           optimization: { status: "pending" },
           metadata: {
@@ -349,6 +350,7 @@ export const createPost = async (req, res) => {
           optimizedKey: null,
           originalUrl: asset.originalUrl,
           optimizedUrl: null,
+          fieldOfView: asset.fieldOfView || "25deg",
           optimization: { status: "pending" },
         };
       }
@@ -418,7 +420,7 @@ export const createPost = async (req, res) => {
       }
 
       const isVideo = mediaAdPost.asset.type === "video";
-     
+      
       // ───────── CREATE POST ─────────
       const post = await AllPost.create({
         user: req.user.id,

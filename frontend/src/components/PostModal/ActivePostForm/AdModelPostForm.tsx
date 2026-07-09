@@ -1,5 +1,5 @@
 import React, { useState, useRef, ChangeEvent } from 'react';
-import { X, Image as ImageIcon, Upload, Palette, ArrowLeft } from 'lucide-react';
+import { X, Image as ImageIcon, Upload, Palette, ArrowLeft , ZoomIn } from 'lucide-react';
 import '@google/model-viewer';
 import type { AdModelPostFormProps, AdAsset } from "../../../types/Post";
 import { useUser } from "../../../context/user";
@@ -52,8 +52,14 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
   const handleModelFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !file.name.endsWith('.glb')) return;
-    setAsset({ id: crypto.randomUUID(), file, previewUrl: URL.createObjectURL(file), name: file.name, status: 'pending' });
+    setAsset({ id: crypto.randomUUID(), file, previewUrl: URL.createObjectURL(file), name: file.name, status: 'pending' ,fieldOfView: '25deg'});
     e.target.value = '';
+  };
+
+  const handleZoomChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (asset) {
+      setAsset({ ...asset, fieldOfView: `${e.target.value}deg` });
+    }
   };
 
   const handleBgImage = (e: ChangeEvent<HTMLInputElement>) => {
@@ -142,7 +148,7 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
             bgImagePosition: bgMode === 'image' ? bgImagePosition : undefined,
             bgImageSize: bgMode === 'image' ? bgImageSize : undefined,
             logoUrl: user?.avatar,
-            asset: { name: asset.name, originalUrl: modelUrl, originalKey: mKey },
+            asset: { name: asset.name, originalUrl: modelUrl, originalKey: mKey , fieldOfView: asset.fieldOfView || "25deg"},
             ctaText: ctaText || undefined,
             ctaLink: ctaLink || undefined,
             style: {
@@ -268,16 +274,39 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
         {activeTab === 'model' && (
           <div className="p-4 flex flex-col gap-4">
             {asset ? (
-              <div className="relative rounded-xl overflow-hidden border border-gray-200">
-                {/* @ts-ignore */}
-                <model-viewer src={asset.previewUrl} camera-controls auto-rotate exposure="1.2" environment-image="neutral" shadow-intensity="1" style={{ width: '100%', height: '360px', backgroundColor: 'transparent' }} />
-                <button onClick={() => setAsset(null)} className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-sm rounded-full text-white hover:bg-black/80 transition">
-                  <X size={14} />
-                </button>
-                <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-lg text-white text-[10px] font-bold uppercase tracking-wider">
-                  {asset.name.substring(0, 20)}{asset.name.length > 20 ? '...' : ''}
+              <div>
+                {/* 1. Viewer Container (Relative) */}
+                <div className="relative rounded-xl overflow-hidden border border-gray-200">
+                  {/* @ts-ignore */}
+                  <model-viewer src={asset.previewUrl} camera-controls auto-rotate exposure="1.2" environment-image="neutral" field-of-view={asset.fieldOfView || "25deg"} min-field-of-view="1deg" max-field-of-view="90deg" shadow-intensity="1" style={{ width: '100%', height: '360px', backgroundColor: 'transparent' }} />
+                  <button onClick={() => setAsset(null)} className="absolute top-3 right-3 p-1.5 bg-black/60 backdrop-blur-sm rounded-full text-white hover:bg-black/80 transition">
+                    <X size={14} />
+                  </button>
+                  <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-lg text-white text-[10px] font-bold uppercase tracking-wider">
+                    {asset.name.substring(0, 20)}{asset.name.length > 20 ? '...' : ''}
+                  </div>
+                </div> {/* <--- IMPORTANT: The relative container ends here! */}
+
+                {/* 2. Zoom Slider UI (Outside the relative container) */}
+                <div className="flex items-center gap-4 px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl mt-3">
+                  <ZoomIn size={18} className="text-gray-400" />
+                  <div className="flex-1 flex flex-col gap-1">
+                    <div className="flex justify-between text-xs font-semibold text-gray-500">
+                      <span>Zoomed In</span>
+                      <span>Zoomed Out</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1" 
+                      max="90" 
+                      value={parseInt(asset.fieldOfView || "25")}
+                      onChange={handleZoomChange}
+                      className="w-full accent-[#3D7A6E] cursor-pointer"
+                    />
+                  </div>
                 </div>
               </div>
+              
             ) : (
               <div onClick={() => modelInputRef.current?.click()}
                 className="border-2 border-dashed border-[#3D7A6E]/30 rounded-xl py-16 flex flex-col items-center gap-3 cursor-pointer hover:bg-[#3D7A6E]/5 transition-all group">
