@@ -52,6 +52,7 @@ const POST_PROJECTION = {
   "modelPost.price": 1,
   "modelPost.assets.originalUrl": 1,
   "modelPost.assets.optimizedUrl": 1,
+  "modelPost.assets.fieldOfView": 1,
 
   // GAME POST
   "gamePost.gameName": 1,
@@ -82,6 +83,7 @@ const POST_PROJECTION = {
   "adModelPost.asset.originalUrl": 1,
   "adModelPost.asset.optimizedUrl": 1,
   "adModelPost.asset.optimization": 1,
+  "adModelPost.asset.fieldOfView": 1,
 };
 
 // ── Chronological fetch (guest fallback + Gorse fallback) ─────────────────────
