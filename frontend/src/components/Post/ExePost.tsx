@@ -206,7 +206,9 @@ return (
             animation-name="*"
             exposure="1.2"
             environment-image="neutral"
-            field-of-view="25deg" 
+            field-of-view={asset?.fieldOfView || "25deg"}
+            min-field-of-view="1deg"
+            max-field-of-view="90deg"
             shadow-intensity="1"
             style={{ width: "100%", height: "100%" }}
           />

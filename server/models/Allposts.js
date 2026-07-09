@@ -14,33 +14,38 @@ const ModelAssetSchema = new mongoose.Schema(
 
     sizeMB: Number,
 
-optimization: {
-  status: {
-    type: String,
-    enum: [
-      "pending",
-      "processing",
-      "completed",
-      "failed",
-    ],
-    default: "pending",
-  },
+    fieldOfView: {
+      type: String,
+      default: "25deg", // Your current default from ExePost
+    },
 
-  retryCount: {
-    type: Number,
-    default: 0,
-  },
+    optimization: {
+      status: {
+        type: String,
+        enum: [
+          "pending",
+          "processing",
+          "completed",
+          "failed",
+        ],
+        default: "pending",
+      },
 
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
+      retryCount: {
+        type: Number,
+        default: 0,
+      },
 
-  optimizedSizeMB: Number,
-  compressionRatio: Number,
-  error: String,
-  processedAt: Date,
-},
+      updatedAt: {
+        type: Date,
+        default: Date.now,
+      },
+
+      optimizedSizeMB: Number,
+      compressionRatio: Number,
+      error: String,
+      processedAt: Date,
+    },
 
     metadata: {
       fileName: String,
@@ -402,33 +407,38 @@ const AdModelAssetSchema = new mongoose.Schema(
 
     sizeMB: Number,
 
-optimization: {
-  status: {
-    type: String,
-    enum: [
-      "pending",
-      "processing",
-      "completed",
-      "failed",
-    ],
-    default: "pending",
-  },
+    fieldOfView: {
+      type: String,
+      default: "25deg", // Your current default from ExePost
+    },
 
-  retryCount: {
-    type: Number,
-    default: 0,
-  },
+    optimization: {
+      status: {
+        type: String,
+        enum: [
+          "pending",
+          "processing",
+          "completed",
+          "failed",
+        ],
+        default: "pending",
+      },
 
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
+      retryCount: {
+        type: Number,
+        default: 0,
+      },
 
-  optimizedSizeMB: Number,
-  compressionRatio: Number,
-  error: String,
-  processedAt: Date,
-},
+      updatedAt: {
+        type: Date,
+        default: Date.now,
+      },
+
+      optimizedSizeMB: Number,
+      compressionRatio: Number,
+      error: String,
+      processedAt: Date,
+    },
 
     metadata: {
       fileName: String,
