@@ -132,12 +132,6 @@ export default function ProfileNotFound() {
 
         {/* Main Content Layout */}
         <main className="relative z-10 w-full h-full flex flex-col items-center justify-center p-8 min-h-[calc(100vh-120px)]">
-          
-          {/* Status Tag */}
-          <div className="inline-flex items-center gap-[7px] text-[11px] font-medium tracking-[0.14em] uppercase text-[#4FA98B] bg-[#62D4AE]/10 border border-[#62D4AE]/20 px-3.5 py-1.5 rounded-full mb-10 animate-fade-up" style={{ animationDelay: '0.2s' }}>
-            <span className="w-[5px] h-[5px] rounded-full bg-[#62D4AE] shadow-[0_0_6px_#62D4AE] animate-pulse" />
-            Profile Unavailable
-          </div>
 
           {/* Logo Section */}
           <div className="relative w-40 h-40 mb-11 animate-fade-up" style={{ animationDelay: '0.3s' }}>
