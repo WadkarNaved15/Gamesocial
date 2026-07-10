@@ -150,7 +150,9 @@ const MessagingComponent = () => {
     setMessage((prev) => prev + emojiData.emoji);
   };
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  useEffect(() => scrollToBottom(), [conversations, activeChat]);
+  useEffect(() => {
+    scrollToBottom();
+  }, [conversations, activeChat]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -722,7 +724,7 @@ const MessagingComponent = () => {
                         />
                       </div>
                     </div>
-                    
+
                     {/* Users List */}
                     <div className="flex-1 overflow-y-auto">
                       {loading ? (

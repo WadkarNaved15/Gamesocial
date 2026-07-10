@@ -35,7 +35,7 @@ import AdminIntelligenceCenter from "./Pages/AdminIntelligenceCenter";
 
 //Error Handling
 import PageNotFound from "./Pages/ErrorHandling/PageNotFound";
-import RouteErrorBoundary from "./RouteErrorBoundary";
+// import RouteErrorBoundary from "./RouteErrorBoundary";
 
 // Components as pages
 import ModelViewer from "./components/ModelViewer";
@@ -49,7 +49,7 @@ import GameFeedbackModal from "./components/Home/GameFeedbackModal";
 
 export const router = createBrowserRouter([
   {
-    errorElement: <RouteErrorBoundary />,
+    // errorElement: <RouteErrorBoundary />,
     children: [
       {
         element: <MainLayout />,
