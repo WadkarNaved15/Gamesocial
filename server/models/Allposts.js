@@ -16,7 +16,7 @@ const ModelAssetSchema = new mongoose.Schema(
 
     fieldOfView: {
       type: String,
-      default: "25deg", // Your current default from ExePost
+      default: "auto", // Your current default from ExePost
     },
 
     optimization: {
@@ -409,7 +409,7 @@ const AdModelAssetSchema = new mongoose.Schema(
 
     fieldOfView: {
       type: String,
-      default: "25deg", // Your current default from ExePost
+      default: "auto", // Your current default from ExePost
     },
 
     optimization: {
