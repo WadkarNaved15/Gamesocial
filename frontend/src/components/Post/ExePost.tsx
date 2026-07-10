@@ -35,6 +35,8 @@ const ExePost: React.FC<ExePostProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showComments, setShowComments] = useState(false); // ✅ toggle comment section
   const postRef = useRef(null);
+  const modelViewerRef = useRef<HTMLElement | null>(null);
+  const [currentFov, setCurrentFov] = useState("auto");
   const [isExpanded, setIsExpanded] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -113,6 +115,29 @@ const ExePost: React.FC<ExePostProps> = ({
     if (detailed) setShowComments(true);
   }, [detailed]);
 
+  useEffect(() => {
+    const viewer = modelViewerRef.current as any;
+    if (!viewer || !asset?.fieldOfView) return;
+
+    const handleModelLoad = () => {
+      // The 3D model has fully downloaded. 
+      // Now we apply your custom FOV, mimicking a "change afterwards"
+      setCurrentFov(asset?.fieldOfView?.trim() || "auto");
+      
+      // Force it to snap without a smooth animation delay
+      if (typeof viewer.jumpCameraToGoal === 'function') {
+        setTimeout(() => viewer.jumpCameraToGoal(), 10);
+      }
+    };
+
+    // Listen for the native web component load event
+    viewer.addEventListener('load', handleModelLoad);
+
+    return () => {
+      viewer.removeEventListener('load', handleModelLoad);
+    };
+  }, [asset?.fieldOfView, modelUrl]);
+
 return (
     <article
       ref={postRef}
@@ -190,14 +215,16 @@ return (
       </div>
 
       {/* 2. MIDDLE SECTION: Full-Width 3D Model (No Borders) */}
-      {modelUrl && (
-        <div 
-          className={`group relative mt-2 flex justify-center overflow-hidden w-full h-[450px] bg-black/20 ${
-            detailed ? "grayscale" : ""
-          }`}
-        >
-          {/* @ts-ignore */}
+{/* 2. MIDDLE SECTION: Full-Width 3D Model (No Borders) */}
+      <div 
+        className={`group relative mt-2 flex justify-center overflow-hidden w-full h-[450px] bg-black/20 ${
+          detailed ? "grayscale" : ""
+        }`}
+      >
+        {modelUrl ? (
+          /* @ts-ignore */
           <model-viewer
+            ref={modelViewerRef}
             src={modelUrl}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
             camera-controls
@@ -206,14 +233,16 @@ return (
             animation-name="*"
             exposure="1.2"
             environment-image="neutral"
-            field-of-view={asset?.fieldOfView || "25deg"}
+            field-of-view={currentFov}            
+            camera-orbit="auto auto auto"
             min-field-of-view="1deg"
             max-field-of-view="90deg"
+            bounds="tight"
             shadow-intensity="1"
             style={{ width: "100%", height: "100%" }}
           />
-        </div>
-      )}
+        ) : null}
+      </div>
 
       {/* 3. BOTTOM SECTION: Post Interactions & Comments */}
       <div className="flex gap-3 px-4">

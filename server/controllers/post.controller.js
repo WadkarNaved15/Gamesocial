@@ -114,7 +114,7 @@ export const createPost = async (req, res) => {
           optimizedKey: null,
           originalUrl: asset.originalUrl,
           optimizedUrl: null,
-          fieldOfView: asset.fieldOfView || "25deg",
+          fieldOfView: asset.fieldOfView || "auto",
           sizeMB: Number(metadata.fileSizeMB),
           optimization: { status: "pending" },
           metadata: {
@@ -312,7 +312,7 @@ export const createPost = async (req, res) => {
           optimizedKey: null,
           originalUrl: asset.originalUrl,
           optimizedUrl: null,
-          fieldOfView: asset.fieldOfView || "25deg",
+          fieldOfView: asset.fieldOfView || "auto",
           sizeMB: Number(metadata.fileSizeMB),
           optimization: { status: "pending" },
           metadata: {
@@ -350,7 +350,7 @@ export const createPost = async (req, res) => {
           optimizedKey: null,
           originalUrl: asset.originalUrl,
           optimizedUrl: null,
-          fieldOfView: asset.fieldOfView || "25deg",
+          fieldOfView: asset.fieldOfView || "auto",
           optimization: { status: "pending" },
         };
       }

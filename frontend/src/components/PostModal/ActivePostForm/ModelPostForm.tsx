@@ -1,5 +1,5 @@
-import React, { useState, useRef, ChangeEvent } from 'react';
-import { X, Image as ImageIcon, DollarSign ,ZoomIn } from 'lucide-react';
+import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
+import { X, Image as ImageIcon, DollarSign, ZoomIn } from 'lucide-react';
 import '@google/model-viewer';
 import { useUser } from '../../../context/user';
 
@@ -33,6 +33,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
   const [activeIndex, setActiveIndex] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const viewerRef = useRef<HTMLElement>(null); // ✅ NEW: Ref for the 3D viewer
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -51,7 +52,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
         file,
         previewUrl: URL.createObjectURL(file),
         name: file.name,
-        fieldOfView: "25deg",
+        fieldOfView: "auto", // ✅ CHANGED: Let the model decide the best initial zoom
       });
     });
 
@@ -75,6 +76,47 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
       )
     );
   };
+
+  // ✅ NEW: Two-way synchronization between mouse-wheel and slider
+  useEffect(() => {
+    const viewer = viewerRef.current as any;
+    if (!viewer) return;
+
+    // Sync slider when user scrolls mouse wheel
+    const handleCameraChange = (e: any) => {
+      if (e.detail.source === 'user-interaction') {
+        const currentFov = viewer.getFieldOfView();
+        setAssets((prevAssets) =>
+          prevAssets.map((asset, idx) =>
+            idx === activeIndex
+              ? { ...asset, fieldOfView: `${Math.round(currentFov)}deg` }
+              : asset
+          )
+        );
+      }
+    };
+
+    // Sync slider the exact moment the model first loads and calculates "auto"
+    const handleLoad = () => {
+      const initialFov = viewer.getFieldOfView();
+      console.log("Model loaded, initial FOV:", initialFov);
+      setAssets((prevAssets) =>
+        prevAssets.map((asset, idx) =>
+          idx === activeIndex
+            ? { ...asset, fieldOfView: `${Math.round(initialFov)}deg` }
+            : asset
+        )
+      );
+    };
+
+    viewer.addEventListener('camera-change', handleCameraChange);
+    viewer.addEventListener('load', handleLoad);
+
+    return () => {
+      viewer.removeEventListener('camera-change', handleCameraChange);
+      viewer.removeEventListener('load', handleLoad);
+    };
+  }, [activeIndex, assets.length]); // Re-bind when active tab or assets change
 
   const uploadAssetToS3 = async (
     asset: Asset,
@@ -167,7 +209,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
             name: a.name,
             originalUrl: a.uploadedUrl,
             originalKey: a.originalKey,
-            fieldOfView: a.fieldOfView || "25deg",
+            fieldOfView: a.fieldOfView || "45deg", // safe fallback
           })),
         }),
       });
@@ -208,10 +250,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
   };
 
   return (
-    // Minimalist Glassmorphic Container
-    // <div className="w-full max-w-2xl mx-auto bg-white dark:bg-black/20 backdrop-blur-2xl min-h-[75vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col overflow-hidden shadow-2xl">
     <div className="w-full max-w-2xl mx-auto bg-white/[0.03] backdrop-blur-2xl min-h-[75vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col overflow-hidden shadow-2xl">
-
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 sticky top-0 bg-transparent z-30 border-b border-gray-100 dark:border-white/[0.06]">
         <div className="flex items-center gap-6">
@@ -237,7 +276,6 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
                 alt={`${user.username || 'User'}'s avatar`}
                 className="h-full w-full object-cover"
                 onError={(e) => {
-                  // Fallback if the image URL fails to load
                   e.currentTarget.src = '/default_avatar.png';
                 }}
               />
@@ -268,51 +306,20 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
           {/* 3D Asset Management UI */}
           {assets.length > 0 ? (
             <div className="flex flex-col gap-3">
-              {/* Asset Selector Tabs */}
-              {/* <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                {assets.map((asset, index) => (
-                  <button
-                    key={asset.id}
-                    onClick={() => setActiveIndex(index)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all whitespace-nowrap ${activeIndex === index
-                      ? 'bg-[#3D7A6E] border-[#3D7A6E] text-white shadow-md'
-                      : 'bg-transparent dark:bg-white/[0.02] border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 hover:border-[#3D7A6E]'
-                      }`}
-                  >
-                    <span className="text-xs font-bold uppercase tracking-wider">Asset {index + 1}</span>
-                    <X
-                      size={14}
-                      className="hover:text-red-200 dark:hover:text-red-400 transition-colors"
-                      onClick={(e) => { e.stopPropagation(); removeAsset(index); }}
-                    />
-                  </button>
-                ))}
-
-                {assets.length < 4 && (
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="p-2 border border-dashed border-gray-300 dark:border-white/[0.1] rounded-full text-gray-400 hover:text-[#3D7A6E] hover:border-[#3D7A6E] transition"
-                    title="Add another asset"
-                  >
-                    <ImageIcon size={18} />
-                  </button>
-                )}
-              </div> */}
-
               {/* Main Preview Area */}
               <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-black/20 group">
                 {/* @ts-ignore */}
-                {/* @ts-ignore */}
-                {/* @ts-ignore */}
                 <model-viewer
+                  ref={viewerRef} // ✅ NEW: Ref attached here
                   src={assets[activeIndex].uploadedUrl || assets[activeIndex].previewUrl}
                   camera-controls
                   auto-rotate
                   exposure="1.0"
                   environment-image="neutral"
                   shadow-intensity="1"
-                  field-of-view={assets[activeIndex].fieldOfView || "25deg"}
-                  // 👇 Lower this to 1deg for maximum zoom-in
+                  field-of-view={assets[activeIndex].fieldOfView || "auto"} // Fallback handles initial render
+                  camera-orbit="auto auto auto"
+                  bounds="tight"
                   min-field-of-view="1deg" 
                   max-field-of-view="90deg" 
                   style={{ width: "100%", height: "400px", backgroundColor: "transparent" }}
@@ -322,6 +329,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
                   Previewing: {assets[activeIndex].name.substring(0, 15)}{assets[activeIndex].name.length > 15 ? '...' : ''}
                 </div>
               </div>
+              
               <div className="flex items-center gap-4 px-2 py-3 bg-gray-50 dark:bg-white/[0.02] rounded-xl border border-gray-200 dark:border-white/[0.06]">
                 <ZoomIn size={18} className="text-gray-400" />
                 <div className="flex-1 flex flex-col gap-1">
@@ -333,8 +341,12 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
                     type="range"
                     min="1" 
                     max="90" 
-                    // We parse the integer out of "25deg"
-                    value={parseInt(assets[activeIndex].fieldOfView || "25")}
+                    // ✅ CHANGED: Safely parse 'auto' into a temporary visual number while it loads
+                    value={
+                      assets[activeIndex].fieldOfView === "auto" 
+                        ? 45 
+                        : parseInt(assets[activeIndex].fieldOfView || "45")
+                    }
                     onChange={handleZoomChange}
                     className="w-full accent-[#3D7A6E] cursor-pointer"
                   />
