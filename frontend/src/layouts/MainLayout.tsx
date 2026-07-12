@@ -254,9 +254,11 @@ function MainLayout() {
               sessionId: null,
               gameId: null,
               gameName: null,
+              playTimeMs: null
             })
           }
           gameName={feedback.gameName || ""}
+          playTimeMs={feedback.playTimeMs || 0}
         />
 
       </div>

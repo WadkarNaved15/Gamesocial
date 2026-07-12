@@ -10,12 +10,14 @@ interface Props {
     open: boolean;
     onClose: () => void;
     gameName: string;
+    playTimeMs: number;
 }
 
 export default function GameFeedbackModal({
     open,
     onClose,
     gameName,
+    playTimeMs,
 }: Props) {
     const FEEDBACK_STORAGE_KEY = "rigzer_feedback_session";
     const { feedback, setFeedback, clearSession } = useQueue();
@@ -27,6 +29,13 @@ export default function GameFeedbackModal({
         overall: 0, // Scale 1 to 10
         comment: "",
     });
+    const totalMinutes = Math.floor(playTimeMs / 60000);
+    const totalSeconds = Math.floor((playTimeMs % 60000) / 1000);
+
+    const playTimeText =
+        totalMinutes > 0
+            ? `${totalMinutes} min${totalMinutes > 1 ? "s" : ""} ${totalSeconds} sec`
+            : `${totalSeconds} sec`;
 
     if (!open) return null;
 
@@ -37,6 +46,7 @@ export default function GameFeedbackModal({
             sessionId: null,
             gameId: null,
             gameName: null,
+            playTimeMs: null,
         });
         clearSession();
         onClose();
@@ -131,6 +141,9 @@ export default function GameFeedbackModal({
                     <p className="text-lg font-bold text-zinc-700 mt-1">
                         {gameName}
                     </p>
+                    <p className="text-sm text-zinc-500 mt-1">
+                        You played for <span className="font-semibold">{playTimeText}</span>
+                    </p>
                 </div>
 
                 {/* Form Body */}
@@ -164,8 +177,8 @@ export default function GameFeedbackModal({
                                         key={index}
                                         style={{ height: `${height}px` }}
                                         className={`w-2.5 rounded-full transition-all duration-150 origin-center ${isActive
-                                                ? "bg-emerald-500 scale-y-105"
-                                                : "bg-zinc-200 group-hover/wave:bg-zinc-300"
+                                            ? "bg-emerald-500 scale-y-105"
+                                            : "bg-zinc-200 group-hover/wave:bg-zinc-300"
                                             }`}
                                     />
                                 );

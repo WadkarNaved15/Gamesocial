@@ -337,6 +337,7 @@ router.get(
           error: "Session not found",
         });
       }
+      const playTimeMs = session.metrics?.totalPlayTime || 0;
       // Session must be completed
       if (session.status !== "ended") {
         return res.json({
@@ -365,6 +366,7 @@ router.get(
         sessionId: session._id,
         gameId: session.gamePost._id,
         gameName: session.gamePost.gamePost.gameName,
+        playTimeMs,
       });
     } catch (err) {
       console.error("Feedback eligibility error:", err);
