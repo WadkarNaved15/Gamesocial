@@ -24,13 +24,6 @@ router.post("/start", verifyToken, async (req, res) => {
     });
     console.log("chat", chat);
     console.log("Chat is found");
-    // Create if not exists
-    // if (!chat) {
-    //   chat = await Chat.create({
-    //     participants
-    //   });
-    // }
-
     res.json(chat || null);
   } catch (err) {
     console.error("Chat start error:", err);
@@ -42,7 +35,16 @@ router.get("/my-chats", verifyToken, async (req, res) => {
   try {
     const userId = req.user.id;
     const chats = await Chat.find({
-      participants: userId
+      participants: userId,
+      $or: [
+        {
+          requestedBy: userId
+        },
+        {
+          requestedBy: { $ne: userId },
+          status: { $in: ["accepted", "pending"] }
+        }
+      ]
     }).populate("participants", "username avatar");
 
     // 🔥 Format response → return ONLY other user

@@ -19,7 +19,7 @@ import fetch from "node-fetch";
 import { releaseInstance } from "./services/instanceAllocator.js";
 import { sessionStreams } from "./services/sessionStream.js";
 import { initializeSessionPubSub } from "./services/sessionPubSub.js";
-import {  initGeoService  } from "./services/geoService.js";
+import { initGeoService } from "./services/geoService.js";
 import cacheService from "./services/cacheService.js";
 
 // ✅ Import your existing Redis client
@@ -43,6 +43,7 @@ import uploadRoutes from "./routes/uploadRoutes.js";
 import meRoutes from "./routes/me.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import Chat from "./models/Chat.js";
+import chatRequestRoutes from "./routes/chatRequestRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import feedBackRoutes from "./routes/feedback.js";
 import homeFeedbackRoutes from "./routes/feedbackRoutes.js"
@@ -242,6 +243,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/devlogs", devlogsRoutes);
 app.use("/api/follow", followRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/chat-requests", chatRequestRoutes);
 app.use("/api/articles", ArticleRoutes);
 app.use("/api/allposts", allPostRoutes);
 app.use("/api/messages", messageRoutes);
@@ -272,7 +274,7 @@ app.use("/api/internal", internalRoutes);
 app.use("/api/pockets", pocketRoutes);
 app.use("/api/creatorAnalytics", creatorAnalyticsRoutes);
 app.use("/api/analytics", analyticsRoutes);
-app.use("/api/gamePosts",gamePostRoutes)
+app.use("/api/gamePosts", gamePostRoutes)
 
 // Admin routes (protected by your isAdmin middleware)
 app.use("/api/admin", adminRouter);
@@ -470,11 +472,16 @@ io.on("connection", (socket) => {
 
     if (!finalChatId) {
       console.log("Creating new chat");
+      console.log("status marked as pending");
       const participants = [senderId, receiverId].sort();
 
       let chat = await Chat.findOne({ participants });
       if (!chat) {
-        chat = await Chat.create({ participants });
+        chat = await Chat.create({
+          participants,
+          requestedBy: senderId,
+          status: "pending",
+        });
       }
 
       finalChatId = chat._id;

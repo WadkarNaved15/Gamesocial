@@ -49,9 +49,11 @@ const MessagingComponent = () => {
   const [message, setMessage] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [activeChat, setActiveChat] = useState<ChatId | null>(null);
+  const [requestedUser, setRequestedUser] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [currentChatId, setCurrentChatId] = useState(null);
+  const [statusLoading, setStatusLoading] = useState<"accepted" | "declined" | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -60,6 +62,7 @@ const MessagingComponent = () => {
     type: "image" | "video";
   } | null>(null);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+  const [activeChatStatus, setActiveChatStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useUser();
   const { users, loading, setUsers } = useUsers();
@@ -422,7 +425,10 @@ const MessagingComponent = () => {
       // 🔥 If chat exists
       if (data?._id && socket) {
         setCurrentChatId(data._id);
-
+        setRequestedUser(data)
+        setActiveChatStatus(data.status);
+        console.log("Status is", data.status);
+        console.log("Active chat status is ", activeChatStatus);
         socket.emit("join_chat", data._id);
         console.log("Joined chat room:", data._id);
         const messagesResponse = await axios.get(
@@ -459,6 +465,53 @@ const MessagingComponent = () => {
     }
   };
 
+
+  const handleUpdateChatStatus = async (
+    status: "accepted" | "declined"
+  ) => {
+    if (!currentChatId) return;
+    setStatusLoading(status);
+    try {
+      const endpoint =
+        status === "accepted"
+          ? "accept"
+          : "reject";
+
+      await axios.put(
+        `${BACKEND_URL}/api/chat-requests/${currentChatId}/${endpoint}`,
+        {},
+        {
+          withCredentials: true,
+        }
+      );
+      if (status === "accepted") {
+        setActiveChatStatus("accepted");
+
+      } else {
+        // remove conversation
+        setActiveChat(null);
+        setCurrentChatId(null);
+        setConversations(prev => {
+          const copy = { ...prev };
+          if (activeUser)
+            delete copy[activeUser.id];
+          return copy;
+        });
+
+        setUsers(prev =>
+          prev.filter(
+            u => u.id !== activeUser?.id
+          )
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update request");
+    }
+    finally {
+      setStatusLoading(null);
+    }
+  };
   const handleSendMessage = () => {
     if (!socket || !currentUser) return;
     if (!message.trim() || !activeChat) return;
@@ -898,6 +951,7 @@ const MessagingComponent = () => {
                       className={`flex-1 overflow-y-auto p-4 space-y-3 ${isMaximized ? "bg-black/20 backdrop-blur-sm" : "bg-gray-50 dark:bg-gray-900"
                         }`}
                     >
+                  
                       {(conversations[activeChat] || []).map((msg) => (
                         <div
                           key={msg._id || msg.tempId || msg.id}
@@ -1061,7 +1115,37 @@ const MessagingComponent = () => {
                           </div>
                         </div>
                       ))}
-
+                      {/*Pending Status Action Box */}
+                      {activeChatStatus === "pending" &&
+                        requestedUser?.requestedBy !== currentUser && (
+                          <div className="p-4 mt-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-white/50 dark:bg-black/50 backdrop-blur-sm text-center shadow-sm max-w-sm mx-auto animate-fade-in">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                              {activeUser?.name || "This user"} wants to chat with you.
+                            </p>
+                            <div className="flex items-center justify-center space-x-3">
+                              <button
+                                onClick={() => handleUpdateChatStatus("accepted")}
+                                disabled={statusLoading !== null}
+                                className="flex items-center justify-center px-4 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {statusLoading === "accepted" && (
+                                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1.5" />
+                                )}
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => handleUpdateChatStatus("declined")}
+                                disabled={statusLoading !== null}
+                                className="flex items-center justify-center px-4 py-1.5 text-xs font-semibold bg-red-500/10 hover:bg-red-600/20 text-red-500 hover:text-white border border-red-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {statusLoading === "declined" && (
+                                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1.5" />
+                                )}
+                                Decline
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       <div ref={messagesEndRef} />
                     </main>
 
