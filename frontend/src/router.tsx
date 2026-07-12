@@ -44,8 +44,7 @@ import Recommendations from "./components/Recommendations";
 import RecommendationPosts from "./components/Home/RecommendationPost";
 import AdsPage from "./Pages/ads/AdsPage";
 
-//Feedbacks
-import GameFeedbackModal from "./components/Home/GameFeedbackModal";
+
 
 export const router = createBrowserRouter([
   {
@@ -92,8 +91,7 @@ export const router = createBrowserRouter([
       { path: "/analytics", element: <GuestProtectedRoute> <Analytics /> </GuestProtectedRoute> },
 
       { path: "/ads", element: <GuestProtectedRoute> <AdsPage /> </GuestProtectedRoute> },
-      { path: "/gamefeedback", element: <GuestProtectedRoute> <GameFeedbackModal open={true} onClose={() => {}} gameName="Preview Game Name" /> </GuestProtectedRoute> },
-
+      
       // ── Admin routes ───────────────────────────────────────────────────────────
       // AdminRoute checks:  not logged in → /login?next=…  |  not admin → 403 page
       // Real security is enforced by isAdmin middleware on every /api/admin/* and
