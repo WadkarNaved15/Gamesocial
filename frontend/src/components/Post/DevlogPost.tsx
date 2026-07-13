@@ -109,7 +109,7 @@ const DevlogPost: React.FC<DevlogPostProps> = ({
                     e.stopPropagation(); // Prevents opening post details when clicking the button
                     setIsExpanded(!isExpanded);
                   }}
-                  className="text-sky-500 hover:text-sky-600 font-semibold text-sm mt-1 focus:outline-none"
+                  className="text-[rgb(98,212,174)] hover:text-[rgb(78,192,154)] font-semibold text-sm mt-1 focus:outline-none"
                 >
                   {isExpanded ? "Show less" : "Show more"}
                 </button>

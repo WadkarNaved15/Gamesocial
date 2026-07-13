@@ -336,7 +336,7 @@ const GamePost: React.FC<GamePostProps> = ({
                       e.stopPropagation();
                       setIsExpanded(!isExpanded);
                     }}
-                    className="text-sky-400 hover:text-sky-300 font-semibold text-sm mt-1"
+                    className="text-[rgb(98,212,174)] hover:text-[rgb(78,192,154)] font-semibold text-sm mt-1"
                   >
                     {isExpanded ? "Show less" : "Show more"}
                   </button>
