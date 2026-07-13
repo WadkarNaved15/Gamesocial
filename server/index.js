@@ -20,6 +20,7 @@ import { releaseInstance } from "./services/instanceAllocator.js";
 import { sessionStreams } from "./services/sessionStream.js";
 import { initializeSessionPubSub } from "./services/sessionPubSub.js";
 import { initGeoService } from "./services/geoService.js";
+import { sendEventToQueue } from "./utils/sendEventToQueue.js";
 import cacheService from "./services/cacheService.js";
 
 // ✅ Import your existing Redis client
