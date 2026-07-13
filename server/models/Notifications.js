@@ -19,6 +19,12 @@ const notificationSchema = new mongoose.Schema(
       default: null,
     },
 
+    chatId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Chat",
+      default: null,
+    },
+
     // ✅ Only store last 3 actors
     actorsPreview: [
       {

@@ -1,7 +1,7 @@
 import Notification from "../models/Notifications.js";
 import axios from "axios";
 export const handleNotificationEvent = async (event) => {
-  const { type, actorId, recipientId, postId } = event;
+  const { type, actorId, recipientId, postId, chatId } = event;
 
   const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
 
@@ -10,8 +10,12 @@ export const handleNotificationEvent = async (event) => {
       recipientId,
       type,
       postId: postId || null,
-      createdAt: { $gte: tenMinutesAgo },
-      isRead: false,
+      chatId: chatId || null,
+
+      ...(type !== "CHAT_REQUEST" && {
+        createdAt: { $gte: tenMinutesAgo },
+        isRead: false,
+      }),
     },
     {
       // ✅ Increment count safely
@@ -31,6 +35,7 @@ export const handleNotificationEvent = async (event) => {
         recipientId,
         type,
         postId: postId || null,
+        chatId: chatId || null,
         createdAt: new Date(),
         isRead: false,
       },
@@ -39,8 +44,8 @@ export const handleNotificationEvent = async (event) => {
   );
 
   console.log("✅ Notification Stored / Aggregated");
-   // ✅ REALTIME SOCKET PUSH (Worker → Backend)
-   console.log("🚀 Pushing notification in real-time");
+  // ✅ REALTIME SOCKET PUSH (Worker → Backend)
+  console.log("🚀 Pushing notification in real-time");
   await axios.post(
     `${process.env.BACKEND_URL}/api/internal-notify/notify-realtime`,
     {

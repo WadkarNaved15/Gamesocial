@@ -11,7 +11,7 @@ import { useUser } from "./user";
 import { useSocket } from "./SocketContext";
 export interface NotificationType {
   _id: string;
-  type: "LIKE" | "COMMENT" | "FOLLOW";
+  type: "LIKE" | "COMMENT" | "FOLLOW" | "CHAT_REQUEST";
   count: number;
   isRead: boolean;
   createdAt: string;
@@ -26,6 +26,10 @@ export interface NotificationType {
     _id: string;
     description?: string;
     assets?: any[];
+  };
+
+  chatId?: {
+    _id: string;
   };
 }
 

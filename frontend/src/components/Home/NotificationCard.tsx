@@ -1,5 +1,5 @@
 import { NotificationType } from "../../context/Notifications";
-import { Link,useNavigate} from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 interface Props {
   notification: NotificationType;
@@ -23,7 +23,9 @@ export default function NotificationCard({ notification, onRead }: Props) {
       ? "liked your post"
       : notification.type === "COMMENT"
         ? "commented on your post"
-        : "followed you";
+        : notification.type === "FOLLOW"
+          ? "followed you"
+          : "sent you a chat request";
 
   return (
     <div
@@ -39,7 +41,7 @@ export default function NotificationCard({ notification, onRead }: Props) {
       <img
         src={actor?.avatar || "/default_avatar.png"}
         className="h-11 w-11 rounded-full object-cover"
-        onClick={(e)=>{
+        onClick={(e) => {
           e.stopPropagation();
           navigate(`/profile/${actor?.username}`);
         }}
@@ -62,14 +64,16 @@ export default function NotificationCard({ notification, onRead }: Props) {
         </p>
 
         {/* ✅ Post Preview Only If Exists */}
-        {notification.postId && postDescription && (
-          <Link
-            to={`/post/${notification.postId._id}`}
-            className="block mt-1 text-gray-400 text-sm hover:text-white transition"
-          >
-            “{postText}”
-          </Link>
-        )}
+        {notification.type !== "CHAT_REQUEST" &&
+          notification.postId &&
+          postDescription && (
+            <Link
+              to={`/post/${notification.postId._id}`}
+              className="block mt-1 text-gray-400 text-sm hover:text-white transition"
+            >
+              “{postText}”
+            </Link>
+          )}
 
         {/* Timestamp */}
         <p className="text-xs text-gray-500 mt-2">

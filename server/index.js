@@ -482,6 +482,14 @@ io.on("connection", (socket) => {
           requestedBy: senderId,
           status: "pending",
         });
+
+        await sendEventToQueue({
+          type: "CHAT_REQUEST",
+          actorId: senderId,
+          recipientId: receiverId,
+          chatId: chat._id,
+          createdAt: new Date(),
+        });
       }
 
       finalChatId = chat._id;

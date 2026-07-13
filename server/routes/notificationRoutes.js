@@ -15,6 +15,7 @@ router.get("/", authMiddleware, async (req, res) => {
     })
       .populate("actorsPreview", "username avatar")
       .populate("postId", "description assets")
+      .populate("chatId")
       .sort({ createdAt: -1 })
       .limit(30);
 
