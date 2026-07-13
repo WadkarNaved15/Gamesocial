@@ -11,7 +11,15 @@ import { useUser } from "./user";
 import { useSocket } from "./SocketContext";
 export interface NotificationType {
   _id: string;
-  type: "LIKE" | "COMMENT" | "FOLLOW" | "CHAT_REQUEST";
+  type:
+  | "LIKE"
+  | "COMMENT"
+  | "FOLLOW"
+  | "CHAT_REQUEST"
+  | "MENTION_COMMENT"
+  | "MENTION_POST"
+  | "INTERACT_COMMENT"
+  | "INTERACT_POST";
   count: number;
   isRead: boolean;
   createdAt: string;
