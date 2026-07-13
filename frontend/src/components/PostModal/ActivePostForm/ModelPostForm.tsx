@@ -2,6 +2,7 @@ import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { X, Image as ImageIcon, DollarSign, ZoomIn } from 'lucide-react';
 import '@google/model-viewer';
 import { useUser } from '../../../context/user';
+import { MentionTextarea } from './MentionTextarea';
 
 interface PostModalProps {
   onCancel: () => void;
@@ -295,11 +296,11 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
-            <textarea
+            <MentionTextarea
               placeholder="What's special about these models?"
               className="w-full text-lg bg-transparent border-none outline-none text-black dark:text-white placeholder-gray-500 resize-none focus:ring-0 min-h-[100px] p-0 mt-2"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={setDescription}
             />
           </div>
 

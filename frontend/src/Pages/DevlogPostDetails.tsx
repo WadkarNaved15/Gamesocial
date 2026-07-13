@@ -31,6 +31,7 @@ const DevlogPostDetails: React.FC<DevlogPostDetailsProps> = ({
       <CommentSection
         postId={post._id}
         BACKEND_URL={BACKEND_URL}
+        postOwnerId={post.user?._id}
       />
     </div>
   );

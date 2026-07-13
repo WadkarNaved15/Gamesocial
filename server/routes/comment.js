@@ -14,6 +14,7 @@ import {
   onCommentAdded,
   onCommentRemoved,
 } from "../services/analyticsEvents.js";
+import { parseMentions } from "../utils/mentions.js";
 
 const router = express.Router();
 
@@ -41,10 +42,17 @@ router.post("/", authMiddleware, commentLimiter, async (req, res) => {
       return res.status(400).json({ message: "Comment too long" });
     }
 
+    const mentionData = await parseMentions(text);
+
     const comment = await Comment.create({
-      post: postId,
-      user: userId,
-      text: text.trim(),
+        post: postId,
+        user: userId,
+        text: text.trim(),
+
+        mentions: mentionData.mentions,
+
+        hasInteractMention:
+            mentionData.hasInteractMention,
     });
 
     const post = await AllPost.findByIdAndUpdate(
@@ -64,16 +72,11 @@ router.post("/", authMiddleware, commentLimiter, async (req, res) => {
     console.error("Comment analytics failed:", err);
   }
 
-    if (post.user.toString() !== userId) {
       sendEventToQueue({
-        type: "COMMENT",
-        actorId: userId,
-        recipientId: post.user,
-        postId,
-        commentId: comment._id,
-        createdAt: new Date(),
+          type: "COMMENT_CREATED",
+          actorId: userId,
+          commentId: comment._id,
       }).catch(console.error);
-    }
 
     // ✅ Gorse: a comment is strong engagement signal
     fireAndForget(() =>
@@ -82,6 +85,7 @@ router.post("/", authMiddleware, commentLimiter, async (req, res) => {
 
     const populatedComment = await Comment.findById(comment._id)
       .populate("user", "username avatar")
+      .populate("mentions.user", "username displayName avatar")
       .lean();
 
     const hasPlayedDemo = await DemoConsumption.exists({
@@ -122,6 +126,7 @@ router.get("/", async (req, res) => {
 
     const comments = await Comment.find(query)
       .populate("user", "username avatar")
+      .populate("mentions.user", "username displayName avatar")
       .sort({ _id: -1 })
       .limit(parsedLimit)
       .lean();
@@ -167,12 +172,35 @@ router.delete("/:id", authMiddleware, async (req, res) => {
 
     const comment = await Comment.findById(commentId);
     if (!comment) return res.status(404).json({ message: "Comment not found" });
-    if (comment.user.toString() !== userId) {
-      return res.status(403).json({ message: "Not authorized" });
+    const post = await AllPost.findById(comment.post).select("user");
+
+    if (!post) {
+      return res.status(404).json({
+        message: "Post not found",
+      });
     }
 
+      const isCommentOwner =
+        comment.user.toString() === userId;
+
+      const isPostOwner =
+        post.user.toString() === userId;
+
+      const isAdmin =
+        req.user.role === "admin";
+
+      if (!isCommentOwner && !isPostOwner && !isAdmin) {
+        return res.status(403).json({
+          message: "Not authorized",
+        });
+      }
+
     await Comment.deleteOne({ _id: comment._id });
-    await AllPost.findByIdAndUpdate(comment.post, { $inc: { commentsCount: -1 } });
+    const updatedPost = await AllPost.findByIdAndUpdate(
+        comment.post,
+        { $inc: { commentsCount: -1 } },
+        { new: true }
+    ).select("commentsCount");
 
     try {
       await onCommentRemoved(comment.post);
@@ -180,7 +208,10 @@ router.delete("/:id", authMiddleware, async (req, res) => {
       console.error("Comment removal analytics failed:", err);
     }
 
-    res.json({ message: "Comment deleted" });
+    res.json({
+            message: "Comment deleted",
+            commentsCount: updatedPost.commentsCount,
+        });
 
   } catch (error) {
     console.error("Error deleting comment:", error);

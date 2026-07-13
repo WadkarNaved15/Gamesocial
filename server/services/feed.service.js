@@ -48,6 +48,8 @@ const POST_PROJECTION = {
   likesCount: 1,
   commentsCount: 1,
   createdAt: 1,
+  mentions: 1,
+  hasInteractMention: 1,
 
   "modelPost.price": 1,
   "modelPost.assets.originalUrl": 1,
@@ -107,6 +109,10 @@ if (!isAdmin) {
 return AllPost.find(filter)
     .select(POST_PROJECTION)
     .populate("user", "username avatar")
+    .populate(
+        "mentions.user",
+        "username displayName avatar"
+    )
     .lean();
 }
 
@@ -123,6 +129,10 @@ query.type = !isAdmin
 return AllPost.find(query)
     .select(POST_PROJECTION)
     .populate("user", "username avatar")
+    .populate(
+      "mentions.user",
+      "username displayName avatar"
+    )
     .sort({ _id: -1 })
     .limit(limit)
     .lean();

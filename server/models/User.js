@@ -25,6 +25,19 @@ export const RESERVED_USERNAMES = [
   "api",
   "settings",
   "official",
+  "interact",
+  "everyone",
+  "all",
+  "staff",
+  "contact",
+  "privacy",
+  "terms",
+  "about",
+  "blog",
+  "news",
+  "press",
+  "jobs",
+  "careers",
 ];
 
 export function validateUsernameFormat(username) {

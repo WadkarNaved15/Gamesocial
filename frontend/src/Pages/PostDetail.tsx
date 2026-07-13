@@ -313,7 +313,7 @@ const PostDetail = ({ post: initialPost, onClose }: { post: ExePostProps; onClos
       <div className="w-full max-w-7xl px-6 pb-20 mt-8">
         <div className="grid grid-cols-1 lg:grid-cols-12  gap-8">
           <div className="col-span-1 lg:col-span-12">
-            <CommentSection postId={post._id} BACKEND_URL={BACKEND_URL} />
+            <CommentSection postId={post._id} BACKEND_URL={BACKEND_URL} postOwnerId={post.user?._id} />
           </div>
         </div>
       </div>

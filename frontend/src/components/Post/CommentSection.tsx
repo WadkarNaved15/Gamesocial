@@ -4,6 +4,12 @@ import { useUser } from "../../context/user";
 import { useNavigate } from "react-router-dom";
 import { Send, Link as LinkIcon, MessageSquare, Gamepad2 } from "lucide-react";
 import { useFeed } from "../../context/FeedContext";
+import MentionText from "./MentionText"; 
+import { MentionTextarea } from "../PostModal/ActivePostForm/MentionTextarea";
+import {
+    MoreHorizontal,
+    Trash2,
+} from "lucide-react";
 
 interface Comment {
   _id: string;
@@ -11,9 +17,19 @@ interface Comment {
   text: string;
   createdAt: string;
   user?: {
+    _id: string;
     username: string;
     avatar?: string;
   };
+  mentions?: {
+  user: {
+    _id: string;
+    username: string;
+    displayName: string;
+    avatar: string;
+  };
+  originalUsername: string;
+}[]
   hasPlayedDemo?: boolean;
 }
 
@@ -26,6 +42,7 @@ interface LinkPreview {
 
 interface CommentSectionProps {
   postId: string;
+  postOwnerId: string;
   BACKEND_URL: string;
   onCommentAdded?: () => void;
 }
@@ -33,13 +50,16 @@ interface CommentSectionProps {
 const urlRegex = /(https?:\/\/[^\s]+)/g;
 
 /* ✅ ENHANCED COMMENT CARD */
-const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache }: any) => {
+const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache ,onDelete ,postOwnerId}: any) => {
   const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const urls = comment.text?.match(urlRegex);
   const navigate = useNavigate();
   const url = urls?.[0];
   const fetchedRef = useRef(false);
+  const { user } = useUser();
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // useEffect(() => {
   //   if (!url || fetchedRef.current) return;
@@ -50,6 +70,33 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache }: any) => {
   //   }
   //   const fetchMetadata = async () => { ... }
   // }, [url, BACKEND_URL, linkPreviewCache]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+        if (
+            menuRef.current &&
+            !menuRef.current.contains(e.target as Node)
+        ) {
+            setShowMenu(false);
+        }
+    };
+
+    document.addEventListener(
+        "mousedown",
+        handleClickOutside
+    );
+
+    return () =>
+        document.removeEventListener(
+            "mousedown",
+            handleClickOutside
+        );
+}, []);
+
+const canDelete =
+  user?._id === comment.user?._id ||
+  user?._id === postOwnerId ||
+  user?.role === "admin";
 
   return (
     <div className="flex gap-3 py-4 group">
@@ -108,22 +155,65 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache }: any) => {
                 </div>
               )}
             </div>
-            <span className="text-[11px] text-gray-400 font-medium">
-              {new Date(comment.createdAt).toLocaleDateString()}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-gray-400 font-medium">
+                  {new Date(comment.createdAt).toLocaleDateString()}
+              </span>
+
+              {canDelete && (
+                  <div ref={menuRef} className="relative">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowMenu(v => !v);
+                        }}
+                        className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-zinc-700"
+                    >
+                        <MoreHorizontal size={16} />
+                    </button>
+
+                    {showMenu && (
+                        <div className="absolute right-0 mt-2 w-36 rounded-lg bg-white dark:bg-zinc-900 shadow-xl border border-gray-200 dark:border-zinc-700 z-50">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowMenu(false);
+                                    onDelete(comment._id);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
+                            >
+                                <Trash2 size={15} />
+                                Delete
+                            </button>
+                        </div>
+                    )}
+                </div>
+              )}
+          </div>
           </div>
 
-          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+          <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
             {comment.text.split(urlRegex).map((part: string, i: number) =>
               urlRegex.test(part) ? (
-                <a key={i} href={part} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-0.5">
-                  <LinkIcon size={12} /> {new URL(part).hostname}
+                <a
+                  key={i}
+                  href={part}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-0.5"
+                >
+                  <LinkIcon size={12} />
+                  {new URL(part).hostname}
                 </a>
               ) : (
-                <span key={i}>{part}</span>
+                <MentionText
+                  key={i}
+                  text={part}
+                  mentions={comment.mentions}
+                />
               )
             )}
-          </p>
+          </div>
         </div>
 
         {/* Enhanced Link Preview */}
@@ -156,9 +246,20 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache }: any) => {
 });
 
 /* ✅ ENHANCED MAIN SECTION */
-const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, onCommentAdded }) => {
+const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, onCommentAdded , postOwnerId }: CommentSectionProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [mentions, setMentions] = useState<
+    {
+      originalUsername: string;
+      user: {
+        _id: string;
+        username: string;
+        displayName: string;
+        avatar: string;
+      };
+    }[]
+  >([]);
   const { updateCommentsCount } = useFeed();
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -222,13 +323,16 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
       text: newComment,
       createdAt: new Date().toISOString(),
       user: {
+        _id: user?._id || "",
         username: user?.username || "You",
         avatar: user?.avatar,
       },
+      mentions,
     };
 
     setComments(prev => [tempComment, ...prev]);
     setNewComment("");
+    setMentions([]);
 
     try {
       const res = await axios.post(
@@ -251,6 +355,28 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
     }
   };
 
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+        const res = await axios.delete(
+            `${BACKEND_URL}/api/comments/${commentId}`,
+            {
+                withCredentials: true,
+            }
+        );
+
+        setComments(prev =>
+            prev.filter(c => c._id !== commentId)
+        );
+
+        updateCommentsCount(
+            postId,
+            res.data.commentsCount
+        );
+    } catch (err) {
+        console.error(err);
+    }
+};
+
   return (
     <div className="max-w-2xl mx-auto bg-white dark:bg-[#191919] rounded-xl overflow-hidden shadow-sm">
       <div className="p-4 border-b border-gray-100 dark:border-zinc-800 flex items-center gap-2">
@@ -261,12 +387,20 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
       {/* Input Area */}
       <div className="p-4 border-b border-gray-100 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/50">
         <div className="relative group">
-          <textarea
+          <MentionTextarea
+            value={newComment}
+            onMentionsChange={(users) =>
+              setMentions(
+                users.map(user => ({
+                  originalUsername: user.username,
+                  user,
+                }))
+              )
+            }
+            onChange={setNewComment}
+            placeholder="Share your thoughts..."
             rows={1}
             className="w-full bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl pl-4 pr-12 py-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-none"
-            placeholder="Share your thoughts..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
           />
           <button
             onClick={handleAddComment}
@@ -285,7 +419,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
             <CommentCard
               key={c._id}
               comment={c}
+              postOwnerId={postOwnerId}
               BACKEND_URL={BACKEND_URL}
+              onDelete={handleDeleteComment}
             />
           ))
         ) : (
