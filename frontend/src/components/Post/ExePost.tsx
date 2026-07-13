@@ -266,7 +266,7 @@ return (
 
           {showComments && (
             <div onClick={(e) => e.stopPropagation()} className="mt-2">
-              <CommentSection postId={_id} BACKEND_URL={BACKEND_URL} />
+              <CommentSection postId={_id} BACKEND_URL={BACKEND_URL} postOwnerId={user?._id} />
             </div>
           )}
         </div>

@@ -9,7 +9,7 @@ process.on("SIGINT", () => {
   running = false;
 });
 import { sqsClient } from "../config/sqsClient.js";
-import { handleNotificationEvent } from "./handleNotificationEvent.js";
+import { dispatchNotificationEvent } from "./eventHandlers/index.js";
 export const startSQSConsumer = async () => {
   console.log("Notification Worker Started...");
 
@@ -30,7 +30,7 @@ export const startSQSConsumer = async () => {
         data.Messages.map(async (msg) => {
           const event = JSON.parse(msg.Body);
 
-          await handleNotificationEvent(event);
+          await dispatchNotificationEvent(event);
 
           await sqsClient.send(
             new DeleteMessageCommand({

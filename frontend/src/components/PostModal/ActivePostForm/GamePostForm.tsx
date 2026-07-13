@@ -7,6 +7,7 @@ import {
   CheckCircle2, Loader2, AlertTriangle,
 } from 'lucide-react';
 import { useUser } from "../../../context/user";
+import { MentionTextarea } from './MentionTextarea';
 
 interface PostModalProps {
   onCancel: () => void;
@@ -823,11 +824,11 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
                   value={gameName}
                   onChange={e => setGameName(e.target.value)}
                 />
-                <textarea
+                <MentionTextarea
                   placeholder="What's special about your game?"
                   className="w-full text-lg bg-transparent border-none outline-none text-black dark:text-white placeholder-gray-500 resize-none focus:ring-0 min-h-[90px] p-0 mt-2"
                   value={description}
-                  onChange={e => setDescription(e.target.value)}
+                  onChange={setDescription}
                 />
               </div>
 

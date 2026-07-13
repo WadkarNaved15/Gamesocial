@@ -2,6 +2,7 @@ import React, { useState, useRef, ChangeEvent } from 'react';
 import { X, Image as ImageIcon, DollarSign, Film, Plus } from 'lucide-react';
 import imageCompression from "browser-image-compression";
 import { useUser } from '../../../context/user';
+import { MentionTextarea } from './MentionTextarea';
 
 interface PostModalProps {
   onCancel: () => void;
@@ -240,11 +241,11 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
         </div>
 
         <div className="flex-1 flex flex-col gap-5">
-          <textarea
+          <MentionTextarea
+            value={description}
+            onChange={setDescription}
             placeholder="What's happening?"
             className="w-full text-lg bg-transparent border-none outline-none text-black dark:text-white placeholder-gray-500 resize-none focus:ring-0 min-h-[100px] p-0"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
           />
 
           {assets.length > 0 ? (

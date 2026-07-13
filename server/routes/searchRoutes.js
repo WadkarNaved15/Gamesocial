@@ -1,22 +1,27 @@
-// routes/searchRoutes.js
-
 import express from "express";
 import User from "../models/User.js";
 
 const router = express.Router();
 
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 router.get("/", async (req, res) => {
   try {
-    const { q } = req.query;
+    const q = String(req.query.q || "").trim();
 
-    if (!q || q.trim() === "") {
+    if (!q) {
       return res.json([]);
     }
 
     const users = await User.find({
-      username: { $regex: `^${q}`, $options: "i" },
+      username: {
+        $regex: `^${escapeRegex(q)}`,
+        $options: "i",
+      },
     })
-      .select("username avatar")
+      .select("username displayName avatar")
       .limit(8)
       .lean();
 

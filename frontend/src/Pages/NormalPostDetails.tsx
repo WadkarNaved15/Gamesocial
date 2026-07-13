@@ -30,6 +30,7 @@ const NormalPostDetails: React.FC<NormalPostDetailsProps> = ({
       {/* 💬 Comments */}
       <CommentSection
         postId={post._id}
+        postOwnerId={post.user?._id}
         BACKEND_URL={BACKEND_URL}
       />
     </div>

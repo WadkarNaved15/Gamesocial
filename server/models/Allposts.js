@@ -711,6 +711,23 @@ const PostSchema = new mongoose.Schema(
       default: "",   // optional for ad posts
     },
 
+    mentions: [{
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+        },
+        originalUsername: {
+            type: String,
+            required: true,
+        },
+    }],
+
+    hasInteractMention: {
+        type: Boolean,
+        default: false,
+    },
+
     type: {
       type: String,
       enum: [
@@ -810,6 +827,7 @@ PostSchema.index(
     name: "PostSearchIndex",
   }
 );
+PostSchema.index({ mentions: 1 });
 PostSchema.index({ createdAt: -1 });
 PostSchema.index({
   "modelPost.assets.optimization.status": 1,

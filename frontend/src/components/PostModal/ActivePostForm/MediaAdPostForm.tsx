@@ -2,6 +2,7 @@ import React, { useState, useRef, ChangeEvent, useEffect } from "react";
 import { Upload, Image as ImageIcon, Video, ArrowLeft, X, Palette, Sparkles, Clock, Flame, MousePointerClick } from "lucide-react";
 import { useUser } from "../../../context/user";
 import MediaAdPostCard from "../../ads/MediaAdPostCard";
+import { MentionTextarea } from "./MentionTextarea";
 type MediaType = "image" | "video";
 
 type MediaAsset = {
@@ -347,11 +348,11 @@ const MediaAdPostForm: React.FC<MediaAdPostFormProps> = ({ onCancel, onBack }) =
                   High-Conversion Ad Script Caption
                 </label>
 
-                <textarea
+                <MentionTextarea
                   placeholder="Draft copy that prompts an instant interaction hook..."
                   className="w-full text-sm bg-white border border-gray-300 rounded-xl p-3 outline-none text-black resize-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition min-h-[90px]"
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={setDescription}
                 />
               </div>
 

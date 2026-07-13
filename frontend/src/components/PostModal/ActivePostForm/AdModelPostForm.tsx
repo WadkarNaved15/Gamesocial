@@ -5,6 +5,7 @@ import type { AdModelPostFormProps, AdAsset } from "../../../types/Post";
 import { useUser } from "../../../context/user";
 import ImageRegionSelector, { CropRegion } from './Imageregionselector';
 import AdModelPostPreview from "../../../components/ads/AdModelPostPreview";
+import { MentionTextarea } from './MentionTextarea';
 const PRESET_COLORS = [
   '#3D7A6E', '#8b5cf6', '#ec4899', '#f59e0b',
   '#10b981', '#14b8a6', '#ef4444', '#6366f1',
@@ -317,10 +318,11 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
                 <p className="text-gray-400 text-xs">Single model only · GLB format</p>
               </div>
             )}
-            <textarea
+            <MentionTextarea
               placeholder="Optional description or caption..."
               className="w-full text-sm bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none text-gray-900 placeholder-gray-400 resize-none focus:ring-2 focus:ring-[#3D7A6E]/30 focus:border-[#3D7A6E] transition min-h-[80px]"
-              value={description} onChange={(e) => setDescription(e.target.value)}
+              value={description} 
+              onChange={setDescription}
             />
           </div>
         )}

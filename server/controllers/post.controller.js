@@ -10,6 +10,7 @@ import Notification from "../models/Notifications.js";
 import { extractS3KeyFromUrl } from "../utils/extractS3Key.js";
 import { videoProcessingQueue } from "../queues/videoQueue.js"; 
 import { deletePostAndAssets } from "../services/deletePost.js";
+import { parseMentions } from "../utils/mentions.js";
 
 function deriveBuildType(fileFormat) {
   if (fileFormat === "exe") return "executable";
@@ -43,9 +44,16 @@ export const createPost = async (req, res) => {
         });
       }
 
+      const mentionData =
+        await parseMentions(description);
+
       const post = await AllPost.create({
         user: req.user.id,
         description,
+        mentions:
+            mentionData.mentions,
+        hasInteractMention:
+            mentionData.hasInteractMention,
         type: "normal_post",
         normalPost: {
           assets: assets.map((asset) => {
@@ -76,6 +84,11 @@ export const createPost = async (req, res) => {
         }
       }
 
+      sendEventToQueue({
+          type: "POST_CREATED",
+          actorId: req.user.id,
+          postId: post._id,
+      });
       // ✅ GORSE: sync new post (fire-and-forget)
       onPostCreated(post);
 
@@ -145,9 +158,14 @@ export const createPost = async (req, res) => {
         });
       }
 
+      const mentionData =
+        await parseMentions(description);
+
       const post = await AllPost.create({
         user: req.user.id,
         description,
+        mentions: mentionData.mentions,
+        hasInteractMention: mentionData.hasInteractMention,
         type: "model_post",
         modelPost: {
           title,
@@ -155,6 +173,14 @@ export const createPost = async (req, res) => {
           assets: processedAssets,
         },
       });
+
+      sendEventToQueue({
+          type: "POST_CREATED",
+          actorId: req.user.id,
+          postId: post._id,
+      });
+
+
       // ✅ GORSE: sync new post (fire-and-forget)
       onPostCreated(post);
       return res.status(201).json({
@@ -224,9 +250,14 @@ export const createPost = async (req, res) => {
         JSON.stringify(game.videoDemo, null, 2)
       );
 
+      const mentionData =
+        await parseMentions(description);
+
       const post = await AllPost.create({
         user: req.user.id,
         description,
+        mentions: mentionData.mentions,
+        hasInteractMention: mentionData.hasInteractMention,
         type: "game_post",
         gamePost: {
           gameName,
@@ -263,6 +294,12 @@ export const createPost = async (req, res) => {
             verifiedAt: null,
           },
         },
+      });
+
+      sendEventToQueue({
+          type: "POST_CREATED",
+          actorId: req.user.id,
+          postId: post._id,
       });
 
       // ✅ GORSE: sync new post (fire-and-forget)
@@ -354,9 +391,15 @@ export const createPost = async (req, res) => {
           optimization: { status: "pending" },
         };
       }
+
+      const mentionData =
+        await parseMentions(description);
+
       const post = await AllPost.create({
         user: req.user.id,
         description: description || "",
+        mentions: mentionData.mentions,
+        hasInteractMention: mentionData.hasInteractMention,
         type: "ad_model_post",
         adModelPost: {
           brandName: brandName?.trim() || null,
@@ -375,6 +418,13 @@ export const createPost = async (req, res) => {
           },
         },
       });
+
+      sendEventToQueue({
+          type: "POST_CREATED",
+          actorId: req.user.id,
+          postId: post._id,
+      });
+
       // ✅ GORSE: sync new post (fire-and-forget)
       onPostCreated(post);
 
@@ -420,11 +470,16 @@ export const createPost = async (req, res) => {
       }
 
       const isVideo = mediaAdPost.asset.type === "video";
+
+      const mentionData =
+        await parseMentions(description);
       
       // ───────── CREATE POST ─────────
       const post = await AllPost.create({
         user: req.user.id,
         description: description || "",
+        mentions: mentionData.mentions,
+        hasInteractMention: mentionData.hasInteractMention,
         type: "media_ad_post",
 
         mediaAdPost: {
@@ -467,6 +522,12 @@ export const createPost = async (req, res) => {
           attempts: 3
         });
       }
+
+      sendEventToQueue({
+          type: "POST_CREATED",
+          actorId: req.user.id,
+          postId: post._id,
+      });
 
       // optional analytics hook (same pattern as others)
       onPostCreated(post);
