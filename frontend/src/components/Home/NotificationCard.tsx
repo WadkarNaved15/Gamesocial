@@ -18,14 +18,22 @@ export default function NotificationCard({ notification, onRead }: Props) {
       : postDescription;
 
   // ✅ Action mapping
-  const actionText =
-    notification.type === "LIKE"
-      ? "liked your post"
-      : notification.type === "COMMENT"
-        ? "commented on your post"
-        : notification.type === "FOLLOW"
-          ? "followed you"
-          : "sent you a chat request";
+  const actionMap: Record<NotificationType["type"], string> = {
+  LIKE: "liked your post",
+  COMMENT: "commented on your post",
+
+  MENTION_COMMENT: "mentioned you in a comment",
+  MENTION_POST: "mentioned you in a post",
+
+  INTERACT_COMMENT: "mentioned @interact in a comment",
+  INTERACT_POST: "mentioned @interact in a post",
+
+  FOLLOW: "followed you",
+
+  CHAT_REQUEST: "sent you a chat request",
+};
+
+const actionText = actionMap[notification.type];
 
   return (
     <div
@@ -40,6 +48,7 @@ export default function NotificationCard({ notification, onRead }: Props) {
       {/* Avatar */}
       <img
         src={actor?.avatar || "/default_avatar.png"}
+        alt={actor?.username ?? "User avatar"}
         className="h-11 w-11 rounded-full object-cover"
         onClick={(e) => {
           e.stopPropagation();
@@ -54,12 +63,14 @@ export default function NotificationCard({ notification, onRead }: Props) {
         )}
         {/* Main Text */}
         <p className="text-sm text-white leading-snug">
-          <span className="font-semibold">{actor?.username}</span>{" "}
-          {notification.count > 1 && (
+          <span className="font-semibold">
+            {actor?.username ?? "Someone"}
+          </span>{" "}
+          {notification.count > 1 ? (
             <span className="text-gray-400">
               and {notification.count - 1} others{" "}
             </span>
-          )}
+          ) : null}
           {actionText}
         </p>
 
