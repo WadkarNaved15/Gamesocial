@@ -38,6 +38,12 @@ const GameFeedbackSchema = new mongoose.Schema(
       default: "",
     },
 
+    comment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Comment",
+      default: null,
+    },
+    
     // Snapshot values copied from the session
     playTimeMs: {
       type: Number,
