@@ -45,14 +45,14 @@ router.post("/", authMiddleware, commentLimiter, async (req, res) => {
     const mentionData = await parseMentions(text);
 
     const comment = await Comment.create({
-        post: postId,
-        user: userId,
-        text: text.trim(),
+      post: postId,
+      user: userId,
+      text: text.trim(),
 
-        mentions: mentionData.mentions,
+      mentions: mentionData.mentions,
 
-        hasInteractMention:
-            mentionData.hasInteractMention,
+      hasInteractMention:
+        mentionData.hasInteractMention,
     });
 
     const post = await AllPost.findByIdAndUpdate(
@@ -67,16 +67,16 @@ router.post("/", authMiddleware, commentLimiter, async (req, res) => {
     }
 
     try {
-    await onCommentAdded(postId, userId);
-  } catch (err) {
-    console.error("Comment analytics failed:", err);
-  }
+      await onCommentAdded(postId, userId);
+    } catch (err) {
+      console.error("Comment analytics failed:", err);
+    }
 
-      sendEventToQueue({
-          type: "COMMENT_CREATED",
-          actorId: userId,
-          commentId: comment._id,
-      }).catch(console.error);
+    sendEventToQueue({
+      type: "COMMENT_CREATED",
+      actorId: userId,
+      commentId: comment._id,
+    }).catch(console.error);
 
     // ✅ Gorse: a comment is strong engagement signal
     fireAndForget(() =>
@@ -127,6 +127,10 @@ router.get("/", async (req, res) => {
     const comments = await Comment.find(query)
       .populate("user", "username avatar")
       .populate("mentions.user", "username displayName avatar")
+      .populate({
+        path: "review.feedback",
+        select: "overall playTimeMs suggestions",
+      })
       .sort({ _id: -1 })
       .limit(parsedLimit)
       .lean();
@@ -138,8 +142,8 @@ router.get("/", async (req, res) => {
         $in: comments.map(c => c.user._id)
       }
     })
-    .select("user")
-    .lean();
+      .select("user")
+      .lean();
 
     const playedSet = new Set(
       playedUsers.map(p => p.user.toString())
@@ -180,26 +184,26 @@ router.delete("/:id", authMiddleware, async (req, res) => {
       });
     }
 
-      const isCommentOwner =
-        comment.user.toString() === userId;
+    const isCommentOwner =
+      comment.user.toString() === userId;
 
-      const isPostOwner =
-        post.user.toString() === userId;
+    const isPostOwner =
+      post.user.toString() === userId;
 
-      const isAdmin =
-        req.user.role === "admin";
+    const isAdmin =
+      req.user.role === "admin";
 
-      if (!isCommentOwner && !isPostOwner && !isAdmin) {
-        return res.status(403).json({
-          message: "Not authorized",
-        });
-      }
+    if (!isCommentOwner && !isPostOwner && !isAdmin) {
+      return res.status(403).json({
+        message: "Not authorized",
+      });
+    }
 
     await Comment.deleteOne({ _id: comment._id });
     const updatedPost = await AllPost.findByIdAndUpdate(
-        comment.post,
-        { $inc: { commentsCount: -1 } },
-        { new: true }
+      comment.post,
+      { $inc: { commentsCount: -1 } },
+      { new: true }
     ).select("commentsCount");
 
     try {
@@ -209,9 +213,9 @@ router.delete("/:id", authMiddleware, async (req, res) => {
     }
 
     res.json({
-            message: "Comment deleted",
-            commentsCount: updatedPost.commentsCount,
-        });
+      message: "Comment deleted",
+      commentsCount: updatedPost.commentsCount,
+    });
 
   } catch (error) {
     console.error("Error deleting comment:", error);

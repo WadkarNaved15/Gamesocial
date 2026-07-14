@@ -4,11 +4,11 @@ import { useUser } from "../../context/user";
 import { useNavigate } from "react-router-dom";
 import { Send, Link as LinkIcon, MessageSquare, Gamepad2 } from "lucide-react";
 import { useFeed } from "../../context/FeedContext";
-import MentionText from "./MentionText"; 
+import MentionText from "./MentionText";
 import { MentionTextarea } from "../PostModal/ActivePostForm/MentionTextarea";
 import {
-    MoreHorizontal,
-    Trash2,
+  MoreHorizontal,
+  Trash2,
 } from "lucide-react";
 
 interface Comment {
@@ -21,15 +21,24 @@ interface Comment {
     username: string;
     avatar?: string;
   };
-  mentions?: {
-  user: {
-    _id: string;
-    username: string;
-    displayName: string;
-    avatar: string;
+  review?: {
+    isGameReview: boolean;
+
+    feedback?: {
+      overall?: number;
+      playTimeMs?: number;
+      suggestions?: string;
+    };
   };
-  originalUsername: string;
-}[]
+  mentions?: {
+    user: {
+      _id: string;
+      username: string;
+      displayName: string;
+      avatar: string;
+    };
+    originalUsername: string;
+  }[]
   hasPlayedDemo?: boolean;
 }
 
@@ -50,7 +59,7 @@ interface CommentSectionProps {
 const urlRegex = /(https?:\/\/[^\s]+)/g;
 
 /* ✅ ENHANCED COMMENT CARD */
-const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache ,onDelete ,postOwnerId}: any) => {
+const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache, onDelete, postOwnerId }: any) => {
   const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const urls = comment.text?.match(urlRegex);
@@ -73,30 +82,41 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache ,onDelete ,po
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-        if (
-            menuRef.current &&
-            !menuRef.current.contains(e.target as Node)
-        ) {
-            setShowMenu(false);
-        }
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target as Node)
+      ) {
+        setShowMenu(false);
+      }
     };
 
     document.addEventListener(
-        "mousedown",
-        handleClickOutside
+      "mousedown",
+      handleClickOutside
     );
 
     return () =>
-        document.removeEventListener(
-            "mousedown",
-            handleClickOutside
-        );
-}, []);
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside
+      );
+  }, []);
+  console.log(comment)
+  const canDelete =
+    user?._id === comment.user?._id ||
+    user?._id === postOwnerId ||
+    user?.role === "admin";
 
-const canDelete =
-  user?._id === comment.user?._id ||
-  user?._id === postOwnerId ||
-  user?.role === "admin";
+  const formatPlayTime = (ms?: number) => {
+    if (!ms) return "";
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes > 0) {
+      return `${minutes}m ${seconds}s`;
+    }
+    return `${seconds}s`;
+  };
 
   return (
     <div className="flex gap-3 py-4 group">
@@ -121,6 +141,36 @@ const canDelete =
                 {comment.user?.username || "Anonymous"}
               </span>
 
+              {comment.review?.isGameReview && (
+                <span
+                  style={{
+                    background: "linear-gradient(to bottom right, #3D7A6E, #000000)",
+                  }}
+                  className="
+                    inline-flex
+                    items-center
+                    gap-1.5
+                    rounded-2xl
+                    text-white
+                    border
+                    border-white/10
+                    shadow-lg
+                    px-3
+                    py-1
+                    text-[11px]
+                    font-semibold
+                    tracking-wide
+                    shrink-0
+                  "
+                >
+                  <Gamepad2 size={12} className="opacity-90" />
+                  <span>
+                    Played for{" "}
+                    {formatPlayTime(comment.review.feedback?.playTimeMs)}
+                  </span>
+                </span>
+              )}
+
               {/* 👇 UPDATED CIRCULAR "PLAYED" BADGE */}
               {comment.hasPlayedDemo && (
                 <div
@@ -134,21 +184,21 @@ const canDelete =
                 >
                   {/* Center Gamepad Icon */}
                   <Gamepad2 size={10} className="text-white z-10" fill="currentColor" strokeWidth={2.5} />
-                  
+
                   {/* Circular SVG Text */}
-                  <svg 
-                    viewBox="0 0 100 100" 
+                  <svg
+                    viewBox="0 0 100 100"
                     className="absolute inset-0 w-full h-full pointer-events-none transform -rotate-12"
                   >
-                    <path 
-                      id={`circlePath-${comment._id}`} 
-                      d="M 50, 14 a 36,36 0 1,1 0,72 a 36,36 0 1,1 0,-72" 
-                      fill="none" 
+                    <path
+                      id={`circlePath-${comment._id}`}
+                      d="M 50, 14 a 36,36 0 1,1 0,72 a 36,36 0 1,1 0,-72"
+                      fill="none"
                     />
                     <text fill="rgba(255,255,255,0.9)" fontSize="16" fontWeight="900">
                       {/* textLength="226" roughly matches the path circumference to space it perfectly */}
                       <textPath href={`#circlePath-${comment._id}`} textLength="226" lengthAdjust="spacing">
-                        PLAYED • PLAYED • 
+                        PLAYED • PLAYED •
                       </textPath>
                     </text>
                   </svg>
@@ -157,41 +207,60 @@ const canDelete =
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-gray-400 font-medium">
-                  {new Date(comment.createdAt).toLocaleDateString()}
+                {new Date(comment.createdAt).toLocaleDateString()}
               </span>
 
               {canDelete && (
-                  <div ref={menuRef} className="relative">
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setShowMenu(v => !v);
-                        }}
-                        className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-zinc-700"
-                    >
-                        <MoreHorizontal size={16} />
-                    </button>
+                <div ref={menuRef} className="relative">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowMenu(v => !v);
+                    }}
+                    className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-zinc-700"
+                  >
+                    <MoreHorizontal size={16} />
+                  </button>
 
-                    {showMenu && (
-                        <div className="absolute right-0 mt-2 w-36 rounded-lg bg-white dark:bg-zinc-900 shadow-xl border border-gray-200 dark:border-zinc-700 z-50">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowMenu(false);
-                                    onDelete(comment._id);
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
-                            >
-                                <Trash2 size={15} />
-                                Delete
-                            </button>
-                        </div>
-                    )}
+                  {showMenu && (
+                    <div className="absolute right-0 mt-2 w-36 rounded-lg bg-white dark:bg-zinc-900 shadow-xl border border-gray-200 dark:border-zinc-700 z-50">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowMenu(false);
+                          onDelete(comment._id);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
+                      >
+                        <Trash2 size={15} />
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
+            </div>
           </div>
-          </div>
-
+          {comment.review?.isGameReview &&
+            comment.review.feedback?.overall && (
+              <div className="mb-2">
+                <div
+                  className="
+                  inline-flex
+                  items-center
+                  rounded-lg
+                  bg-amber-100
+                  dark:bg-amber-900/30
+                  px-2.5
+                  py-1
+                "
+                >
+                  <span className="text-amber-700 dark:text-amber-300 text-sm font-semibold">
+                    ⭐ {comment.review.feedback.overall}/10
+                  </span>
+                </div>
+              </div>
+            )}
           <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
             {comment.text.split(urlRegex).map((part: string, i: number) =>
               urlRegex.test(part) ? (
@@ -246,7 +315,7 @@ const canDelete =
 });
 
 /* ✅ ENHANCED MAIN SECTION */
-const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, onCommentAdded , postOwnerId }: CommentSectionProps) => {
+const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, onCommentAdded, postOwnerId }: CommentSectionProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [mentions, setMentions] = useState<
@@ -357,25 +426,25 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
 
   const handleDeleteComment = async (commentId: string) => {
     try {
-        const res = await axios.delete(
-            `${BACKEND_URL}/api/comments/${commentId}`,
-            {
-                withCredentials: true,
-            }
-        );
+      const res = await axios.delete(
+        `${BACKEND_URL}/api/comments/${commentId}`,
+        {
+          withCredentials: true,
+        }
+      );
 
-        setComments(prev =>
-            prev.filter(c => c._id !== commentId)
-        );
+      setComments(prev =>
+        prev.filter(c => c._id !== commentId)
+      );
 
-        updateCommentsCount(
-            postId,
-            res.data.commentsCount
-        );
+      updateCommentsCount(
+        postId,
+        res.data.commentsCount
+      );
     } catch (err) {
-        console.error(err);
+      console.error(err);
     }
-};
+  };
 
   return (
     <div className="max-w-2xl mx-auto bg-white dark:bg-[#191919] rounded-xl overflow-hidden shadow-sm">
