@@ -11,6 +11,7 @@ import { extractS3KeyFromUrl } from "../utils/extractS3Key.js";
 import { videoProcessingQueue } from "../queues/videoQueue.js"; 
 import { deletePostAndAssets } from "../services/deletePost.js";
 import { parseMentions } from "../utils/mentions.js";
+import { sendEventToQueue } from "../utils/sendEventToQueue.js";
 
 function deriveBuildType(fileFormat) {
   if (fileFormat === "exe") return "executable";
