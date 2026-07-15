@@ -63,13 +63,23 @@ async function isDirty(region) {
 }
 
 async function calculateDemand(region) {
-  return GameSession.countDocuments({
-    instanceRegion: region,
-    status: {
-      $in: ACTIVE_SESSION_STATUSES,
-    },
-  });
+
+    const sessions = await GameSession.find({
+        instanceRegion: region
+    })
+    .select("status instanceRegion")
+    .lean();
+
+    console.log("Sessions in region:", sessions);
+
+    return GameSession.countDocuments({
+        instanceRegion: region,
+        status: {
+            $in: ACTIVE_SESSION_STATUSES
+        }
+    });
 }
+
 
 async function invokeLambda(
   region,
@@ -121,6 +131,8 @@ export async function reconcileCapacity(region) {
 
     const demand =
         await calculateDemand(region);
+
+    console.log("[Capacity] Demand:", demand);
 
     await invokeLambda(
         region,

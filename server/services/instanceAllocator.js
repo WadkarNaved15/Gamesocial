@@ -34,42 +34,42 @@ function getDynamo(region) {
 }
 
 
-export async function claimWorkerInDynamo(workerId, leaseToken, leaseExpiresAt, region) {
-  const dynamo = getDynamo(region);
-  const state = await dynamo.send(new GetItemCommand({
-  TableName: WORKERS_TABLE,
-  Key: { worker_id: { S: workerId } }
-}));
+// export async function claimWorkerInDynamo(workerId, leaseToken, leaseExpiresAt, region) {
+//   const dynamo = getDynamo(region);
+//   const state = await dynamo.send(new GetItemCommand({
+//   TableName: WORKERS_TABLE,
+//   Key: { worker_id: { S: workerId } }
+// }));
 
-console.log(
-    "[CLAIM]",
-    {
-        workerId,
-        region,
-        table: WORKERS_TABLE
-    }
-);
+// console.log(
+//     "[CLAIM]",
+//     {
+//         workerId,
+//         region,
+//         table: WORKERS_TABLE
+//     }
+// );
 
-if (!state.Item) {
-  throw new Error(`Worker ${workerId} not found in DynamoDB`);
-}
+// if (!state.Item) {
+//   throw new Error(`Worker ${workerId} not found in DynamoDB`);
+// }
 
-console.log("Dynamo BEFORE claim:", state.Item);
-  await dynamo.send(new UpdateItemCommand({
-    TableName: WORKERS_TABLE,
-    Key: { worker_id: { S: workerId } },
-    UpdateExpression: "SET #s = :assigned, leaseToken = :token, leaseExpiresAt = :exp",
-    ConditionExpression: "attribute_not_exists(#s) OR #s = :idle",
-    ExpressionAttributeNames: { "#s": "status" },
-    ExpressionAttributeValues: {
-      ":assigned": { S: "ASSIGNED" },
-      ":idle":     { S: "IDLE" },
-      ":token":    { S: leaseToken },
-      ":exp":      { N: String(leaseExpiresAt) },
-    },
-  }));
-  // Throws ConditionalCheckFailedException if not IDLE — caller catches this
-}
+// console.log("Dynamo BEFORE claim:", state.Item);
+//   await dynamo.send(new UpdateItemCommand({
+//     TableName: WORKERS_TABLE,
+//     Key: { worker_id: { S: workerId } },
+//     UpdateExpression: "SET #s = :assigned, leaseToken = :token, leaseExpiresAt = :exp",
+//     ConditionExpression: "attribute_not_exists(#s) OR #s = :idle",
+//     ExpressionAttributeNames: { "#s": "status" },
+//     ExpressionAttributeValues: {
+//       ":assigned": { S: "ASSIGNED" },
+//       ":idle":     { S: "IDLE" },
+//       ":token":    { S: leaseToken },
+//       ":exp":      { N: String(leaseExpiresAt) },
+//     },
+//   }));
+//   // Throws ConditionalCheckFailedException if not IDLE — caller catches this
+// }
 
 
 /**
@@ -80,6 +80,13 @@ export async function assignOrStartInstance(
     requirements = {}
 ) {
   try {
+    console.log("[Allocator] Invoking Lease Lambda", {
+    region,
+    payload: {
+        action: "LEASE",
+        ...requirements
+    }
+});
         const region =
         requirements.preferredRegion ||
         "us-east-1";
