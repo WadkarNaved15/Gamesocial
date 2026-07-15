@@ -177,26 +177,13 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache, onDelete, po
                 </span>
               )}
 
-              {comment.review?.isGameReview &&
-                comment.review.feedback?.overall && (
-                  <div className="mb-2">
-                    <div
-                      className="
-                      inline-flex
-                      items-center
-                      rounded-lg
-                      bg-amber-100
-                      dark:bg-amber-900/30
-                      px-2
-                      py-0.5
-                    "
-                    >
-                      <span className="text-amber-700 dark:text-amber-300 text-[11px] font-bold tracking-wide">
-                        ⭐ {comment.review.feedback.overall}/10
-                      </span>
-                    </div>
-                  </div>
-                )}
+              {comment.review?.isGameReview && comment.review.feedback?.overall && (
+                <div className="mb-1">
+                  <span className="inline-flex items-center rounded-md bg-amber-100 px-1 py-0.5 text-[10px] font-bold tracking-wide text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
+                    ⭐ {comment.review.feedback.overall}/10
+                  </span>
+                </div>
+              )}
 
               {/* 👇 UPDATED CIRCULAR "PLAYED" BADGE */}
               {comment.hasPlayedDemo && (
