@@ -18,6 +18,14 @@ interface MentionUser {
   avatar: string;
 }
 
+interface CommentCardProps {
+  comment: Comment;
+  BACKEND_URL: string;
+  postOwnerId: string;
+  onDelete: (commentId: string) => void;
+  linkPreviewCache?: React.MutableRefObject<Record<string, LinkPreview>>;
+}
+
 interface Comment {
   _id: string;
   postId: string;
@@ -66,7 +74,7 @@ interface CommentSectionProps {
 const urlRegex = /(https?:\/\/[^\s]+)/g;
 
 /* ✅ ENHANCED COMMENT CARD */
-const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache, onDelete, postOwnerId }: any) => {
+const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache, onDelete, postOwnerId }: CommentCardProps) => {
   const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const urls = comment.text?.match(urlRegex);
@@ -87,7 +95,7 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache, onDelete, po
   //   const fetchMetadata = async () => { ... }
   // }, [url, BACKEND_URL, linkPreviewCache]);
 
-  console.log("Comment card rendered")
+  console.count(`CommentCard ${comment._id}`);
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -109,7 +117,7 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache, onDelete, po
         handleClickOutside
       );
   }, []);
-  console.log(comment)
+
   const canDelete =
     user?._id === comment.user?._id ||
     user?._id === postOwnerId ||
@@ -368,21 +376,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
     setNextCursor(null);
   }, [postId]);
 
-  useEffect(() => {
-    if (!observerRef.current) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMoreComments();
-        }
-      },
-      { threshold: 1 }
-    );
-    observer.observe(observerRef.current);
-    return () => observer.disconnect();
-  }, [observerRef.current, nextCursor, loadingMore]);
-
-  const loadMoreComments = async () => {
+  const loadMoreComments = useCallback(async () => {
     console.log("Loading more comments")
     if (!nextCursor || loadingMore) return;
     try {
@@ -397,9 +391,26 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
     } finally {
       setLoadingMore(false);
     }
-  };
+  }, [nextCursor, loadingMore, BACKEND_URL, postId]);
 
-  const handleAddComment = async () => {
+  useEffect(() => {
+    const target = observerRef.current;
+    if (!target) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          loadMoreComments();
+        }
+      },
+      {
+        threshold: 1,
+      }
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [loadMoreComments]);
+
+  const handleAddComment = useCallback(async () => {
     if (!newComment.trim()) return;
 
     const tempComment: Comment = {
@@ -438,9 +449,16 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
       );
       console.error(err);
     }
-  };
+  }, [
+    newComment,
+    mentions,
+    postId,
+    BACKEND_URL,
+    user,
+    updateCommentsCount,
+  ]);
 
-  const handleDeleteComment = async (commentId: string) => {
+  const handleDeleteComment = useCallback(async (commentId: string) => {
     try {
       const res = await axios.delete(
         `${BACKEND_URL}/api/comments/${commentId}`,
@@ -460,7 +478,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [BACKEND_URL, postId, updateCommentsCount]);
 
   return (
     <div className="max-w-2xl mx-auto bg-white dark:bg-[#191919] rounded-xl overflow-hidden shadow-sm">
