@@ -210,10 +210,50 @@ const GamePostSchema = new mongoose.Schema(
       enum: ["sandboxed"],
       default: "sandboxed",
     },
+    maxSessionDurationMinutes: {
+      type: Number,
+      default: 10,
+      min: 1,
+      max: 120,
+      validate: {
+        validator: Number.isInteger,
+        message: "Session duration must be a whole number of minutes",
+      },
+    },
     price: {
       type: Number,
       required: true,
       min: [0, "Price cannot be negative"],
+    },
+    sponsorship: {
+        enabled: {
+            type: Boolean,
+            default: false
+            },
+
+        initialCredits: {
+            type: Number,
+            default: 0,
+            min: 0
+        },
+        sponsoredBy:
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+                default: null
+            },
+
+        sponsoredAt:
+            {
+                type: Date,
+                default: null
+            },
+
+        notes:
+            {
+                type: String,
+                default: null
+            },
     },
     videoDemo: {
   name: {
@@ -353,7 +393,7 @@ const GamePostSchema = new mongoose.Schema(
         type: Date,
         default: null,
       },
-      lastCreditPurchaseAt: {
+      lastCreditAddedAt: {
         type: Date,
         default: null,
       },

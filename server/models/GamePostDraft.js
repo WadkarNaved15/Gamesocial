@@ -71,7 +71,60 @@ const GamePostDraftSchema = new mongoose.Schema(
         enum: ["sandboxed"],
         default: "sandboxed",
       },
+      maxSessionDurationMinutes: {
+        type: Number,
+        default: 10,
+        min: 1,
+        max: 120,
+        validate: {
+          validator: Number.isInteger,
+          message: "Session duration must be a whole number of minutes",
+        },
+      },
+
+      // ── Sponsorship & Approvals ─────────────────────────────
+      sponsorship: {
+        status: {
+            type: String,
+            enum: ["pending", "approved", "rejected"],
+            default: "pending",
+        },
+
+        enabled: {
+            type: Boolean,
+            default: false,
+        },
+
+        initialCredits: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+
+        reviewedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+
+        reviewedAt: {
+            type: Date,
+            default: null,
+        },
+
+        rejectionReason: {
+            type: String,
+            default: null,
+        },
+
+        notes: {
+            type: String,
+            default: null,
+        },
     },
+    
+    },
+
 
     // ── Uploaded build file (stored in draft, NOT yet in AllPost) ─
     buildFile: {
@@ -226,5 +279,19 @@ GamePostDraftSchema.index(
   { updatedAt: 1 },
   { expireAfterSeconds: 60 * 60 * 24 * 30, partialFilterExpression: { status: "published" } }
 );
+
+GamePostDraftSchema.index({
+    "game.sponsorship.status": 1,
+    createdAt: 1,
+});
+
+GamePostDraftSchema.index({
+    "game.sponsorship.status": 1,
+    updatedAt: -1,
+});
+
+GamePostDraftSchema.index({
+    "game.sponsorship.enabled": 1,
+});
 
 export default mongoose.model("GamePostDraft", GamePostDraftSchema);

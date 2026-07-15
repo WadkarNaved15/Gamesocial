@@ -32,6 +32,7 @@ import CreditOperations from "./Pages/CreditOperations";
 import SessionMonitoringDashboard from "./Pages/SessionMonitoringDashboard";
 import FeedbackPage from "./Pages/admin/FeedbackPage";
 import AdminIntelligenceCenter from "./Pages/AdminIntelligenceCenter";
+import SponsoredGamesAdmin from "./Pages/admin/SponsoredGames";
 
 //Error Handling
 import PageNotFound from "./Pages/ErrorHandling/PageNotFound";
@@ -134,6 +135,14 @@ export const router = createBrowserRouter([
         element: (
           <AdminRoute>
             <AdminIntelligenceCenter />
+          </AdminRoute>
+        ),
+      },
+      {
+        path: "/admin/sponsored-games",
+        element: (
+          <AdminRoute>
+            <SponsoredGamesAdmin />
           </AdminRoute>
         ),
       },

@@ -579,7 +579,7 @@ router.post(
             "gamePost.creditBudget.remainingCredits":
               credits,
 
-            "gamePost.creditBudget.purchasedCredits":
+            "gamePost.creditBudget.giftedCredits":
               credits,
           },
 
@@ -1460,5 +1460,6 @@ router.get(
     }
   }
 );
+
 
 export default router;

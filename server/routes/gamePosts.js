@@ -68,6 +68,14 @@ function formatFromFileName(fileName) {
  */
 async function runPublishTransaction(draft, creditPurchase, session) {
 
+  const isSponsoredFlow = draft.game.sponsorship.enabled && draft.game.sponsorship.status === "approved";
+  const startCredits = isSponsoredFlow ? draft.game.sponsorship.initialCredits : draft.selectedCredits;
+  const buildType =
+    draft.game.buildType ??
+    (draft.buildFile.format === "exe"
+        ? "executable"
+        : "archive");
+
   // 1. Create AllPost
   const [post] = await AllPost.create(
     [
@@ -79,13 +87,27 @@ async function runPublishTransaction(draft, creditPurchase, session) {
           gameName: draft.game.gameName,
           version: draft.game.version,
           platform: "windows",
-          buildType: draft.game.buildType,
+          buildType: buildType,
           startPath: draft.game.startPath,
           engine: draft.game.engine,
           runMode: "sandboxed",
+          maxSessionDurationMinutes: draft.game.maxSessionDurationMinutes,
           price: 0, // price is credit-based; set to 0
           file: draft.buildFile,
-          videoDemo: draft.videoDemo ? {
+          sponsorship: {
+            enabled: isSponsoredFlow,
+
+            initialCredits: isSponsoredFlow
+                ? draft.game.sponsorship.initialCredits
+                : 0,
+            sponsoredBy:
+                draft.game.sponsorship.reviewedBy,
+            sponsoredAt:
+                draft.game.sponsorship.reviewedAt,
+            notes:
+                draft.game.sponsorship.notes,
+        },
+                  videoDemo: draft.videoDemo ? {
             name: draft.videoDemo.name,
             key: draft.videoDemo.key,
             url: draft.videoDemo.url,
@@ -98,13 +120,13 @@ async function runPublishTransaction(draft, creditPurchase, session) {
             processedAt: draft.videoDemo.processedAt,
           } : null,
           creditBudget: {
-            purchasedCredits: draft.selectedCredits,
-            giftedCredits: 0,
+            purchasedCredits: isSponsoredFlow ? 0 : startCredits, // Changed
+            giftedCredits: isSponsoredFlow ? startCredits : 0,    // Changed
             deductedCredits: 0,
             usedCredits: 0,
-            remainingCredits: draft.selectedCredits,
+            remainingCredits: startCredits,                       // Changed
             status: "active",
-            lastCreditPurchaseAt: new Date(),
+            lastCreditAddedAt: new Date(),
           },
           verification: {
             status: "pending",
@@ -129,33 +151,32 @@ async function runPublishTransaction(draft, creditPurchase, session) {
       {
         gamePost: post._id,
         creator: draft.creator,
-        admin: null,
-        action: "purchase",
-        credits: draft.selectedCredits,
+        admin: isSponsoredFlow ? draft.game.sponsorship.reviewedBy : null, // Changed
+        action: isSponsoredFlow ? "gift" : "purchase",    // Changed
+        credits: startCredits,
         previousBalance: 0,
-        newBalance: draft.selectedCredits,
-        reason: "Initial credit purchase at publish",
-        metadata: {
+        newBalance: startCredits,
+        reason: isSponsoredFlow ? "Admin sponsored game post" : "Initial credit purchase at publish", // Changed
+        metadata: creditPurchase ? {
           paymentId: creditPurchase.paymentId,
           invoiceId: creditPurchase.invoiceId ?? null,
-        },
+        } : {},
       },
     ],
     { session }
   );
 
   // 3. Update CreditPurchase: link to post, mark fulfilled
-  await CreditPurchase.updateOne(
-    { _id: creditPurchase._id },
-    {
-      $set: {
-        gamePost: post._id,
-        fulfillmentStatus: "fulfilled",
+  if (creditPurchase && !isSponsoredFlow) {
+    await CreditPurchase.updateOne(
+      { _id: creditPurchase._id },
+      {
+        $set: { gamePost: post._id, fulfillmentStatus: "fulfilled" },
+        $inc: { fulfillmentAttempts: 1 },
       },
-      $inc: { fulfillmentAttempts: 1 },
-    },
-    { session }
-  );
+      { session }
+    );
+  }
 
   // 4. Update draft: mark published, link AllPost
   await GamePostDraft.updateOne(
@@ -183,23 +204,60 @@ async function runPublishTransaction(draft, creditPurchase, session) {
 router.post("/draft", verifyToken, async (req, res) => {
   try {
     const { draftId, description, game } = req.body;
+    const duration = Number(game?.maxSessionDurationMinutes);
+
+    game.maxSessionDurationMinutes =
+      Number.isInteger(duration) && duration >= 1 && duration <= 120
+        ? duration
+        : 10;
 
     let draft;
     if (draftId) {
       // Update existing draft (must belong to caller)
-      draft = await GamePostDraft.findOneAndUpdate(
-        { _id: draftId, creator: req.user._id, status: { $in: ["draft", "uploading", "ready_for_payment"] } },
-        { $set: { description, game } },
-        { new: true }
-      );
-      if (!draft) return res.status(404).json({ message: "Draft not found or not editable" });
-    } else {
-      draft = await GamePostDraft.create({
-        creator: req.user._id,
-        description,
-        game,
-        status: "draft",
+      draft = await GamePostDraft.findOne({
+          _id: draftId,
+          creator: req.user._id,
+          status: {
+              $in: ["draft", "uploading", "ready_for_payment"]
+          }
       });
+
+      if (!draft) {
+          return res.status(404).json({
+              message: "Draft not found or not editable"
+          });
+      }
+
+      draft.description = description;
+
+      draft.game.gameName = game.gameName ?? draft.game.gameName;
+      draft.game.version = game.version ?? draft.game.version;
+      draft.game.platform = "windows";
+      draft.game.startPath = game.startPath ?? draft.game.startPath;
+      draft.game.engine = game.engine ?? draft.game.engine;
+      draft.game.runMode = game.runMode ?? draft.game.runMode;
+      draft.game.buildType = game.buildType ?? draft.game.buildType;
+      draft.game.maxSessionDurationMinutes =
+          game.maxSessionDurationMinutes ??
+          draft.game.maxSessionDurationMinutes;
+
+      await draft.save();
+    } else {
+      draft = new GamePostDraft({
+          creator: req.user._id,
+          description,
+      });
+
+      draft.game.gameName = game.gameName;
+      draft.game.version = game.version;
+      draft.game.platform = "windows";
+      draft.game.startPath = game.startPath;
+      draft.game.engine = game.engine;
+      draft.game.runMode = game.runMode;
+      draft.game.maxSessionDurationMinutes =
+          game.maxSessionDurationMinutes;
+
+      await draft.save();
     }
 
     res.json({ draftId: draft._id, status: draft.status });
@@ -332,6 +390,7 @@ router.post("/draft/:draftId/ready", verifyToken , async (req, res) => {
       return res.status(400).json({ message: "Start path is required" });
     }
 
+    
     draft.status = "ready_for_payment";
     await draft.save();
 
@@ -503,18 +562,15 @@ export async function runPublishJob(draftId, creditPurchaseId) {
     {
       _id: draftId,
       status: {
-        $in: [
-          "payment_completed",
-          "failed"
-        ]
-      }
+        $in: ["payment_completed", "failed"],
+      },
     },
     {
       $set: {
         status: "publishing",
         fulfillmentStatus: "processing",
         failureReason: null,
-      }
+      },
     },
     {
       new: true,
@@ -531,35 +587,66 @@ export async function runPublishJob(draftId, creditPurchaseId) {
   try {
     session.startTransaction();
 
-    await CreditPurchase.updateOne(
-      { _id: creditPurchaseId },
-      {
-        $set: {
-          fulfillmentStatus: "processing",
-        },
-        $inc: {
-          fulfillmentAttempts: 1,
-        },
-      },
-      { session }
-    );
+    let creditPurchase = null;
 
-    const draft = await GamePostDraft.findById(draftId).session(session);
-    const creditPurchase = await CreditPurchase.findById(creditPurchaseId).session(session);
+    // Paid publish only
+    if (creditPurchaseId) {
+      await CreditPurchase.updateOne(
+        { _id: creditPurchaseId },
+        {
+          $set: {
+            fulfillmentStatus: "processing",
+          },
+          $inc: {
+            fulfillmentAttempts: 1,
+          },
+        },
+        { session }
+      );
 
-    if (!draft || !creditPurchase) {
-      throw new Error("Draft or CreditPurchase not found inside transaction");
+      creditPurchase = await CreditPurchase.findById(
+        creditPurchaseId
+      ).session(session);
+
+      if (!creditPurchase) {
+        throw new Error("CreditPurchase not found");
+      }
     }
 
-    await runPublishTransaction(draft, creditPurchase, session);
+    const draft = await GamePostDraft.findById(draftId).session(session);
+
+    if (!draft) {
+      throw new Error("Draft not found inside transaction");
+    }
+
+    // Paid games require a CreditPurchase.
+    // Sponsored games do not.
+    if (!draft.game.sponsorship.enabled && !creditPurchase) {
+      throw new Error(
+        "Paid publish requires a CreditPurchase"
+      );
+    }
+
+    await runPublishTransaction(
+      draft,
+      creditPurchase,
+      session
+    );
+
     await session.commitTransaction();
 
-    console.log(`[publishJob] Game post published for draft ${draftId}`);
+    console.log(
+      `[publishJob] Game post published for draft ${draftId}`
+    );
   } catch (err) {
     await session.abortTransaction();
 
-    console.error(`[publishJob] Transaction failed for draft ${draftId}:`, err);
+    console.error(
+      `[publishJob] Transaction failed for draft ${draftId}:`,
+      err
+    );
 
+    // Reset draft so it can be retried
     await GamePostDraft.updateOne(
       { _id: draftId },
       {
@@ -571,20 +658,22 @@ export async function runPublishJob(draftId, creditPurchaseId) {
       }
     );
 
-    await CreditPurchase.updateOne(
-      { _id: creditPurchaseId },
-      {
-        $set: {
-          fulfillmentStatus: "failed",
-          fulfillmentError: err.message,
-        },
-      }
-    );
+    // Only update CreditPurchase for paid publishes
+    if (creditPurchaseId) {
+      await CreditPurchase.updateOne(
+        { _id: creditPurchaseId },
+        {
+          $set: {
+            fulfillmentStatus: "failed",
+            fulfillmentError: err.message,
+          },
+        }
+      );
+    }
   } finally {
-    session.endSession();
+    await session.endSession();
   }
 }
-
 /**
  * POST /game-posts/retry-publish/:draftId
  * Admin endpoint: retry a failed publish job.
@@ -596,6 +685,11 @@ router.post("/retry-publish/:draftId", verifyToken, requireAdmin, async (req, re
       status: "failed",
     });
     if (!draft) return res.status(404).json({ message: "Failed draft not found" });
+
+    if (draft.game.sponsorship.enabled) {
+        await publishGameQueue.add("publishGame", { draftId: draft._id.toString() }, { attempts: 5, backoff: { type: "exponential", delay: 10000 } });
+        return res.json({ message: "Publish retry queued for Sponsored Game", draftId: draft._id });
+    }
 
     const creditPurchase = await CreditPurchase.findOne({
       _id: draft.creditPurchaseId,
@@ -673,6 +767,9 @@ router.get(
       status: draft.status,
       failureReason:
         draft.failureReason,
+      isSponsored: draft.game.sponsorship.enabled,
+      sponsoredCredits: draft.game.sponsorship.initialCredits,
+      approvalStatus: draft.game.sponsorship.status,
     });
   }
 );
@@ -698,6 +795,32 @@ router.get(
   }
 );
 
+/**
+ * SPONSORED PUBLISH ENDPOINT
+ * Bypasses Razorpay entirely if the draft is approved and sponsored.
+ */
+router.post("/draft/:draftId/publish-sponsored", verifyToken, async (req, res) => {
+  try {
+    const draft = await GamePostDraft.findOne({ _id: req.params.draftId, creator: req.user._id });
+    if (!draft) return res.status(404).json({ message: "Draft not found" });
 
+    if (draft.game.sponsorship.status !== "approved" || !draft.game.sponsorship.enabled) {
+      return res.status(403).json({ message: "Draft is not sponsored or approved by Admin" });
+    }
+    if (draft.status !== "ready_for_payment") {
+      return res.status(409).json({ message: "Draft uploads must be finished before publishing" });
+    }
+
+    draft.status = "payment_completed"; // Sets status so runPublishJob picks it up
+    await draft.save();
+
+    // Queue publish job natively without a creditPurchaseId
+    await publishGameQueue.add("publishGame", { draftId: draft._id.toString() }, { attempts: 1 });
+
+    res.json({ message: "Publishing sponsored game…", draftId: draft._id, status: "payment_completed" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to publish sponsored game" });
+  }
+});
 
 export default router;

@@ -76,6 +76,7 @@ import streamProxyRouter, { handleWsUpgrade } from "./routes/streamProxy.js";
 import adminCreditsRoutes from "./routes/adminCredits.js";
 import adminSessionRouter from "./routes/adminSessionMonitoring.js";
 import adminIntelligenceRouter from "./routes/adminIntelligence.js";
+import AdminSponsoredGamesRouter from "./routes/adminSponsoredGames.js";
 
 import RazorpayWebhookRouter from "./routes/razorpayWebhook.js";
 
@@ -282,6 +283,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/admin/credits", adminCreditsRoutes);
 app.use("/api/admin/sessionMonitoring", adminSessionRouter);
 app.use("/api/admin/intelligence", adminIntelligenceRouter);
+app.use("/api/admin/sponsored-games", AdminSponsoredGamesRouter);
 
 app.get("/health", async (req, res) => {
   const mongoHealthy = mongoose.connection.readyState === 1;
