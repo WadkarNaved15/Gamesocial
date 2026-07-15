@@ -10,6 +10,7 @@ import GameSession from "../models/GameSession.js";
 import {
   assignOrStartInstance,
   releaseInstance,
+  renewLease,
 } from "../services/instanceAllocator.js";
 import verifyToken from "../middlewares/authMiddleware.js";
 import cacheService from "../services/cacheService.js";
@@ -33,6 +34,7 @@ import {
 } from "../helper/session.js";
 import UserSession from "../models/UserSession.js";
 import { selectRegion } from "../services/regionSelector.js";
+import { reconcileCapacity } from "../services/capacityReconciler.js";
 
 const router = express.Router();
 const metrics = new SessionMetrics();
@@ -208,6 +210,9 @@ router.post(
         },
       });
       response202.sessionId = session._id;
+      reconcileCapacity(
+          session.instanceRegion
+      ).catch(console.error);
 
       if (assignedInstance) {
         const updatedSession = await GameSession.findByIdAndUpdate(
@@ -509,6 +514,37 @@ router.post("/heartbeat-by-token/:token", async (req, res) => {
       $unset: { disconnectDeadline: "" },
     });
 
+    const remainingLease =
+    session.leaseExpiresAt
+        ? session.leaseExpiresAt.getTime() - Date.now()
+        : 0;
+
+// renew only if less than 10 minutes remain
+if (
+    session.instanceId &&
+    remainingLease < 10 * 60 * 1000
+) {
+
+    try {
+    await renewLease(
+        session.instanceId,
+        session.instanceRegion
+    );
+
+    await GameSession.findByIdAndUpdate(
+        session._id,
+        {
+            leaseExpiresAt: new Date(
+                Date.now() + 3600 * 1000
+            )
+        }
+    );
+}
+catch(err){
+    console.error("Lease renewal failed", err);
+}
+}
+
     const billingResult =
       await processBilling(
         session._id
@@ -533,6 +569,10 @@ router.post("/heartbeat-by-token/:token", async (req, res) => {
         session,
         "credits_exhausted"
       );
+
+      reconcileCapacity(
+        session.instanceRegion
+    ).catch(console.error);
 
       return res.status(410).json({
         error: "credits_exhausted",
@@ -595,6 +635,9 @@ router.post("/:sessionId/cancel", verifyToken, async (req, res) => {
       reason
     );
 
+    reconcileCapacity(
+        session.instanceRegion
+    ).catch(console.error);
 
     const send = sessionStreams.get(sessionId.toString());
     if (send) send({ status: "ended", reason });
@@ -626,7 +669,6 @@ router.post("/cancel-by-token/:token", async (req, res) => {
       return res.status(404).json({ error: "Session not found" });
     }
 
-    // Release the EC2/Bare metal instance if allocated
     if (session.instanceId && session.leaseToken) {
       try {
         await releaseInstance(session.instanceId, session.leaseToken, session.instanceRegion);
@@ -637,6 +679,10 @@ router.post("/cancel-by-token/:token", async (req, res) => {
 
     // Mark session as ended cleanly
     await finalizeSession(session, "user_cancelled");
+
+    reconcileCapacity(
+        session.instanceRegion
+    ).catch(console.error);
 
     // Clean up cache
     await cacheService.del(`stream:${token}`);
@@ -799,6 +845,11 @@ router.post("/complete", async (req, res) => {
           console.error("Error releasing instance:", err);
         }
       }
+
+      reconcileCapacity(
+          session.instanceRegion
+      ).catch(console.error);
+
       const token = await cacheService.get(`streamtoken:${session_id}`);
       if (token) {
         await cacheService.del(`stream:${token}`);
@@ -882,6 +933,10 @@ router.post("/violation", async (req, res) => {
         console.error("Violation release error:", err);
       }
     }
+
+    reconcileCapacity(
+        session.instanceRegion
+    ).catch(console.error);
 
     // Remove stream token
     const token = await cacheService.get(`streamtoken:${session_id}`);

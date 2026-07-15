@@ -1,7 +1,7 @@
 import express from "express";
 import GameSession from "../models/GameSession.js";
 import { publishSessionEvent } from "../services/sessionPubSub.js";
-import { releaseInstance, assignOrStartInstance , claimWorkerInDynamo} from "../services/instanceAllocator.js";
+import { releaseInstance, assignOrStartInstance } from "../services/instanceAllocator.js";
 import fetch from "node-fetch";
 import { sessionStreams } from "../services/sessionStream.js";
 import AllPost from "../models/Allposts.js";
@@ -29,88 +29,100 @@ const verifyInternalKey = (req, res, next) => {
  * ✅ Handles both queue and direct allocation + prepares for restart
  */
 router.post("/instance-ready", verifyInternalKey, async (req, res) => {
-  const { workerId, instanceIp } = req.body;
+  console.log("[Instance Ready] Request:", req.body);
+  const { region } = req.body;
 
-  if (!workerId || !instanceIp) {
-    return res.status(400).json({ error: "workerId and instanceIp required" });
+  if (!region) {
+    return res.status(400).json({
+      error: "region required",
+    });
   }
 
   try {
-    // Find next waiting session (FIFO, queued first)
+    // Find oldest waiting session for this region
     const session = await GameSession.findOneAndUpdate(
       {
-          status: "waiting",
-          leasing: { $ne: true },
-          endedAt: null
+        status: "waiting",
+        leasing: { $ne: true },
+        instanceRegion: region,
+        endedAt: null,
       },
       {
-          $set: {
-              leasing: true,
-              lastAllocationAttempt: new Date()
-          }
+        $set: {
+          leasing: true,
+          lastAllocationAttempt: new Date(),
+        },
       },
       {
-          sort: { createdAt: 1 },
-          new: true
-      });
+        sort: { createdAt: 1 },
+        new: true,
+      }
+    );
 
     if (!session) {
-      log(`[Instance Ready] No waiting sessions, ${workerId} stays IDLE`);
-      // Instance is already IDLE in DynamoDB from worker.py — nothing to do
+      log(`[Instance Ready] No waiting session for ${region}`);
       return res.json({ assigned: false });
     }
 
-const freshSession = await GameSession.findById(session._id);
+    console.log("[Instance Ready] Waiting session:", session);
+    // Double-check another backend didn't already assign it
+    const fresh = await GameSession.findById(session._id).lean();
 
-if (freshSession.instanceId) {
-  log(`[Instance Ready] Session already assigned (fresh check), skipping`);
-  return res.json({ assigned: true });
-}
-console.log(`[DEBUG] Attempting claim for worker ${workerId}`);
+    if (!fresh || fresh.instanceId) {
+      return res.json({
+        assigned: false,
+      });
+    }
 
-    // ✅ Generate lease token HERE, write it to DynamoDB atomically
-    const leaseToken = crypto.randomUUID();
-    const leaseExpiresAt = Math.floor(Date.now() / 1000) + 1800;
+    console.log("[Instance Ready] Calling Lease Lambda for region:", region);
 
-    // ✅ Atomically claim the IDLE worker
-    try {
-      await claimWorkerInDynamo(
-    workerId,
-    leaseToken,
-    leaseExpiresAt,
-    session.instanceRegion
-);
-    } catch (err) {
-  console.error("Dynamo claim failed:", err.name, err.message);
+    // Ask Lease Lambda to lease an IDLE worker
+    const lease = await assignOrStartInstance({
+      preferredRegion: region,
+    });
 
-  if (err.name === "ConditionalCheckFailedException") {
-    log(`[Instance Ready] Worker ${workerId} not IDLE at claim time`);
-  } else {
-    log(`[Instance Ready] Dynamo error (NOT race): ${err.message}`);
-  }
+    console.log("[Instance Ready] Lease response:", lease);
 
-  await GameSession.findByIdAndUpdate(session._id, {
-    status: "waiting",
-    leasing: false,
-  });
+    if (lease.status !== "ASSIGNED") {
+      await GameSession.findByIdAndUpdate(session._id, {
+        leasing: false,
+      });
 
-  return res.json({ assigned: false });
-}
+      console.log("[Instance Ready] Updated session:", {
+    id: updatedSession._id,
+    status: updatedSession.status,
+    instanceId: updatedSession.instanceId,
+    worker: updatedSession.instanceIp
+});
+
+      return res.json({
+        assigned: false,
+        reason: lease.status,
+      });
+    }
 
     const wasQueued = session.queueType === "queued";
 
     const updates = {
-      instanceId: workerId,
-      instanceIp,
-      leaseToken,
-      leaseExpiresAt: new Date(leaseExpiresAt * 1000),
-      expiresAt: new Date(Date.now() + session.maxDurationSeconds * 1000),
+      instanceId: lease.workerId,
+      instanceIp: lease.instanceIp,
+      leaseToken: lease.leaseToken,
+      leaseExpiresAt: new Date(
+        lease.leaseExpiresAt * 1000
+      ),
+      expiresAt: new Date(
+        Date.now() +
+          session.maxDurationSeconds * 1000
+      ),
       leasing: false,
+
       ...(wasQueued
         ? {
             status: "allocation_ready",
             phase: "countdown",
-            countdownStartsAt: new Date(Date.now() + 5000),
+            countdownStartsAt: new Date(
+              Date.now() + 5000
+            ),
             countdownSeconds: 30,
           }
         : {
@@ -119,42 +131,63 @@ console.log(`[DEBUG] Attempting claim for worker ${workerId}`);
           }),
     };
 
-    const updatedSession = await GameSession.findByIdAndUpdate(
-      session._id,
-      updates,
-      { new: true }
+    const updatedSession =
+      await GameSession.findByIdAndUpdate(
+        session._id,
+        updates,
+        { new: true }
+      );
+
+    const send = sessionStreams.get(
+      session._id.toString()
     );
 
-    const send = sessionStreams.get(session._id.toString());
     if (send) {
       send(
         wasQueued
           ? {
               status: "allocation_ready",
               phase: "countdown",
-              countdownStartsAt: updates.countdownStartsAt,
+              countdownStartsAt:
+                updates.countdownStartsAt,
               countdownSeconds: 30,
             }
-          : { status: "starting", phase: "downloading" }
+          : {
+              status: "starting",
+              phase: "downloading",
+            }
       );
     }
 
+    console.log("[Instance Ready] Starting controller...");
+
     if (!wasQueued) {
       await callController(updatedSession, {
-        id: workerId,
-        ip: instanceIp,
-        leaseToken,
+        id: lease.workerId,
+        ip: lease.instanceIp,
+        leaseToken: lease.leaseToken,
       });
     }
 
-    return res.json({ assigned: true, sessionId: session._id, wasQueued });
+    console.log("[Instance Ready] Controller started");
+
+    return res.json({
+      assigned: true,
+      sessionId: session._id,
+      wasQueued,
+    });
 
   } catch (err) {
-    console.error("[Instance Ready] Fatal error:", err);
-    return res.status(500).json({ error: "Internal error" });
+    console.error(
+      "[Instance Ready]",
+      err
+    );
+
+    return res.status(500).json({
+      error: "Internal error",
+    });
   }
 });
-
 /**
  * POST /api/internal/sessions/update
  * Called by instance controller to update session status
