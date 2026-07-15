@@ -1,19 +1,36 @@
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import { DynamoDBClient, UpdateItemCommand ,GetItemCommand} from "@aws-sdk/client-dynamodb";
-function getLambdaClient(region) {
-  return new LambdaClient({
-    region
-  });
-}
 
 const LEASE_LAMBDA_NAME = process.env.LEASE_LAMBDA_NAME || "leaseGpuWorker";
 const RELEASE_LAMBDA_NAME = process.env.RELEASE_LAMBDA_NAME || "releaseGpuWorker";
 const WORKERS_TABLE = process.env.WORKERS_TABLE || "gpu_instances_workers";
+const lambdaClients = new Map();
+const dynamoClients = new Map();
+
+function getLambda(region){
+
+    if(!lambdaClients.has(region)){
+        lambdaClients.set(
+            region,
+            new LambdaClient({
+                region
+            })
+        );
+    }
+
+    return lambdaClients.get(region);
+}
+
 
 function getDynamo(region) {
-    return new DynamoDBClient({
-        region
-    });
+    if (!dynamoClients.has(region)) {
+        dynamoClients.set(
+            region,
+            new DynamoDBClient({ region })
+        );
+    }
+
+    return dynamoClients.get(region);
 }
 
 
@@ -54,6 +71,7 @@ console.log("Dynamo BEFORE claim:", state.Item);
   // Throws ConditionalCheckFailedException if not IDLE — caller catches this
 }
 
+
 /**
  * Lease a GPU instance
  * ✅ FIXED: Distinguishes SCALING from WAITING
@@ -67,7 +85,7 @@ export async function assignOrStartInstance(
         "us-east-1";
 
     const lambdaClient =
-        getLambdaClient(region);
+        getLambda(region);
 
     const command =
         new InvokeCommand({
@@ -77,9 +95,10 @@ export async function assignOrStartInstance(
                 "RequestResponse",
             Payload:
                 Buffer.from(
-                    JSON.stringify(
-                        requirements
-                    )
+                    JSON.stringify({
+                        action: "LEASE",
+                        ...requirements,
+                    })
                 ),
         });
 
@@ -104,7 +123,7 @@ export async function assignOrStartInstance(
         status: "ASSIGNED",
         workerId: payload.workerId,
         instanceIp: payload.instanceIp,
-        region: payload.region || "ap-south-1",
+        region,
         hasGpu: true,
         leaseToken: payload.leaseToken,
         leaseExpiresAt: payload.leaseExpiresAt,
@@ -150,16 +169,23 @@ export async function assignOrStartInstance(
  * Release a GPU instance
  * ✅ Already correct
  */
-export async function releaseInstance(workerId, leaseToken ,region) {
-  if (!workerId || !leaseToken) {
-    console.warn("[Allocator] Cannot release: missing workerId or leaseToken");
-    return { success: false, reason: "Missing parameters" };
+export async function releaseInstance(workerId, leaseToken, region) {
+  if (!workerId || !leaseToken || !region) {
+    console.warn("[Allocator] Cannot release: missing parameters");
+    return {
+      success: false,
+      reason: "Missing workerId, leaseToken or region",
+    };
   }
 
   try {
-    console.log("[Allocator] Releasing instance:", { workerId });
-    const lambdaClient =
-    getLambdaClient(region);
+    console.log("[Allocator] Releasing instance:", {
+      workerId,
+      region,
+    });
+
+    const lambdaClient = getLambda(region);
+
     const command = new InvokeCommand({
       FunctionName: RELEASE_LAMBDA_NAME,
       InvocationType: "RequestResponse",
@@ -167,62 +193,103 @@ export async function releaseInstance(workerId, leaseToken ,region) {
         JSON.stringify({
           workerId,
           leaseToken,
+          preferredRegion: region,
         })
       ),
     });
 
     const response = await lambdaClient.send(command);
+
     const payload = response.Payload
-  ? JSON.parse(Buffer.from(response.Payload).toString())
-  : {};
+      ? JSON.parse(Buffer.from(response.Payload).toString())
+      : {};
 
     console.log("[Allocator] Release response:", {
       status: payload.status,
       reason: payload.reason,
-      scaled: payload.scaled,
-      workerId: payload.workerId
+      workerId: payload.workerId,
+      released: payload.released,
     });
 
     if (payload.status === "OK") {
       return {
         success: true,
         workerId: payload.workerId,
-        scaled: payload.scaled || false,
+        released: payload.released === true,
         reason: payload.reason,
       };
     }
 
-if (payload.status === "ERROR") {
+    if (payload.status === "ERROR") {
+      // Worker already leased by another session.
+      // Treat as success so cleanup can continue.
+      if (payload.reason === "Lease token mismatch") {
+        console.warn(
+          "[Allocator] Instance already reassigned, ignoring release."
+        );
 
-  if (payload.reason === "Lease token mismatch") {
-    console.warn("[Allocator] Instance already reassigned, ignoring release");
-    return {
-      success: true,
-      workerId: payload.workerId,
-      reason: "already reassigned"
-    };
-  }
+        return {
+          success: true,
+          workerId: payload.workerId,
+          reason: "already reassigned",
+        };
+      }
 
-  console.error("[Allocator] Release failed:", payload.reason);
+      console.error(
+        "[Allocator] Release failed:",
+        payload.reason
+      );
 
-  return {
-    success: false,
-    workerId: payload.workerId,
-    reason: payload.reason
-  };
-}
+      return {
+        success: false,
+        workerId: payload.workerId,
+        reason: payload.reason,
+      };
+    }
 
-    console.warn("[Allocator] Unknown release response status:", payload.status);
+    console.warn(
+      "[Allocator] Unknown release response:",
+      payload.status
+    );
+
     return {
       success: false,
       reason: `Unknown status: ${payload.status}`,
+      workerId: payload.workerId,
     };
+
   } catch (err) {
-    console.error("[Allocator] Release exception:", err.message);
+    console.error(
+      "[Allocator] Release exception:",
+      err
+    );
+
     return {
       success: false,
-      error: err.message,
       workerId,
+      error: err.message,
     };
   }
+}
+
+
+export async function renewLease(
+    workerId,
+    region
+) {
+    const lambdaClient = getLambda(region);
+
+    const command = new InvokeCommand({
+        FunctionName: LEASE_LAMBDA_NAME,
+        InvocationType: "Event",
+        Payload: Buffer.from(
+            JSON.stringify({
+                action: "RENEW",
+                preferredRegion: region,
+                workerId,
+            })
+        ),
+    });
+
+    await lambdaClient.send(command);
 }

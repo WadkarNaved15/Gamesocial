@@ -2,6 +2,7 @@ import fetch from "node-fetch";
 import GameSession from "../models/GameSession.js";
 import AllPost from "../models/Allposts.js";
 import { releaseInstance } from "./instanceAllocator.js";
+import { reconcileCapacity } from "./capacityReconciler.js";
 
 export async function callController(session, lease) {
   try {
@@ -113,6 +114,8 @@ export async function callController(session, lease) {
             );
           }
         }
+
+        reconcileCapacity(session.instanceRegion).catch(console.error);
       }
     })();
 
