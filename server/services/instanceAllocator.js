@@ -80,16 +80,18 @@ export async function assignOrStartInstance(
     requirements = {}
 ) {
   try {
-    console.log("[Allocator] Invoking Lease Lambda", {
+    
+        const region =
+        requirements.preferredRegion ||
+        "us-east-1";
+
+        console.log("[Allocator] Invoking Lease Lambda", {
     region,
     payload: {
         action: "LEASE",
         ...requirements
     }
 });
-        const region =
-        requirements.preferredRegion ||
-        "us-east-1";
 
     const lambdaClient =
         getLambda(region);
