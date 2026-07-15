@@ -108,7 +108,7 @@ const GamePost: React.FC<GamePostProps> = ({
   // ─────────────────────────────────────────────────────────────────────────────
 
   const totalCredits = (gamePost.creditBudget?.usedCredits || 0) + (gamePost.creditBudget?.remainingCredits || 0);
-  const possibleSessions = Math.floor(totalCredits / 10);
+  const possibleSessions = Math.floor(totalCredits / (gamePost.maxSessionDurationMinutes || 10));
   const completedSessions = gamePost.gameMetrics?.totalSessions || 0;
 
   const getRelativeTime = (date: string | Date) => {

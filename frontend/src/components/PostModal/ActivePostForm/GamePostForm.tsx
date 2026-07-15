@@ -4,7 +4,7 @@ import api from '../../../utils/api';
 import {
   X, Upload, FileArchive, Info, Video, StopCircle,
   ArrowLeft, Gamepad2, Users, CreditCard, Zap,
-  CheckCircle2, Loader2, AlertTriangle,
+  CheckCircle2, Loader2, AlertTriangle, Gift
 } from 'lucide-react';
 import { useUser } from "../../../context/user";
 import { MentionTextarea } from './MentionTextarea';
@@ -29,8 +29,10 @@ interface VideoUploadState {
   file: File | null;
   preview: string;
   progress?: number;
-  status?: 'pending' | 'uploading' | 'done' | 'error' | 'cancelled'; // S3 Upload status
-  processingStatus?: 'pending' | 'processing' | 'completed' | 'failed'; // FFmpeg Worker status
+  status?: 'pending' | 'uploading' | 'done' | 'error' | 'cancelled';
+  processingStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+  uploadedKey?: string;
+  uploadedUrl?: string;
 }
 
 type DraftStatus =
@@ -38,7 +40,6 @@ type DraftStatus =
   | 'payment_pending' | 'payment_completed'
   | 'publishing' | 'published' | 'failed';
 
-const CREDITS_PER_SESSION = 10;
 const CHUNK_SIZE = 10 * 1024 * 1024;
 const ALLOWED_BUILD_EXTENSIONS = ['7z', 'zip'];
 const ALLOWED_VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov'];
@@ -69,11 +70,17 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
   // ── Details ───────────────────────────────────────────────────────────────
   const [gameName, setGameName] = useState('');
   const [description, setDescription] = useState('');
+  const [maxSessionDurationMinutes, setMaxSessionDurationMinutes] = useState(10);
 
   // ── Build ─────────────────────────────────────────────────────────────────
   const [asset, setAsset] = useState<GameAsset | null>(null);
   const [startPath, setStartPath] = useState('');
   const [videoUpload, setVideoUpload] = useState<VideoUploadState | null>(null);
+
+  // Sponsored State
+  const [approvalStatus, setApprovalStatus] = useState<'pending'|'approved'|'rejected'>('pending');
+  const [isSponsored, setIsSponsored] = useState(false);
+  const [sponsoredCredits, setSponsoredCredits] = useState(0);
 
   // ── Payment ───────────────────────────────────────────────────────────────
   const [dollars, setDollars] = useState<number>(100);
@@ -97,13 +104,33 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const effectiveCredits = Math.floor(dollars * 4) * 10;
+  const effectiveCredits = Math.floor(dollars * 4) * 10; // 1 dollar = 4 credits, multiplied by session duration
   const totalDollars = effectiveCredits / 40;
-  const estimatedSessions = effectiveCredits / CREDITS_PER_SESSION;
 
-  const canProceedToBuild = gameName.trim().length > 0;
-  const canProceedToPayment = canProceedToBuild && !!asset && startPath.trim().length > 0;
-  const canPayAndPublish = canProceedToPayment && totalDollars >= 100 && totalDollars <= 5000;
+  const canProceedToBuild = 
+    gameName.trim().length > 0 && 
+    gameName.trim().length <= 120 &&
+    description.trim().length > 0 &&
+    maxSessionDurationMinutes >= 1 &&
+    maxSessionDurationMinutes <= 120 &&
+    videoUpload !== null;
+  const isValidStartPath = 
+    startPath.trim().length > 0 && 
+    !startPath.startsWith('/') && 
+    !startPath.includes('..');
+  const canProceedToPayment = canProceedToBuild && !!asset && isValidStartPath;
+  const isSponsoredApproved = isSponsored && approvalStatus === 'approved';
+  const canPayAndPublish = 
+    canProceedToPayment && 
+    ( (totalDollars >= 100 && totalDollars <= 5000) || isSponsoredApproved );
+
+  const finalCredits = isSponsoredApproved ? sponsoredCredits : effectiveCredits;
+  
+  // 1 Credit = 1 Minute mapping
+  const playableMinutes = finalCredits;
+  const estimatedSessions = maxSessionDurationMinutes > 0 
+    ? Math.floor(playableMinutes / maxSessionDurationMinutes) 
+    : 0;
 
   // ── Polling ───────────────────────────────────────────────────────────────
   const stopPolling = useCallback(() => {
@@ -119,6 +146,13 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
       try {
         const { data } = await api.get(`/api/gamePosts/draft/${id}`);
         setDraftStatus(data.status);
+
+        // Capture sponsorship status during polling without refresh
+        if (data.game?.sponsorship) {
+          setApprovalStatus(data.game.sponsorship.status || 'pending');
+          setIsSponsored(data.game.sponsorship.enabled || false);
+          setSponsoredCredits(data.game.sponsorship.initialCredits || 0);
+        }
 
         if (data.status === 'published') {
           stopPolling();
@@ -155,10 +189,14 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     setDescription(data.description || "");
     setStartPath(data.game?.startPath || "");
     setDraftStatus(data.status || "draft");
+    setMaxSessionDurationMinutes(
+      data.game?.maxSessionDurationMinutes ?? 10
+    );
 
-    if (data.selectedCredits) {
-      setDollars(Math.max(100, data.selectedCredits / 40));
-    }
+    setApprovalStatus(data.game?.sponsorship?.status || 'pending');
+    setIsSponsored(data.game?.sponsorship?.enabled || false);
+    setSponsoredCredits(data.game?.sponsorship?.initialCredits || 0);
+    if (data.selectedCredits && !data.game?.sponsorship?.enabled) setDollars(Math.max(100, data.selectedCredits / 40));
 
     if (data.buildFile?.key) {
       setAsset({
@@ -176,17 +214,18 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     }
 
     if (data.videoDemo?.key) {
-  setVideoUpload({
-    file: null as any,
-    // Prefer optimized preview if available, fallback to original
-    preview: data.videoDemo.optimizedUrl || data.videoDemo.url, 
-    progress: 100,
-    status: "done",
-    processingStatus: data.videoDemo.processingStatus // Track backend FFmpeg status
-  });
-} else {
-  setVideoUpload(null);
-}
+      setVideoUpload({
+        file: null as any,
+        preview: data.videoDemo.optimizedUrl || data.videoDemo.url, 
+        progress: 100,
+        status: "done",
+        processingStatus: data.videoDemo.processingStatus,
+        uploadedKey: data.videoDemo.key,
+        uploadedUrl: data.videoDemo.url,
+      });
+    } else {
+      setVideoUpload(null);
+    }
 
     if (data.status === "payment_completed" || data.status === "publishing") {
       setIsPublishing(true);
@@ -248,7 +287,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     const payload = {
       draftId,
       description,
-      game: { gameName, startPath, platform: 'windows' },
+      game: { gameName, startPath, platform: 'windows' , maxSessionDurationMinutes },
     };
     
     try {
@@ -260,6 +299,176 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
       throw new Error(err.response?.data?.message || 'Failed to save draft');
     } finally {
       setIsSavingDraft(false);
+    }
+  };
+
+  const uploadBuildIfNeeded = async (draftId: string) => {
+    if (!asset) return;
+
+    if (asset.uploadedKey && asset.uploadedUrl) {
+        return;
+    }
+
+    if (!asset.file) {
+        throw new Error("Please re-select your game build.");
+    }
+
+    const abort = new AbortController();
+    gameAbortRef.current = abort;
+    setIsUploading(true);
+
+    try {
+      setAsset(prev =>
+          prev
+              ? {
+                    ...prev,
+                    status: "uploading",
+                    progress: 0,
+                }
+              : prev
+      );
+
+      const { fileUrl, key } =
+          await uploadGameToS3(
+              asset,
+              p =>
+                  setAsset(prev =>
+                      prev
+                          ? {
+                                ...prev,
+                                progress: p,
+                            }
+                          : prev
+                  ),
+              abort.signal
+          );
+
+      setAsset(prev =>
+          prev
+              ? {
+                    ...prev,
+                    uploadedKey: key,
+                    uploadedUrl: fileUrl,
+                    status: "done",
+                    progress: 100,
+                }
+              : prev
+      );
+
+      await api.post(
+          `/api/gamePosts/draft/${draftId}/build`,
+          {
+              name: asset.name,
+              key,
+              url: fileUrl,
+              size: asset.size,
+          }
+      );
+    } finally {
+      gameAbortRef.current = null;
+    }
+  };
+
+  const uploadVideoIfNeeded = async (draftId: string) => {
+    if (!videoUpload) return;
+
+    if (
+    videoUpload.status === "done" &&
+    !videoUpload.file
+) {
+    return;
+}
+
+    if (!videoUpload.file) {
+        throw new Error("Please re-select your trailer.");
+    }
+
+    const abort = new AbortController();
+    videoAbortRef.current = abort;
+    setIsUploading(true);
+
+    try {
+      setVideoUpload(prev =>
+          prev
+              ? {
+                    ...prev,
+                    status: "uploading",
+                    progress: 0,
+                }
+              : prev
+      );
+
+      const { fileUrl, key } =
+          await uploadVideoDemoToS3(
+              videoUpload.file,
+              p =>
+                  setVideoUpload(prev =>
+                      prev
+                          ? {
+                                ...prev,
+                                progress: p,
+                            }
+                          : prev
+                  ),
+              abort.signal
+          );
+
+      await api.post(
+          `/api/gamePosts/draft/${draftId}/video`,
+          {
+              name: videoUpload.file.name,
+              key,
+              url: fileUrl,
+              size: videoUpload.file.size,
+          }
+      );
+
+      setVideoUpload(prev =>
+          prev
+              ? {
+                    ...prev,
+                    status: "done",
+                    progress: 100,
+                    file: null,
+                    uploadedKey: key,
+                    uploadedUrl: fileUrl,
+                }
+              : prev
+      );
+    } finally {
+      videoAbortRef.current = null;
+    }
+  };
+
+  const handleManualSave = async () => {
+    try {
+        setErrorMessage(null);
+
+        let activeDraftId = draftId;
+
+        if (!activeDraftId) {
+            activeDraftId = await saveDraftMeta();
+        }
+
+        // upload files concurrently
+        try {
+            await Promise.all([
+                uploadBuildIfNeeded(activeDraftId),
+                uploadVideoIfNeeded(activeDraftId),
+            ]);
+        } finally {
+            setIsUploading(false);
+        }
+
+        // save latest metadata again
+        await saveDraftMeta();
+
+    } catch (err: any) {
+        setErrorMessage(
+            err.response?.data?.message ||
+            err.message ||
+            "Failed to save draft"
+        );
     }
   };
 
@@ -399,18 +608,16 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
   const uploadVideoDemoToS3 = async (
     file: File,
     onProgress: (p: number) => void,
+    signal: AbortSignal
   ): Promise<{ fileUrl: string; key: string }> => {
     const { data } = await api.post('/api/upload/presigned-url', {
       fileName: file.name, fileType: file.type,
       category: 'media', subcategory: 'game', fileSize: file.size,
     });
 
-    const abortController = new AbortController();
-    videoAbortRef.current = abortController;
-
     await axios.put(data.uploadUrl, file, {
       headers: { 'Content-Type': file.type },
-      signal: abortController.signal,
+      signal: signal,
       onUploadProgress: (progressEvent) => {
         if (progressEvent.total) {
           onProgress(Math.round((progressEvent.loaded / progressEvent.total) * 100));
@@ -422,7 +629,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
   };
 
   // ── Main: Pay & Publish flow ──────────────────────────────────────────────
-  const handlePayAndPublish = async () => {
+  const handleFinalAction = async () => {
     if (
       !canPayAndPublish ||
       isUploading ||
@@ -442,97 +649,16 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
       }
 
       // --------------------------------------------------
-      // BUILD
+      // UPLOAD CONCURRENTLY
       // --------------------------------------------------
-
-      const buildAlreadyUploaded =
-        asset?.uploadedKey &&
-        asset?.uploadedUrl;
-
-      if (!buildAlreadyUploaded) {
-        setIsUploading(true);
-
-        const abort = new AbortController();
-        gameAbortRef.current = abort;
-
-        setAsset(prev =>
-          prev
-            ? { ...prev, status: "uploading", progress: 0 }
-            : prev
-        );
-
-        const { fileUrl, key } =
-          await uploadGameToS3(
-            asset!,
-            p => setAsset(prev => prev ? { ...prev, progress: p } : prev),
-            abort.signal
-          );
-
-        setAsset(prev =>
-          prev
-            ? { ...prev, uploadedUrl: fileUrl, uploadedKey: key, status: "done" }
-            : prev
-        );
-
-        gameAbortRef.current = null;
-
-        await api.post(
-          `/api/gamePosts/draft/${activeDraftId}/build`,
-          {
-            name: asset!.name,
-            key,
-            url: fileUrl,
-            size: asset!.size,
-          }
-        );
+      try {
+        await Promise.all([
+          uploadBuildIfNeeded(activeDraftId),
+          uploadVideoIfNeeded(activeDraftId),
+        ]);
+      } finally {
+        setIsUploading(false);
       }
-
-      // --------------------------------------------------
-      // VIDEO
-      // --------------------------------------------------
-
-      const videoAlreadyUploaded =
-        videoUpload?.status === "done" &&
-        !videoUpload.file;
-
-      if (
-        videoUpload &&
-        !videoAlreadyUploaded
-      ) {
-        if (!videoUpload.file) {
-          throw new Error(
-            "Original trailer file is no longer available. Please re-upload the trailer."
-          );
-        }
-
-        setVideoUpload(prev =>
-          prev
-            ? { ...prev, status: "uploading", progress: 0 }
-            : prev
-        );
-
-        const { fileUrl, key } =
-          await uploadVideoDemoToS3(
-            videoUpload.file,
-            p => setVideoUpload(prev => prev ? { ...prev, progress: p } : prev)
-          );
-
-        setVideoUpload(prev =>
-          prev ? { ...prev, status: "done" } : prev
-        );
-
-        await api.post(
-          `/api/gamePosts/draft/${activeDraftId}/video`,
-          {
-            name: videoUpload.file.name,
-            key,
-            url: fileUrl,
-            size: videoUpload.file.size,
-          }
-        );
-      }
-
-      setIsUploading(false);
 
       // --------------------------------------------------
       // READY ONLY IF NOT ALREADY PAYMENT_PENDING
@@ -547,6 +673,17 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
       }
 
       // --------------------------------------------------
+      // SPONSORED FAST-TRACK
+      // --------------------------------------------------
+      if (isSponsoredApproved) {
+        setIsPublishing(true);
+        await api.post(`/api/gamePosts/draft/${activeDraftId}/publish-sponsored`);
+        setDraftStatus("payment_completed"); 
+        startPolling(activeDraftId!);
+        return; 
+      }
+
+      // --------------------------------------------------
       // ORDER
       // --------------------------------------------------
 
@@ -557,7 +694,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
           "/api/gamePosts/create-payment-order",
           {
             draftId: activeDraftId,
-            selectedCredits: effectiveCredits,
+            selectedCredits: finalCredits,
           }
         );
 
@@ -582,7 +719,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
               currency: orderData.currency,
               name: "Rigzer",
               image: "/Logo.png",
-              description: `${effectiveCredits} Credits — ${gameName}`,
+              description: `${finalCredits} Credits — ${gameName}`,
               order_id: orderData.orderId,
 
               prefill: {
@@ -647,12 +784,13 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     }
   };
 
+  
+
   // ── UI States ─────────────────────────────────────────────────────────────
 
   // 1. Prompt Draft State
   if (pendingDraft) {
     return (
-      // <div className="w-full max-w-2xl mx-auto bg-white dark:bg-black/20 backdrop-blur-2xl min-h-[50vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col items-center justify-center gap-5 p-12 shadow-2xl">
       <div className="w-full max-w-2xl mx-auto bg-white/[0.03] backdrop-blur-2xl min-h-[50vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col items-center justify-center gap-5 p-12 shadow-2xl">
         <div className="p-4 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 border border-[#3D7A6E]/20">
           <FileArchive size={36} className="text-[#3D7A6E]" />
@@ -698,18 +836,77 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
   // 2. Published State
   if (publishSuccess) {
     return (
-      <div className="w-full max-w-2xl mx-auto bg-white/[0.03] backdrop-blur-2xl rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col items-center justify-center gap-5 p-12 shadow-2xl">
-        <div className="p-4 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 border border-[#3D7A6E]/20">
-          <CheckCircle2 size={40} className="text-[#3D7A6E]" />
+      <div className="w-full max-w-md mx-auto bg-white dark:bg-[#111111] rounded-[2rem] border border-gray-200 dark:border-white/[0.08] flex flex-col items-center justify-center p-8 sm:p-10 shadow-2xl relative overflow-hidden">
+        {/* Subtle background success glow */}
+        <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-[#3D7A6E]/10 to-transparent pointer-events-none" />
+
+        {/* Animated Icon */}
+        <div className="relative mb-6 z-10">
+          <div className="absolute inset-0 bg-[#3D7A6E] blur-xl opacity-30 rounded-full animate-pulse" />
+          <div className="relative p-5 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 border border-[#3D7A6E]/30">
+            <CheckCircle2 size={48} className="text-[#3D7A6E] dark:text-[#4A9384]" />
+          </div>
         </div>
-        <div className="text-center space-y-1">
-          <h2 className="text-xl font-black text-black dark:text-white tracking-tight">Game Published!</h2>
-          <p className="text-sm text-gray-500">
-            <span className="font-bold text-black dark:text-white">{gameName}</span> is now live with{' '}
-            <span className="font-bold text-[#3D7A6E]">{effectiveCredits} credits</span>.
+
+        {/* Header Text */}
+        <div className="text-center space-y-2 mb-8 z-10">
+          <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
+            Game Published!
+          </h2>
+          <p className="text-[#3D7A6E] dark:text-[#4A9384] font-medium text-sm sm:text-base">
+            Your game is now live on Rigzer.
           </p>
         </div>
-        <button onClick={onCancel} className="bg-[#3D7A6E] hover:bg-[#2F5E55] text-white font-bold px-8 py-2.5 rounded-full text-sm transition shadow-sm mt-2">
+
+        {/* Details Summary Card */}
+        <div className="w-full bg-gray-50 dark:bg-white/[0.03] border border-gray-100 dark:border-white/[0.08] rounded-2xl p-6 mb-6 z-10">
+          {/* Game Title & Top-level stat */}
+          <div className="border-b border-gray-200 dark:border-white/[0.08] pb-4 mb-4">
+            <h3 className="font-bold text-xl text-gray-900 dark:text-white truncate">
+              {gameName || 'Untitled Game'}
+            </h3>
+            <p className="text-[#3D7A6E] dark:text-[#4A9384] font-bold text-sm mt-1">
+              {finalCredits} credits added
+            </p>
+          </div>
+
+          {/* Granular Stats (Label / Value pairs) */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-500 dark:text-gray-400 font-medium">Playable time</span>
+              <span className="font-bold text-gray-900 dark:text-white">{playableMinutes} min</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-500 dark:text-gray-400 font-medium">Demo length</span>
+              <span className="font-bold text-gray-900 dark:text-white">{maxSessionDurationMinutes} min</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-500 dark:text-gray-400 font-medium">Est. sessions</span>
+              <span className="font-bold text-gray-900 dark:text-white flex items-center gap-1">
+                ≈{estimatedSessions} 
+                <span className="text-gray-400 dark:text-gray-500 font-normal text-[11px]">
+                  ({maxSessionDurationMinutes}m each)
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Sponsor Badge */}
+        {isSponsoredApproved && (
+          <div className="mb-8 z-10 flex items-center justify-center gap-2 bg-emerald-500/10 px-4 py-2 rounded-full border border-emerald-500/20">
+            <Gift size={14} className="text-emerald-600 dark:text-emerald-400" />
+            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 tracking-widest uppercase">
+              Sponsored by Rigzer
+            </span>
+          </div>
+        )}
+
+        {/* Action Button */}
+        <button 
+          onClick={onCancel} 
+          className="w-full max-w-[200px] bg-[#3D7A6E] hover:bg-[#2F5E55] text-white font-bold px-8 py-3.5 rounded-full text-sm transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 z-10"
+        >
           Done
         </button>
       </div>
@@ -722,10 +919,11 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     publishing: 'Creating your game post…', published: 'Published!', failed: 'Failed',
   };
 
-  const buttonLabel = (() => {
+const buttonLabel = (() => {
     if (isUploading) return 'Uploading…';
     if (isCreatingOrder) return 'Creating order…';
     if (isPublishing) return publishingStates[draftStatus] || 'Publishing…';
+    if (isSponsoredApproved) return 'Publish Sponsored Game'; 
     return `Pay $${totalDollars.toFixed(2)} & Publish`;
   })();
 
@@ -735,8 +933,10 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
   return (
     <div className="w-full max-w-2xl mx-auto bg-white/[0.03] backdrop-blur-2xl min-h-[75vh] max-h-[90vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col overflow-hidden shadow-2xl">
 
-      {/* ── Header ── */}
+     {/* ── Header ── */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-white/[0.06] bg-transparent sticky top-0 z-30">
+        
+        {/* Left: Back Button & Title */}
         <div className="flex items-center gap-3">
           {onBack && (
             <button onClick={onBack} className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/[0.08] rounded-full transition-colors">
@@ -746,30 +946,51 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
           <h2 className="text-xl font-bold text-black dark:text-white tracking-tight leading-tight">Publish Game</h2>
         </div>
 
-        {activeTab === 'payment' ? (
-          <button
-            onClick={handlePayAndPublish}
-            disabled={!canPayAndPublish || isButtonBusy}
-            className="bg-[#3D7A6E] hover:bg-[#2F5E55] disabled:opacity-40 text-white font-bold px-6 py-2 rounded-full text-sm transition shadow-sm flex items-center gap-2"
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          
+          {/* Save Draft Button */}
+          <button 
+            onClick={handleManualSave} 
+            disabled={isSavingDraft || isButtonBusy || !canProceedToBuild}
+            className="px-4 py-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-transparent hover:bg-gray-100 dark:hover:bg-white/[0.08] rounded-full transition-all disabled:opacity-40 flex items-center gap-2"
           >
-            {isButtonBusy && <Loader2 size={14} className="animate-spin" />}
-            {buttonLabel}
+            {isSavingDraft ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Draft'
+            )}
           </button>
-        ) : (
-          <button
-            onClick={() => {
-              if (activeTab === 'details' && canProceedToBuild) setActiveTab('build');
-              else if (activeTab === 'build' && canProceedToPayment) setActiveTab('payment');
-            }}
-            disabled={
-              (activeTab === 'details' && !canProceedToBuild) ||
-              (activeTab === 'build' && !canProceedToPayment)
-            }
-            className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 dark:bg-white dark:hover:bg-gray-200 dark:text-black text-white font-bold px-6 py-2 rounded-full text-sm transition shadow-sm"
-          >
-            Next →
-          </button>
-        )}
+
+          {/* Primary Action Button */}
+          {activeTab === 'payment' ? (
+            <button
+              onClick={handleFinalAction}
+              disabled={!canPayAndPublish || isButtonBusy}
+              className="bg-[#3D7A6E] hover:bg-[#2F5E55] disabled:opacity-40 text-white font-bold px-6 py-2 rounded-full text-sm transition shadow-sm flex items-center gap-2 shrink-0"
+            >
+              {isButtonBusy && <Loader2 size={14} className="animate-spin" />}
+              {buttonLabel}
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                if (activeTab === 'details' && canProceedToBuild) setActiveTab('build');
+                else if (activeTab === 'build' && canProceedToPayment) setActiveTab('payment');
+              }}
+              disabled={
+                (activeTab === 'details' && !canProceedToBuild) ||
+                (activeTab === 'build' && !canProceedToPayment)
+              }
+              className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 dark:bg-white dark:hover:bg-gray-200 dark:text-black text-white font-bold px-6 py-2 rounded-full text-sm transition shadow-sm shrink-0"
+            >
+              Next →
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Error Banner */}
@@ -828,12 +1049,74 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
                   placeholder="What's special about your game?"
                   className="w-full text-lg bg-transparent border-none outline-none text-black dark:text-white placeholder-gray-500 resize-none focus:ring-0 min-h-[90px] p-0 mt-2"
                   value={description}
+                  rows={2}
                   onChange={setDescription}
                 />
               </div>
+              <div className="space-y-2 pt-2">
+  <label className="text-[10px] font-bold text-[#3D7A6E] uppercase tracking-wider pl-1 flex items-center gap-1">
+    Maximum Demo Duration
+  </label>
+
+  <div className="flex flex-col gap-3">
+    {/* Quick Presets */}
+    <div className="flex gap-2">
+      {[10, 15, 30, 45, 60].map((mins) => (
+        <button
+          key={mins}
+          type="button"
+          onClick={() => setMaxSessionDurationMinutes(mins)}
+          className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+            maxSessionDurationMinutes === mins
+              ? 'bg-[#3D7A6E]/10 border-[#3D7A6E]/50 text-[#3D7A6E] dark:bg-[#3D7A6E]/20 dark:text-[#4A9384] shadow-sm'
+              : 'bg-transparent border-gray-200 dark:border-white/[0.1] text-gray-500 hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+          }`}
+        >
+          {mins} min
+        </button>
+      ))}
+    </div>
+
+    {/* Custom Input with Suffix */}
+    <div className="relative group">
+      <input
+  type="number"
+  min={1}
+  max={120}
+  step={1}
+  value={maxSessionDurationMinutes || ''}
+  onKeyDown={(e) => {
+    // Prevent decimal points, commas, scientific notation 'e', and signs
+    if (['.', ',', 'e', 'E', '-', '+'].includes(e.key)) {
+      e.preventDefault();
+    }
+  }}
+  onChange={(e) => {
+    const val = parseInt(e.target.value, 10);
+    setMaxSessionDurationMinutes(isNaN(val) ? 0 : val);
+  }}
+  onBlur={() => {
+    if (maxSessionDurationMinutes < 1) setMaxSessionDurationMinutes(1);
+    if (maxSessionDurationMinutes > 120) setMaxSessionDurationMinutes(120);
+  }}
+  className="w-full bg-gray-50 dark:bg-white/[0.02] text-black dark:text-white p-3 pr-20 rounded-xl border border-gray-200 dark:border-white/[0.1] focus:border-[#3D7A6E] focus:ring-1 focus:ring-[#3D7A6E] outline-none transition-all font-mono text-sm"
+/>
+      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 uppercase tracking-wider pointer-events-none">
+        Minutes
+      </span>
+    </div>
+  </div>
+
+  <div className="px-3 py-2 bg-[#3D7A6E]/5 dark:bg-[#3D7A6E]/10 border border-[#3D7A6E]/20 dark:border-[#3D7A6E]/30 rounded-lg mt-1">
+    <p className="text-[10px] text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
+      Players can play for up to <strong className="text-[#2F5E55] dark:text-[#4A9384]">{maxSessionDurationMinutes} minutes</strong>. 
+      The demo ends automatically if this limit is reached or if remaining credits run out.
+    </p>
+  </div>
+</div>
 
               {/* Video Trailer */}
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 mt-4">
                 {videoUpload ? (
                   <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-black/20 group">
                     <video src={videoUpload.preview} controls className="w-full h-[300px] object-contain bg-black/40" />
@@ -991,6 +1274,43 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
         {/* ══ TAB: Payment ══ */}
         {activeTab === 'payment' && (
           <div className="p-6 flex flex-col gap-5">
+            {isSponsoredApproved ? (
+              // NEW: Sponsored View
+              <section className="rounded-2xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 p-6 md:p-8 space-y-6">
+                <div className="text-center">
+                  <div className="inline-flex p-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 mb-3">
+                    <Gift size={40} />
+                  </div>
+                  <h3 className="text-xl font-bold text-emerald-800 dark:text-emerald-400">Admin Sponsored Game</h3>
+                  <p className="text-sm mt-2 text-emerald-700 dark:text-emerald-500">
+                    Rigzer has approved and sponsored this post. You can publish immediately without any payment!
+                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-black/20 rounded-xl p-5 space-y-3 shadow-sm border border-emerald-100 dark:border-emerald-900/30">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500 dark:text-gray-400 font-medium">Sponsored Credits</span>
+                    <span className="font-bold text-black dark:text-white">{sponsoredCredits}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500 dark:text-gray-400 font-medium">Gameplay Time</span>
+                    <span className="font-bold text-black dark:text-white">{playableMinutes}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500 dark:text-gray-400 font-medium">Demo Duration</span>
+                    <span className="font-bold text-black dark:text-white">{maxSessionDurationMinutes} min</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500 dark:text-gray-400 font-medium">Estimated Sessions</span>
+                    <span className="font-bold text-black dark:text-white">{estimatedSessions} <span className="text-gray-400 text-xs font-normal">({maxSessionDurationMinutes} min each)</span></span>
+                  </div>
+                  <div className="border-t border-gray-100 dark:border-white/[0.06] pt-3 mt-1 flex justify-between items-center text-sm">
+                    <span className="font-bold text-gray-500 dark:text-gray-400">Payment</span>
+                    <span className="font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Sponsored by Rigzer</span>
+                  </div>
+                </div>
+              </section>
+            ) : (
             <section className="rounded-2xl border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-black/20 overflow-hidden">
               <div className="px-5 pt-5 pb-4 border-b border-gray-100 dark:border-white/[0.06]">
                 <div className="flex items-center gap-2 mb-1">
@@ -998,7 +1318,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
                   <span className="text-sm font-bold text-black dark:text-white">Purchase Credits</span>
                 </div>
                 <p className="text-[11px] text-gray-500">
-                  1 Dollar = 40 Credits. 10 Credits = 1 session (10 mins).
+                  1 Dollar = 40 Credits. 1 Credit = 1 Minute. Estimated sessions depend on the demo duration you selected.
                 </p>
               </div>
 
@@ -1037,60 +1357,70 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 pt-1">
-                  <div className="rounded-xl bg-white dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] p-3 text-center">
-                    <div className="text-lg font-black text-black dark:text-white">{effectiveCredits || '—'}</div>
-                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Credits</div>
+                <div className="grid grid-cols-4 gap-2 pt-1">
+                  <div className="rounded-xl bg-white dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] p-2 text-center flex flex-col justify-center">
+                    <div className="text-lg font-black text-black dark:text-white leading-none">{finalCredits || '0'}</div>
+                    <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-1">Credits</div>
                   </div>
-                  <div className="rounded-xl bg-white dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] p-3 text-center">
-                    <div className="text-lg font-black text-[#3D7A6E]">{estimatedSessions || '—'}</div>
-                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Sessions</div>
+                  <div className="rounded-xl bg-white dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] p-2 text-center flex flex-col justify-center">
+                    <div className="text-lg font-black text-black dark:text-white leading-none">{playableMinutes || '0'}</div>
+                    <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-1">Playable (min)</div>
                   </div>
-                  <div className="rounded-xl bg-white dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] p-3 text-center">
-                    <div className="text-lg font-black text-emerald-500">${totalDollars.toFixed(2) || '—'}</div>
-                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Total</div>
+                  <div className="rounded-xl bg-white dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] p-2 text-center flex flex-col justify-center">
+                    <div className="text-lg font-black text-[#3D7A6E] leading-none">{estimatedSessions || '0'}</div>
+                    <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-1 leading-tight">Sessions<br/>({maxSessionDurationMinutes}m)</div>
+                  </div>
+                  <div className="rounded-xl bg-white dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] p-2 text-center flex flex-col justify-center">
+                    <div className="text-lg font-black text-emerald-500 leading-none">${totalDollars.toFixed(0) || '0'}</div>
+                    <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-1">Total</div>
                   </div>
                 </div>
               </div>
             </section>
-
-            <section className="rounded-2xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 dark:border-white/[0.06] bg-gray-50 dark:bg-white/[0.02]">
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Purchase Summary</p>
-              </div>
-              <div className="px-5 py-4 space-y-3 bg-white dark:bg-black/20">
-                {[
-                  ['Credits Purchased', effectiveCredits ? `${effectiveCredits} credits` : '—'],
-                  ['Rate', '40 credits per $1'],
-                  ['Amount Payable', effectiveCredits ? `$${totalDollars.toFixed(2)}` : '—'],
-                  ['Currency', 'USD'],
-                  ['Payment Method', 'Razorpay'],
-                ].map(([label, value]) => (
-                  <div key={label} className="flex justify-between items-center">
-                    <span className="text-xs text-gray-500">{label}</span>
-                    <span className="text-xs font-bold text-black dark:text-white">{value}</span>
-                  </div>
-                ))}
-                <div className="border-t border-gray-100 dark:border-white/[0.06] pt-3 flex justify-between items-center">
-                  <span className="text-sm font-bold text-black dark:text-white">Total</span>
-                  <span className="text-lg font-black text-[#3D7A6E]">${totalDollars.toFixed(2) || '—'}</span>
+            )}
+            
+            {/* Purchase Summary hidden completely when sponsored */}
+            {!isSponsoredApproved && (
+              <section className="rounded-2xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 dark:border-white/[0.06] bg-gray-50 dark:bg-white/[0.02]">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Purchase Summary</p>
                 </div>
-              </div>
-            </section>
+                <div className="px-5 py-4 space-y-3 bg-white dark:bg-black/20">
+                  {[
+                    ['Credits Purchased', finalCredits ? `${finalCredits} credits` : '—'],
+                    ['Rate', '40 credits = $1'],
+                    ['Amount Payable', finalCredits ? `$${totalDollars.toFixed(2)}` : '—'],
+                    ['Currency', 'USD'],
+                    ['Payment Method', 'Razorpay'],
+                  ].map(([label, value]) => (
+                    <div key={label} className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">{label}</span>
+                      <span className="text-xs font-bold text-black dark:text-white">{value}</span>
+                    </div>
+                  ))}
+                  <div className="border-t border-gray-100 dark:border-white/[0.06] pt-3 flex justify-between items-center">
+                    <span className="text-sm font-bold text-black dark:text-white">Total</span>
+                    <span className="text-lg font-black text-[#3D7A6E]">${totalDollars.toFixed(2) || '—'}</span>
+                  </div>
+                </div>
+              </section>
+            )}
 
-            <div className="flex gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30">
-              <Zap size={16} className="text-amber-500 shrink-0 mt-0.5" />
-              <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
-                Your game will go live immediately after payment. Credits are non-refundable once your post is published.
-                If publishing fails after payment, your credits are safe and our team will resolve it.
-              </p>
-            </div>
+            {!isSponsoredApproved && (
+              <div className="flex gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30">
+                <Zap size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                  Your game will go live immediately after payment. Credits are non-refundable once your post is published.
+                  If publishing fails after payment, your credits are safe and our team will resolve it.
+                </p>
+              </div>
+            )}
 
             {draftStatus === 'failed' && (
               <div className="flex gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
                 <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
                 <p className="text-[11px] text-red-700 dark:text-red-400 leading-relaxed">
-                  Publishing encountered an error, but your payment was received. Our team has been notified and will manually resolve this shortly.
+                  Publishing encountered an error, but your payment was received. For assistance, please contact our support team.
                 </p>
               </div>
             )}
@@ -1150,8 +1480,6 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
           </p>
         </div>
       )}
-
-
 
     </div>
   );

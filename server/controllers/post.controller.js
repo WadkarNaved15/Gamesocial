@@ -209,15 +209,28 @@ export const createPost = async (req, res) => {
         engine,
         runMode,
         price,
+        maxSessionDurationMinutes,
         systemRequirements,
         file,
         videoDemo
       } = game;
 
-      const allowedFormats = ["7z", "zip", "exe"];
+      
+
+      const allowedFormats = ["7z", "zip"];
       if (!file?.format || !allowedFormats.includes(file.format)) {
         return res.status(400).json({
           message: "Unsupported or missing game build format",
+        });
+      }
+
+      if (
+        !Number.isInteger(maxSessionDurationMinutes) ||
+        maxSessionDurationMinutes < 1 ||
+        maxSessionDurationMinutes > 120
+      ) {
+        return res.status(400).json({
+          message: "Maximum session duration must be between 1 and 120 minutes.",
         });
       }
 
@@ -268,6 +281,8 @@ export const createPost = async (req, res) => {
           engine,
           runMode: runMode || "sandboxed",
           price: Number(price) || 0,
+          maxSessionDurationMinutes:
+            maxSessionDurationMinutes ?? 10,
           systemRequirements: {
             ramGB: systemRequirements?.ramGB ?? null,
             cpuCores: systemRequirements?.cpuCores ?? null,

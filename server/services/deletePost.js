@@ -4,6 +4,7 @@ import AllPost from "../models/Allposts.js";
 import Like from "../models/Like.js";
 import Comment from "../models/Comment.js";
 import Wishlist from "../models/Wishlist.js";
+import PostAnalytics from "../models/postAnalytics.js";
 import Notification from "../models/Notifications.js";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import s3 from "../s3.js";
@@ -155,6 +156,10 @@ export async function deletePostAndAssets(post) {
 
     Notification.deleteMany({
       postId: post._id,
+    }),
+
+    PostAnalytics.deleteOne({
+      post: post._id,
     }),
 
     AllPost.findByIdAndDelete(

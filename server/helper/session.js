@@ -547,9 +547,19 @@ export async function createConsumptionAudit(session) {
 }
 
 export function calculateSessionDuration(game) {
-  if (game.price === 0) return CONFIG.FREE_GAME_DURATION;
-  if (game.price > 0) return CONFIG.PAID_GAME_DURATION;
-  return CONFIG.DEFAULT_DURATION;
+    const creatorLimit =
+        (game.maxSessionDurationMinutes || 10) * 60;
+
+    const remainingCredits =
+        game.creditBudget?.remainingCredits || 0;
+
+    const creditLimit =
+        remainingCredits * 60;
+
+    return Math.min(
+        creatorLimit,
+        creditLimit
+    );
 }
 
 export function determineCleanupPolicy(game) {

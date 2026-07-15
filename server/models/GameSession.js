@@ -292,7 +292,7 @@ GameSessionSchema.statics.findExpiredSessions = function () {
 GameSessionSchema.statics.findExpiredCountdowns = function () {
   return this.find({
     status: "allocation_ready",
-    countdownStartsAt: { $lte: new Date(Date.now() - 35000) }, // 35s (30s + 5s buffer)
+    countdownStartsAt: { $lte: new Date(Date.now() - 35000) }, 
   });
 };
 
