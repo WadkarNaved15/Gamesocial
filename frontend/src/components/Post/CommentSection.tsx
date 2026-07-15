@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, memo } from "react";
+import React, { useState, useEffect, useRef, memo, useCallback } from "react";
 import axios from "axios";
 import { useUser } from "../../context/user";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +10,13 @@ import {
   MoreHorizontal,
   Trash2,
 } from "lucide-react";
+
+interface MentionUser {
+  _id: string;
+  username: string;
+  displayName: string;
+  avatar: string;
+}
 
 interface Comment {
   _id: string;
@@ -80,6 +87,7 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache, onDelete, po
   //   const fetchMetadata = async () => { ... }
   // }, [url, BACKEND_URL, linkPreviewCache]);
 
+  console.log("Comment card rendered")
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -143,33 +151,44 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache, onDelete, po
 
               {comment.review?.isGameReview && (
                 <span
-                  style={{
-                    background: "linear-gradient(to bottom right, #3D7A6E, #000000)",
-                  }}
                   className="
-                    inline-flex
-                    items-center
-                    gap-1.5
-                    rounded-2xl
-                    text-white
-                    border
-                    border-white/10
-                    shadow-lg
-                    px-3
-                    py-1
-                    text-[11px]
-                    font-semibold
-                    tracking-wide
-                    shrink-0
-                  "
+                  inline-flex
+                  items-center
+                  gap-1
+                  text-[11px]
+                  font-bold
+                  tracking-wide
+                  shrink-0
+                  text-teal-600
+                  dark:text-[#62d4ae]
+                "
                 >
-                  <Gamepad2 size={12} className="opacity-90" />
                   <span>
-                    Played for{" "}
-                    {formatPlayTime(comment.review.feedback?.playTimeMs)}
+                    Played {formatPlayTime(comment.review.feedback?.playTimeMs)}
                   </span>
                 </span>
               )}
+
+              {comment.review?.isGameReview &&
+                comment.review.feedback?.overall && (
+                  <div className="mb-2">
+                    <div
+                      className="
+                      inline-flex
+                      items-center
+                      rounded-lg
+                      bg-amber-100
+                      dark:bg-amber-900/30
+                      px-2
+                      py-0.5
+                    "
+                    >
+                      <span className="text-amber-700 dark:text-amber-300 text-[11px] font-bold tracking-wide">
+                        ⭐ {comment.review.feedback.overall}/10
+                      </span>
+                    </div>
+                  </div>
+                )}
 
               {/* 👇 UPDATED CIRCULAR "PLAYED" BADGE */}
               {comment.hasPlayedDemo && (
@@ -241,26 +260,6 @@ const CommentCard = memo(({ comment, BACKEND_URL, linkPreviewCache, onDelete, po
               )}
             </div>
           </div>
-          {comment.review?.isGameReview &&
-            comment.review.feedback?.overall && (
-              <div className="mb-2">
-                <div
-                  className="
-                  inline-flex
-                  items-center
-                  rounded-lg
-                  bg-amber-100
-                  dark:bg-amber-900/30
-                  px-2.5
-                  py-1
-                "
-                >
-                  <span className="text-amber-700 dark:text-amber-300 text-sm font-semibold">
-                    ⭐ {comment.review.feedback.overall}/10
-                  </span>
-                </div>
-              </div>
-            )}
           <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
             {comment.text.split(urlRegex).map((part: string, i: number) =>
               urlRegex.test(part) ? (
@@ -321,22 +320,38 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
   const [mentions, setMentions] = useState<
     {
       originalUsername: string;
-      user: {
-        _id: string;
-        username: string;
-        displayName: string;
-        avatar: string;
-      };
+      user: MentionUser;
     }[]
   >([]);
+  const handleMentionsChange = useCallback((users: MentionUser[]) => {
+    setMentions((prev) => {
+      const next = users.map((user) => ({
+        originalUsername: user.username,
+        user,
+      }));
+
+      if (
+        prev.length === next.length &&
+        prev.every(
+          (mention, index) =>
+            mention.user._id === next[index].user._id &&
+            mention.originalUsername === next[index].originalUsername
+        )
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, []);
   const { updateCommentsCount } = useFeed();
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const { user } = useUser();
   const observerRef = useRef<HTMLDivElement | null>(null);
-
+  console.log("Comment section rendered");
   useEffect(() => {
     const fetchComments = async () => {
+      console.log("Fetching comments")
       try {
         const res = await axios.get(`${BACKEND_URL}/api/comments`, {
           params: { postId, limit: 20 }
@@ -368,6 +383,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
   }, [observerRef.current, nextCursor, loadingMore]);
 
   const loadMoreComments = async () => {
+    console.log("Loading more comments")
     if (!nextCursor || loadingMore) return;
     try {
       setLoadingMore(true);
@@ -458,14 +474,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
         <div className="relative group">
           <MentionTextarea
             value={newComment}
-            onMentionsChange={(users) =>
-              setMentions(
-                users.map(user => ({
-                  originalUsername: user.username,
-                  user,
-                }))
-              )
-            }
+            onMentionsChange={handleMentionsChange}
             onChange={setNewComment}
             placeholder="Share your thoughts..."
             rows={1}

@@ -31,7 +31,7 @@ export const useMentions = (
 
   const cache = useRef<Record<string, User[]>>({});
   const cancelToken = useRef<import("axios").CancelTokenSource | null>(null);
-  
+
   // ARCHITECTURAL CHANGE: Track the START of the mention instead of the moving cursor
   const mentionStartRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -39,9 +39,9 @@ export const useMentions = (
   const updateCoords = () => {
     // Abort if we don't have an active mention start point
     if (!textareaRef.current || mentionStartRef.current === null) return;
-    
+
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    
+
     rafRef.current = requestAnimationFrame(() => {
       if (textareaRef.current && mentionStartRef.current !== null) {
         // Calculate coordinates based on the '@' index, anchoring it in place
@@ -54,9 +54,9 @@ export const useMentions = (
     if (!isOpen || !textareaRef.current) return;
 
     const textarea = textareaRef.current;
-    
+
     window.addEventListener("resize", updateCoords);
-    window.addEventListener("scroll", updateCoords, true); 
+    window.addEventListener("scroll", updateCoords, true);
     textarea.addEventListener("scroll", updateCoords);
 
     const resizeObserver = new ResizeObserver(updateCoords);
@@ -72,12 +72,17 @@ export const useMentions = (
   }, [isOpen]);
 
   useEffect(() => {
-  setSelectedMentions(prev =>
-    prev.filter(user =>
-      value.toLowerCase().includes(`@${user.username.toLowerCase()}`)
-    )
-  );
-}, [value]);
+    console.log("selectedMentions changed");
+  }, [selectedMentions]);
+
+  useEffect(() => {
+    console.log("Filtering mentions");
+    setSelectedMentions(prev =>
+      prev.filter(user =>
+        value.toLowerCase().includes(`@${user.username.toLowerCase()}`)
+      )
+    );
+  }, [value]);
 
   const handleSelectionChange = () => {
     if (!textareaRef.current) return;
@@ -87,11 +92,11 @@ export const useMentions = (
     if (active) {
       if (!isOpen) callbacks?.onMentionStarted?.();
       setQuery(active.query);
-      
+
       // Update state AND ref so the rAF cycle can immediately access the start position
       setMentionStartIndex(active.startIndex);
       mentionStartRef.current = active.startIndex;
-      
+
       updateCoords();
       setIsOpen(true);
     } else {
@@ -110,10 +115,10 @@ export const useMentions = (
 
   const insertMention = (user: User) => {
     if (!textareaRef.current || mentionStartIndex === null) return;
-    
+
     const cursor = textareaRef.current.selectionStart;
     const { newText, newCursorPosition } = replaceMention(value, mentionStartIndex, cursor, user.username);
-    
+
     onChange(newText);
     if (user.username !== "interact") {
       setSelectedMentions(prev => {
@@ -157,7 +162,7 @@ export const useMentions = (
         const { data } = await axios.get<User[]>(`${BACKEND_URL}/api/search?q=${currentQuery}`, {
           cancelToken: cancelToken.current.token,
         });
-        
+
         cache.current[currentQuery] = data;
         const merged = [...results, ...data.filter((u: User) => u.username !== "interact")];
         setSuggestions(merged.slice(0, 8));
