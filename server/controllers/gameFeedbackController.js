@@ -2,9 +2,22 @@ import GameFeedback from "../models/GameFeedback.js";
 import GameSession from "../models/GameSession.js";
 import mongoose from "mongoose";
 import Comment from "../models/Comment.js";
+import AllPost from "../models/Allposts.js";
+import {
+  onCommentAdded,
+} from "../services/analyticsEvents.js";
+import { sendEventToQueue } from "../utils/sendEventToQueue.js";
+import {
+  insertFeedback,
+  fireAndForget,
+} from "../services/gorse.client.js";
 
 //Create Game Feedback
 export const createGameFeedback = async (req, res) => {
+  let createdFeedback;
+  let createdComment;
+  let postId;
+  let userId;
   const mongoSession = await mongoose.startSession();
 
   try {
@@ -21,8 +34,6 @@ export const createGameFeedback = async (req, res) => {
         error: "Rating must be between 1 and 10",
       });
     }
-
-    let createdFeedback;
 
     await mongoSession.withTransaction(async () => {
 
@@ -79,6 +90,20 @@ export const createGameFeedback = async (req, res) => {
         { session: mongoSession }
       );
 
+      // Update Comment Count 
+      const post = await AllPost.findByIdAndUpdate(
+        session.gamePost,
+        { $inc: { commentsCount: 1 } },
+        {
+          new: true,
+          session: mongoSession,
+        }
+      ).select("user commentsCount");
+
+      if (!post) {
+        throw new Error("POST_NOT_FOUND");
+      }
+
       // 3. Link Comment to Feedback
       feedback.comment = comment._id;
       await feedback.save({ session: mongoSession });
@@ -88,16 +113,43 @@ export const createGameFeedback = async (req, res) => {
       session.feedback.submittedAt = new Date();
 
       await session.save({ session: mongoSession });
-
+      // Save for after transaction
       createdFeedback = feedback;
+      createdComment = comment;
+      postId = session.gamePost.toString();
+      userId = session.user.toString();
     });
+
+    try {
+      await onCommentAdded(postId, userId);
+    } catch (err) {
+      console.error("Comment analytics failed:", err);
+    }
+
+    sendEventToQueue({
+      type: "COMMENT_CREATED",
+      actorId: userId,
+      commentId: createdComment._id,
+    }).catch(console.error);
+
+    fireAndForget(() =>
+      insertFeedback({
+        feedbackType: "comment",
+        userId,
+        postId,
+      })
+    );
 
     res.status(201).json({
       success: true,
       feedback: createdFeedback,
     });
-
   } catch (err) {
+    if (err.message === "POST_NOT_FOUND") {
+      return res.status(404).json({
+        error: "Post not found",
+      });
+    }
 
     if (err.message === "SESSION_NOT_FOUND") {
       return res.status(404).json({
