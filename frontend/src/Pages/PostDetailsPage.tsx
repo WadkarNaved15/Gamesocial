@@ -2,6 +2,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import NormalPostDetails from "./NormalPostDetails";
+import GamePostDetails from "./GamePostDetails";
 import DevlogPostDetails from "./DevlogPostDetails";
 import PostDetail from "./PostDetail";
 import CircleLoader from "../components/Loader/CircleLoader";
@@ -43,14 +44,22 @@ const PostDetailsPage = () => {
   }, [postId]);
 
   if (loading) return <CircleLoader />;
-  
+
   // 👇 Replaced the plain div with your custom component
   if (!post) return <ContentNotFound />;
 
   const handleBack = () => {
     navigate(-1);
   };
-
+  if (post.type === "game_post") {
+    return (
+      <GamePostDetails
+        post={post}
+        BACKEND_URL={BACKEND_URL}
+        onClose={handleBack}
+      />
+    );
+  }
   if (post.type === "model_post") {
     return <PostDetail post={post} onClose={handleBack} />;
   }
