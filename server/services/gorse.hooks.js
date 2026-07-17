@@ -30,18 +30,34 @@ export function onUserCreated(userId) {
  *   onPostCreated(savedPost);
  */
 export function onPostCreated(post) {
+  console.log("================================");
+  console.log("Sending post to Gorse");
+  console.log("ID:", post._id.toString());
+  console.log("TYPE:", post.type);
+
   console.log("Sending post to Gorse:", post._id.toString());
   const labels = buildLabels(post);
   const categories = [post.type];
 
-  fireAndForget(() =>
-    upsertItem({
-      postId: post._id.toString(),
-      timestamp: post.createdAt || new Date(),
-      labels,
-      categories,
-    })
-  );
+  console.log("Labels:", labels);
+  console.log("Categories:", categories);
+
+  fireAndForget(async () => {
+    try {
+      const result = await upsertItem({
+        postId: post._id.toString(),
+        timestamp: post.createdAt || new Date(),
+        labels,
+        categories,
+      });
+
+      console.log("✅ Gorse insert success");
+      console.log(result);
+    } catch (err) {
+      console.error("❌ Gorse insert failed");
+      console.error(err);
+    }
+  });
 }
 
 /**
@@ -68,9 +84,9 @@ function buildLabels(post) {
     if (post.gamePost.platform) labels.push(`platform:${post.gamePost.platform}`);
   }
 
-  if (post.type === "model_post")    labels.push("content:3dmodel");
-  if (post.type === "normal_post")   labels.push("content:art");
-  if (post.type === "devlog_post")   labels.push("content:devlog");
+  if (post.type === "model_post") labels.push("content:3dmodel");
+  if (post.type === "normal_post") labels.push("content:art");
+  if (post.type === "devlog_post") labels.push("content:devlog");
   if (post.type === "canvas_article") labels.push("content:article");
   if (post.type === "ad_model_post") labels.push("content:ad");
 

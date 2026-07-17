@@ -194,6 +194,7 @@ export const createPost = async (req, res) => {
        GAME POST
     ====================================================== */
     if (type === "game_post") {
+      console.log("Game post controller got hit");
       const { description, game } = req.body;
 
       if (!description || !game) {
@@ -317,9 +318,10 @@ export const createPost = async (req, res) => {
           actorId: req.user.id,
           postId: post._id,
       });
-
+      console.log("Game post created successfully");
       // ✅ GORSE: sync new post (fire-and-forget)
       onPostCreated(post);
+      console.log("Game post sent to gorse");
       return res.status(201).json({
         message: "Game post created successfully",
         post,

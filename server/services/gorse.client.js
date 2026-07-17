@@ -13,12 +13,22 @@ const headers = {
 // ── Internal fetch wrapper ────────────────────────────────────────────────────
 
 async function gorseRequest(method, path, body) {
-  const res = await fetch(`${GORSE_URL}${path}`, { 
+  const res = await fetch(`${GORSE_URL}${path}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
   });
+  console.log("Status:", res.status);
+  const bodyText = await res.text();
 
+  console.log("Response:");
+  console.log(bodyText);
+
+  if (!res.ok) {
+    throw new Error(bodyText);
+  }
+
+  
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`Gorse ${method} ${path} → ${res.status}: ${text}`);
@@ -49,6 +59,15 @@ export async function upsertUser({ userId, labels = [] }) {
  * @param {{ postId: string, timestamp: Date, labels?: string[], categories?: string[] }} item
  */
 export async function upsertItem({ postId, timestamp, labels = [], categories = [] }) {
+  console.log("POSTING TO GORSE");
+
+  console.log({
+    ItemId: postId,
+    Timestamp: timestamp.toISOString(),
+    Labels: labels,
+    Categories: categories,
+    IsHidden: false,
+  });
   return gorseRequest("POST", "/api/item", {
     ItemId: postId,
     Timestamp: timestamp.toISOString(),
@@ -75,7 +94,7 @@ export async function hideItem(postId) {
  * @param {{ feedbackType: string, userId: string, postId: string, timestamp?: Date }} fb
  */
 export async function insertFeedback({ feedbackType, userId, postId, timestamp }) {
-   if (!userId || !postId) {
+  if (!userId || !postId) {
     console.warn("[Gorse] Skipping invalid feedback:", { feedbackType, userId, postId });
     return;
   }
