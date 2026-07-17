@@ -252,6 +252,26 @@ router.post(
   }
 );
 
+router.get("/status-by-token/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+    console.log("Status by token request:", token);
+
+    const stream = await cacheService.get(`stream:${token}`);
+
+    return res.json({
+      active: !!stream,
+    });
+  } catch (err) {
+    console.error("Status by token error:", err);
+
+    return res.status(500).json({
+      active: false,
+    });
+  }
+});
+
+
 /**
  * GET /api/sessions/status/:sessionId
  * ✅ Returns current session status including queue info
@@ -293,24 +313,6 @@ router.get("/:sessionId/status", verifyToken, async (req, res) => {
   } catch (err) {
     console.error("Session status error:", err);
     return res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-router.get("/status-by-token/:token", async (req, res) => {
-  try {
-    const { token } = req.params;
-
-    const stream = await cacheService.get(`stream:${token}`);
-
-    return res.json({
-      active: !!stream,
-    });
-  } catch (err) {
-    console.error("Status by token error:", err);
-
-    return res.status(500).json({
-      active: false,
-    });
   }
 });
 

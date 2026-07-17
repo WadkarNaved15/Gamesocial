@@ -70,7 +70,6 @@ async function calculateDemand(region) {
     .select("status instanceRegion")
     .lean();
 
-    console.log("Sessions in region:", sessions);
 
     return GameSession.countDocuments({
         instanceRegion: region,
