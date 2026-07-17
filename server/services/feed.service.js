@@ -93,40 +93,40 @@ const POST_PROJECTION = {
 // preserved in JS via postMap. Sort only applies for the chronological path
 // where _id ordering is the intent.
 
-async function fetchPostsByIds(ids , isAdmin = false) {
+async function fetchPostsByIds(ids, isAdmin = false) {
   // Used by Gorse path: fetch exact IDs, no sort (JS preserves Gorse rank)
   const filter = {
-  _id: { $in: ids },
-  type: { $ne: "canvas_article" },
-};
-
-if (!isAdmin) {
-  filter.type = {
-    $nin: ["canvas_article", "game_post"],
+    _id: { $in: ids },
+    type: { $ne: "canvas_article" },
   };
-}
 
-return AllPost.find(filter)
+  if (!isAdmin) {
+    filter.type = {
+      $nin: ["canvas_article", "game_post"],
+    };
+  }
+
+  return AllPost.find(filter)
     .select(POST_PROJECTION)
     .populate("user", "username avatar")
     .populate(
-        "mentions.user",
-        "username displayName avatar"
+      "mentions.user",
+      "username displayName avatar"
     )
     .lean();
 }
 
-async function fetchChronological(filter, limit , isAdmin = false) {
+async function fetchChronological(filter, limit, isAdmin = false) {
   // Used by guest/fallback path: sort by _id desc
   const query = {
-  ...filter,
-};
+    ...filter,
+  };
 
-query.type = !isAdmin
-  ? { $nin: ["canvas_article", "game_post"] }
-  : { $ne: "canvas_article" };
+  query.type = !isAdmin
+    ? { $nin: ["canvas_article", "game_post"] }
+    : { $ne: "canvas_article" };
 
-return AllPost.find(query)
+  return AllPost.find(query)
     .select(POST_PROJECTION)
     .populate("user", "username avatar")
     .populate(
@@ -166,7 +166,7 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
     const [type, value] = cursor.split(/:(.+)/);
     if (type === "a") {
       allPostFilter = { _id: { $lt: value } };
-    } 
+    }
     // else if (type === "p") {
     //   pocketFilter = { publishedAt: { $lt: new Date(value) } };
     // } 
@@ -177,6 +177,12 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
       allPostFilter = { _id: { $lt: cursor } };
     }
   }
+
+  console.log("Parsed Cursor");
+  console.log({
+    gorseOffset,
+    allPostFilter,
+  });
 
   // ── Pocket query — always needed regardless of auth, start it immediately ────
   // const pocketPromise = PocketFeedEntry.find(pocketFilter)
@@ -208,6 +214,13 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
   let allPosts = [];
   let usedGorse = false;
 
+  console.log("\n================ FEED REQUEST ================");
+  console.log({
+    cursor,
+    limit,
+    userId,
+  });
+
   if (userId) {
     // ── Logged-in: Gorse + pockets in parallel ──────────────────────────────
     let gorseIds = [];
@@ -220,20 +233,39 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
         // we just want to give it a head start while Gorse resolves
       ]);
       gorseIds = ids ?? [];
+      console.log("Gorse returned IDs:");
+      console.log(gorseIds);
+      console.log("Count:", gorseIds.length);
     } catch (err) {
       console.warn("[Feed] Gorse unavailable, falling back to chronological:", err.message);
     }
 
     if (gorseIds.length > 0) {
       const safeIds = [...new Set(gorseIds)].filter((id) => id?.length === 24);
+      console.log("Safe IDs:");
+      console.log(safeIds);
+      console.log("Unique Count:", safeIds.length);
 
       if (safeIds.length > 0) {
         // Now fetch posts from Atlas — pockets are still running in parallel
         const docs = await fetchPostsByIds(safeIds, isAdmin);
 
+        console.log("Mongo returned docs:");
+        console.log(
+          docs.map((d) => ({
+            id: d._id.toString(),
+            type: d.type,
+          }))
+        );
+
+        console.log("Mongo Count:", docs.length);
+
         // Preserve Gorse's rank order using a Map (Atlas returns in _id order)
         const postMap = new Map(docs.map((p) => [p._id.toString(), p]));
         allPosts = safeIds.map((id) => postMap.get(id)).filter(Boolean);
+        console.log("Ordered Posts:");
+        console.log(allPosts.map((p) => p._id.toString()));
+        console.log("Ordered Count:", allPosts.length);
         usedGorse = true;
 
         // Fire-and-forget impression recording — never block the response
@@ -244,15 +276,20 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
 
     // Gorse returned nothing or failed — fall back to chronological
     if (!usedGorse) {
+      console.log("Using chronological fallback");
       // Pockets are already in-flight; fetch posts in parallel with them
-      allPosts = await fetchChronological(allPostFilter, fetchLimit , isAdmin);
+      allPosts = await fetchChronological(allPostFilter, fetchLimit, isAdmin);
     }
   } else {
     // ── Guest: chronological posts + pockets fully in parallel ──────────────
     // pocketPromise is already running from line ~60.
     // Fire the Atlas query right now so both run concurrently.
     [allPosts] = await Promise.all([
-      fetchChronological(allPostFilter, fetchLimit ,isAdmin),
+      fetchChronological(allPostFilter, fetchLimit, isAdmin),
+      console.log(
+        "Chronological posts:",
+        allPosts.map((p) => p._id.toString())
+      )
       // pocketPromise resolves on its own — collected below
     ]);
   }
@@ -303,6 +340,17 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
     .sort((a, b) => b._sortKey - a._sortKey)
     .slice(0, limit);
 
+  console.log("Merged posts:");
+  console.log(
+    merged.map((p) => ({
+      id: p._id.toString(),
+      cursorType: p._cursorType,
+      cursorVal: p._cursorVal,
+    }))
+  );
+
+  console.log("Merged Count:", merged.length);
+
   if (merged.length === 0) {
     return { posts: [], nextCursor: null };
   }
@@ -345,6 +393,8 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
   await enrichDemoConsumed(merged, userId);
 
   const posts = merged.map(({ _sortKey, _cursorType, _cursorVal, ...rest }) => rest);
-
+  console.log("Next Cursor:", nextCursor);
+  console.log("Returned Posts:", posts.length);
+  console.log("=============================================\n");
   return { posts, nextCursor };
 }
