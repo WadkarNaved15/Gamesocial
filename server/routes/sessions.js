@@ -145,13 +145,10 @@ router.post(
       let assignedInstance = null;
 
       const userSession = await UserSession
-        .findOne({
-          user: userId
-        })
-        .sort({
-          lastActivityAt: -1
-        })
-        .lean();
+      .findOne({ user: userId })
+      .select("geo.latitude geo.longitude geo.countryCode")
+      .sort({ lastActivityAt: -1 })
+      .lean();
 
       const preferredRegion =
         selectRegion(userSession);
@@ -298,6 +295,25 @@ router.get("/:sessionId/status", verifyToken, async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 });
+
+router.get("/status-by-token/:token", async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const stream = await cacheService.get(`stream:${token}`);
+
+    return res.json({
+      active: !!stream,
+    });
+  } catch (err) {
+    console.error("Status by token error:", err);
+
+    return res.status(500).json({
+      active: false,
+    });
+  }
+});
+
 //Feedback eligibility check
 
 router.get(
