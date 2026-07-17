@@ -8,6 +8,7 @@ import AllPost from "../models/Allposts.js";
 import cacheService from "../services/cacheService.js";
 import crypto from "crypto";
 import { callController } from "../services/controllerService.js";
+import {reconcileCapacity} from "../services/capacityReconciler.js";
 
 const router = express.Router();
 
@@ -29,7 +30,6 @@ const verifyInternalKey = (req, res, next) => {
  * ✅ Handles both queue and direct allocation + prepares for restart
  */
 router.post("/instance-ready", verifyInternalKey, async (req, res) => {
-  console.log("[Instance Ready] Request:", req.body);
   const { region } = req.body;
 
   if (!region) {
@@ -43,7 +43,7 @@ router.post("/instance-ready", verifyInternalKey, async (req, res) => {
     const session = await GameSession.findOneAndUpdate(
       {
         status: "waiting",
-        leasing: { $ne: true },
+        leasing: false,
         instanceRegion: region,
         endedAt: null,
       },
@@ -64,7 +64,6 @@ router.post("/instance-ready", verifyInternalKey, async (req, res) => {
       return res.json({ assigned: false });
     }
 
-    console.log("[Instance Ready] Waiting session:", session);
     // Double-check another backend didn't already assign it
     const fresh = await GameSession.findById(session._id).lean();
 
@@ -74,26 +73,16 @@ router.post("/instance-ready", verifyInternalKey, async (req, res) => {
       });
     }
 
-    console.log("[Instance Ready] Calling Lease Lambda for region:", region);
-
     // Ask Lease Lambda to lease an IDLE worker
     const lease = await assignOrStartInstance({
       preferredRegion: region,
     });
 
-    console.log("[Instance Ready] Lease response:", lease);
 
     if (lease.status !== "ASSIGNED") {
       await GameSession.findByIdAndUpdate(session._id, {
         leasing: false,
       });
-
-      console.log("[Instance Ready] Updated session:", {
-    id: updatedSession._id,
-    status: updatedSession.status,
-    instanceId: updatedSession.instanceId,
-    worker: updatedSession.instanceIp
-});
 
       return res.json({
         assigned: false,
@@ -159,7 +148,6 @@ router.post("/instance-ready", verifyInternalKey, async (req, res) => {
       );
     }
 
-    console.log("[Instance Ready] Starting controller...");
 
     if (!wasQueued) {
       await callController(updatedSession, {
@@ -169,7 +157,6 @@ router.post("/instance-ready", verifyInternalKey, async (req, res) => {
       });
     }
 
-    console.log("[Instance Ready] Controller started");
 
     return res.json({
       assigned: true,
@@ -196,8 +183,7 @@ router.post("/instance-ready", verifyInternalKey, async (req, res) => {
 router.post("/sessions/update", async (req, res) => {
   try {
 const sessionId = req.body.sessionId || req.body.session_id;
-const { status, error } = req.body;    console.log("[Controller Update] Body:", req.body);
-    console.log(`[Session Update] Received update for session ${sessionId}: ${status}`);
+const { status, error } = req.body;  
 
     if (!sessionId) {
       return res.status(400).json({ error: "sessionId required" });
@@ -263,6 +249,8 @@ const { status, error } = req.body;    console.log("[Controller Update] Body:", 
             const releaseResult = await releaseInstance(session.instanceId, session.leaseToken, session.instanceRegion);
             const token = await cacheService.get(`streamtoken:${sessionId}`);
 
+            reconcileCapacity(session.instanceRegion).catch(console.error);
+
               if (token) {
                 await cacheService.del(`stream:${token}`);
               }
@@ -285,6 +273,8 @@ const { status, error } = req.body;    console.log("[Controller Update] Body:", 
           try {
             const releaseResult = await releaseInstance(session.instanceId, session.leaseToken, session.instanceRegion);
             const token = await cacheService.get(`streamtoken:${sessionId}`);
+
+            reconcileCapacity(session.instanceRegion).catch(console.error);
 
             if (token) {
               await cacheService.del(`stream:${token}`);

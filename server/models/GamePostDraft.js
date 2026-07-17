@@ -229,6 +229,27 @@ const GamePostDraftSchema = new mongoose.Schema(
       default: null,
     },
 
+    // ── Scheduled Launch ─────────────────────────────────────────────
+
+    scheduledLaunch: {
+        enabled: {
+            type: Boolean,
+            default: false,
+        },
+
+        launchAt: {
+            type: Date,
+            default: null,
+            validate: {
+                validator(value) {
+                    if (!this.scheduledLaunch.enabled) return true;
+                    return value && value > new Date();
+                },
+                message: "Launch time must be in the future."
+            }
+        }
+    },
+
     // ── Workflow status ───────────────────────────────────────────
     status: {
       type: String,

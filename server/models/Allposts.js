@@ -220,6 +220,26 @@ const GamePostSchema = new mongoose.Schema(
         message: "Session duration must be a whole number of minutes",
       },
     },
+    launch: {
+        status: {
+            type: String,
+            enum: [
+                "coming_soon",
+                "live"
+            ],
+            default: "live",
+        },
+
+        launchAt: {
+            type: Date,
+            default: null,
+        },
+
+        launchedAt: {
+            type: Date,
+            default: null,
+        },
+    },
     price: {
       type: Number,
       required: true,
@@ -393,6 +413,16 @@ const GamePostSchema = new mongoose.Schema(
         type: Date,
         default: null,
       },
+
+      requestWindowEndsAt: {
+        type: Date,
+        default: null
+    },
+
+    requestCount: {
+        type: Number,
+        default: 0
+    },
       lastCreditAddedAt: {
         type: Date,
         default: null,

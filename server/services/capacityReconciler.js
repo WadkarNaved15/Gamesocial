@@ -8,7 +8,7 @@ import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 const LEASE_LAMBDA_NAME =
   process.env.LEASE_LAMBDA_NAME || "leaseGpuWorker";
 
-const LOCK_TTL = 60000; // 10 sec
+const LOCK_TTL = 60000; // 60 sec
 
 const ACTIVE_SESSION_STATUSES = [
     "waiting",
@@ -70,7 +70,6 @@ async function calculateDemand(region) {
     .select("status instanceRegion")
     .lean();
 
-    console.log("Sessions in region:", sessions);
 
     return GameSession.countDocuments({
         instanceRegion: region,
