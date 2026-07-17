@@ -3,3 +3,4 @@ import { redisConfig } from "../config/redis.js";
 
 export const videoProcessingQueue = new Queue('VideoProcessing', { connection: redisConfig });
 
+ 
