@@ -106,14 +106,26 @@ async function fetchPostsByIds(ids, isAdmin = false) {
     };
   }
 
-  return AllPost.find(filter)
+  console.log("Searching Mongo with IDs:");
+  console.log(ids);
+  console.log("Mongo Filter:");
+  console.log(filter);
+
+  const docs = await AllPost.find(filter)
     .select(POST_PROJECTION)
     .populate("user", "username avatar")
-    .populate(
-      "mentions.user",
-      "username displayName avatar"
-    )
+    .populate("mentions.user", "username displayName avatar")
     .lean();
+
+  console.log(
+    "Mongo actually found:",
+    docs.map(d => ({
+      id: d._id.toString(),
+      type: d.type
+    }))
+  );
+
+  return docs;
 }
 
 async function fetchChronological(filter, limit, isAdmin = false) {

@@ -50,6 +50,13 @@ function Home() {
       setLoading(true);
 
       try {
+        console.log("FETCHING PAGE");
+        console.log({
+          reset,
+          loading,
+          hasMore,
+          nextCursor
+        });
         const res = await api.get(
           "/api/posts/fetch_posts",
           {
@@ -60,8 +67,11 @@ function Home() {
           }
         );
         const newPosts = res.data.posts;
+        console.log({
+          received: newPosts.length,
+          nextCursor: res.data.nextCursor
+        });
         const newCursor = res.data.nextCursor;
-        console.log("ADDED POSTS VIA HOME", newPosts);
         addPosts(newPosts);
         setMainPosts((prev) => {
           const all: PostProps[] = reset ? newPosts : [...prev, ...newPosts];
@@ -77,6 +87,7 @@ function Home() {
         if (!newCursor || newPosts.length === 0) {
           setHasMore(false);
         }
+        console.log("Setting hasMore =", !(!newCursor || newPosts.length === 0));
       } catch (err) {
         console.error("Failed to fetch posts:", err);
         setHasMore(false);
@@ -215,14 +226,14 @@ function Home() {
   }: {
     postId: string;
     postType:
-      | "normal_post"
-      | "model_post"
-      | "game_post"
-      | "canvas_article"
-      | "devlog_post"
-      | "ad_model_post"
-      | "media_ad_post"
-      | "pocket_update";
+    | "normal_post"
+    | "model_post"
+    | "game_post"
+    | "canvas_article"
+    | "devlog_post"
+    | "ad_model_post"
+    | "media_ad_post"
+    | "pocket_update";
     viewSource?: string;
   }) {
     trackEvent({

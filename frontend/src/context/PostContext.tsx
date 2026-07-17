@@ -102,7 +102,6 @@ export const PostProvider = ({
     const resetPosts = useCallback(() => {
         setPostsById({});
     }, []);
-    console.log("POST STORE", postsById);
     return (
         <PostContext.Provider
             value={{
