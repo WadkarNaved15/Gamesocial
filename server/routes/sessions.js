@@ -259,14 +259,20 @@ router.get("/status-by-token/:token", async (req, res) => {
 
     const stream = await cacheService.get(`stream:${token}`);
 
-    return res.json({
-      active: !!stream,
+    if (!stream) {
+      return res.status(404).json({
+        active: false,
+      });
+    }
+
+    return res.status(200).json({
+      active: true,
     });
   } catch (err) {
     console.error("Status by token error:", err);
 
     return res.status(500).json({
-      active: false,
+      error: "Internal server error",
     });
   }
 });
