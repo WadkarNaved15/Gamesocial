@@ -68,7 +68,7 @@ function formatFromFileName(fileName) {
  * Returns the created AllPost document.
  */
 async function runPublishTransaction(draft, creditPurchase, session) {
-
+  console.log(`Running publish transaction for draft ${draft._id}`);
   const isSponsoredFlow = draft.game.sponsorship.enabled && draft.game.sponsorship.status === "approved";
   const startCredits = isSponsoredFlow ? draft.game.sponsorship.initialCredits : draft.selectedCredits;
   const buildType =
