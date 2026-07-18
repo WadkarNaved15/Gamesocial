@@ -30,34 +30,23 @@ export function onUserCreated(userId) {
  *   onPostCreated(savedPost);
  */
 export function onPostCreated(post) {
-  console.log("================================");
-  console.log("Sending post to Gorse");
-  console.log("ID:", post._id.toString());
-  console.log("TYPE:", post.type);
-
+  console.log("========== GORSE ITEM ==========");
+  console.log("id:", post._id.toString());
+  console.log("type:", post.type);
+  console.log("labels:", buildLabels(post));
+  console.log("categories:", [post.type]);
   console.log("Sending post to Gorse:", post._id.toString());
   const labels = buildLabels(post);
   const categories = [post.type];
 
-  console.log("Labels:", labels);
-  console.log("Categories:", categories);
-
-  fireAndForget(async () => {
-    try {
-      const result = await upsertItem({
-        postId: post._id.toString(),
-        timestamp: post.createdAt || new Date(),
-        labels,
-        categories,
-      });
-
-      console.log("✅ Gorse insert success");
-      console.log(result);
-    } catch (err) {
-      console.error("❌ Gorse insert failed");
-      console.error(err);
-    }
-  });
+  fireAndForget(() =>
+    upsertItem({
+      postId: post._id.toString(),
+      timestamp: post.createdAt || new Date(),
+      labels,
+      categories,
+    })
+  );
 }
 
 /**

@@ -20,14 +20,15 @@ import crypto from "crypto";
 import Razorpay from "razorpay";
 import mongoose from "mongoose";
 
-import verifyToken  from "../middlewares/authMiddleware.js";
+import verifyToken from "../middlewares/authMiddleware.js";
 import requireAdmin from "../middlewares/adminMiddleware.js";
 import GamePostDraft from "../models/GamePostDraft.js";
 import CreditPurchase from "../models/CreditPurchase.js";
 import CreditAudit from "../models/CreditAudit.js";
 import AllPost from "../models/Allposts.js";
 import { publishGameQueue } from "../queues/publishGameQueue.js";
-import { videoProcessingQueue } from "../queues/videoQueue.js"; 
+import { onPostCreated } from "../services/gorse.hooks.js";
+import { videoProcessingQueue } from "../queues/videoQueue.js";
 import {
   processRazorpayPayment,
 } from "../services/razorpay/processPayment.js";
@@ -73,8 +74,8 @@ async function runPublishTransaction(draft, creditPurchase, session) {
   const buildType =
     draft.game.buildType ??
     (draft.buildFile.format === "exe"
-        ? "executable"
-        : "archive");
+      ? "executable"
+      : "archive");
 
   // 1. Create AllPost
   const [post] = await AllPost.create(
@@ -98,16 +99,16 @@ async function runPublishTransaction(draft, creditPurchase, session) {
             enabled: isSponsoredFlow,
 
             initialCredits: isSponsoredFlow
-                ? draft.game.sponsorship.initialCredits
-                : 0,
+              ? draft.game.sponsorship.initialCredits
+              : 0,
             sponsoredBy:
-                draft.game.sponsorship.reviewedBy,
+              draft.game.sponsorship.reviewedBy,
             sponsoredAt:
-                draft.game.sponsorship.reviewedAt,
+              draft.game.sponsorship.reviewedAt,
             notes:
-                draft.game.sponsorship.notes,
-        },
-                  videoDemo: draft.videoDemo ? {
+              draft.game.sponsorship.notes,
+          },
+          videoDemo: draft.videoDemo ? {
             name: draft.videoDemo.name,
             key: draft.videoDemo.key,
             url: draft.videoDemo.url,
@@ -115,7 +116,7 @@ async function runPublishTransaction(draft, creditPurchase, session) {
             optimizedKey: draft.videoDemo.optimizedKey,
             optimizedUrl: draft.videoDemo.optimizedUrl,
             thumbnailUrl: draft.videoDemo.thumbnailUrl,
-            processingStatus:draft.videoDemo.processingStatus || "pending",
+            processingStatus: draft.videoDemo.processingStatus || "pending",
             processingError: draft.videoDemo.processingError,
             processedAt: draft.videoDemo.processedAt,
           } : null,
@@ -215,17 +216,17 @@ router.post("/draft", verifyToken, async (req, res) => {
     if (draftId) {
       // Update existing draft (must belong to caller)
       draft = await GamePostDraft.findOne({
-          _id: draftId,
-          creator: req.user._id,
-          status: {
-              $in: ["draft", "uploading", "ready_for_payment"]
-          }
+        _id: draftId,
+        creator: req.user._id,
+        status: {
+          $in: ["draft", "uploading", "ready_for_payment"]
+        }
       });
 
       if (!draft) {
-          return res.status(404).json({
-              message: "Draft not found or not editable"
-          });
+        return res.status(404).json({
+          message: "Draft not found or not editable"
+        });
       }
 
       draft.description = description;
@@ -238,14 +239,14 @@ router.post("/draft", verifyToken, async (req, res) => {
       draft.game.runMode = game.runMode ?? draft.game.runMode;
       draft.game.buildType = game.buildType ?? draft.game.buildType;
       draft.game.maxSessionDurationMinutes =
-          game.maxSessionDurationMinutes ??
-          draft.game.maxSessionDurationMinutes;
+        game.maxSessionDurationMinutes ??
+        draft.game.maxSessionDurationMinutes;
 
       await draft.save();
     } else {
       draft = new GamePostDraft({
-          creator: req.user._id,
-          description,
+        creator: req.user._id,
+        description,
       });
 
       draft.game.gameName = game.gameName;
@@ -255,7 +256,7 @@ router.post("/draft", verifyToken, async (req, res) => {
       draft.game.engine = game.engine;
       draft.game.runMode = game.runMode;
       draft.game.maxSessionDurationMinutes =
-          game.maxSessionDurationMinutes;
+        game.maxSessionDurationMinutes;
 
       await draft.save();
     }
@@ -334,17 +335,17 @@ router.post("/draft/:draftId/video", verifyToken, async (req, res) => {
           $in: ["draft", "uploading", "ready_for_payment"],
         },
       },
-      { 
-        $set: { 
-          videoDemo: { 
-            name, 
-            key, 
-            url, 
-            size, 
+      {
+        $set: {
+          videoDemo: {
+            name,
+            key,
+            url,
+            size,
             processingStatus: "pending", // Trigger loading state on frontend
-            uploadedAt: new Date() 
-          } 
-        } 
+            uploadedAt: new Date()
+          }
+        }
       },
       { new: true }
     );
@@ -371,7 +372,7 @@ router.post("/draft/:draftId/video", verifyToken, async (req, res) => {
  * POST /game-posts/draft/:draftId/ready
  * Frontend calls this after uploads finish to advance status to ready_for_payment.
  */
-router.post("/draft/:draftId/ready", verifyToken , async (req, res) => {
+router.post("/draft/:draftId/ready", verifyToken, async (req, res) => {
   try {
     const draft = await GamePostDraft.findOne({
       _id: req.params.draftId,
@@ -390,7 +391,7 @@ router.post("/draft/:draftId/ready", verifyToken , async (req, res) => {
       return res.status(400).json({ message: "Start path is required" });
     }
 
-    
+
     draft.status = "ready_for_payment";
     await draft.save();
 
@@ -423,7 +424,7 @@ router.post("/create-payment-order", verifyToken, async (req, res) => {
 
     if (!draft) return res.status(404).json({ message: "Draft not found" });
 
-        if (draft.status === "payment_pending" && draft.razorpayOrderId) {
+    if (draft.status === "payment_pending" && draft.razorpayOrderId) {
       return res.json({
         orderId: draft.razorpayOrderId,
         amount: draft.amount,
@@ -627,13 +628,20 @@ export async function runPublishJob(draftId, creditPurchaseId) {
       );
     }
 
-    await runPublishTransaction(
+    const post = await runPublishTransaction(
       draft,
       creditPurchase,
       session
     );
 
     await session.commitTransaction();
+
+    console.log(
+      "[GORSE] Publishing game post:",
+      post._id.toString()
+    );
+
+    onPostCreated(post);
 
     console.log(
       `[publishJob] Game post published for draft ${draftId}`
@@ -687,8 +695,8 @@ router.post("/retry-publish/:draftId", verifyToken, requireAdmin, async (req, re
     if (!draft) return res.status(404).json({ message: "Failed draft not found" });
 
     if (draft.game.sponsorship.enabled) {
-        await publishGameQueue.add("publishGame", { draftId: draft._id.toString() }, { attempts: 5, backoff: { type: "exponential", delay: 10000 } });
-        return res.json({ message: "Publish retry queued for Sponsored Game", draftId: draft._id });
+      await publishGameQueue.add("publishGame", { draftId: draft._id.toString() }, { attempts: 5, backoff: { type: "exponential", delay: 10000 } });
+      return res.json({ message: "Publish retry queued for Sponsored Game", draftId: draft._id });
     }
 
     const creditPurchase = await CreditPurchase.findOne({
