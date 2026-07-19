@@ -244,6 +244,7 @@ router.post("/draft", verifyToken, async (req, res) => {
 
       await draft.save();
     } else {
+      console.log("Creating new draft");
       draft = new GamePostDraft({
         creator: req.user._id,
         description,
