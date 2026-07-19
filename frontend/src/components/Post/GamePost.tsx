@@ -116,7 +116,7 @@ const RepurchaseModal = ({
 
     setIsProcessing(true);
     try {
-      const orderRes = await fetch(`${BACKEND_URL}/api/allposts/${postId}/create-repurchase-order`, {
+      const orderRes = await fetch(`${BACKEND_URL}/api/gamePosts/${postId}/create-repurchase-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: "include",
@@ -135,7 +135,7 @@ const RepurchaseModal = ({
         order_id: order.orderId,
         handler: async (response: any) => {
           try {
-            const verifyRes = await fetch(`${BACKEND_URL}/api/allposts/${postId}/verify-repurchase-payment`, {
+            const verifyRes = await fetch(`${BACKEND_URL}/api/gamePosts/${postId}/verify-repurchase-payment`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: "include",
