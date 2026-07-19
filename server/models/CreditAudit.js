@@ -64,6 +64,10 @@ const CreditAuditSchema = new mongoose.Schema(
       sessionId: String,
       paymentId: String,
       invoiceId: String,
+      purchaseId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "CreditPurchase",
+      },
     },
   },
   {

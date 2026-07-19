@@ -923,17 +923,24 @@ router.post("/:postId/verify-repurchase-payment", verifyToken, async (req, res) 
     }
 
     // Create CreditPurchase explicitly linked to the post
-    const [creditPurchase] = await CreditPurchase.create([{
-      user: req.user._id,
-      gamePost: post._id,
-      credits: selectedCredits,
-      amount: Math.round((selectedCredits / 40) * 100),
-      currency: "USD",
-      paymentId: razorpayPaymentId,
-      status: "completed",
-      fulfillmentStatus: "fulfilled",
-      fulfillmentAttempts: 1
-    }], { session });
+    const [creditPurchase] = await CreditPurchase.create(
+      [{
+          creator: req.user._id,
+          gamePost: post._id,
+          draft: null,
+          creditsPurchased: selectedCredits,
+          amountPaid: Math.round((selectedCredits / 40) * 100),
+          currency: "USD",
+          paymentProvider: "razorpay",
+          razorpayOrderId,
+          paymentId: razorpayPaymentId,
+          status: "completed",
+          fulfillmentStatus: "fulfilled",
+          fulfillmentAttempts: 1,
+        },
+      ],
+      { session }
+    );
 
     // Create CreditAudit entry
     await CreditAudit.create([{
