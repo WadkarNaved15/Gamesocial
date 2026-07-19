@@ -900,7 +900,15 @@ router.post("/:postId/verify-repurchase-payment", verifyToken, async (req, res) 
     }
 
     // Capture payment on Razorpay
-    await processRazorpayPayment(razorpayPaymentId);
+    const payment = await getRazorpay().payments.fetch(razorpayPaymentId);
+
+    if (payment.status !== "captured") {
+      throw new Error("Payment not captured");
+    }
+
+    if (payment.amount !== Math.round((selectedCredits / 40) * 100)) {
+      throw new Error("Payment amount mismatch");
+    }
 
     // 2. Execute Updates in Transaction
     session.startTransaction();
