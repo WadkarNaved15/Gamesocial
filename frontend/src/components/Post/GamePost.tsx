@@ -18,6 +18,7 @@ import { getStreamEligibility } from "../../utils/streamEligibility";
 import type { StreamEligibility } from "../../utils/streamEligibility";
 import { trackEvent } from "../../utils/analytics";
 import { useAudio } from "../../context/AudioContext";
+import { loadRazorpay } from "../../utils/loadRazorpay";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
@@ -38,6 +39,13 @@ interface GamePostProps {
   _id: string;
   gamePost: any;
 }
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 
 // ─── SUB-COMPONENTS ─────────────────────────────────────────────────────────
 
@@ -125,6 +133,12 @@ const RepurchaseModal = ({
       
       if (!orderRes.ok) throw new Error("Failed to create order");
       const order = await orderRes.json();
+
+      await loadRazorpay();
+
+      if (!window.Razorpay) {
+        throw new Error("Failed to load Razorpay SDK");
+      }
 
       const options = {
         key: order.keyId,
