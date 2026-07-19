@@ -106,24 +106,13 @@ async function fetchPostsByIds(ids, isAdmin = false) {
     };
   }
 
-  console.log("Searching Mongo with IDs:");
-  console.log(ids);
-  console.log("Mongo Filter:");
-  console.log(filter);
+
 
   const docs = await AllPost.find(filter)
     .select(POST_PROJECTION)
     .populate("user", "username avatar")
     .populate("mentions.user", "username displayName avatar")
     .lean();
-
-  console.log(
-    "Mongo actually found:",
-    docs.map(d => ({
-      id: d._id.toString(),
-      type: d.type
-    }))
-  );
 
   return docs;
 }
@@ -190,11 +179,6 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
     }
   }
 
-  console.log("Parsed Cursor");
-  console.log({
-    gorseOffset,
-    allPostFilter,
-  });
 
   // ── Pocket query — always needed regardless of auth, start it immediately ────
   // const pocketPromise = PocketFeedEntry.find(pocketFilter)
@@ -226,13 +210,6 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
   let allPosts = [];
   let usedGorse = false;
 
-  console.log("\n================ FEED REQUEST ================");
-  console.log({
-    cursor,
-    limit,
-    userId,
-  });
-
   if (userId) {
     // ── Logged-in: Gorse + pockets in parallel ──────────────────────────────
     let gorseIds = [];
@@ -245,39 +222,21 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
         // we just want to give it a head start while Gorse resolves
       ]);
       gorseIds = ids ?? [];
-      console.log("Gorse returned IDs:");
-      console.log(gorseIds);
-      console.log("Count:", gorseIds.length);
     } catch (err) {
       console.warn("[Feed] Gorse unavailable, falling back to chronological:", err.message);
     }
 
     if (gorseIds.length > 0) {
       const safeIds = [...new Set(gorseIds)].filter((id) => id?.length === 24);
-      console.log("Safe IDs:");
-      console.log(safeIds);
-      console.log("Unique Count:", safeIds.length);
-
       if (safeIds.length > 0) {
         // Now fetch posts from Atlas — pockets are still running in parallel
         const docs = await fetchPostsByIds(safeIds, isAdmin);
 
-        console.log("Mongo returned docs:");
-        console.log(
-          docs.map((d) => ({
-            id: d._id.toString(),
-            type: d.type,
-          }))
-        );
 
-        console.log("Mongo Count:", docs.length);
 
         // Preserve Gorse's rank order using a Map (Atlas returns in _id order)
         const postMap = new Map(docs.map((p) => [p._id.toString(), p]));
         allPosts = safeIds.map((id) => postMap.get(id)).filter(Boolean);
-        console.log("Ordered Posts:");
-        console.log(allPosts.map((p) => p._id.toString()));
-        console.log("Ordered Count:", allPosts.length);
         usedGorse = true;
 
         // Fire-and-forget impression recording — never block the response
@@ -288,7 +247,6 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
 
     // Gorse returned nothing or failed — fall back to chronological
     if (!usedGorse) {
-      console.log("Using chronological fallback");
       // Pockets are already in-flight; fetch posts in parallel with them
       allPosts = await fetchChronological(allPostFilter, fetchLimit, isAdmin);
     }
@@ -298,10 +256,6 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
     // Fire the Atlas query right now so both run concurrently.
     [allPosts] = await Promise.all([
       fetchChronological(allPostFilter, fetchLimit, isAdmin),
-      console.log(
-        "Chronological posts:",
-        allPosts.map((p) => p._id.toString())
-      )
       // pocketPromise resolves on its own — collected below
     ]);
   }
@@ -352,17 +306,6 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
     .sort((a, b) => b._sortKey - a._sortKey)
     .slice(0, limit);
 
-  console.log("Merged posts:");
-  console.log(
-    merged.map((p) => ({
-      id: p._id.toString(),
-      cursorType: p._cursorType,
-      cursorVal: p._cursorVal,
-    }))
-  );
-
-  console.log("Merged Count:", merged.length);
-
   if (merged.length === 0) {
     return { posts: [], nextCursor: null };
   }
@@ -405,8 +348,5 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
   await enrichDemoConsumed(merged, userId);
 
   const posts = merged.map(({ _sortKey, _cursorType, _cursorVal, ...rest }) => rest);
-  console.log("Next Cursor:", nextCursor);
-  console.log("Returned Posts:", posts.length);
-  console.log("=============================================\n");
   return { posts, nextCursor };
 }

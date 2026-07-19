@@ -76,7 +76,7 @@ async function runPublishTransaction(draft, creditPurchase, session) {
     (draft.buildFile.format === "exe"
       ? "executable"
       : "archive");
-
+  console.log("Creating AllPost in public transaction");
   // 1. Create AllPost
   const [post] = await AllPost.create(
     [
@@ -560,6 +560,7 @@ router.post(
  * @param {ObjectId|string} creditPurchaseId
  */
 export async function runPublishJob(draftId, creditPurchaseId) {
+  console.log(`Publishing draft in runPublishJob: ${draftId}`);
   const lockedDraft = await GamePostDraft.findOneAndUpdate(
     {
       _id: draftId,
