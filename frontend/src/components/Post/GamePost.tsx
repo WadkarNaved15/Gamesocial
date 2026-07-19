@@ -94,17 +94,21 @@ const RequestSessionsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: (
   );
 };
 
-const RepurchaseModal = ({ 
-  isOpen, 
-  onClose, 
-  postId, 
+const RepurchaseModal = ({
+  isOpen,
+  onClose,
+  postId,
   maxSessionDuration,
+  gameName,
+  currentUser,
   onSuccess
-}: { 
-  isOpen: boolean, 
-  onClose: () => void, 
+}: {
+  isOpen: boolean,
+  onClose: () => void,
   postId: string,
   maxSessionDuration: number,
+  gameName: string,
+  currentUser: any,
   onSuccess: (addedCredits: number) => void
 }) => {
   const [dollars, setDollars] = useState<number>(100);
@@ -140,44 +144,75 @@ const RepurchaseModal = ({
         throw new Error("Failed to load Razorpay SDK");
       }
 
-      const options = {
-        key: order.keyId,
-        amount: order.amount,
-        currency: order.currency,
-        name: "Game Sessions",
-        description: "Repurchase game sessions",
-        order_id: order.orderId,
-        handler: async (response: any) => {
-          try {
-            const verifyRes = await fetch(`${BACKEND_URL}/api/gamePosts/${postId}/verify-repurchase-payment`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: "include",
-              body: JSON.stringify({
-                razorpayOrderId: response.razorpay_order_id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-                selectedCredits
-              })
-            });
+const options = {
+  key: order.keyId,
+  amount: order.amount,
+  currency: order.currency,
 
-            if (!verifyRes.ok) throw new Error("Verification failed");
-            
-            toast.success("Sessions repurchased successfully!");
-            onSuccess(selectedCredits);
-            onClose();
-          } catch (err) {
-            console.error(err);
-            toast.error("Payment verification failed. Please contact support.");
-          }
-        },
-        modal: {
-          ondismiss: function() {
-            setIsProcessing(false);
-            toast.info("Payment cancelled");
-          }
+  name: "Rigzer",
+  image: "/Logo.png",
+
+  description: `${selectedCredits} Credits — ${gameName}`,
+
+  order_id: order.orderId,
+
+  prefill: {
+    name: currentUser?.username || "",
+    email: currentUser?.email || "",
+  },
+
+  theme: {
+    color: "#3D7A6E",
+  },
+
+  handler: async (response: any) => {
+    try {
+      const verifyRes = await fetch(
+        `${BACKEND_URL}/api/gamePosts/${postId}/verify-repurchase-payment`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            razorpayOrderId: response.razorpay_order_id,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature,
+            selectedCredits,
+          }),
         }
-      };
+      );
+
+      if (!verifyRes.ok) {
+        throw new Error("Verification failed");
+      }
+
+      toast.success("Sessions repurchased successfully!");
+
+      setIsProcessing(false);
+
+      onSuccess(selectedCredits);
+
+      onClose();
+    } catch (err) {
+      console.error(err);
+
+      setIsProcessing(false);
+
+      toast.error(
+        "Payment verification failed. Please contact support."
+      );
+    }
+  },
+
+  modal: {
+    ondismiss: () => {
+      setIsProcessing(false);
+      toast.info("Payment cancelled");
+    },
+  },
+};
 
       // @ts-ignore
       const rzp = new window.Razorpay(options);
@@ -862,8 +897,10 @@ const PlayButton = () => {
         
 
       </article>
-              <RepurchaseModal 
+        <RepurchaseModal 
           isOpen={showRepurchase} 
+          gameName={gamePost?.gameName}
+          currentUser={currentUser}
           onClose={() => setShowRepurchase(false)}
           postId={_id}
           maxSessionDuration={maxSessionDuration}
