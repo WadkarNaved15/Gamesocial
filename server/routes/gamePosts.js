@@ -858,7 +858,7 @@ router.post("/:postId/create-repurchase-order", verifyToken, async (req, res) =>
     const order = await getRazorpay().orders.create({
       amount: amount,
       currency: "USD",
-      receipt: `repurchase_${post._id}_${Date.now()}`,
+      receipt: `r_${post._id}_${crypto.randomBytes(4).toString("hex")}`,
       notes: {
         postId: String(post._id),
         userId: String(req.user._id),
