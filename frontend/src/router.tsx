@@ -36,7 +36,7 @@ import SponsoredGamesAdmin from "./Pages/admin/SponsoredGames";
 
 //Error Handling
 import PageNotFound from "./Pages/ErrorHandling/PageNotFound";
-// import RouteErrorBoundary from "./RouteErrorBoundary";
+import RouteErrorBoundary from "./RouteErrorBoundary";
 
 // Components as pages
 import ModelViewer from "./components/ModelViewer";
@@ -49,7 +49,7 @@ import AdsPage from "./Pages/ads/AdsPage";
 
 export const router = createBrowserRouter([
   {
-    // errorElement: <RouteErrorBoundary />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       {
         element: <MainLayout />,
