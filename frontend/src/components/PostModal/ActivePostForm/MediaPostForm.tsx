@@ -308,7 +308,7 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
               onClick={() => fileInputRef.current?.click()}
               className="border border-dashed border-gray-200 dark:border-white/[0.1] rounded-2xl py-16 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-all group"
             >
-              <div className="p-3 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 text-[#3D7A6E] group-hover:scale-110 transition-transform">
+              <div className="p-3 rounded-full bg-white/10 dark:bg-white/20 text-white group-hover:scale-110 transition-transform">
                 <ImageIcon size={32} />
               </div>
               <p className="text-gray-500 font-medium">Add Photos or Videos (Up to 4)</p>

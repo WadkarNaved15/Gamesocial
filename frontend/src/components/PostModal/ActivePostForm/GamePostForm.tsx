@@ -103,22 +103,26 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
   const videoAbortRef = useRef<AbortController | null>(null);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── Derived ───────────────────────────────────────────────────────────────
-  const effectiveCredits = Math.floor(dollars * 4) * 10; // 1 dollar = 4 credits, multiplied by session duration
+  const effectiveCredits = Math.floor(dollars * 4) * 10;
   const totalDollars = effectiveCredits / 40;
 
   const canProceedToBuild =
     gameName.trim().length > 0 &&
     gameName.trim().length <= 120 &&
     description.trim().length > 0 &&
-    maxSessionDurationMinutes >= 1 &&
-    maxSessionDurationMinutes <= 120 &&
-    videoUpload !== null;
+    videoUpload !== null; // Removed maxSessionDurationMinutes check from here
+
   const isValidStartPath =
     startPath.trim().length > 0 &&
     !startPath.startsWith('/') &&
     !startPath.includes('..');
-  const canProceedToPayment = canProceedToBuild && !!asset && isValidStartPath;
+    
+  const canProceedToPayment = 
+    canProceedToBuild && 
+    !!asset && 
+    isValidStartPath &&
+    maxSessionDurationMinutes >= 1 && // Added it here instead
+    maxSessionDurationMinutes <= 120;
   const isSponsoredApproved = isSponsored && approvalStatus === 'approved';
   const canPayAndPublish =
     canProceedToPayment &&
@@ -1015,7 +1019,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
               onClick={() => !isLocked && setActiveTab(tab)}
               disabled={isLocked}
               className={`px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 -mb-px ${activeTab === tab
-                ? 'border-[#3D7A6E] text-[#3D7A6E]'
+                ? 'border-white text-white '
                 : isLocked
                   ? 'border-transparent text-gray-300 dark:text-white/[0.2] cursor-not-allowed'
                   : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
@@ -1031,6 +1035,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
       <div className="flex flex-col flex-1 overflow-y-auto custom-scrollbar">
 
         {/* ══ TAB: Details & Media ══ */}
+{/* ══ TAB: Details & Media ══ */}
         {activeTab === 'details' && (
           <div className="flex flex-1 p-6 gap-5">
             <div className="flex-shrink-0">
@@ -1052,66 +1057,6 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
                   rows={2}
                   onChange={setDescription}
                 />
-              </div>
-              <div className="space-y-2 pt-2">
-                <label className="text-[10px] font-bold text-[#3D7A6E] uppercase tracking-wider pl-1 flex items-center gap-1">
-                  Maximum Demo Duration
-                </label>
-
-                <div className="flex flex-col gap-3">
-                  {/* Quick Presets */}
-                  <div className="flex gap-2">
-                    {[10, 15, 30, 45, 60].map((mins) => (
-                      <button
-                        key={mins}
-                        type="button"
-                        onClick={() => setMaxSessionDurationMinutes(mins)}
-                        className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all border ${maxSessionDurationMinutes === mins
-                          ? 'bg-[#3D7A6E]/10 border-[#3D7A6E]/50 text-[#3D7A6E] dark:bg-[#3D7A6E]/20 dark:text-[#4A9384] shadow-sm'
-                          : 'bg-transparent border-gray-200 dark:border-white/[0.1] text-gray-500 hover:bg-gray-50 dark:hover:bg-white/[0.04]'
-                          }`}
-                      >
-                        {mins} min
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Custom Input with Suffix */}
-                  <div className="relative group">
-                    <input
-                      type="number"
-                      min={1}
-                      max={120}
-                      step={1}
-                      value={maxSessionDurationMinutes || ''}
-                      onKeyDown={(e) => {
-                        // Prevent decimal points, commas, scientific notation 'e', and signs
-                        if (['.', ',', 'e', 'E', '-', '+'].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                      }}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value, 10);
-                        setMaxSessionDurationMinutes(isNaN(val) ? 0 : val);
-                      }}
-                      onBlur={() => {
-                        if (maxSessionDurationMinutes < 1) setMaxSessionDurationMinutes(1);
-                        if (maxSessionDurationMinutes > 120) setMaxSessionDurationMinutes(120);
-                      }}
-                      className="w-full bg-gray-50 dark:bg-white/[0.02] text-black dark:text-white p-3 pr-20 rounded-xl border border-gray-200 dark:border-white/[0.1] focus:border-[#3D7A6E] focus:ring-1 focus:ring-[#3D7A6E] outline-none transition-all font-mono text-sm"
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 uppercase tracking-wider pointer-events-none">
-                      Minutes
-                    </span>
-                  </div>
-                </div>
-
-                <div className="px-3 py-2 bg-[#3D7A6E]/5 dark:bg-[#3D7A6E]/10 border border-[#3D7A6E]/20 dark:border-[#3D7A6E]/30 rounded-lg mt-1">
-                  <p className="text-[10px] text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
-                    Players can play for up to <strong className="text-[#2F5E55] dark:text-[#4A9384]">{maxSessionDurationMinutes} minutes</strong>.
-                    The demo ends automatically if this limit is reached or if remaining credits run out.
-                  </p>
-                </div>
               </div>
 
               {/* Video Trailer */}
@@ -1145,7 +1090,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
                     onClick={() => videoInputRef.current?.click()}
                     className="border border-dashed border-gray-200 dark:border-white/[0.1] rounded-2xl py-16 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-all group"
                   >
-                    <div className="p-3 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 text-[#3D7A6E] group-hover:scale-110 transition-transform">
+                    <div className="p-3 rounded-full bg-white/10 dark:bg-white/20 text-white group-hover:scale-110 transition-transform">
                       <Video size={32} />
                     </div>
                     <div className="text-center">
@@ -1210,7 +1155,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
               {asset ? (
                 <div className="p-4 bg-gray-50 dark:bg-white/[0.04] rounded-xl border border-[#3D7A6E]/30 dark:border-[#3D7A6E]/30">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 bg-[#3D7A6E]/20 dark:bg-[#3D7A6E]/30 text-[#3D7A6E] dark:text-[#4A9384] rounded-lg">
+                    <div className="p-3 bg-white/10 dark:bg-white/20 text-white rounded-lg">
                       <FileArchive size={20} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1229,7 +1174,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
                   onClick={() => fileInputRef.current?.click()}
                   className="border border-dashed border-gray-200 dark:border-white/[0.1] rounded-2xl py-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-all group"
                 >
-                  <div className="p-4 rounded-full bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 text-[#3D7A6E] group-hover:scale-110 transition-transform">
+                  <div className="p-4 rounded-full bg-white/10 dark:bg-white/20 text-white group-hover:scale-110 transition-transform">
                     <Upload size={24} />
                   </div>
                   <div className="text-center">
@@ -1251,83 +1196,148 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
                 onChange={e => setStartPath(e.target.value)}
                 className="w-full bg-gray-50 dark:bg-white/[0.02] text-black dark:text-white p-3 rounded-xl border border-gray-200 dark:border-white/[0.1] focus:border-[#3D7A6E] focus:ring-1 focus:ring-[#3D7A6E] outline-none transition-all font-mono text-sm"
               />
-              <div className="px-3 py-2 bg-[#3D7A6E]/5 dark:bg-[#3D7A6E]/10 border border-[#3D7A6E]/20 dark:border-[#3D7A6E]/30 rounded-lg mt-1 space-y-1">
+              <div className="px-3 py-2 bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.1] rounded-xl mt-1">
                 <p className="text-[10px] text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
                   Path inside your archive. <strong className="text-[#2F5E55] dark:text-[#4A9384]">No leading /</strong>
                 </p>
                 <div className="text-[10px] text-gray-500 dark:text-gray-400 space-y-2 mt-1.5">
                   <p>
                     <span className="font-bold text-gray-600 dark:text-gray-400">In a folder:</span>
-                    <span className="ml-2 text-[#2F5E55] dark:text-[#4A9384] font-mono font-bold bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 border border-[#3D7A6E]/20 px-2 py-0.5 rounded">MyGame_Build/Game.exe</span>
+                    <span className="ml-2 text-[#2F5E55] dark:text-[#4A9384] font-mono font-bold px-2 py-0.5 ">MyGame_Build/Game.exe</span>
                   </p>
                   <p>
                     <span className="font-bold text-gray-600 dark:text-gray-400">At root:</span>
-                    <span className="ml-2 text-[#2F5E55] dark:text-[#4A9384] font-mono font-bold bg-[#3D7A6E]/10 dark:bg-[#3D7A6E]/20 border border-[#3D7A6E]/20 px-2 py-0.5 rounded">Game.exe</span>
+                    <span className="ml-2 text-[#2F5E55] dark:text-[#4A9384] font-mono font-bold px-2 py-0.5 ">Game.exe</span>
                   </p>
                 </div>
+              </div>
+            </section>
+
+<section className="space-y-2">
+              <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider pl-1">
+                Maximum Demo Duration
+              </label>
+
+              <div className="flex flex-col gap-3">
+                {/* Quick Presets */}
+                <div className="flex gap-2">
+                  {[10, 15, 30, 45, 60].map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => setMaxSessionDurationMinutes(mins)}
+                      className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all border ${maxSessionDurationMinutes === mins
+                        ? 'bg-white border-gray-200 text-black dark:bg-white dark:border-white dark:text-black shadow-sm'
+                        : 'bg-transparent border-gray-200 dark:border-white/[0.1] text-gray-500 hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                        }`}
+                    >
+                      {mins} min
+                    </button>
+                  ))}
+                </div>
+
+                {/* Custom Input with Suffix */}
+                <div className="relative group">
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    step={1}
+                    value={maxSessionDurationMinutes || ''}
+                    onKeyDown={(e) => {
+                      // Prevent decimal points, commas, scientific notation 'e', and signs
+                      if (['.', ',', 'e', 'E', '-', '+'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      setMaxSessionDurationMinutes(isNaN(val) ? 0 : val);
+                    }}
+                    onBlur={() => {
+                      if (maxSessionDurationMinutes < 1) setMaxSessionDurationMinutes(1);
+                      if (maxSessionDurationMinutes > 120) setMaxSessionDurationMinutes(120);
+                    }}
+                    className="w-full bg-gray-50 dark:bg-white/[0.02] text-gray-900 dark:text-white p-3 pr-20 rounded-xl border border-gray-200 dark:border-white/[0.1] focus:border-[#3D7A6E] focus:ring-1 focus:ring-[#3D7A6E] outline-none transition-all font-mono text-sm"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider pointer-events-none">
+                    Minutes
+                  </span>
+                </div>
+              </div>
+
+              {/* Matched bg, border, and border-radius to the custom input above it */}
+              <div className="px-3 py-2 bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.1] rounded-xl mt-1">
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
+                  Players can play for up to <strong className="text-gray-900 dark:text-white">{maxSessionDurationMinutes} minutes</strong>.
+                  The demo ends automatically if this limit is reached or if remaining credits run out.
+                </p>
               </div>
             </section>
           </div>
         )}
 
         {/* ══ TAB: Payment ══ */}
-        {activeTab === 'payment' && (
-          <div className="p-6 flex flex-col gap-5">
+{activeTab === 'payment' && (
+          <div className="p-6 flex flex-col gap-6">
             {isSponsoredApproved ? (
-              // NEW: Sponsored View
-              <section className="rounded-2xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 p-6 md:p-8 space-y-6">
-                <div className="text-center">
-                  <div className="inline-flex p-4 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 mb-3">
-                    <Gift size={40} />
-                  </div>
-                  <h3 className="text-xl font-bold text-emerald-800 dark:text-emerald-400">Admin Sponsored Game</h3>
-                  <p className="text-sm mt-2 text-emerald-700 dark:text-emerald-500">
-                    Rigzer has approved and sponsored this post. You can publish immediately without any payment!
+              // Clean, minimal Sponsored View
+              <section className="rounded-2xl border border-gray-200 dark:border-white/[0.1] bg-gray-50 dark:bg-white/[0.02] p-6 space-y-5">
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
+                    Admin Sponsored Post
+                  </h3>
+                  <p className="text-[11px] mt-1 text-gray-500 dark:text-gray-400">
+                    Rigzer has approved and sponsored this post. You can publish immediately without any payment.
                   </p>
                 </div>
 
-                <div className="bg-white dark:bg-black/20 rounded-xl p-5 space-y-3 shadow-sm border border-emerald-100 dark:border-emerald-900/30">
+                <div className="bg-white dark:bg-black/20 rounded-xl p-5 space-y-3 border border-gray-200 dark:border-white/[0.06]">
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500 dark:text-gray-400 font-medium">Sponsored Credits</span>
-                    <span className="font-bold text-black dark:text-white">{sponsoredCredits}</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{sponsoredCredits}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500 dark:text-gray-400 font-medium">Gameplay Time</span>
-                    <span className="font-bold text-black dark:text-white">{playableMinutes}</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{playableMinutes} min</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500 dark:text-gray-400 font-medium">Demo Duration</span>
-                    <span className="font-bold text-black dark:text-white">{maxSessionDurationMinutes} min</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{maxSessionDurationMinutes} min</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-500 dark:text-gray-400 font-medium">Estimated Sessions</span>
-                    <span className="font-bold text-black dark:text-white">{estimatedSessions} <span className="text-gray-400 text-xs font-normal">({maxSessionDurationMinutes} min each)</span></span>
+                    <span className="font-bold text-gray-900 dark:text-white">{estimatedSessions} <span className="text-gray-400 text-xs font-normal">({maxSessionDurationMinutes} min each)</span></span>
                   </div>
-                  <div className="border-t border-gray-100 dark:border-white/[0.06] pt-3 mt-1 flex justify-between items-center text-sm">
+                  <div className="border-t border-gray-200 dark:border-white/[0.06] pt-3 mt-1 flex justify-between items-center text-sm">
                     <span className="font-bold text-gray-500 dark:text-gray-400">Payment</span>
-                    <span className="font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Sponsored by Rigzer</span>
+                    <span className="font-bold text-gray-900 dark:text-white uppercase tracking-wide">Sponsored</span>
                   </div>
                 </div>
               </section>
             ) : (
-              <section className="rounded-2xl border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-black/20 overflow-hidden">
-                <div className="px-5 pt-5 pb-4 border-b border-gray-100 dark:border-white/[0.06]">
-                  <div className="flex items-center gap-2 mb-1">
-                    <CreditCard size={16} className="text-[#3D7A6E]" />
-                    <span className="text-sm font-bold text-black dark:text-white">Purchase Credits</span>
+              // Clean Purchase View with Restored Header
+              <section className="rounded-2xl border border-gray-200 dark:border-white/[0.1] bg-gray-50 dark:bg-transparent overflow-hidden">
+                
+                {/* Restored Header */}
+                <div className="px-5 pt-5 pb-4 border-b border-gray-200 dark:border-white/[0.08]">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <CreditCard size={18} className="text-gray-900 dark:text-white" />
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white tracking-wide">Purchase Credits</h3>
                   </div>
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
                     1 Dollar = 40 Credits. 1 Credit = 1 Minute. Estimated sessions depend on the demo duration you selected.
                   </p>
                 </div>
 
-                <div className="p-5 space-y-5">
+                <div className="p-5 space-y-6">
+                  {/* Amount Input */}
                   <div>
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">
+                    <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 block">
                       Enter Dollars (Min $100, Max $5000)
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-lg">$</span>
                       <input
                         type="number"
                         min={100}
@@ -1335,12 +1345,13 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
                         step={0.25}
                         value={dollars || ''}
                         onChange={e => setDollars(Number(e.target.value))}
-                        className="w-full text-sm bg-white dark:bg-white/[0.04] text-black dark:text-white py-3 pl-8 pr-3 rounded-xl border border-gray-200 dark:border-white/[0.1] focus:border-[#3D7A6E] focus:ring-1 focus:ring-[#3D7A6E] outline-none transition-all"
+                        className="w-full text-base font-medium bg-white dark:bg-white/[0.03] text-gray-900 dark:text-white py-3.5 pl-10 pr-4 rounded-xl border border-gray-200 dark:border-white/[0.1] focus:border-[#3D7A6E] focus:ring-1 focus:ring-[#3D7A6E] outline-none transition-all shadow-sm"
                       />
                     </div>
                   </div>
 
-                  <div>
+                  {/* Range Slider */}
+                  <div className="px-1">
                     <input
                       type="range"
                       min={100}
@@ -1348,43 +1359,40 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
                       step={0.25}
                       value={dollars}
                       onChange={e => setDollars(Number(e.target.value))}
-                      className="w-full accent-[#3D7A6E]"
+                      className="w-full accent-[#3D7A6E] h-2 bg-gray-200 dark:bg-white/[0.1] rounded-lg appearance-none cursor-pointer"
                     />
-                    <div className="flex justify-between text-[10px] text-gray-400 font-bold mt-1">
+                    <div className="flex justify-between text-[11px] text-gray-400 dark:text-gray-500 font-bold mt-3">
                       <span>$100</span>
                       <span>$5,000</span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2 pt-1">
-                    <div className="rounded-xl bg-white dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] p-2 text-center flex flex-col justify-center">
-                      <div className="text-lg font-black text-black dark:text-white leading-none">{finalCredits || '0'}</div>
-                      <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-1">Credits</div>
+                  {/* Neutral Stats Grid */}
+                  <div className="grid grid-cols-3 gap-3 pt-2">
+                    <div className="rounded-xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] p-4 text-center flex flex-col justify-center shadow-sm">
+                      <div className="text-lg font-black text-gray-900 dark:text-white leading-none">{finalCredits || '0'}</div>
+                      <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-2">Credits</div>
                     </div>
-                    <div className="rounded-xl bg-white dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] p-2 text-center flex flex-col justify-center">
-                      <div className="text-lg font-black text-black dark:text-white leading-none">{playableMinutes || '0'}</div>
-                      <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-1">Playable (min)</div>
+                    <div className="rounded-xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] p-4 text-center flex flex-col justify-center shadow-sm">
+                      <div className="text-lg font-black text-gray-900 dark:text-white leading-none">{playableMinutes || '0'}</div>
+                      <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-2">Mins</div>
                     </div>
-                    <div className="rounded-xl bg-white dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] p-2 text-center flex flex-col justify-center">
-                      <div className="text-lg font-black text-[#3D7A6E] leading-none">{estimatedSessions || '0'}</div>
-                      <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-1 leading-tight">Sessions<br />({maxSessionDurationMinutes}m)</div>
-                    </div>
-                    <div className="rounded-xl bg-white dark:bg-white/[0.04] border border-gray-100 dark:border-white/[0.06] p-2 text-center flex flex-col justify-center">
-                      <div className="text-lg font-black text-emerald-500 leading-none">${totalDollars.toFixed(0) || '0'}</div>
-                      <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-1">Total</div>
+                    <div className="rounded-xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] p-4 text-center flex flex-col justify-center shadow-sm">
+                      <div className="text-lg font-black text-gray-900 dark:text-white leading-none">{estimatedSessions || '0'}</div>
+                      <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-2 leading-tight">Sessions <span className="opacity-70">({maxSessionDurationMinutes}m)</span></div>
                     </div>
                   </div>
                 </div>
               </section>
             )}
 
-            {/* Purchase Summary hidden completely when sponsored */}
+            {/* Clean Purchase Summary */}
             {!isSponsoredApproved && (
-              <section className="rounded-2xl border border-gray-200 dark:border-white/[0.06] overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100 dark:border-white/[0.06] bg-gray-50 dark:bg-white/[0.02]">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Purchase Summary</p>
+              <section className="rounded-2xl border border-gray-200 dark:border-white/[0.1] overflow-hidden bg-gray-50 dark:bg-white/[0.02]">
+                <div className="px-5 py-4 border-b border-gray-200 dark:border-white/[0.08]">
+                  <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Purchase Summary</p>
                 </div>
-                <div className="px-5 py-4 space-y-3 bg-white dark:bg-black/20">
+                <div className="px-5 py-5 space-y-3.5">
                   {[
                     ['Credits Purchased', finalCredits ? `${finalCredits} credits` : '—'],
                     ['Rate', '40 credits = $1'],
@@ -1393,32 +1401,33 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
                     ['Payment Method', 'Razorpay'],
                   ].map(([label, value]) => (
                     <div key={label} className="flex justify-between items-center">
-                      <span className="text-xs text-gray-500">{label}</span>
-                      <span className="text-xs font-bold text-black dark:text-white">{value}</span>
+                      <span className="text-[13px] text-gray-500 dark:text-gray-400">{label}</span>
+                      <span className="text-[13px] font-bold text-gray-900 dark:text-white">{value}</span>
                     </div>
                   ))}
-                  <div className="border-t border-gray-100 dark:border-white/[0.06] pt-3 flex justify-between items-center">
-                    <span className="text-sm font-bold text-black dark:text-white">Total</span>
+                  <div className="border-t border-gray-200 dark:border-white/[0.08] pt-4 mt-2 flex justify-between items-center">
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">Total</span>
                     <span className="text-lg font-black text-[#3D7A6E]">${totalDollars.toFixed(2) || '—'}</span>
                   </div>
                 </div>
               </section>
             )}
 
+            {/* Elevated Information Box */}
             {!isSponsoredApproved && (
-              <div className="flex gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30">
-                <Zap size={16} className="text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
-                  Your game will go live immediately after payment. Credits are non-refundable once your post is published.
-                  If publishing fails after payment, your credits are safe and our team will resolve it.
+              <div className="flex gap-3 p-4 rounded-xl bg-gray-100 dark:bg-white/[0.06] border border-gray-300 dark:border-white/[0.15] shadow-sm">
+                <Info size={18} className="text-gray-600 dark:text-gray-300 shrink-0 mt-0.5" />
+                <p className="text-xs text-gray-800 dark:text-gray-200 leading-relaxed">
+                  Your game will go live immediately after payment. <span className="font-bold text-black dark:text-white">Credits are non-refundable</span> once your post is published. If publishing fails after payment, your credits are safe and our team will resolve it.
                 </p>
               </div>
             )}
 
+            {/* Minimal Error Box */}
             {draftStatus === 'failed' && (
-              <div className="flex gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
+              <div className="flex gap-3 p-4 rounded-xl bg-red-50/50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 shadow-sm">
                 <AlertTriangle size={16} className="text-red-500 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-red-700 dark:text-red-400 leading-relaxed">
+                <p className="text-[11px] text-red-600 dark:text-red-400 leading-relaxed">
                   Publishing encountered an error, but your payment was received. For assistance, please contact our support team.
                 </p>
               </div>
