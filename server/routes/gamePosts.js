@@ -32,6 +32,10 @@ import { videoProcessingQueue } from "../queues/videoQueue.js";
 import {
   processRazorpayPayment,
 } from "../services/razorpay/processPayment.js"; 
+import GameSessionRequest from "../models/GameSessionRequest.js";
+import DemoConsumption from "../models/DemoConsumption.js";
+import { sendEventToQueue } from "../utils/sendEventToQueue.js";
+import PostAnalytics from "../models/PostAnalytics.js";
 
 const router = express.Router();
 
@@ -139,6 +143,7 @@ async function runPublishTransaction(draft, creditPurchase, session) {
             totalSessions: 0,
             totalSessionTimeMs: 0,
             uniquePlayers: 0,
+            sessionRequests: 0,
           },
         },
       },
@@ -985,7 +990,36 @@ router.post("/:postId/verify-repurchase-payment", verifyToken, async (req, res) 
       { session }
     );
 
+    const notifiedAt = new Date();
+
+const pendingRequests = await GameSessionRequest.find({
+  gamePost: post._id,
+  notifiedAt: null,
+}).session(session);
+
+await GameSessionRequest.updateMany(
+  {
+    gamePost: post._id,
+    notifiedAt: null,
+  },
+  {
+    $set: { notifiedAt },
+  },
+  { session }
+);
+
     await session.commitTransaction();
+
+    await Promise.all(
+      pendingRequests.map((request) =>
+        sendEventToQueue({
+          type: "GAME_SESSIONS_AVAILABLE",
+          actorId: req.user._id.toString(),
+          recipientId: request.requestedBy.toString(),
+          postId: post._id.toString(),
+        })
+      )
+    );
 
     res.json({ 
       message: "Repurchase successful", 
@@ -1000,5 +1034,194 @@ router.post("/:postId/verify-repurchase-payment", verifyToken, async (req, res) 
     session.endSession();
   }
 });
+
+
+// Request Sessions
+
+router.post("/:postId/request-session", verifyToken, async (req, res) => {
+  const session = await mongoose.startSession();
+
+  try {
+    const { message = "" } = req.body;
+
+    const post = await AllPost.findOne({
+      _id: req.params.postId,
+      type: "game_post",
+    });
+
+    if (!post) {
+      return res.status(404).json({
+        message: "Game not found.",
+      });
+    }
+
+    if (String(post.user) === String(req.user._id)) {
+      return res.status(400).json({
+        message: "You cannot request sessions for your own game.",
+      });
+    }
+
+    if (post.gamePost.creditBudget.remainingCredits > 0) {
+      return res.status(400).json({
+        message: "This game still has available sessions.",
+      });
+    }
+
+    const alreadyPlayed = await DemoConsumption.exists({
+      user: req.user._id,
+      post: post._id,
+    });
+
+    if (alreadyPlayed) {
+      return res.status(400).json({
+        message: "You have already played this game.",
+      });
+    }
+
+    const existing = await GameSessionRequest.findOne({
+      gamePost: post._id,
+      requestedBy: req.user._id,
+    });
+
+    if (existing) {
+      return res.status(400).json({
+        message: "You have already requested more sessions.",
+      });
+    }
+
+    session.startTransaction();
+
+    const [request] = await GameSessionRequest.create(
+      [
+        {
+          gamePost: post._id,
+          creator: post.user,
+          requestedBy: req.user._id,
+          message: message.trim(),
+        },
+      ],
+      { session }
+    );
+
+    await AllPost.updateOne(
+      { _id: post._id },
+      {
+        $inc: {
+          "gamePost.gameMetrics.sessionRequests": 1,
+        },
+      },
+      { session }
+    );
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    const result = await PostAnalytics.updateOne(
+      { post: post._id },
+      {
+        $inc: {
+          "lifetime.sessionRequests": 1,
+          "dailyStats.$[day].sessionRequests": 1,
+        },
+      },
+      {
+        session,
+        arrayFilters: [{ "day.date": today }],
+      }
+    );
+
+    if (result.modifiedCount === 0) {
+      await PostAnalytics.updateOne(
+        { post: post._id },
+        {
+          $inc: {
+            "lifetime.sessionRequests": 1,
+          },
+          $push: {
+            dailyStats: {
+              date: today,
+
+              views: 0,
+              uniqueViews: 0,
+              watchTimeMs: 0,
+
+              likes: 0,
+              comments: 0,
+              shares: 0,
+              saves: 0,
+
+              demoConsumptions: 0,
+
+              sessions: 0,
+              sessionPlayTimeMs: 0,
+              uniquePlayers: 0,
+
+              sessionRequests: 1,
+            },
+          },
+        },
+        { session }
+      );
+    }
+
+    await session.commitTransaction();
+    await session.endSession();
+
+    // Send notification only after the database changes are committed.
+    await sendEventToQueue({
+      type: "GAME_SESSION_REQUEST",
+      actorId: req.user._id.toString(),
+      recipientId: post.user.toString(),
+      postId: post._id.toString(),
+    });
+
+    res.json({
+      success: true,
+      sessionRequest: {
+        hasRequested: true,
+        requestedAt: request.createdAt,
+        message: request.message,
+        notifiedAt: request.notifiedAt,
+      },
+    });
+  } catch (err) {
+    await session.abortTransaction();
+    await session.endSession();
+
+    console.error(err);
+
+    res.status(500).json({
+      message: "Failed to submit request.",
+    });
+  }
+});
+
+router.get("/:postId/request-session/me", verifyToken, async (req, res) => {
+  try {
+    const request = await GameSessionRequest.findOne({
+      gamePost: req.params.postId,
+      requestedBy: req.user._id,
+    }).select("createdAt message notifiedAt");
+
+    if (!request) {
+      return res.json({
+        hasRequested: false,
+      });
+    }
+
+    res.json({
+      hasRequested: true,
+      requestedAt: request.createdAt,
+      message: request.message,
+      notifiedAt: request.notifiedAt,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "Failed to fetch request.",
+    });
+  }
+});
+
+
 
 export default router;

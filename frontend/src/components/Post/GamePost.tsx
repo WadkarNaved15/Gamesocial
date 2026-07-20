@@ -46,53 +46,7 @@ declare global {
   }
 }
 
-
 // ─── SUB-COMPONENTS ─────────────────────────────────────────────────────────
-
-const RequestSessionsModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
-      <div 
-        role="dialog" 
-        aria-modal="true"
-        className="bg-[#121212] border border-white/10 rounded-3xl p-6 w-full max-w-md shadow-2xl relative overflow-hidden"
-      >
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500" />
-        
-        <div className="flex flex-col items-center text-center mt-4">
-          <div className="w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-4">
-            <Users className="text-blue-400" size={24} />
-          </div>
-          <h2 className="text-xl font-bold text-white mb-2">Request More Sessions</h2>
-          <p className="text-sm text-gray-400 mb-6 leading-relaxed">
-            This game has run out of available sessions. You can request additional sessions from the creator. <br/><br/>
-            <span className="text-blue-400 font-medium">This feature is coming soon.</span>
-          </p>
-        </div>
-
-        <div className="flex gap-3 w-full">
-          <button 
-            onClick={onClose}
-            className="flex-1 px-4 py-3 rounded-xl border border-white/10 text-white font-medium hover:bg-white/5 transition-colors focus:outline-none focus:ring-2 focus:ring-white/20"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={() => {
-              onClose();
-              toast.info("Request Sessions feature is coming soon.");
-            }}
-            className="flex-1 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-          >
-            Request Sessions
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const RepurchaseModal = ({
   isOpen,
@@ -236,11 +190,11 @@ const options = {
         aria-modal="true"
         className="bg-[#121212] border border-white/10 rounded-3xl p-6 w-full max-w-md shadow-2xl relative overflow-hidden"
       >
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
+        {/* <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500" /> */}
         
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <CreditCard size={20} className="text-emerald-400" />
+            <CreditCard size={20} className="text-white" />
             Repurchase Credits
           </h2>
           <button onClick={onClose} disabled={isProcessing} className="text-gray-400 hover:text-white transition-colors">
@@ -283,7 +237,7 @@ const options = {
               value={dollars}
               onChange={e => setDollars(Number(e.target.value))}
               disabled={isProcessing}
-              className="w-full accent-emerald-500 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer disabled:opacity-50"
+              className="w-full accent-white h-2 bg-white/10 rounded-lg appearance-none cursor-pointer disabled:opacity-50"
             />
             <div className="flex justify-between text-[11px] text-gray-500 font-bold mt-3">
               <span>$100</span>
@@ -327,10 +281,10 @@ const options = {
           >
             Cancel
           </button>
-          <button 
+        <button 
             onClick={handlePayment}
             disabled={isProcessing || dollars < 100}
-            className="flex-1 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-3 rounded-xl bg-white hover:bg-gray-100 text-black font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isProcessing ? "Processing..." : "Continue Payment"}
           </button>
@@ -365,9 +319,7 @@ const GamePost: React.FC<GamePostProps> = ({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Modals state
   const [showRepurchase, setShowRepurchase] = useState(false);
-  const [showRequestSessions, setShowRequestSessions] = useState(false);
   
   const { isMuted, toggleMute, audioFocusId, setAudioFocusId } = useAudio();
   const { user: currentUser } = useUser();
@@ -377,7 +329,12 @@ const GamePost: React.FC<GamePostProps> = ({
 
   // Local state for optimistic updates
   const [localRemainingCredits, setLocalRemainingCredits] = useState(gamePost.creditBudget?.remainingCredits || 0);
-  
+
+  // Optimistic Request sessions state
+  const [hasRequested, setHasRequested] = useState(gamePost?.sessionRequest?.hasRequested || false);
+  const [requestCount, setRequestCount] = useState(gamePost.gameMetrics?.sessionRequests || 0);
+  const [requestLoading, setRequestLoading] = useState(false);
+
   useEffect(() => {
     setLocalRemainingCredits(gamePost.creditBudget?.remainingCredits || 0);
   }, [gamePost.creditBudget?.remainingCredits]);
@@ -418,10 +375,10 @@ const GamePost: React.FC<GamePostProps> = ({
   const thumbnailUrl = videoDemo?.thumbnailUrl;
   const hasVideo = !!videoUrl;
 
-  // ─── SESSION CALCULATIONS (NO HARDCODED ASSUMPTIONS) ───────────────────────
+  // ─── SESSION CALCULATIONS ───────────────────────
   const usedCredits = gamePost.creditBudget?.usedCredits || 0;
   const totalCredits = usedCredits + localRemainingCredits;
-  const maxSessionDuration = gamePost.maxSessionDurationMinutes || 1; 
+  const maxSessionDuration = gamePost.maxSessionDurationMinutes || 10; 
   const possibleSessions = Math.floor(totalCredits / maxSessionDuration);
   const completedSessions = gamePost.gameMetrics?.totalSessions || 0;
   const isExhausted = localRemainingCredits === 0;
@@ -482,6 +439,33 @@ const GamePost: React.FC<GamePostProps> = ({
     }
   };
 
+  const handleRequestSession = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (requestLoading || hasRequested) return;
+
+    setRequestLoading(true);
+    setHasRequested(true);
+    setRequestCount((prev: number) => prev + 1);
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/gamePosts/${_id}/request-session`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to request sessions");
+      }
+    } catch (err: any) {
+      setHasRequested(false);
+      setRequestCount((prev: number) => prev - 1);
+      toast.error(err.message);
+    } finally {
+      setRequestLoading(false);
+    }
+  };
+
   const handleDelete = async (postId: string) => {
     try {
       setIsDeleting(true);
@@ -530,32 +514,6 @@ const GamePost: React.FC<GamePostProps> = ({
   }, []);
 
 const PlayButton = () => {
-  if (isExhausted) {
-    if (isOwner) return null;
-
-    return (
-<button
-  onClick={(e) => {
-    e.stopPropagation();
-    setShowRequestSessions(true);
-  }}
-  style={{
-    background: "linear-gradient(to bottom right, #2563eb, #1e3a8a)",
-  }}
-  className="text-white px-3 py-1.5 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 shrink-0 active:scale-[0.98]"
->
-  <div className="flex flex-col items-start leading-tight">
-    <span className="font-semibold text-xs">
-      Request Sessions
-    </span>
-
-    <span className="text-[7px] font-normal text-white/50 leading-none mt-0.5">
-      Credits exhausted
-    </span>
-  </div>
-</button>
-    );
-  }
 
   if (hasPlayedDemo) {
     return (
@@ -573,6 +531,64 @@ const PlayButton = () => {
         <span className="font-semibold text-xs">
           Demo Played
         </span>
+      </button>
+    );
+  }
+
+  if (isExhausted) {
+    if (isOwner) return null;
+
+    if (hasRequested) {
+        return (
+            <button
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                    background:
+                        "linear-gradient(to bottom right, #1d4ed8, #1e3a8a)",
+                }}
+                className="text-white px-3 py-2 rounded-2xl shadow-lg hover:shadow-xl transition-all shrink-0 cursor-default flex items-center gap-1.5"
+            >
+                <div className="flex flex-col items-start leading-tight">
+                    <span className="font-semibold text-xs">
+                        ✓ Requested
+                    </span>
+                    <span className="text-[7px] font-normal text-white/50 leading-none mt-0.5">
+                        Waiting for creator
+                    </span>
+                </div>
+                <div className="flex items-center border-l border-white/30 pl-2 ml-1.5 opacity-80 gap-1">
+                <Users size={11} />
+                <span className="text-[11px] font-medium">
+                  {requestCount}
+                </span>
+              </div>
+            </button>
+        );
+    }
+
+    return (
+      <button
+        onClick={handleRequestSession}
+        disabled={requestLoading}
+        style={{
+          background: "linear-gradient(to bottom right, #2563eb, #1e3a8a)",
+        }}
+        className="text-white px-3 py-2 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-1.5 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <div className="flex flex-col items-start leading-tight">
+          <span className="font-semibold text-xs">
+            {requestLoading ? "Requesting..." : "Request Sessions"}
+          </span>
+          <span className="text-[7px] font-normal text-white/50 leading-none mt-0.5">
+            Credits exhausted
+          </span>
+        </div>
+        <div className="flex items-center border-l border-white/30 pl-2 ml-1.5 opacity-80 gap-1">
+          <Users size={11} />
+          <span className="text-[11px] font-medium">
+            {requestCount}
+          </span>
+        </div>
       </button>
     );
   }
@@ -895,7 +911,6 @@ const PlayButton = () => {
           loading={isDeleting}
         />
         
-
       </article>
         <RepurchaseModal 
           isOpen={showRepurchase} 
@@ -907,11 +922,6 @@ const PlayButton = () => {
           onSuccess={(addedCredits) => {
             setLocalRemainingCredits((prev : number) => prev + addedCredits);
           }}
-        />
-
-        <RequestSessionsModal 
-          isOpen={showRequestSessions}
-          onClose={() => setShowRequestSessions(false)}
         />
     </>
   );

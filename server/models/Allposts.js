@@ -371,6 +371,10 @@ const GamePostSchema = new mongoose.Schema(
         type: Number,
         default: 0,
       },
+      sessionRequests: {
+        type: Number,
+        default: 0,
+      },
     },
 
     creditBudget: {
@@ -414,15 +418,6 @@ const GamePostSchema = new mongoose.Schema(
         default: null,
       },
 
-      requestWindowEndsAt: {
-        type: Date,
-        default: null
-    },
-
-    requestCount: {
-        type: Number,
-        default: 0
-    },
       lastCreditAddedAt: {
         type: Date,
         default: null,

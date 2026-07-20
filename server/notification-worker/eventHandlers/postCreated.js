@@ -35,8 +35,8 @@ export async function handlePostCreated(event) {
   //
   let interactUsers = [];
 
-  if (comment.hasInteractMention) {
-    interactUsers = await getInteractUsers(comment.post);
+  if (post.hasInteractMention) {
+    interactUsers = await getInteractUsers(post._id);
   }
 
   interactUsers.forEach((id) => {
