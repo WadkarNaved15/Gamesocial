@@ -35,7 +35,7 @@ import {
 import GameSessionRequest from "../models/GameSessionRequest.js";
 import DemoConsumption from "../models/DemoConsumption.js";
 import { sendEventToQueue } from "../utils/sendEventToQueue.js";
-import PostAnalytics from "../models/PostAnalytics.js";
+import PostAnalytics from "../models/postAnalytics.js";
 
 const router = express.Router();
 
