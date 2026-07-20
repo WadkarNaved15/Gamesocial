@@ -166,21 +166,23 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
     setIsSubmitting(true);
     try {
       const updatedAssets = [...assets];
-      await Promise.all(updatedAssets.map(async (asset, index) => {
-        updatedAssets[index].status = "uploading";
-        updatedAssets[index].progress = 0;
-        setAssets([...updatedAssets]);
-        await new Promise(res => setTimeout(res, 100));
-        const uploadedData = await uploadAssetToS3(asset, (p) => {
-          updatedAssets[index].progress = p;
+      if (updatedAssets.length > 0) {
+        await Promise.all(updatedAssets.map(async (asset, index) => {
+          updatedAssets[index].status = "uploading";
+          updatedAssets[index].progress = 0;
           setAssets([...updatedAssets]);
-        });
+          await new Promise(res => setTimeout(res, 100));
+          const uploadedData = await uploadAssetToS3(asset, (p) => {
+            updatedAssets[index].progress = p;
+            setAssets([...updatedAssets]);
+          });
 
-        updatedAssets[index].uploadedUrl = uploadedData.fileUrl;
-        updatedAssets[index].uploadedKey = uploadedData.key;
-        updatedAssets[index].status = "done";
-        setAssets([...updatedAssets]);
-      }));
+          updatedAssets[index].uploadedUrl = uploadedData.fileUrl;
+          updatedAssets[index].uploadedKey = uploadedData.key;
+          updatedAssets[index].status = "done";
+          setAssets([...updatedAssets]);
+        }));
+      }
 
       setIsSavingMetadata(true);
       const response = await fetch(`${BACKEND_URL}/api/allposts`, {
@@ -213,7 +215,10 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
         <h2 className="text-xl font-bold text-black dark:text-white tracking-tight">Compose Media</h2>
         <button
           onClick={handlePostSubmit}
-          disabled={!description || assets.length === 0 || isSubmitting}
+          disabled={
+            (!description.trim() && assets.length === 0) ||
+            isSubmitting
+          }
           className="bg-[#3D7A6E] hover:bg-[#2F5E55] disabled:opacity-50 text-white font-bold px-6 py-2 rounded-full transition shadow-sm"
         >
           {isSubmitting ? "Posting..." : "Post"}

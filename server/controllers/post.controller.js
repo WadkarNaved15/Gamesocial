@@ -8,7 +8,7 @@ import Comment from "../models/Comment.js";
 import Wishlist from "../models/Wishlist.js";
 import Notification from "../models/Notifications.js";
 import { extractS3KeyFromUrl } from "../utils/extractS3Key.js";
-import { videoProcessingQueue } from "../queues/videoQueue.js"; 
+import { videoProcessingQueue } from "../queues/videoQueue.js";
 import { deletePostAndAssets } from "../services/deletePost.js";
 import { parseMentions } from "../utils/mentions.js";
 import { sendEventToQueue } from "../utils/sendEventToQueue.js";
@@ -33,15 +33,19 @@ export const createPost = async (req, res) => {
        NORMAL POST
     ====================================================== */
     if (type === "normal_post") {
-      const { description, assets } = req.body;
+      const { description = "", assets = [] } = req.body;
 
-      if (!description) {
-        return res.status(400).json({ message: "Description required" });
+      // At least one of description or media is required
+      if (!description.trim() && assets.length === 0) {
+        return res.status(400).json({
+          message: "Post must contain text or media.",
+        });
       }
 
-      if (!assets || assets.length === 0 || assets.length > 4) {
+      // If media is present, it must be between 1 and 4
+      if (assets.length > 4) {
         return res.status(400).json({
-          message: "Normal post must have 1–4 media assets",
+          message: "A post can contain at most 4 media assets.",
         });
       }
 
@@ -52,9 +56,9 @@ export const createPost = async (req, res) => {
         user: req.user.id,
         description,
         mentions:
-            mentionData.mentions,
+          mentionData.mentions,
         hasInteractMention:
-            mentionData.hasInteractMention,
+          mentionData.hasInteractMention,
         type: "normal_post",
         normalPost: {
           assets: assets.map((asset) => {
@@ -86,9 +90,9 @@ export const createPost = async (req, res) => {
       }
 
       sendEventToQueue({
-          type: "POST_CREATED",
-          actorId: req.user.id,
-          postId: post._id,
+        type: "POST_CREATED",
+        actorId: req.user.id,
+        postId: post._id,
       });
       // ✅ GORSE: sync new post (fire-and-forget)
       onPostCreated(post);
@@ -176,9 +180,9 @@ export const createPost = async (req, res) => {
       });
 
       sendEventToQueue({
-          type: "POST_CREATED",
-          actorId: req.user.id,
-          postId: post._id,
+        type: "POST_CREATED",
+        actorId: req.user.id,
+        postId: post._id,
       });
 
 
@@ -217,7 +221,7 @@ export const createPost = async (req, res) => {
         videoDemo
       } = game;
 
-      
+
 
       const allowedFormats = ["7z", "zip"];
       if (!file?.format || !allowedFormats.includes(file.format)) {
@@ -314,9 +318,9 @@ export const createPost = async (req, res) => {
       });
 
       sendEventToQueue({
-          type: "POST_CREATED",
-          actorId: req.user.id,
-          postId: post._id,
+        type: "POST_CREATED",
+        actorId: req.user.id,
+        postId: post._id,
       });
       console.log("Game post created successfully");
       // ✅ GORSE: sync new post (fire-and-forget)
@@ -338,7 +342,7 @@ export const createPost = async (req, res) => {
         return res.status(400).json({ message: "adModelPost data is required" });
       }
 
-      const { brandName, bgMode, bgColor, bgImageUrl, bgImagePosition, bgImageSize, overlayOpacity, logoUrl, asset,  ctaText, ctaLink, style} = adModelPost;
+      const { brandName, bgMode, bgColor, bgImageUrl, bgImagePosition, bgImageSize, overlayOpacity, logoUrl, asset, ctaText, ctaLink, style } = adModelPost;
 
       // ── Validate asset ───────────────────────────────────
       if (!asset || !asset.originalUrl || !asset.originalKey || !asset.name) {
@@ -438,9 +442,9 @@ export const createPost = async (req, res) => {
       });
 
       sendEventToQueue({
-          type: "POST_CREATED",
-          actorId: req.user.id,
-          postId: post._id,
+        type: "POST_CREATED",
+        actorId: req.user.id,
+        postId: post._id,
       });
 
       // ✅ GORSE: sync new post (fire-and-forget)
@@ -491,7 +495,7 @@ export const createPost = async (req, res) => {
 
       const mentionData =
         await parseMentions(description);
-      
+
       // ───────── CREATE POST ─────────
       const post = await AllPost.create({
         user: req.user.id,
@@ -542,9 +546,9 @@ export const createPost = async (req, res) => {
       }
 
       sendEventToQueue({
-          type: "POST_CREATED",
-          actorId: req.user.id,
-          postId: post._id,
+        type: "POST_CREATED",
+        actorId: req.user.id,
+        postId: post._id,
       });
 
       // optional analytics hook (same pattern as others)
@@ -585,7 +589,7 @@ export const deletePost = async (req, res) => {
       });
     }
 
-   await deletePostAndAssets(post);
+    await deletePostAndAssets(post);
 
     res.json({
       success: true,
