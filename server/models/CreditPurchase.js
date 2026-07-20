@@ -40,7 +40,7 @@ const CreditPurchaseSchema = new mongoose.Schema(
     draft: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "GamePostDraft",
-      required: true,
+      default: null,
       index: true,
     },
 

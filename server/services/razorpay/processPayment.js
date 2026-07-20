@@ -42,13 +42,18 @@ export async function processRazorpayPayment(
     );
   }
 
-  const draftId =
-    payment.notes?.draftId;
+  const notes = payment.notes || {};
+
+// Repurchase payments are handled by
+// POST /gamePosts/:postId/verify-repurchase-payment
+  if (notes.isRepurchase === "true") {
+    return null;
+  }
+
+  const draftId = notes.draftId;
 
   if (!draftId) {
-    throw new Error(
-      "Missing draftId in payment notes"
-    );
+    throw new Error("Missing draftId in payment notes");
   }
 
   const draft =

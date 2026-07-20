@@ -6,6 +6,7 @@ import User from "../models/User.js";
 import AllPost from "../models/Allposts.js";
 import GameSession from "../models/GameSession.js";
 import CreditAudit from "../models/CreditAudit.js";
+import mongoose from "mongoose";
 
 const router = express.Router();
 

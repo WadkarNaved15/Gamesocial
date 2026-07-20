@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useUser } from "../../../context/user";
 import { MentionTextarea } from './MentionTextarea';
+import { loadRazorpay } from '../../../utils/loadRazorpay';
 
 interface PostModalProps {
   onCancel: () => void;
@@ -50,14 +51,6 @@ declare global {
     Razorpay: any;
   }
 }
-
-const loadRazorpay = () =>
-  new Promise((resolve) => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    document.body.appendChild(script);
-  });
 
 const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
   const { user } = useUser();

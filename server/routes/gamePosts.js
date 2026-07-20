@@ -31,7 +31,7 @@ import { onPostCreated } from "../services/gorse.hooks.js";
 import { videoProcessingQueue } from "../queues/videoQueue.js";
 import {
   processRazorpayPayment,
-} from "../services/razorpay/processPayment.js";
+} from "../services/razorpay/processPayment.js"; 
 
 const router = express.Router();
 
@@ -830,6 +830,174 @@ router.post("/draft/:draftId/publish-sponsored", verifyToken, async (req, res) =
     res.json({ message: "Publishing sponsored game…", draftId: draft._id, status: "payment_completed" });
   } catch (err) {
     res.status(500).json({ message: "Failed to publish sponsored game" });
+  }
+});
+
+
+
+router.post("/:postId/create-repurchase-order", verifyToken, async (req, res) => {
+  try {
+    const { selectedCredits } = req.body;
+
+    if (!selectedCredits || selectedCredits < 4000) {
+      return res.status(400).json({ message: "Minimum 4000 credits required" });
+    }
+
+    const post = await AllPost.findOne({
+      _id: req.params.postId,
+      user: req.user._id,
+      type: "game_post"
+    });
+
+    if (!post) {
+      return res.status(404).json({ message: "Game post not found or unauthorized" });
+    }
+
+    const amount = Math.round((selectedCredits / 40) * 100);
+
+    const order = await getRazorpay().orders.create({
+      amount: amount,
+      currency: "USD",
+      receipt: `r_${post._id}_${crypto.randomBytes(4).toString("hex")}`,
+      notes: {
+        postId: String(post._id),
+        userId: String(req.user._id),
+        credits: String(selectedCredits),
+        isRepurchase: "true"
+      },
+    });
+
+    res.json({
+      orderId: order.id,
+      amount: amount,
+      currency: "USD",
+      keyId: process.env.RAZORPAY_KEY_ID,
+    });
+  } catch (err) {
+    console.error("create-repurchase-order error:", err);
+    res.status(500).json({ message: "Failed to create repurchase order" });
+  }
+});
+
+/**
+ * POST /game-posts/:postId/verify-repurchase-payment
+ * Verifies Razorpay payment, creates CreditPurchase/CreditAudit, updates game credits via Transaction.
+ */
+router.post("/:postId/verify-repurchase-payment", verifyToken, async (req, res) => {
+  const session = await mongoose.startSession();
+  
+  try {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, selectedCredits } = req.body;
+
+    // 1. Verify Signature
+    const expected = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+      .digest("hex");
+
+    if (expected !== razorpaySignature) {
+      return res.status(400).json({ message: "Payment signature verification failed" });
+    }
+
+    // Capture payment on Razorpay
+    const payment = await getRazorpay().payments.fetch(razorpayPaymentId);
+
+    if (payment.status !== "captured") {
+      throw new Error("Payment not captured");
+    }
+
+    if (payment.amount !== Math.round((selectedCredits / 40) * 100)) {
+      throw new Error("Payment amount mismatch");
+    }
+
+    // 2. Execute Updates in Transaction
+    session.startTransaction();
+
+    const post = await AllPost.findOne({
+      _id: req.params.postId,
+      user: req.user._id
+    }).session(session);
+
+    if (!post) {
+      throw new Error("Game post not found during verification");
+    }
+
+    // Create CreditPurchase explicitly linked to the post
+    const [creditPurchase] = await CreditPurchase.create(
+      [{
+          creator: req.user._id,
+          gamePost: post._id,
+          draft: null,
+          creditsPurchased: selectedCredits,
+          amountPaid: Math.round((selectedCredits / 40) * 100),
+          currency: "USD",
+          paymentProvider: "razorpay",
+          razorpayOrderId,
+          paymentId: razorpayPaymentId,
+          status: "completed",
+          fulfillmentStatus: "fulfilled",
+          fulfillmentAttempts: 1,
+        },
+      ],
+      { session }
+    );
+
+    // Create CreditAudit entry
+    await CreditAudit.create([{
+      gamePost: post._id,
+      creator: req.user._id,
+      action: "purchase",
+      credits: selectedCredits,
+      previousBalance: post.gamePost.creditBudget.remainingCredits,
+      newBalance: post.gamePost.creditBudget.remainingCredits + selectedCredits,
+      reason: "Credit repurchase",
+      metadata: { 
+        paymentId: razorpayPaymentId,
+        purchaseId: creditPurchase._id
+      }
+    }], { session });
+
+    // Build update operations
+    const updateOps = {
+      $inc: {
+        "gamePost.creditBudget.purchasedCredits": selectedCredits,
+        "gamePost.creditBudget.remainingCredits": selectedCredits,
+      },
+      $set: {
+        "gamePost.creditBudget.lastCreditAddedAt": new Date(),
+      }
+    };
+
+    // Reactivate post if it was exhausted
+    const isExhausted = post.gamePost.creditBudget.remainingCredits === 0 || post.gamePost.creditBudget.status === "exhausted";
+    
+    if (isExhausted) {
+      updateOps.$set["gamePost.creditBudget.status"] = "active";
+      updateOps.$unset = {
+        "gamePost.creditBudget.exhaustedAt": "",
+        "gamePost.creditBudget.requestWindowEndsAt": ""
+      };
+    }
+
+    await AllPost.updateOne(
+      { _id: post._id },
+      updateOps,
+      { session }
+    );
+
+    await session.commitTransaction();
+
+    res.json({ 
+      message: "Repurchase successful", 
+      newRemainingCredits: post.gamePost.creditBudget.remainingCredits + selectedCredits 
+    });
+
+  } catch (err) {
+    await session.abortTransaction();
+    console.error("verify-repurchase-payment error:", err);
+    res.status(500).json({ message: "Repurchase verification failed" });
+  } finally {
+    session.endSession();
   }
 });
 
