@@ -64,6 +64,11 @@ const PostAnalyticsSchema = new mongoose.Schema(
 
       uniquePlayers:    { type: Number, default: 0, min: 0 },
       repeatPlayers:    { type: Number, default: 0, min: 0 },
+      sessionRequests: {
+        type: Number,
+        default: 0,
+        min: 0,
+    },
     },
 
     // ─── DAILY STATS ─────────────────────────────────────────────────────────
@@ -93,6 +98,11 @@ const PostAnalyticsSchema = new mongoose.Schema(
         sessionPlayTimeMs:{ type: Number, default: 0, min: 0 },
 
         uniquePlayers: { type: Number, default: 0, min: 0 },
+        sessionRequests: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
       },
     ],
 
@@ -111,4 +121,8 @@ PostAnalyticsSchema.index({ post: 1 }, { unique: true });
 // Speeds up dailyStats range queries in the analytics route
 PostAnalyticsSchema.index({ post: 1, "dailyStats.date": 1 });
 
-export default mongoose.model("PostAnalytics", PostAnalyticsSchema);
+const PostAnalytics =
+  mongoose.models.PostAnalytics ||
+  mongoose.model("PostAnalytics", PostAnalyticsSchema);
+
+export default PostAnalytics;

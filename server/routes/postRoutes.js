@@ -14,6 +14,7 @@ import { getFeedPage } from "../services/feed.service.js";
 import { trackPostView } from "../controllers/postView.controller.js";
 import verifyToken from "../middlewares/authMiddleware.js";
 import { enrichDemoConsumed } from "../utils/enrichDemoConsumed.js";
+import { enrichSessionRequests } from "../utils/enrichSessionRequests.js";
 import Follow from "../models/Follow.js"; // Adjust the path/name based on your actual schema
 dotenv.config();
 
@@ -110,6 +111,11 @@ router.get("/filter_posts", optionalAuthMiddleware, async (req, res) => {
       req.user?._id?.toString()
     );
 
+    await enrichSessionRequests(
+      posts,
+      req.user?._id?.toString()
+    );
+
     const nextCursor =
       posts.length === Number(limit)
         ? posts[posts.length - 1]._id
@@ -188,6 +194,11 @@ router.get("/user_posts/:userId", optionalAuthMiddleware, async (req, res) => {
       req.user?._id?.toString()
     );
 
+    await enrichSessionRequests(
+      posts,
+      req.user?._id?.toString()
+    );
+
     res.status(200).json({
       posts,
       nextCursor: posts.length ? posts[posts.length - 1]._id : null,
@@ -244,6 +255,11 @@ router.get("/:postId", optionalAuthMiddleware, async (req, res) => {
 
     if (post) {
       await enrichDemoConsumed(
+        [post],
+        viewerId
+      );
+
+      await enrichSessionRequests(
         [post],
         viewerId
       );
