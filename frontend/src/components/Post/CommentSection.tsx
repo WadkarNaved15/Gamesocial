@@ -69,7 +69,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
   const repliesRefs = useRef<
     Record<string, RepliesHandle | null>
   >({});
-  console.log("Comment section rendered");
 
   const registerRepliesRef = useCallback(
     (commentId: string, ref: RepliesHandle | null) => {
@@ -84,7 +83,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
 
   useEffect(() => {
     const fetchComments = async () => {
-      console.log("Fetching comments")
       try {
         const res = await axios.get(`${BACKEND_URL}/api/comments`, {
           params: { postId, limit: 20 }
@@ -102,7 +100,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
   }, [postId]);
 
   const loadMoreComments = useCallback(async () => {
-    console.log("Loading more comments")
     if (!nextCursor || loadingMore) return;
     try {
       setLoadingMore(true);

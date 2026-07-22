@@ -1,4 +1,5 @@
 import React, {
+    useEffect,
     memo,
     useCallback,
     useState,
@@ -47,25 +48,20 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
         const [loadingMore, setLoadingMore] =
             useState(false);
 
-        const [replies, setReplies] = useState<Comment[]>(
-            []
+        const [replyCount, setReplyCount] = useState(
+            comment.replyCount ?? 0
         );
+
+        const [replies, setReplies] = useState<Comment[]>([]);
 
         const [nextCursor, setNextCursor] =
             useState<string | null>(null);
 
         useImperativeHandle(ref, () => ({
             addOptimisticReply(reply) {
-                console.log("Replies of", comment._id);
-                console.log("Adding optimistic", reply);
-                console.log("Before:", replies);
-
                 setExpanded(true);
-
-                setReplies((prev) => {
-                    console.log("Prev state:", prev);
-                    return [reply, ...prev];
-                });
+                setReplyCount(prev => prev + 1);
+                setReplies(prev => [reply, ...prev]);
             },
 
             replaceOptimisticReply(tempId, reply) {
@@ -77,8 +73,9 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
             },
 
             removeOptimisticReply(tempId) {
-                setReplies((prev) =>
-                    prev.filter((r) => r._id !== tempId)
+                setReplyCount(prev => Math.max(0, prev - 1));
+                setReplies(prev =>
+                    prev.filter(r => r._id !== tempId)
                 );
             },
         }));
@@ -104,6 +101,12 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
                 );
 
                 setReplies(res.data.replies);
+                setReplyCount(
+                    Math.max(
+                        comment.replyCount ?? 0,
+                        res.data.replies.length
+                    )
+                );
                 setNextCursor(res.data.nextCursor);
                 setExpanded(true);
             } catch (err) {
@@ -116,6 +119,28 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
             comment._id,
             loading,
         ]);
+
+        useEffect(() => {
+            setReplyCount(prev =>
+                Math.max(prev, comment.replyCount ?? 0)
+            );
+        }, [comment.replyCount]);
+
+        useEffect(() => {
+            console.log("Mounted", comment._id);
+
+            return () => {
+                console.log("Unmounted", comment._id);
+            };
+        }, []);
+
+        useEffect(() => {
+            console.log(
+                "Replies state",
+                comment._id,
+                replies.map(r => r._id)
+            );
+        }, [replies]);
 
         const loadMoreReplies = useCallback(async () => {
             if (!nextCursor || loadingMore) return;
@@ -151,7 +176,16 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
             loadingMore,
         ]);
 
-        if (!comment.replyCount) {
+        console.log(
+            "Replies visible?",
+            comment._id,
+            "replyCount:",
+            comment.replyCount,
+            "stored replies:",
+            replies.length
+        );
+
+        if (replyCount <= 0 && replies.length === 0) {
             return null;
         }
 
@@ -167,7 +201,7 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
 
                         {loading
                             ? "Loading replies..."
-                            : `View ${comment.replyCount} ${comment.replyCount === 1
+                            : `View ${replyCount} ${replyCount === 1
                                 ? "reply"
                                 : "replies"
                             }`}

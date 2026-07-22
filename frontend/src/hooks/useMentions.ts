@@ -71,12 +71,9 @@ export const useMentions = (
     };
   }, [isOpen]);
 
-  useEffect(() => {
-    console.log("selectedMentions changed");
-  }, [selectedMentions]);
+
 
   useEffect(() => {
-    console.log("Filtering mentions");
     setSelectedMentions(prev =>
       prev.filter(user =>
         value.toLowerCase().includes(`@${user.username.toLowerCase()}`)

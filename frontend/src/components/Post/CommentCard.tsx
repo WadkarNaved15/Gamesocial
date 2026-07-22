@@ -109,6 +109,9 @@ export const CommentCard = memo(
                 document.removeEventListener("mousedown", handleClickOutside);
         }, []);
 
+        useEffect(() => {
+            console.log("CommentCard render", comment._id);
+        });
 
         const canDelete =
             user?._id === comment.user?._id ||

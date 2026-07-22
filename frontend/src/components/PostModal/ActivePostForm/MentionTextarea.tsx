@@ -70,7 +70,6 @@ const MentionDropdown: React.FC<MentionDropdownProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    console.log("Rendering mention dropdown...");
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         onClose();
@@ -146,7 +145,6 @@ export const MentionTextarea: React.FC<MentionProps> = ({
   });
 
   useEffect(() => {
-  console.log("Rendering selected mentions...");
   onMentionsChange?.(selectedMentions);
 }, [selectedMentions, onMentionsChange]);
 
