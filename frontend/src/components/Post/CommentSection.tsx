@@ -276,9 +276,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
 
       {/* Input Area */}
       <div className="p-4 border-b border-gray-100 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/50">
-        <div className="relative group">
+        <div className="flex flex-col gap-2">
           {replyingTo && (
-            <div className="mb-2 flex items-center justify-between rounded-lg bg-blue-50 dark:bg-zinc-800 px-3 py-2">
+            <div className="flex items-center justify-between rounded-lg bg-blue-50 dark:bg-zinc-800 px-3 py-2">
               <span className="text-xs text-gray-600 dark:text-gray-300">
                 Replying to{" "}
                 <span className="font-semibold">
@@ -288,27 +288,31 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
 
               <button
                 onClick={() => setReplyingTo(null)}
-                className="text-xs text-red-500"
+                className="text-xs text-red-500 hover:underline"
               >
                 Cancel
               </button>
             </div>
           )}
-          <MentionTextarea
-            value={newComment}
-            onMentionsChange={handleMentionsChange}
-            onChange={setNewComment}
-            placeholder="Share your thoughts..."
-            rows={1}
-            className="w-full bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl pl-4 pr-12 py-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-none"
-          />
-          <button
-            onClick={handleAddComment}
-            disabled={!newComment.trim()}
-            className="absolute right-2 top-2 p-1.5 bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-zinc-800 text-white rounded-xl hover:bg-blue-700 transition-all"
-          >
-            <Send size={18} />
-          </button>
+
+          {/* Dedicated Relative Wrapper for Textarea + Send Button */}
+          <div className="relative flex items-center">
+            <MentionTextarea
+              value={newComment}
+              onMentionsChange={handleMentionsChange}
+              onChange={setNewComment}
+              placeholder="Share your thoughts..."
+              rows={1}
+              className="w-full bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-2xl pl-4 pr-12 py-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-none"
+            />
+            <button
+              onClick={handleAddComment}
+              disabled={!newComment.trim()}
+              className="absolute right-2 p-1.5 bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-zinc-800 text-white rounded-xl hover:bg-blue-700 transition-all mb-2"
+            >
+              <Send size={18} />
+            </button>
+          </div>
         </div>
       </div>
 

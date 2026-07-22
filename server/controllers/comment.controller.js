@@ -308,10 +308,19 @@ export const getComments = async (req, res) => {
                 select: "overall playTimeMs suggestions",
             })
             .sort({ _id: -1 })
-            .limit(parsedLimit)
+            .limit(parsedLimit + 1)
             .lean();
 
-        const nextCursor = comments.length > 0 ? comments[comments.length - 1]._id : null;
+        const hasMore = comments.length > parsedLimit;
+
+        if (hasMore) {
+            comments.pop();
+        }
+
+        const nextCursor = hasMore
+            ? comments[comments.length - 1]._id
+            : null;
+
         res.json({ comments, nextCursor });
 
     } catch (error) {
@@ -352,10 +361,10 @@ export const getReplies = async (req, res) => {
 
             ...(cursor &&
                 mongoose.Types.ObjectId.isValid(cursor) && {
-                    _id: {
-                        $lt: cursor,
-                    },
-                }),
+                _id: {
+                    $lt: cursor,
+                },
+            }),
         };
 
         const replies = await Comment.find(query)
@@ -369,13 +378,18 @@ export const getReplies = async (req, res) => {
                 select: "overall playTimeMs suggestions",
             })
             .sort({ _id: -1 })
-            .limit(parsedLimit)
+            .limit(parsedLimit + 1)
             .lean();
 
-        const nextCursor =
-            replies.length > 0
-                ? replies[replies.length - 1]._id
-                : null;
+        const hasMore = replies.length > parsedLimit;
+
+        if (hasMore) {
+            replies.pop();
+        }
+
+        const nextCursor = hasMore
+            ? replies[replies.length - 1]._id
+            : null;
 
         return res.json({
             replies,

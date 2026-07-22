@@ -62,6 +62,7 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
                 setExpanded(true);
                 setReplyCount(prev => prev + 1);
                 setReplies(prev => [reply, ...prev]);
+                setNextCursor(null);
             },
 
             replaceOptimisticReply(tempId, reply) {
@@ -103,11 +104,12 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
                 setReplies(res.data.replies);
                 setReplyCount(
                     Math.max(
+                        replyCount,
                         comment.replyCount ?? 0,
                         res.data.replies.length
                     )
                 );
-                setNextCursor(res.data.nextCursor);
+                setNextCursor(res.data.nextCursor ?? null);
                 setExpanded(true);
             } catch (err) {
                 console.error(err);
@@ -220,7 +222,7 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
                             />
                         ))}
 
-                        {nextCursor && (
+                        {expanded && replies.length > 0 && nextCursor && (
                             <button
                                 onClick={loadMoreReplies}
                                 disabled={loadingMore}
