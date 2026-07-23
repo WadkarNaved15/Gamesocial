@@ -87,11 +87,6 @@ router.get("/filter_posts", optionalAuthMiddleware, async (req, res) => {
       $text: { $search: query },
     };
 
-    if (req.user?.role !== "admin") {
-      filter.type = {
-        $ne: "game_post",
-      };
-    }
 
     if (cursor) {
       filter._id = { $lt: cursor };
@@ -146,7 +141,7 @@ router.get("/user_posts/:userId", optionalAuthMiddleware, async (req, res) => {
     query.type =
       req.user?.role === "admin"
         ? { $ne: "canvas_article" }
-        : { $nin: ["canvas_article", "game_post"] };
+        : { $nin: ["canvas_article"] };
 
     const posts = await Post.find(query)
       .populate("user", "username avatar")
@@ -217,15 +212,6 @@ router.get("/:postId", optionalAuthMiddleware, async (req, res) => {
       .lean();
 
     if (!post) return res.status(404).json({ deleted: true });
-
-    if (
-      post.type === "game_post" &&
-      req.user?.role !== "admin"
-    ) {
-      return res.status(404).json({
-        deleted: true,
-      });
-    }
 
     const viewerId = req.user?._id?.toString();
 
