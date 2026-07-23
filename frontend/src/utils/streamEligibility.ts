@@ -1,14 +1,17 @@
+import SpeedTest from "@cloudflare/speedtest";
+
 export type StreamEligibility = {
   checked: boolean;
   allowed: boolean;
   reasons: string[];
-  speedMbps: number | null;
-  testMs: number | null;
+
+  downloadMbps: number | null;
+  uploadMbps: number | null;
+
+  latencyMs: number | null;
+  jitterMs: number | null;
 };
 
-const SPEED_TEST_BYTES = 5 * 1024 * 1024;
-const MIN_SPEED_MBPS = 2;
-const MAX_TEST_MS = 100000;
 
 type NavWithHints = Navigator & {
   userAgentData?: { mobile?: boolean };
@@ -20,8 +23,10 @@ type NavWithHints = Navigator & {
   };
 };
 
-const getBackendUrl = () =>
-  import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const MIN_DOWNLOAD = 20;
+const MAX_JITTER = 20;
+const MAX_LATENCY = 80;
+
 
 const getDeviceReasons = () => {
   const reasons: string[] = [];
@@ -57,28 +62,64 @@ const getDeviceReasons = () => {
   return reasons;
 };
 
-const runBackendSpeedTest = async () => {
-  const backendUrl = getBackendUrl();
-  const started = performance.now();
+const runCloudflareSpeedTest = async () => {
+  return new Promise<{
+    download: number | null;
+    upload: number | null;
+    latency: number | null;
+    jitter: number | null;
+  }>((resolve, reject) => {
+    const test = new SpeedTest({
+      measurements: [
+        {
+          type: "latency",
+          numPackets: 20,
+        },
+        {
+          type: "download",
+          bytes: 2_000_000,
+          count: 6,
+        },
+        {
+          type: "upload",
+          bytes: 2_000_000,
+          count: 6,
+        },
+      ],
+    });
 
-  const res = await fetch(
-    `${backendUrl}/stream-speed-test?bytes=${SPEED_TEST_BYTES}&ts=${Date.now()}`,
-    {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-    }
-  );
+    test.onError = (err) => {
+      console.error("ERROR", err);
+      reject(err);
+    };
 
-  if (!res.ok) {
-    throw new Error(`Speed test failed: ${res.status}`);
-  }
 
-  const buf = await res.arrayBuffer();
-  const elapsedMs = performance.now() - started;
-  const mbps = ((buf.byteLength * 8) / (elapsedMs / 1000)) / 1_000_000;
+    test.onFinish = (results) => {
+      const summary = results.getSummary();
 
-  return { mbps, elapsedMs };
+      resolve({
+        download: summary.download != null
+          ? Number((summary.download / 1_000_000).toFixed(1))
+          : null,
+
+        upload: summary.upload != null
+          ? Number((summary.upload / 1_000_000).toFixed(1))
+          : null,
+
+        latency: summary.latency != null
+          ? Number(summary.latency.toFixed(1))
+          : null,
+
+        jitter: summary.jitter != null
+          ? Number(summary.jitter.toFixed(1))
+          : null,
+      });
+    };
+
+    test.onError = reject;
+
+    test.play();
+  });
 };
 
 export const getStreamEligibility = async (): Promise<StreamEligibility> => {
@@ -89,41 +130,68 @@ export const getStreamEligibility = async (): Promise<StreamEligibility> => {
     r.includes("Mobile support is coming soon")
   );
 
-  // if (!mobileBlocked) {
-  //   try {
-  //     const speed = await runBackendSpeedTest();
+ if (!mobileBlocked) {
+  try {
+    const result = await runCloudflareSpeedTest();
 
-  //     if (speed.mbps < MIN_SPEED_MBPS) {
-  //       reasons.push(`Download speed is too low (${speed.mbps.toFixed(1)} Mbps).`);
-  //     }
+    console.log("Speed test result:", result);
 
-  //     if (speed.elapsedMs > MAX_TEST_MS) {
-  //       reasons.push(`Connection test took too long (${Math.round(speed.elapsedMs)} ms).`);
-  //     }
+    if (result.download !== null && result.download < MIN_DOWNLOAD) {
+      reasons.push(
+        `Download speed is ${result.download?.toFixed(1)} Mbps. Minimum required is ${MIN_DOWNLOAD} Mbps.`
+      );
+    }
 
-  //     return {
-  //       checked: true,
-  //       allowed: reasons.length === 0,
-  //       reasons,
-  //       speedMbps: speed.mbps,
-  //       testMs: speed.elapsedMs,
-  //     };
-  //   } catch {
-  //     return {
-  //       checked: true,
-  //       allowed: false,
-  //       reasons: ["Could not verify your internet right now."],
-  //       speedMbps: null,
-  //       testMs: null,
-  //     };
-  //   }
-  // }
+    if (
+      result.latency !== null &&
+      result.latency > MAX_LATENCY
+    ) {
+      reasons.push(
+        `Network latency is ${result.latency.toFixed(1)} ms. Maximum allowed is ${MAX_LATENCY} ms.`
+      );
+    }
+
+    if (result.jitter !== null && result.jitter > MAX_JITTER) {
+      reasons.push(
+        `Network jitter is ${result.jitter?.toFixed(1)} ms. Maximum allowed is ${MAX_JITTER} ms.`
+      );
+    }
+
+    return {
+      checked: true,
+      allowed: reasons.length === 0,
+      reasons,
+
+      downloadMbps: result.download,
+      uploadMbps: result.upload,
+
+      latencyMs: result.latency,
+      jitterMs: result.jitter,
+    };
+
+  } catch (err) {
 
   return {
     checked: true,
+    allowed: false,
+    reasons: ["Unable to verify your internet connection."],
+    downloadMbps: null,
+    uploadMbps: null,
+    latencyMs: null,
+    jitterMs: null,
+  };
+}
+}
+
+return {
+    checked: true,
     allowed: reasons.length === 0,
     reasons,
-    speedMbps: null,
-    testMs: null,
-  };
+
+    downloadMbps: null,
+    uploadMbps: null,
+
+    latencyMs: null,
+    jitterMs: null,
+};
 };
