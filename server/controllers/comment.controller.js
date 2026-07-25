@@ -329,8 +329,8 @@ export const getComments = async (req, res) => {
     }
 };
 
-//Get replies
-export const getReplies = async (req, res) => {
+// Get Thread replies 
+export const getCommentThread = async (req, res) => {
     try {
         const { commentId } = req.params;
         const { cursor, limit = 20 } = req.query;
@@ -341,22 +341,19 @@ export const getReplies = async (req, res) => {
             });
         }
 
-        const parentComment = await Comment.findById(commentId)
-            .select("_id post");
+        const rootComment = await Comment.findById(commentId)
+            .select("_id");
 
-        if (!parentComment) {
+        if (!rootComment) {
             return res.status(404).json({
                 message: "Comment not found",
             });
         }
 
-        const parsedLimit = Math.min(
-            Number(limit) || 20,
-            50
-        );
+        const parsedLimit = Math.min(Number(limit) || 20, 50);
 
         const query = {
-            parentComment: parentComment._id,
+            rootComment: rootComment._id,
             isDeleted: false,
 
             ...(cursor &&
@@ -367,7 +364,7 @@ export const getReplies = async (req, res) => {
             }),
         };
 
-        const replies = await Comment.find(query)
+        const rawReplies = await Comment.find(query)
             .populate("user", "username avatar")
             .populate(
                 "mentions.user",
@@ -377,28 +374,55 @@ export const getReplies = async (req, res) => {
                 path: "review.feedback",
                 select: "overall playTimeMs suggestions",
             })
-            .sort({ _id: -1 })
-            .limit(parsedLimit + 1)
+            .sort({ createdAt: 1 })
             .lean();
 
-        const hasMore = replies.length > parsedLimit;
+        const childrenMap = new Map();
 
-        if (hasMore) {
-            replies.pop();
+        for (const reply of rawReplies) {
+            const parentId = reply.parentComment.toString();
+
+            if (!childrenMap.has(parentId)) {
+                childrenMap.set(parentId, []);
+            }
+
+            childrenMap.get(parentId).push(reply);
         }
 
+        const orderedReplies = [];
+
+        const traverse = (parentId) => {
+            const children = childrenMap.get(parentId);
+
+            if (!children) return;
+
+            for (const child of children) {
+                orderedReplies.push(child);
+                traverse(child._id.toString());
+            }
+        };
+
+        traverse(rootComment._id.toString());
+
+        const hasMore =
+            orderedReplies.length > parsedLimit;
+
+        const paginatedReplies = hasMore
+            ? orderedReplies.slice(0, parsedLimit)
+            : orderedReplies;
+
         const nextCursor = hasMore
-            ? replies[replies.length - 1]._id
+            ? paginatedReplies[paginatedReplies.length - 1]._id
             : null;
 
         return res.json({
-            replies,
+            replies: paginatedReplies,
             nextCursor,
         });
 
     } catch (error) {
         console.error(
-            "Error fetching replies:",
+            "Error fetching comment thread:",
             error
         );
 
@@ -407,6 +431,7 @@ export const getReplies = async (req, res) => {
         });
     }
 };
+
 // Delete a comment
 export const deleteComment = async (req, res) => {
     try {

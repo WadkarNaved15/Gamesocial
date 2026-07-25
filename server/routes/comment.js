@@ -14,7 +14,7 @@ import {
   createComment,
   getComments,
   deleteComment,
-  getReplies
+  getCommentThread
 } from "../controllers/comment.controller.js";
 import {
   onCommentAdded,
@@ -43,10 +43,10 @@ router.post(
 // ── Get comments 
 router.get("/", getComments);
 
-// ─── Update comment 
+// ─── get comment thread
 router.get(
-  "/:commentId/replies",
-  getReplies
+  "/:commentId/thread",
+  getCommentThread
 );
 
 // ── Delete comment 

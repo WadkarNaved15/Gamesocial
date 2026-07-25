@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "../../context/user";
 import { Link as LinkIcon, MoreHorizontal, Trash2 } from "lucide-react";
 import MentionText from "./MentionText";
-import Replies, { RepliesHandle } from "./Replies";
+import ThreadReplies, { ThreadRepliesHandle } from "./ThreadReplies";
 export interface LinkPreview {
     title?: string;
     description?: string;
@@ -55,11 +55,12 @@ interface CommentCardProps {
     postOwnerId: string;
     onDelete: (commentId: string) => void;
     onReply: (comment: Comment) => void;
+    showThreadReplies?: boolean;
     linkPreviewCache?: React.MutableRefObject<Record<string, LinkPreview>>;
 
     registerRepliesRef?: (
         commentId: string,
-        ref: RepliesHandle | null
+        ref: ThreadRepliesHandle | null
     ) => void;
 }
 
@@ -74,6 +75,7 @@ export const CommentCard = memo(
         postOwnerId,
         onReply,
         registerRepliesRef,
+        showThreadReplies = true,
     }: CommentCardProps) => {
         const [linkPreview, setLinkPreview] = useState<LinkPreview | null>(null);
         const [loadingPreview, setLoadingPreview] = useState(false);
@@ -85,13 +87,18 @@ export const CommentCard = memo(
         const [showMenu, setShowMenu] = useState(false);
         const menuRef = useRef<HTMLDivElement>(null);
         const repliesRefCallback = useCallback(
-            (ref: RepliesHandle | null) => {
+            (ref: ThreadRepliesHandle | null) => {
+                console.log(
+                    "Registering ref",
+                    comment._id,
+                    ref ? "SET" : "CLEARED"
+                );
+
                 registerRepliesRef?.(comment._id, ref);
             },
             [registerRepliesRef, comment._id]
         );
 
-        console.count(`CommentCard ${comment._id}`);
 
         useEffect(() => {
             const handleClickOutside = (e: MouseEvent) => {
@@ -109,9 +116,6 @@ export const CommentCard = memo(
                 document.removeEventListener("mousedown", handleClickOutside);
         }, []);
 
-        useEffect(() => {
-            console.log("CommentCard render", comment._id);
-        });
 
         const canDelete =
             user?._id === comment.user?._id ||
@@ -154,6 +158,15 @@ export const CommentCard = memo(
                                     {comment.user?.username || "Anonymous"}
                                 </span>
 
+                                {comment.parentComment && comment.mentions && comment.mentions.length > 0 && (
+                                    <span className="text-xs text-gray-400 dark:text-zinc-500 flex items-center gap-1">
+                                        <span>replying to</span>
+                                        <span className="text-blue-600 dark:text-blue-400 font-medium hover:underline cursor-pointer">
+                                            @{comment.mentions[0]?.originalUsername || comment.mentions[0]?.user?.username}
+                                        </span>
+                                    </span>
+                                )}
+                                
                                 {comment.review?.isGameReview && (
                                     <span className="inline-flex items-center gap-1 text-[11px] font-bold tracking-wide shrink-0 text-teal-600 dark:text-[#62d4ae]">
                                         Played {formatPlayTime(comment.review.feedback?.playTimeMs)}
@@ -273,15 +286,18 @@ export const CommentCard = memo(
                     )}
 
                     {/* Replies Component renders right under the comment */}
-                    <Replies
-                        ref={repliesRefCallback}
-                        comment={comment}
-                        BACKEND_URL={BACKEND_URL}
-                        postOwnerId={postOwnerId}
-                        onDelete={onDelete}
-                        onReply={onReply}
-                        registerRepliesRef={registerRepliesRef}
-                    />
+
+                    {showThreadReplies && (
+                        <ThreadReplies
+                            ref={repliesRefCallback}
+                            comment={comment}
+                            BACKEND_URL={BACKEND_URL}
+                            postOwnerId={postOwnerId}
+                            onDelete={onDelete}
+                            onReply={onReply}
+                            registerRepliesRef={registerRepliesRef}
+                        />
+                    )}
                 </div>
             </div>
         );

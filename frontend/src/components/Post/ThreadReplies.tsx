@@ -1,15 +1,15 @@
 import React, {
-    useEffect,
     memo,
     useCallback,
+    useEffect,
+    useImperativeHandle,
     useState,
     forwardRef,
-    useImperativeHandle,
 } from "react";
 import axios from "axios";
 import CommentCard, { Comment } from "./CommentCard";
 
-export interface RepliesHandle {
+export interface ThreadRepliesHandle {
     addOptimisticReply: (reply: Comment) => void;
     replaceOptimisticReply: (
         tempId: string,
@@ -18,7 +18,7 @@ export interface RepliesHandle {
     removeOptimisticReply: (tempId: string) => void;
 }
 
-interface RepliesProps {
+interface ThreadRepliesProps {
     comment: Comment;
     BACKEND_URL: string;
     postOwnerId: string;
@@ -27,11 +27,14 @@ interface RepliesProps {
 
     registerRepliesRef?: (
         commentId: string,
-        ref: RepliesHandle | null
+        ref: ThreadRepliesHandle | null
     ) => void;
 }
 
-const Replies = forwardRef<RepliesHandle, RepliesProps>(
+const ThreadReplies = forwardRef<
+    ThreadRepliesHandle,
+    ThreadRepliesProps
+>(
     (
         {
             comment,
@@ -48,52 +51,82 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
         const [loadingMore, setLoadingMore] =
             useState(false);
 
-        const [replyCount, setReplyCount] = useState(
-            comment.replyCount ?? 0
-        );
+        const [replyCount, setReplyCount] =
+            useState(comment.replyCount ?? 0);
 
         const [replies, setReplies] = useState<Comment[]>([]);
 
         const [nextCursor, setNextCursor] =
             useState<string | null>(null);
 
+        useEffect(() => {
+            setReplyCount(comment.replyCount ?? 0);
+        }, [comment.replyCount]);
+
         useImperativeHandle(ref, () => ({
+
             addOptimisticReply(reply) {
                 setExpanded(true);
                 setReplyCount(prev => prev + 1);
-                setReplies(prev => [reply, ...prev]);
-                setNextCursor(null);
+
+                setReplies(prev => {
+                    // Root reply
+                    if (!reply.parentComment || reply.parentComment === comment._id) {
+                        return [reply, ...prev];
+                    }
+
+                    const parentIndex = prev.findIndex(
+                        r => r._id === reply.parentComment
+                    );
+
+                    if (parentIndex === -1) {
+                        return [...prev, reply];
+                    }
+
+                    let insertIndex = parentIndex + 1;
+
+                    while (
+                        insertIndex < prev.length &&
+                        (prev[insertIndex].depth ?? 0) > (prev[parentIndex].depth ?? 0)
+                    ) {
+                        insertIndex++;
+                    }
+
+                    const next = [...prev];
+
+                    next.splice(insertIndex, 0, reply);
+
+                    return next;
+                });
             },
 
             replaceOptimisticReply(tempId, reply) {
-                setReplies((prev) =>
-                    prev.map((r) =>
+                setReplies(prev =>
+                    prev.map(r =>
                         r._id === tempId ? reply : r
                     )
                 );
             },
 
             removeOptimisticReply(tempId) {
-                setReplyCount(prev => Math.max(0, prev - 1));
+                setReplyCount(prev =>
+                    Math.max(prev - 1, 0)
+                );
+
                 setReplies(prev =>
                     prev.filter(r => r._id !== tempId)
                 );
             },
         }));
-        console.log(
-            "Replies render",
-            comment._id,
-            replies.map(r => r._id)
-        );
+
         const loadReplies = useCallback(async () => {
-            console.log("LOAD REPLIES", comment._id);
             if (loading) return;
 
             setLoading(true);
 
             try {
                 const res = await axios.get(
-                    `${BACKEND_URL}/api/comments/${comment._id}/replies`,
+                    `${BACKEND_URL}/api/comments/${comment._id}/thread`,
                     {
                         params: {
                             limit: 20,
@@ -102,14 +135,11 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
                 );
 
                 setReplies(res.data.replies);
-                setReplyCount(
-                    Math.max(
-                        replyCount,
-                        comment.replyCount ?? 0,
-                        res.data.replies.length
-                    )
+
+                setNextCursor(
+                    res.data.nextCursor ?? null
                 );
-                setNextCursor(res.data.nextCursor ?? null);
+
                 setExpanded(true);
             } catch (err) {
                 console.error(err);
@@ -122,75 +152,55 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
             loading,
         ]);
 
-        useEffect(() => {
-            setReplyCount(prev =>
-                Math.max(prev, comment.replyCount ?? 0)
-            );
-        }, [comment.replyCount]);
+        const loadMoreReplies =
+            useCallback(async () => {
+                if (
+                    loadingMore ||
+                    !nextCursor
+                )
+                    return;
 
-        useEffect(() => {
-            console.log("Mounted", comment._id);
+                setLoadingMore(true);
 
-            return () => {
-                console.log("Unmounted", comment._id);
-            };
-        }, []);
+                try {
+                    const res = await axios.get(
+                        `${BACKEND_URL}/api/comments/${comment._id}/thread`,
+                        {
+                            params: {
+                                cursor: nextCursor,
+                                limit: 20,
+                            },
+                        }
+                    );
 
-        useEffect(() => {
-            console.log(
-                "Replies state",
+                    setReplies(prev => [
+                        ...prev,
+                        ...res.data.replies,
+                    ]);
+
+                    setNextCursor(
+                        res.data.nextCursor
+                    );
+                } catch (err) {
+                    console.error(err);
+                } finally {
+                    setLoadingMore(false);
+                }
+            }, [
+                BACKEND_URL,
                 comment._id,
-                replies.map(r => r._id)
-            );
-        }, [replies]);
-
-        const loadMoreReplies = useCallback(async () => {
-            if (!nextCursor || loadingMore) return;
-
-            setLoadingMore(true);
-
-            try {
-                const res = await axios.get(
-                    `${BACKEND_URL}/api/comments/${comment._id}/replies`,
-                    {
-                        params: {
-                            cursor: nextCursor,
-                            limit: 20,
-                        },
-                    }
-                );
-
-                setReplies((prev) => [
-                    ...prev,
-                    ...res.data.replies,
-                ]);
-
-                setNextCursor(res.data.nextCursor);
-            } catch (err) {
-                console.error(err);
-            } finally {
-                setLoadingMore(false);
-            }
-        }, [
-            BACKEND_URL,
-            comment._id,
-            nextCursor,
-            loadingMore,
-        ]);
-
+                loadingMore,
+                nextCursor,
+            ]);
         console.log(
-            "Replies visible?",
+            "ThreadReplies render",
             comment._id,
-            "replyCount:",
-            comment.replyCount,
-            "stored replies:",
-            replies.length
+            {
+                expanded,
+                replyCount,
+                replies
+            }
         );
-
-        if (replyCount <= 0 && replies.length === 0) {
-            return null;
-        }
-
         return (
             <div className="mt-2">
                 {!expanded ? (
@@ -210,7 +220,7 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
                     </button>
                 ) : (
                     <div className="mt-2 pl-3 sm:pl-4 border-l-2 border-gray-200 dark:border-zinc-800 space-y-1">
-                        {replies.map((reply) => (
+                        {replies.map(reply => (
                             <CommentCard
                                 key={reply._id}
                                 comment={reply}
@@ -219,14 +229,19 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
                                 onDelete={onDelete}
                                 onReply={onReply}
                                 registerRepliesRef={registerRepliesRef}
+                                showThreadReplies={false}
                             />
                         ))}
 
-                        {expanded && replies.length > 0 && nextCursor && (
+                        {nextCursor && (
                             <button
-                                onClick={loadMoreReplies}
-                                disabled={loadingMore}
-                                className="text-xs font-semibold text-blue-600 hover:text-blue-700 pt-2 block"
+                                onClick={
+                                    loadMoreReplies
+                                }
+                                disabled={
+                                    loadingMore
+                                }
+                                className="text-xs font-semibold text-blue-600 hover:text-blue-700 pt-2"
                             >
                                 {loadingMore
                                     ? "Loading..."
@@ -240,6 +255,6 @@ const Replies = forwardRef<RepliesHandle, RepliesProps>(
     }
 );
 
-Replies.displayName = "Replies";
+ThreadReplies.displayName = "ThreadReplies";
 
-export default memo(Replies);
+export default memo(ThreadReplies);

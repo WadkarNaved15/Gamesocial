@@ -7,7 +7,7 @@ import { useFeed } from "../../context/FeedContext";
 import MentionText from "./MentionText";
 import { MentionTextarea } from "../PostModal/ActivePostForm/MentionTextarea";
 import CommentCard, { Comment } from "./CommentCard";
-import type { RepliesHandle } from "./Replies";
+import type { ThreadRepliesHandle } from "./ThreadReplies";
 import {
   MoreHorizontal,
   Trash2,
@@ -67,16 +67,28 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
   const { user } = useUser();
   const observerRef = useRef<HTMLDivElement | null>(null);
   const repliesRefs = useRef<
-    Record<string, RepliesHandle | null>
+    Record<string, ThreadRepliesHandle | null>
   >({});
 
   const registerRepliesRef = useCallback(
-    (commentId: string, ref: RepliesHandle | null) => {
+    (commentId: string, ref: ThreadRepliesHandle | null) => {
+
+      console.log(
+        "registerRepliesRef",
+        commentId,
+        ref ? "SET" : "CLEARED"
+      );
+
       if (ref) {
         repliesRefs.current[commentId] = ref;
       } else {
         delete repliesRefs.current[commentId];
       }
+
+      console.log(
+        "Current refs:",
+        Object.keys(repliesRefs.current)
+      );
     },
     []
   );
@@ -115,6 +127,29 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
     }
   }, [nextCursor, loadingMore, BACKEND_URL, postId]);
 
+  // Inside CommentSection component:
+
+  // 1. Wrap setReplyingTo in a custom handler to prepend @username
+  const handleReplyClick = useCallback((targetComment: Comment) => {
+    setReplyingTo(targetComment);
+
+    const parentUsername = targetComment.user?.username;
+    if (parentUsername) {
+      // Prepopulate textarea with @parentUsername if it's not already there
+      setNewComment((prev) => {
+        const mentionPrefix = `@${parentUsername} `;
+        return prev.startsWith(mentionPrefix) ? prev : `${mentionPrefix}${prev}`;
+      });
+    }
+  }, []);
+
+  // 2. Clear reply state clean-up
+  const handleCancelReply = useCallback(() => {
+    setReplyingTo(null);
+    // Optional: clear out the prepopulated @username if user cancels
+    setNewComment("");
+  }, []);
+
   useEffect(() => {
     const target = observerRef.current;
     if (!target) return;
@@ -142,13 +177,24 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
       postId,
       text: newComment,
       createdAt: new Date().toISOString(),
+
       user: {
         _id: user?._id || "",
         username: user?.username || "You",
         avatar: user?.avatar,
       },
+
       mentions,
+
       parentComment: parent?._id ?? null,
+
+      rootComment: parent
+        ? parent.rootComment || parent._id
+        : null,
+
+      depth: parent
+        ? (parent.depth ?? 0) + 1
+        : 0,
     };
 
     if (parent) {
@@ -163,15 +209,19 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
             : c
         )
       );
-      console.log(
-        "reply target",
-        parent?._id,
-        repliesRefs.current[parent?._id ?? ""]
-      );
-      // immediately insert the optimistic reply into Replies.tsx
-      repliesRefs.current[parent._id]?.addOptimisticReply(
-        tempComment
-      );
+      const threadId = parent.rootComment || parent._id;
+
+      const repliesRef = repliesRefs.current[threadId];
+
+      console.log("Parent:", parent._id);
+      console.log("Thread:", threadId);
+      console.log("Replies ref:", repliesRef);
+
+      if (!repliesRef) {
+        console.error("❌ No replies ref found");
+      } else {
+        repliesRef.addOptimisticReply(tempComment);
+      }
     } else {
       // optimistic root comment
       setComments((prev) => [tempComment, ...prev]);
@@ -196,7 +246,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
       const { comment, commentsCount } = res.data;
 
       if (parent) {
-        repliesRefs.current[parent._id]?.replaceOptimisticReply(
+        const threadId = parent.rootComment || parent._id;
+
+        repliesRefs.current[threadId]?.replaceOptimisticReply(
           tempComment._id,
           comment
         );
@@ -226,7 +278,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
           )
         );
 
-        repliesRefs.current[parent._id]?.removeOptimisticReply(
+        const threadId = parent.rootComment || parent._id;
+
+        repliesRefs.current[threadId]?.removeOptimisticReply(
           tempComment._id
         );
       }
@@ -287,7 +341,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
               </span>
 
               <button
-                onClick={() => setReplyingTo(null)}
+                onClick={handleCancelReply}
                 className="text-xs text-red-500 hover:underline"
               >
                 Cancel
@@ -326,7 +380,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
               postOwnerId={postOwnerId}
               BACKEND_URL={BACKEND_URL}
               onDelete={handleDeleteComment}
-              onReply={setReplyingTo}
+              onReply={handleReplyClick}
               registerRepliesRef={registerRepliesRef}
             />
           ))
