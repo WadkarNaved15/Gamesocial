@@ -343,8 +343,10 @@ const GamePost: React.FC<GamePostProps> = ({
     checked: false,
     allowed: false,
     reasons: [],
-    speedMbps: null,
-    testMs: null,
+    downloadMbps: null,
+    uploadMbps: null,
+    latencyMs: null,
+    jitterMs: null,
   });
   const [checkingEligibility, setCheckingEligibility] = useState(false);
 

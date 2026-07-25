@@ -105,7 +105,7 @@ async function fetchPostsByIds(ids, isAdmin = false) {
 
   if (!isAdmin) {
     filter.type = {
-      $nin: ["canvas_article", "game_post"],
+      $nin: ["canvas_article"],
     };
   }
 
@@ -127,7 +127,7 @@ async function fetchChronological(filter, limit, isAdmin = false) {
   };
 
   query.type = !isAdmin
-    ? { $nin: ["canvas_article", "game_post"] }
+    ? { $nin: ["canvas_article"] }
     : { $ne: "canvas_article" };
 
   return AllPost.find(query)

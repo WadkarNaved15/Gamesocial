@@ -85,7 +85,7 @@ const FollowFace = ({ translateZ, faceAngle }: { translateZ: number; faceAngle: 
                           navigate(`/profile/${u.username}`);
                         }}
                       >
-                        {u.name || u.username}
+                        {u.displayName || u.username}
                       </h3>
                       <p className="text-white/50 truncate text-[9px] lg:text-[10px] cursor-pointer"
                         onClick={(e) => {
