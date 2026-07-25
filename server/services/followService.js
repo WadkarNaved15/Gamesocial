@@ -65,7 +65,7 @@ class FollowService {
     const skip = (page - 1) * limit;
 
     const docs = await Follow.find({ following: userId })
-      .populate("follower", "username avatar")
+      .populate("follower", "username avatar displayName")
       .select("follower -_id")
       .skip(skip)
       .limit(limit);
@@ -89,7 +89,7 @@ class FollowService {
     const skip = (page - 1) * limit;
 
     const docs = await Follow.find({ follower: userId })
-      .populate("following", "username avatar")
+      .populate("following", "username avatar displayName")
       .select("following -_id")
       .skip(skip)
       .limit(limit);
@@ -142,7 +142,7 @@ class FollowService {
     const suggested = await User.aggregate([
       { $match: { _id: { $nin: excludeIds } } },
       { $sample: { size: 5 } },
-      { $project: { _id: 1, username: 1, avatar: 1, name: 1 } }
+      { $project: { _id: 1, username: 1, avatar: 1, displayName: 1 } }
     ]);
     // Inject isFollowing (will be false for all since we excluded them, but good for consistency)
     const enriched = suggested.map(user => ({
