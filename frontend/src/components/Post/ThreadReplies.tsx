@@ -203,52 +203,50 @@ const ThreadReplies = forwardRef<
         );
         return (
             <div className="mt-2">
-                {!expanded ? (
-                    <button
-                        onClick={loadReplies}
-                        disabled={loading}
-                        className="flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-blue-600 transition-colors pt-1"
-                    >
-                        <span className="w-4 h-[1px] bg-gray-300 dark:bg-zinc-700" />
+                {replyCount > 0 && (
+                    !expanded ? (
+                        <button
+                            onClick={loadReplies}
+                            disabled={loading}
+                            className="flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-blue-600 transition-colors pt-1"
+                        >
+                            <span className="w-4 h-[1px] bg-gray-300 dark:bg-zinc-700" />
 
-                        {loading
-                            ? "Loading replies..."
-                            : `View ${replyCount} ${replyCount === 1
-                                ? "reply"
-                                : "replies"
-                            }`}
-                    </button>
-                ) : (
-                    <div className="mt-2 pl-3 sm:pl-4 border-l-2 border-gray-200 dark:border-zinc-800 space-y-1">
-                        {replies.map(reply => (
-                            <CommentCard
-                                key={reply._id}
-                                comment={reply}
-                                BACKEND_URL={BACKEND_URL}
-                                postOwnerId={postOwnerId}
-                                onDelete={onDelete}
-                                onReply={onReply}
-                                registerRepliesRef={registerRepliesRef}
-                                showThreadReplies={false}
-                            />
-                        ))}
+                            {loading
+                                ? "Loading replies..."
+                                : `View ${replyCount} ${replyCount === 1
+                                    ? "reply"
+                                    : "replies"
+                                }`}
+                        </button>
+                    ) : (
+                        <div className="mt-2 pl-3 sm:pl-4 border-l-2 border-gray-200 dark:border-zinc-800 space-y-1">
+                            {replies.map(reply => (
+                                <CommentCard
+                                    key={reply._id}
+                                    comment={reply}
+                                    BACKEND_URL={BACKEND_URL}
+                                    postOwnerId={postOwnerId}
+                                    onDelete={onDelete}
+                                    onReply={onReply}
+                                    registerRepliesRef={registerRepliesRef}
+                                    showThreadReplies={false}
+                                />
+                            ))}
 
-                        {nextCursor && (
-                            <button
-                                onClick={
-                                    loadMoreReplies
-                                }
-                                disabled={
-                                    loadingMore
-                                }
-                                className="text-xs font-semibold text-blue-600 hover:text-blue-700 pt-2"
-                            >
-                                {loadingMore
-                                    ? "Loading..."
-                                    : "Load more replies"}
-                            </button>
-                        )}
-                    </div>
+                            {nextCursor && (
+                                <button
+                                    onClick={loadMoreReplies}
+                                    disabled={loadingMore}
+                                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 pt-2"
+                                >
+                                    {loadingMore
+                                        ? "Loading..."
+                                        : "Load more replies"}
+                                </button>
+                            )}
+                        </div>
+                    )
                 )}
             </div>
         );

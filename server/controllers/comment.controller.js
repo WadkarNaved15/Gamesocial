@@ -165,17 +165,27 @@ export const createComment = async (req, res) => {
         // ---------------------------------------------------
 
         if (parentComment) {
-            await Comment.findByIdAndUpdate(
-                parentComment._id,
-                {
-                    $inc: {
-                        replyCount: 1,
+            let currentComment = parentComment;
+
+            while (currentComment) {
+                await Comment.findByIdAndUpdate(
+                    currentComment._id,
+                    {
+                        $inc: {
+                            replyCount: 1,
+                        },
                     },
-                },
-                {
-                    session,
+                    { session }
+                );
+
+                if (!currentComment.parentComment) {
+                    break;
                 }
-            );
+
+                currentComment = await Comment.findById(
+                    currentComment.parentComment
+                ).session(session);
+            }
         }
 
         // ---------------------------------------------------
