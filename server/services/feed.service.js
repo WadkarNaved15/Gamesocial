@@ -62,7 +62,7 @@ const POST_PROJECTION = {
   "gamePost.price": 1,
   "gamePost.version": 1,
   "gamePost.videoDemo": 1,
-  "gamePost.maxSessionDuration": 1,
+  "gamePost.maxSessionDurationMinutes": 1,
 
   "gamePost.creditBudget.usedCredits": 1,
   "gamePost.creditBudget.remainingCredits": 1,
