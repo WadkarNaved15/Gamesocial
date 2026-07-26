@@ -9,6 +9,7 @@ import Notification from "../models/Notifications.js";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import s3 from "../s3.js";
 import { extractS3KeyFromUrl } from "../utils/extractS3Key.js";
+import GamePostDraft from "../models/GamePostDraft.js";
 
 export async function deletePostAndAssets(post) {
   const keysToDelete = [];
@@ -166,4 +167,44 @@ export async function deletePostAndAssets(post) {
       post._id
     ),
   ]);
+}
+
+
+export async function deleteDraftAndAssets(draft) {
+  const keysToDelete = [];
+
+  const getThumbnailKey = (url) => {
+    if (!url) return null;
+    return extractS3KeyFromUrl(url);
+  };
+
+  if (draft.buildFile?.key) {
+    keysToDelete.push(draft.buildFile.key);
+  }
+
+  if (draft.videoDemo?.key) {
+    keysToDelete.push(draft.videoDemo.key);
+  }
+
+  if (draft.videoDemo?.optimizedKey) {
+    keysToDelete.push(draft.videoDemo.optimizedKey);
+  }
+
+  const thumb = getThumbnailKey(draft.videoDemo?.thumbnailUrl);
+  if (thumb) {
+    keysToDelete.push(thumb);
+  }
+
+  await Promise.allSettled(
+    [...new Set(keysToDelete)].map((key) =>
+      s3.send(
+        new DeleteObjectCommand({
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: key,
+        })
+      )
+    )
+  );
+
+  await draft.deleteOne();
 }

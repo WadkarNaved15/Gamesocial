@@ -36,6 +36,7 @@ import GameSessionRequest from "../models/GameSessionRequest.js";
 import DemoConsumption from "../models/DemoConsumption.js";
 import { sendEventToQueue } from "../utils/sendEventToQueue.js";
 import PostAnalytics from "../models/postAnalytics.js";
+import { deleteDraftAndAssets } from "../services/deletePost.js";
 
 const router = express.Router();
 
@@ -809,6 +810,33 @@ router.get(
     res.json(draft);
   }
 );
+
+router.delete("/draft/:draftId", verifyToken, async (req, res) => {
+  try {
+    const draft = await GamePostDraft.findOne({
+      _id: req.params.draftId,
+      creator: req.user._id,
+      status: {
+        $in: ["draft", "uploading", "ready_for_payment"],
+      },
+    });
+
+    if (!draft) {
+      return res.status(404).json({ message: "Draft not found" });
+    }
+
+    // Respond immediately
+    res.json({ message: "Draft deleted" });
+
+    // Cleanup in background
+    deleteDraftAndAssets(draft).catch((err) =>
+      console.error("Draft cleanup failed:", err)
+    );
+  } catch (err) {
+    console.error("delete draft error:", err);
+    res.status(500).json({ message: "Failed to delete draft" });
+  }
+});
 
 /**
  * SPONSORED PUBLISH ENDPOINT
