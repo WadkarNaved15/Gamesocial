@@ -411,10 +411,15 @@ io.on("connection", (socket) => {
     if (!finalChatId) {
       console.log("Creating new chat");
       const participants = [senderId, receiverId].sort();
-
-      let chat = await Chat.findOne({ participants });
+      const chatKey = participants.join("_");
+      let chat = await Chat.findOne({ chatKey });
       if (!chat) {
-        chat = await Chat.create({ participants });
+        chat = await Chat.create({
+          participants,
+          chatKey,
+          requestedBy: senderId,
+          status: "pending",
+        });
       }
 
       finalChatId = chat._id;
@@ -477,11 +482,13 @@ io.on("connection", (socket) => {
       console.log("Creating new chat");
       console.log("status marked as pending");
       const participants = [senderId, receiverId].sort();
+      const chatKey = participants.join("_");
 
-      let chat = await Chat.findOne({ participants });
+      let chat = await Chat.findOne({ chatKey });
       if (!chat) {
         chat = await Chat.create({
           participants,
+          chatKey,
           requestedBy: senderId,
           status: "pending",
         });

@@ -10,6 +10,11 @@ const chatSchema = new mongoose.Schema(
         required: true,
       },
     ],
+    chatKey: {
+      type: String,
+      required: true,
+      unique: true,
+    },
     status: {
       type: String,
       enum: ["pending", "accepted", "declined"],
@@ -30,9 +35,7 @@ const chatSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Ensure a chat between two users is not duplicated
-chatSchema.index({ participants: 1 }, { unique: true });
-
+chatSchema.index({ chatKey: 1 }, { unique: true });
 const Chat = mongoose.model("Chat", chatSchema);
-chatSchema.index({ participants: 1 });
+
 export default Chat;
