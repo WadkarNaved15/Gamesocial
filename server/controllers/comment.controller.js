@@ -304,7 +304,6 @@ export const getComments = async (req, res) => {
         const query = {
             post: postId,
             parentComment: null,
-            isDeleted: false,
             ...(cursor && mongoose.Types.ObjectId.isValid(cursor) && {
                 _id: { $lt: cursor },
             }),
@@ -364,7 +363,6 @@ export const getCommentThread = async (req, res) => {
 
         const query = {
             rootComment: rootComment._id,
-            isDeleted: false,
 
             ...(cursor &&
                 mongoose.Types.ObjectId.isValid(cursor) && {
@@ -444,19 +442,45 @@ export const getCommentThread = async (req, res) => {
 
 // Delete a comment
 export const deleteComment = async (req, res) => {
+    const session = await mongoose.startSession();
+
     try {
         const userId = req.user.id;
         const commentId = req.params.id;
 
         if (!mongoose.Types.ObjectId.isValid(commentId)) {
-            return res.status(400).json({ message: "Invalid comment ID" });
+            return res.status(400).json({
+                message: "Invalid comment ID",
+            });
         }
 
-        const comment = await Comment.findById(commentId);
-        if (!comment) return res.status(404).json({ message: "Comment not found" });
-        const post = await AllPost.findById(comment.post).select("user");
+        session.startTransaction();
+
+        const comment = await Comment.findById(commentId).session(session);
+
+        if (!comment) {
+            await session.abortTransaction();
+
+            return res.status(404).json({
+                message: "Comment not found",
+            });
+        }
+
+        if (comment.isDeleted) {
+            await session.abortTransaction();
+
+            return res.status(400).json({
+                message: "Comment already deleted",
+            });
+        }
+
+        const post = await AllPost.findById(comment.post)
+            .select("user commentsCount")
+            .session(session);
 
         if (!post) {
+            await session.abortTransaction();
+
             return res.status(404).json({
                 message: "Post not found",
             });
@@ -472,31 +496,63 @@ export const deleteComment = async (req, res) => {
             req.user.role === "admin";
 
         if (!isCommentOwner && !isPostOwner && !isAdmin) {
+            await session.abortTransaction();
+
             return res.status(403).json({
                 message: "Not authorized",
             });
         }
 
-        await Comment.deleteOne({ _id: comment._id });
-        const updatedPost = await AllPost.findByIdAndUpdate(
+        comment.isDeleted = true;
+        comment.text = "[deleted]";
+        comment.mentions = [];
+        comment.hasInteractMention = false;
+
+        await comment.save({ session });
+
+        await AllPost.findByIdAndUpdate(
             comment.post,
-            { $inc: { commentsCount: -1 } },
-            { new: true }
-        ).select("commentsCount");
+            {
+                $inc: {
+                    commentsCount: -1,
+                },
+            },
+            {
+                session,
+            }
+        );
+
+        await session.commitTransaction();
 
         try {
             await onCommentRemoved(comment.post);
         } catch (err) {
-            console.error("Comment removal analytics failed:", err);
+            console.error(
+                "Comment removal analytics failed:",
+                err
+            );
         }
 
-        res.json({
+        const updatedPost = await AllPost.findById(comment.post)
+            .select("commentsCount");
+
+        return res.json({
             message: "Comment deleted",
             commentsCount: updatedPost.commentsCount,
         });
 
     } catch (error) {
-        console.error("Error deleting comment:", error);
-        res.status(500).json({ message: "Server error" });
+        await session.abortTransaction();
+
+        console.error(
+            "Error deleting comment:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Server error",
+        });
+    } finally {
+        session.endSession();
     }
 };

@@ -66,6 +66,11 @@ const GamePostDraftSchema = new mongoose.Schema(
         trim: true,
         default: "",
       },
+      steamUrl: {
+        type: String,
+        trim: true,
+        default: "",
+      },
       runMode: {
         type: String,
         enum: ["sandboxed"],
@@ -85,105 +90,105 @@ const GamePostDraftSchema = new mongoose.Schema(
       // ── Sponsorship & Approvals ─────────────────────────────
       sponsorship: {
         status: {
-            type: String,
-            enum: ["pending", "approved", "rejected"],
-            default: "pending",
+          type: String,
+          enum: ["pending", "approved", "rejected"],
+          default: "pending",
         },
 
         enabled: {
-            type: Boolean,
-            default: false,
+          type: Boolean,
+          default: false,
         },
 
         initialCredits: {
-            type: Number,
-            default: 0,
-            min: 0,
+          type: Number,
+          default: 0,
+          min: 0,
         },
 
         reviewedBy: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            default: null,
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          default: null,
         },
 
         reviewedAt: {
-            type: Date,
-            default: null,
+          type: Date,
+          default: null,
         },
 
         rejectionReason: {
-            type: String,
-            default: null,
+          type: String,
+          default: null,
         },
 
         notes: {
-            type: String,
-            default: null,
+          type: String,
+          default: null,
         },
-    },
-    
+      },
+
     },
 
 
     // ── Uploaded build file (stored in draft, NOT yet in AllPost) ─
     buildFile: {
-        name: String,
-        key: String,
-        url: String,
-        size: Number,
-        format: {
-            type: String,
-            enum: ["7z", "zip", "exe"],
-        },
+      name: String,
+      key: String,
+      url: String,
+      size: Number,
+      format: {
+        type: String,
+        enum: ["7z", "zip", "exe"],
+      },
 
-        uploadedAt: {
-            type: Date,
-            default: null,
-        },
-        },
+      uploadedAt: {
+        type: Date,
+        default: null,
+      },
+    },
 
-        videoDemo: {
-          name: String,
+    videoDemo: {
+      name: String,
 
-          // original
-          key: String,
-          url: String,
+      // original
+      key: String,
+      url: String,
 
-          // optimized
-          optimizedKey: String,
-          optimizedUrl: String,
+      // optimized
+      optimizedKey: String,
+      optimizedUrl: String,
 
-          thumbnailUrl: String,
+      thumbnailUrl: String,
 
-          size: Number,
+      size: Number,
 
-          processingStatus: {
-            type: String,
-            enum: [
-              "pending",
-              "processing",
-              "completed",
-              "failed",
-            ],
-            default: "pending",
-          },
+      processingStatus: {
+        type: String,
+        enum: [
+          "pending",
+          "processing",
+          "completed",
+          "failed",
+        ],
+        default: "pending",
+      },
 
-          processingError: {
-            type: String,
-            default: null,
-          },
+      processingError: {
+        type: String,
+        default: null,
+      },
 
-          uploadedAt: {
-            type: Date,
-            default: null,
-          },
+      uploadedAt: {
+        type: Date,
+        default: null,
+      },
 
-          processedAt: {
-            type: Date,
-            default: null,
-          },
-        },
+      processedAt: {
+        type: Date,
+        default: null,
+      },
+    },
 
     // ── Payment / credits ─────────────────────────────────────────
     selectedCredits: {
@@ -232,22 +237,22 @@ const GamePostDraftSchema = new mongoose.Schema(
     // ── Scheduled Launch ─────────────────────────────────────────────
 
     scheduledLaunch: {
-        enabled: {
-            type: Boolean,
-            default: false,
-        },
+      enabled: {
+        type: Boolean,
+        default: false,
+      },
 
-        launchAt: {
-            type: Date,
-            default: null,
-            validate: {
-                validator(value) {
-                    if (!this.scheduledLaunch.enabled) return true;
-                    return value && value > new Date();
-                },
-                message: "Launch time must be in the future."
-            }
+      launchAt: {
+        type: Date,
+        default: null,
+        validate: {
+          validator(value) {
+            if (!this.scheduledLaunch.enabled) return true;
+            return value && value > new Date();
+          },
+          message: "Launch time must be in the future."
         }
+      }
     },
 
     // ── Workflow status ───────────────────────────────────────────
@@ -302,17 +307,17 @@ GamePostDraftSchema.index(
 );
 
 GamePostDraftSchema.index({
-    "game.sponsorship.status": 1,
-    createdAt: 1,
+  "game.sponsorship.status": 1,
+  createdAt: 1,
 });
 
 GamePostDraftSchema.index({
-    "game.sponsorship.status": 1,
-    updatedAt: -1,
+  "game.sponsorship.status": 1,
+  updatedAt: -1,
 });
 
 GamePostDraftSchema.index({
-    "game.sponsorship.enabled": 1,
+  "game.sponsorship.enabled": 1,
 });
 
 export default mongoose.model("GamePostDraft", GamePostDraftSchema);

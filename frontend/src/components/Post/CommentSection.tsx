@@ -299,7 +299,45 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
     updateCommentsCount,
   ]);
 
-  const handleDeleteComment = useCallback(async (commentId: string) => {
+  const handleDeleteComment = useCallback(async (comment: Comment) => {
+    // Save original state for rollback
+    const deletedReply = comment;
+
+    // Only handle replies optimistically for now
+    if (comment.parentComment) {
+      const threadId = comment.rootComment!;
+
+      // Remove immediately from UI
+      repliesRefs.current[threadId]?.markReplyDeletedOptimistically(comment._id);
+
+      // Decrease the reply count shown on the root comment
+      setComments(prev =>
+        prev.map(c =>
+          c._id === threadId
+            ? {
+              ...c,
+              replyCount: Math.max(0, (c.replyCount ?? 0) - 1),
+            }
+            : c
+        )
+      );
+    } else {
+      // Root comment optimistic delete
+      setComments(prev =>
+        prev.map(c =>
+          c._id === comment._id
+            ? {
+              ...c,
+              isDeleted: true,
+              text: "",
+              mentions: [],
+              review: undefined,
+            }
+            : c
+        )
+      );
+    }
+    const commentId = comment._id;
     try {
       const res = await axios.delete(
         `${BACKEND_URL}/api/comments/${commentId}`,
@@ -308,15 +346,36 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
         }
       );
 
-      setComments(prev =>
-        prev.filter(c => c._id !== commentId)
-      );
-
       updateCommentsCount(
         postId,
         res.data.commentsCount
       );
     } catch (err) {
+      if (deletedReply.parentComment) {
+        const threadId = deletedReply.rootComment!;
+
+        repliesRefs.current[threadId]?.restoreDeletedReply(deletedReply);
+
+        setComments(prev =>
+          prev.map(c =>
+            c._id === threadId
+              ? {
+                ...c,
+                replyCount: (c.replyCount ?? 0) + 1,
+              }
+              : c
+          )
+        );
+      }
+      else {
+        setComments(prev =>
+          prev.map(c =>
+            c._id === deletedReply._id
+              ? deletedReply
+              : c
+          )
+        );
+      }
       console.error(err);
     }
   }, [BACKEND_URL, postId, updateCommentsCount]);

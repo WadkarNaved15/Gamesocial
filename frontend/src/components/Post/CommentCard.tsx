@@ -53,7 +53,7 @@ interface CommentCardProps {
     comment: Comment;
     BACKEND_URL: string;
     postOwnerId: string;
-    onDelete: (commentId: string) => void;
+    onDelete: (comment: Comment) => void;
     onReply: (comment: Comment) => void;
     showThreadReplies?: boolean;
     linkPreviewCache?: React.MutableRefObject<Record<string, LinkPreview>>;
@@ -138,8 +138,14 @@ export const CommentCard = memo(
                 {/* Avatar */}
                 <div className="flex-shrink-0">
                     <img
-                        src={comment.user?.avatar || "/default_avatar.png"}
+                        src={
+                            comment.isDeleted
+                                ? "/default_avatar.png"
+                                : comment.user?.avatar || "/default_avatar.png"
+                        }
                         onClick={(e) => {
+                            if (comment.isDeleted) return;
+
                             e.stopPropagation();
                             navigate(`/profile/${comment.user?.username}`);
                         }}
@@ -155,7 +161,9 @@ export const CommentCard = memo(
                         <div className="flex justify-between items-center mb-1">
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-bold text-sm text-gray-900 dark:text-gray-100">
-                                    {comment.user?.username || "Anonymous"}
+                                    {comment.isDeleted
+                                        ? "Deleted"
+                                        : comment.user?.username || "Anonymous"}
                                 </span>
 
                                 {comment.parentComment && comment.mentions && comment.mentions.length > 0 && (
@@ -166,7 +174,7 @@ export const CommentCard = memo(
                                         </span>
                                     </span>
                                 )}
-                                
+
                                 {comment.review?.isGameReview && (
                                     <span className="inline-flex items-center gap-1 text-[11px] font-bold tracking-wide shrink-0 text-teal-600 dark:text-[#62d4ae]">
                                         Played {formatPlayTime(comment.review.feedback?.playTimeMs)}
@@ -185,7 +193,7 @@ export const CommentCard = memo(
                                     {new Date(comment.createdAt).toLocaleDateString()}
                                 </span>
 
-                                {canDelete && (
+                                {canDelete && !comment.isDeleted && (
                                     <div ref={menuRef} className="relative">
                                         <button
                                             onClick={(e) => {
@@ -197,13 +205,13 @@ export const CommentCard = memo(
                                             <MoreHorizontal size={16} />
                                         </button>
 
-                                        {showMenu && (
+                                        {showMenu && !comment.isDeleted &&(
                                             <div className="absolute right-0 mt-2 w-36 rounded-lg bg-white dark:bg-zinc-900 shadow-xl border border-gray-200 dark:border-zinc-700 z-50">
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         setShowMenu(false);
-                                                        onDelete(comment._id);
+                                                        onDelete(comment);
                                                     }}
                                                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
                                                 >
@@ -218,35 +226,43 @@ export const CommentCard = memo(
                         </div>
 
                         <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
-                            {comment.text.split(urlRegex).map((part: string, i: number) =>
-                                urlRegex.test(part) ? (
-                                    <a
-                                        key={i}
-                                        href={part}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-0.5"
-                                    >
-                                        <LinkIcon size={12} />
-                                        {new URL(part).hostname}
-                                    </a>
-                                ) : (
-                                    <MentionText
-                                        key={i}
-                                        text={part}
-                                        mentions={comment.mentions}
-                                    />
+                            {comment.isDeleted ? (
+                                <span className="italic text-gray-400 dark:text-zinc-500">
+                                    [deleted]
+                                </span>
+                            ) : (
+                                comment.text.split(urlRegex).map((part: string, i: number) =>
+                                    urlRegex.test(part) ? (
+                                        <a
+                                            key={i}
+                                            href={part}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-0.5"
+                                        >
+                                            <LinkIcon size={12} />
+                                            {new URL(part).hostname}
+                                        </a>
+                                    ) : (
+                                        <MentionText
+                                            key={i}
+                                            text={part}
+                                            mentions={comment.mentions}
+                                        />
+                                    )
                                 )
                             )}
                         </div>
 
                         <div className="mt-1.5">
-                            <button
-                                onClick={() => onReply(comment)}
-                                className="text-xs font-semibold text-gray-500 hover:text-blue-600 transition-colors"
-                            >
-                                Reply
-                            </button>
+                            {!comment.isDeleted && (
+                                <button
+                                    onClick={() => onReply(comment)}
+                                    className="text-xs font-semibold text-gray-500 hover:text-blue-600 transition-colors"
+                                >
+                                    Reply
+                                </button>
+                            )}
                         </div>
                     </div>
 

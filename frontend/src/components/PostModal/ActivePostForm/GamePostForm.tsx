@@ -64,6 +64,8 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
   const [gameName, setGameName] = useState('');
   const [description, setDescription] = useState('');
   const [maxSessionDurationMinutes, setMaxSessionDurationMinutes] = useState(10);
+  const [steamUrl, setSteamUrl] = useState('');
+  const [steamUrlError, setSteamUrlError] = useState('');
 
   // ── Build ─────────────────────────────────────────────────────────────────
   const [asset, setAsset] = useState<GameAsset | null>(null);
@@ -103,16 +105,17 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     gameName.trim().length > 0 &&
     gameName.trim().length <= 120 &&
     description.trim().length > 0 &&
-    videoUpload !== null; // Removed maxSessionDurationMinutes check from here
+    videoUpload !== null &&
+    !steamUrlError; // Prevents proceeding if there's an invalid Steam URL
 
   const isValidStartPath =
     startPath.trim().length > 0 &&
     !startPath.startsWith('/') &&
     !startPath.includes('..');
-    
-  const canProceedToPayment = 
-    canProceedToBuild && 
-    !!asset && 
+
+  const canProceedToPayment =
+    canProceedToBuild &&
+    !!asset &&
     isValidStartPath &&
     maxSessionDurationMinutes >= 1 && // Added it here instead
     maxSessionDurationMinutes <= 120;
@@ -185,6 +188,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     setGameName(data.game?.gameName || "");
     setDescription(data.description || "");
     setStartPath(data.game?.startPath || "");
+    setSteamUrl(data.game?.steamUrl || "");
     setDraftStatus(data.status || "draft");
     setMaxSessionDurationMinutes(
       data.game?.maxSessionDurationMinutes ?? 10
@@ -278,15 +282,33 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const isValidSteamUrl = (url: string) => {
+    if (!url) return true; // Empty input is allowed/handled separately if required
+
+    // Matches store links or community links
+    const steamRegex = /^https?:\/\/(www\.)?(store\.steampowered|steamcommunity)\.com\/.+/i;
+    return steamRegex.test(url.trim());
+  };
+
+  // Validate and update Steam URL
+  const handleSteamUrlChange = (value: string) => {
+    setSteamUrl(value);
+
+    if (value && !isValidSteamUrl(value)) {
+      setSteamUrlError('Please enter a valid Steam URL (e.g., store.steampowered.com)');
+    } else {
+      setSteamUrlError('');
+    }
+  };
   // ── Draft persistence ─────────────────────────────────────────────────────
   const saveDraftMeta = async (
     currentDraftId?: string | null
   ): Promise<string> => {
     setIsSavingDraft(true);
     const payload = {
-       draftId: currentDraftId,
+      draftId: currentDraftId,
       description,
-      game: { gameName, startPath, platform: 'windows', maxSessionDurationMinutes },
+      game: { gameName, startPath, platform: 'windows', maxSessionDurationMinutes, steamUrl },
     };
     try {
       const { data } = await api.post('/api/gamePosts/draft', payload);
@@ -1028,7 +1050,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
       <div className="flex flex-col flex-1 overflow-y-auto custom-scrollbar">
 
         {/* ══ TAB: Details & Media ══ */}
-{/* ══ TAB: Details & Media ══ */}
+        {/* ══ TAB: Details & Media ══ */}
         {activeTab === 'details' && (
           <div className="flex flex-1 p-6 gap-5">
             <div className="flex-shrink-0">
@@ -1093,6 +1115,32 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
                   </div>
                 )}
                 <input ref={videoInputRef} type="file" hidden accept="video/mp4,video/webm,video/quicktime" onChange={handleVideoChange} />
+              </div>
+
+              {/* Steam URL Input Field */}
+              {/* Steam URL Input Field */}
+              <div className="flex flex-col gap-1.5 mt-2">
+                <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors ${steamUrlError
+                  ? 'border-red-500/80 bg-red-500/5 dark:bg-red-500/10'
+                  : 'border-gray-200 dark:border-white/[0.08] bg-gray-50/50 dark:bg-white/[0.02] focus-within:border-gray-400 dark:focus-within:border-white/20'
+                  }`}>
+                  <img
+                    src="/steamLogo.png"
+                    alt="Steam"
+                    className="h-8 w-8 object-contain flex-shrink-0 opacity-80 dark:invert"
+                  />
+                  <input
+                    type="url"
+                    placeholder="https://store.steampowered.com/app/..."
+                    className="w-full text-sm bg-transparent border-none outline-none text-black dark:text-white placeholder-gray-400 focus:ring-0 p-0"
+                    value={steamUrl}
+                    onChange={e => handleSteamUrlChange(e.target.value)}
+                  />
+                </div>
+
+                {steamUrlError && (
+                  <p className="text-xs text-red-500 font-medium px-1">{steamUrlError}</p>
+                )}
               </div>
 
               {/* Live Preview */}
@@ -1206,7 +1254,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
               </div>
             </section>
 
-<section className="space-y-2">
+            <section className="space-y-2">
               <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider pl-1">
                 Maximum Demo Duration
               </label>
@@ -1271,7 +1319,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
         )}
 
         {/* ══ TAB: Payment ══ */}
-{activeTab === 'payment' && (
+        {activeTab === 'payment' && (
           <div className="p-6 flex flex-col gap-6">
             {isSponsoredApproved ? (
               // Clean, minimal Sponsored View
@@ -1311,7 +1359,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
             ) : (
               // Clean Purchase View with Restored Header
               <section className="rounded-2xl border border-gray-200 dark:border-white/[0.1] bg-gray-50 dark:bg-transparent overflow-hidden">
-                
+
                 {/* Restored Header */}
                 <div className="px-5 pt-5 pb-4 border-b border-gray-200 dark:border-white/[0.08]">
                   <div className="flex items-center gap-2 mb-1.5">

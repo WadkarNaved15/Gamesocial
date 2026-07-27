@@ -241,6 +241,7 @@ router.post("/draft", verifyToken, async (req, res) => {
       draft.game.platform = "windows";
       draft.game.startPath = game.startPath ?? draft.game.startPath;
       draft.game.engine = game.engine ?? draft.game.engine;
+      draft.game.steamUrl = game.steamUrl ?? draft.game.steamUrl;
       draft.game.runMode = game.runMode ?? draft.game.runMode;
       draft.game.buildType = game.buildType ?? draft.game.buildType;
       draft.game.maxSessionDurationMinutes =
@@ -260,6 +261,7 @@ router.post("/draft", verifyToken, async (req, res) => {
       draft.game.platform = "windows";
       draft.game.startPath = game.startPath;
       draft.game.engine = game.engine;
+      draft.game.steamUrl = game.steamUrl;
       draft.game.runMode = game.runMode;
       draft.game.maxSessionDurationMinutes =
         game.maxSessionDurationMinutes;

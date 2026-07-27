@@ -16,13 +16,20 @@ export interface ThreadRepliesHandle {
         reply: Comment
     ) => void;
     removeOptimisticReply: (tempId: string) => void;
+    markReplyDeletedOptimistically: (
+        replyId: string
+    ) => void;
+
+    restoreDeletedReply: (
+        reply: Comment
+    ) => void;
 }
 
 interface ThreadRepliesProps {
     comment: Comment;
     BACKEND_URL: string;
     postOwnerId: string;
-    onDelete: (commentId: string) => void;
+    onDelete: (comment: Comment) => void;
     onReply: (comment: Comment) => void;
 
     registerRepliesRef?: (
@@ -117,7 +124,33 @@ const ThreadReplies = forwardRef<
                     prev.filter(r => r._id !== tempId)
                 );
             },
+            markReplyDeletedOptimistically(replyId) {
+                setReplies(prev =>
+                    prev.map(reply =>
+                        reply._id === replyId
+                            ? {
+                                ...reply,
+                                isDeleted: true,
+                                text: "",
+                                mentions: [],
+                                review: undefined,
+                            }
+                            : reply
+                    )
+                );
+            },
+
+            restoreDeletedReply(reply) {
+                setReplies(prev =>
+                    prev.map(r =>
+                        r._id === reply._id
+                            ? reply
+                            : r
+                    )
+                );
+            },
         }));
+
 
         const loadReplies = useCallback(async () => {
             if (loading) return;
@@ -220,7 +253,7 @@ const ThreadReplies = forwardRef<
                                 }`}
                         </button>
                     ) : (
-                        <div className="mt-2 pl-3 sm:pl-4 border-l-2 border-gray-200 dark:border-zinc-800 space-y-1">
+                        <div className="mt-2 pl-3 sm:pl-4 dark:border-zinc-800 space-y-1">
                             {replies.map(reply => (
                                 <CommentCard
                                     key={reply._id}
