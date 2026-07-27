@@ -218,7 +218,6 @@ async uploadFile(
 
     finished = true
     const data = await res.json()
-    console.log('Scene Id:', data.sceneId)
     return data
   }
 

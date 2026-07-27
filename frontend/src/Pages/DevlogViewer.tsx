@@ -78,7 +78,6 @@ const DevlogViewer: React.FC = () => {
       setLoading(true);
       setError(null);
       const data = await canvasAPI.getScene(id);
-      console.log('Loaded devlog data:', data);
       setDevlog(data.scene);
     } catch (err) {
       console.error('Failed to load devlog:', err);
@@ -220,7 +219,6 @@ viewport.plugins.remove('decelerate');
         switch (obj.type) {
           case 'image':
             if (obj.source) {
-              console.log('Loading image source:', obj.source);
              const texture = await PIXI.Assets.load(obj.source);
               const sprite = new PIXI.Sprite(texture);
               sprite.anchor.set(0.5);
@@ -231,7 +229,6 @@ viewport.plugins.remove('decelerate');
 
           case 'video':
             if (obj.source) {
-              console.log('Loading video source:', obj.source);
               const video = document.createElement('video');
               video.src = obj.source;
               video.crossOrigin = 'anonymous';
@@ -358,8 +355,6 @@ container.on('destroyed', () => {
   icon.drawRoundedRect(-WIDTH / 2 + 12, -18, 36, 36, 6);
   icon.endFill();
   container.addChild(icon);
-
-  console.log("Object",obj)
 
   // File extension
   const ext =

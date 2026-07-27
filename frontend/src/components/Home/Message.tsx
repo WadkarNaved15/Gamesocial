@@ -241,15 +241,12 @@ const MessagingComponent = () => {
 
   useEffect(() => {
     if (!socket || !currentUser) return;
-    console.log("new read message socket got called");
     const unreadHandler = ({ senderId }: any) => {
-      console.log("🔔 senderId received =", senderId);
       setUnreadCounts((prev) => ({
         ...prev,
         [senderId]: (prev[senderId] || 0) + 1,
       }));
     };
-    console.log("new read message socket got called");
     socket.on("new-unread-message", unreadHandler);
 
     return () => {
@@ -400,37 +397,28 @@ const MessagingComponent = () => {
 
 
   const handleUserClick = async (receiverId: string) => {
-    console.log("receiver user", receiverId);
-    console.log("Current User", currentUser);
     if (receiverId === currentUser) {
       toast.error("Cannot chat with yourself");
       return;
     }
     try {
       // ✅ Leave old room first
-      console.log("currentChatId", currentChatId);
       if (currentChatId && socket) {
         socket.emit("leave_chat", currentChatId);
-        console.log("Left previous room:", currentChatId);
       }
       setActiveChat(receiverId);
-      // console.log("receiverId", receiverId);
       // Hit backend to create or get the chat
       const { data } = await axios.post(
         `${BACKEND_URL}/api/chat/start`,
         { receiverId },
         { withCredentials: true }
       );
-      console.log("Chat data", data);
       // 🔥 If chat exists
       if (data?._id && socket) {
         setCurrentChatId(data._id);
         setRequestedUser(data)
         setActiveChatStatus(data.status);
-        console.log("Status is", data.status);
-        console.log("Active chat status is ", activeChatStatus);
         socket.emit("join_chat", data._id);
-        console.log("Joined chat room:", data._id);
         const messagesResponse = await axios.get(
           `${BACKEND_URL}/api/messages/${data._id}`,
           { withCredentials: true }
@@ -450,7 +438,6 @@ const MessagingComponent = () => {
           ...prev,
           [receiverId]: 0,
         }));
-        console.log("Messages marked as seen!");
       } else {
         // 🔥 NO CHAT EXISTS → EMPTY STATE
         setCurrentChatId(null);
@@ -569,7 +556,6 @@ const MessagingComponent = () => {
   const toggleClose = () => {
     if (currentChatId && socket) {
       socket.emit("leave_chat", currentChatId);
-      console.log("Left previous room:", currentChatId);
     }
 
     setIsOpen(false);

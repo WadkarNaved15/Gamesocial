@@ -48,7 +48,6 @@ export default function ArticleEditor() {
   }));
   const { user } = useUser();
   const username = user?.username
-  console.log("user", user);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2] } }),
@@ -94,7 +93,6 @@ export default function ArticleEditor() {
         content: editor.getJSON(), // TipTap JSON
         headerImage,
       };
-      console.log("Payload:", payload);
 
       const res = await fetch(`${BACKEND_URL}/api/articles/publish`, {
         method: "POST",
@@ -104,7 +102,6 @@ export default function ArticleEditor() {
       });
       if (!res.ok) throw new Error("Publish failed");
       const data = await res.json();
-      console.log("Article published:", data);
       toast.success("Article published", {
         position: "bottom-center",
         autoClose: 1500,

@@ -129,11 +129,9 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
 
     // 🚫 Skip compression for small images
     if (fileSizeMB < 1) {
-      console.log("Skipping compression (small file):", fileSizeMB);
       return file;
     }
 
-    console.log("Compressing image:", fileSizeMB, "MB");
 
     const options = {
       maxWidthOrHeight: 1080,
@@ -143,12 +141,6 @@ const MediaPostForm: React.FC<PostModalProps> = ({ onCancel }) => {
 
     try {
       const compressedBlob = await imageCompression(file, options);
-
-      console.log(
-        "Compressed:",
-        (compressedBlob.size / 1024 / 1024).toFixed(2),
-        "MB"
-      );
 
       // ✅ Keep original type (important)
       return new File([compressedBlob], file.name, {

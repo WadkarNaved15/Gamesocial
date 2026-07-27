@@ -50,13 +50,6 @@ function Home() {
       setLoading(true);
 
       try {
-        console.log("FETCHING PAGE");
-        console.log({
-          reset,
-          loading,
-          hasMore,
-          nextCursor
-        });
         const res = await api.get(
           "/api/posts/fetch_posts",
           {
@@ -67,10 +60,6 @@ function Home() {
           }
         );
         const newPosts = res.data.posts;
-        console.log({
-          received: newPosts.length,
-          nextCursor: res.data.nextCursor
-        });
         const newCursor = res.data.nextCursor;
         addPosts(newPosts);
         setMainPosts((prev) => {
@@ -87,7 +76,6 @@ function Home() {
         if (!newCursor || newPosts.length === 0) {
           setHasMore(false);
         }
-        console.log("Setting hasMore =", !(!newCursor || newPosts.length === 0));
       } catch (err) {
         console.error("Failed to fetch posts:", err);
         setHasMore(false);

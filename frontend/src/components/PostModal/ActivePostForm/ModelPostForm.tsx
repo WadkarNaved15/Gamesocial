@@ -100,7 +100,6 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
     // Sync slider the exact moment the model first loads and calculates "auto"
     const handleLoad = () => {
       const initialFov = viewer.getFieldOfView();
-      console.log("Model loaded, initial FOV:", initialFov);
       setAssets((prevAssets) =>
         prevAssets.map((asset, idx) =>
           idx === activeIndex

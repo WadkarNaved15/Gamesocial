@@ -134,8 +134,6 @@ export const getStreamEligibility = async (): Promise<StreamEligibility> => {
   try {
     const result = await runCloudflareSpeedTest();
 
-    console.log("Speed test result:", result);
-
     if (result.download !== null && result.download < MIN_DOWNLOAD) {
       reasons.push(
         `Download speed is ${result.download?.toFixed(1)} Mbps. Minimum required is ${MIN_DOWNLOAD} Mbps.`

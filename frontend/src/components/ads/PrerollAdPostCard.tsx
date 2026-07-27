@@ -128,56 +128,17 @@ const PrerollAdPostCard: React.FC<Props> = ({
             preload="metadata"
             muted={false}
 
-            // onLoadStart={() => {
-            //     console.log("VIDEO loadstart", asset.url);
-            // }}
-
-            // onLoadedMetadata={(e) => {
-            //     console.log(
-            //         "VIDEO metadata",
-            //         e.currentTarget.videoWidth,
-            //         e.currentTarget.videoHeight,
-            //         e.currentTarget.duration
-            //     );
-            // }}
-
-            // onLoadedData={() => {
-            //     console.log("VIDEO loadeddata");
-            // }}
-
-            // onCanPlay={() => {
-            //     console.log("VIDEO canplay");
-            // }}
-
             onPlay={() => {
-                // console.log("VIDEO play");
                 setAudioFocusId(AD_AUDIO_ID);
                 startProgressLoop();
             }}
 
-            // onPause={() => {
-            //     console.log("VIDEO pause");
-            // }}
-
             onEnded={() => {
-                // console.log("VIDEO ended");
-
                 setAudioFocusId(null);
                 stopProgressLoop();
 
                 onEnded?.();
             }}
-
-            // onError={(e) => {
-            //     const video = e.currentTarget;
-
-            //     console.log("VIDEO ERROR", {
-            //         src: video.currentSrc,
-            //         networkState: video.networkState,
-            //         readyState: video.readyState,
-            //         error: video.error,
-            //     });
-            // }}
 
             className={`w-full h-full max-w-full max-h-full ${
                 fullscreen

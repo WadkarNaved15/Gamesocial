@@ -33,7 +33,6 @@ function AddPost() {
   // Handle editor content change
   const handleSave = () => {
     const content = editorRef.current?.innerHTML || '';
-    console.log('Saved content:', content);
     setShowEditor(false);
   };
   //Handle editor content change
@@ -107,8 +106,6 @@ function AddPost() {
           return;
         }
 
-        console.log("Game uploaded:", data);
-
         // Reset
         setPostText('');
         setUploadedFiles([]);
@@ -140,8 +137,6 @@ function AddPost() {
           console.error("Post Error:", data.error);
           return;
         }
-
-        console.log("Post created:", data);
 
         // Reset
         setPostText('');

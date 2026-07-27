@@ -466,7 +466,6 @@ if (viewport) {
       const json = await (await fetch(jsonUrl)).json()
 
       // 🔍 DEBUG (keep for now)
-      console.log('Spritesheet JSON:', json)
 
       // ✅ Minimal sanity check
       if (!json || typeof json !== 'object') {
@@ -1546,7 +1545,6 @@ const handleFinalPublish = async () => {
       <div className="absolute top-4 right-4 flex flex-col gap-2 bg-gray-800 p-2 rounded-lg shadow-lg">
       <button
   onClick={() => {
-    console.log('ZOOM IN CLICKED');
     zoomIn();
   }}
   className="p-2 bg-gray-600 hover:bg-gray-700 rounded transition"
@@ -1556,7 +1554,6 @@ const handleFinalPublish = async () => {
 
 <button
   onClick={() => {
-    console.log('ZOOM OUT CLICKED');
     zoomOut();
   }}
   className="p-2 bg-gray-600 hover:bg-gray-700 rounded transition"
