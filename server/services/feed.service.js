@@ -155,6 +155,7 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
   const cacheUserKey = userId ?? "guest";
   const cacheKey = isFirstPage ? `feed:${cacheUserKey}:first` : null;
   let cachedData = null;
+  
 
   // ── Cache Lookup & Stampede Protection ────────────────────────────────────────
   if (cacheKey) {
@@ -162,7 +163,9 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
       const cached = await redisClient.get(cacheKey);
       if (cached) {
         cachedData = JSON.parse(cached);
+        console.log(`[Feed] Cache hit for ${cacheKey}`);
       } else {
+          console.log(`[Feed] Cache MISS: ${cacheKey}`);
         const lockKey = `lock:${cacheKey}`;
         const lockAcquired = await redisClient.set(lockKey, "1", {
           NX: true,
