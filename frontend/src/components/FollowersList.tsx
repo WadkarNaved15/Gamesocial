@@ -20,7 +20,6 @@ const FollowersList = ({ userId }: { userId: string }) => {
       try {
         setLoading(true);
         setError("");
-        console.log("Fetching from:", `${BACKEND_URL}/api/follow/${userId}/followers`);
 
         const [followersRes, followingRes] = await Promise.all([
           axios.get(`${BACKEND_URL}/api/follow/${userId}/followers/count`),

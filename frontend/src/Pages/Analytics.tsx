@@ -931,7 +931,6 @@ function Sidebar({
   collapsed: boolean;
   onToggle: () => void;
 }) {
-  console.log("Asset types", assets.map(a => a.type));
   const grouped = useMemo(() => {
     const map: Record<string, CreatorAsset[]> = {};
     assets.forEach(a => {
@@ -1535,7 +1534,6 @@ export default function RigzerPortfolioAnalytics() {
   };
 
   useEffect(() => {
-    console.log("Fetching analytics from", endpoint);
     (async () => {
       try {
         setApiLoading(true);

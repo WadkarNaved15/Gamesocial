@@ -21,13 +21,6 @@ const CreatePost = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({
-      gameTitle,
-      description,
-      isHeavyGame,
-      gameFile,
-      coverImage,
-    });
     alert('Post created successfully! (This is a placeholder)');
   };
 

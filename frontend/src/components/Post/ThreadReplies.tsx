@@ -225,15 +225,6 @@ const ThreadReplies = forwardRef<
                 loadingMore,
                 nextCursor,
             ]);
-        console.log(
-            "ThreadReplies render",
-            comment._id,
-            {
-                expanded,
-                replyCount,
-                replies
-            }
-        );
         return (
             <div className="mt-2">
                 {replyCount > 0 && (

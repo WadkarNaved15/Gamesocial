@@ -88,12 +88,6 @@ export const CommentCard = memo(
         const menuRef = useRef<HTMLDivElement>(null);
         const repliesRefCallback = useCallback(
             (ref: ThreadRepliesHandle | null) => {
-                console.log(
-                    "Registering ref",
-                    comment._id,
-                    ref ? "SET" : "CLEARED"
-                );
-
                 registerRepliesRef?.(comment._id, ref);
             },
             [registerRepliesRef, comment._id]

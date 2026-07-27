@@ -526,7 +526,6 @@ function usePoller<T>(fetcher: () => Promise<T>, intervalMs: number, deps: React
     try {
       const r = await fetcher();
       setData(r); setError(null);
-      console.log("Fetched data:", r);
     } catch (e) {
       setError(axios.isAxiosError(e) ? (e.response?.data?.message ?? e.message) : (e instanceof Error ? e.message : "Error"));
     } finally { setLoading(false); }
@@ -847,8 +846,6 @@ function GrowthAnalytics() {
   if (loading && !data) return <Spinner />;
   if (error) return <ErrorBanner message={error} onRetry={refresh} />;
   if (!data) return null;
-
-  console.log("postGrowth", data.postGrowth);
 
   const chartProps = {
     cartesian: <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />,

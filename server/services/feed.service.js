@@ -23,6 +23,7 @@ import {
 import DemoConsumption from "../models/DemoConsumption.js";
 import { enrichDemoConsumed } from "../utils/enrichDemoConsumed.js";
 import { enrichSessionRequests } from "../utils/enrichSessionRequests.js";
+import redisClient from "../config/redis.js";
 
 // Drop this low — if Gorse can't respond in 400ms, chronological is fine.
 // A 2000ms timeout holds 200 VUs hostage for 2 full seconds each.
@@ -92,12 +93,9 @@ const POST_PROJECTION = {
 };
 
 // ── Chronological fetch (guest fallback + Gorse fallback) ─────────────────────
-// NOTE: No .sort() here when called from the Gorse path — Gorse order is
-// preserved in JS via postMap. Sort only applies for the chronological path
-// where _id ordering is the intent.
 
 async function fetchPostsByIds(ids, isAdmin = false) {
-  // Used by Gorse path: fetch exact IDs, no sort (JS preserves Gorse rank)
+  // Used by Gorse path & Cache hit path: fetch exact IDs, no sort (JS preserves rank)
   const filter = {
     _id: { $in: ids },
     type: { $ne: "canvas_article" },
@@ -108,8 +106,6 @@ async function fetchPostsByIds(ids, isAdmin = false) {
       $nin: ["canvas_article"],
     };
   }
-
-
 
   const docs = await AllPost.find(filter)
     .select(POST_PROJECTION)
@@ -133,10 +129,7 @@ async function fetchChronological(filter, limit, isAdmin = false) {
   return AllPost.find(query)
     .select(POST_PROJECTION)
     .populate("user", "username avatar")
-    .populate(
-      "mentions.user",
-      "username displayName avatar"
-    )
+    .populate("mentions.user", "username displayName avatar")
     .sort({ _id: -1 })
     .limit(limit)
     .lean();
@@ -151,172 +144,177 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
   let isAdmin = false;
 
   if (userId) {
-    const user = await User.findById(userId)
-      .select("role")
-      .lean();
-
+    const user = await User.findById(userId).select("role").lean();
     isAdmin = user?.role === "admin";
   }
-  // Fetch a small buffer over limit to account for the pocket merge/slice.
-  // Previously this was limit*2 (20 docs for a page of 10) — wasteful over Atlas.
+  
   const fetchLimit = limit + 3;
+  const isFirstPage = !cursor;
+  
+  // ── Cache configuration ───────────────────────────────────────────────────────
+  const cacheUserKey = userId ?? "guest";
+  const cacheKey = isFirstPage ? `feed:${cacheUserKey}:first` : null;
+  let cachedData = null;
+  
 
-  // ── Parse cursor ─────────────────────────────────────────────────────────────
-  let allPostFilter = {};
-  let pocketFilter = {};
-  let gorseOffset = 0;
+  // ── Cache Lookup & Stampede Protection ────────────────────────────────────────
+  if (cacheKey) {
+    try {
+      const cached = await redisClient.get(cacheKey);
+      if (cached) {
+        cachedData = JSON.parse(cached);
+      } else {
+        const lockKey = `lock:${cacheKey}`;
+        const lockAcquired = await redisClient.set(lockKey, "1", {
+          NX: true,
+          EX: 10,
+        });
+        await redisClient.del(lockKey);
 
-  if (cursor) {
-    const [type, value] = cursor.split(/:(.+)/);
-    if (type === "a") {
-      allPostFilter = { _id: { $lt: value } };
-    }
-    // else if (type === "p") {
-    //   pocketFilter = { publishedAt: { $lt: new Date(value) } };
-    // } 
-    else if (type === "g") {
-      gorseOffset = parseInt(value, 10) || 0;
-    } else {
-      // Legacy cursor without prefix
-      allPostFilter = { _id: { $lt: cursor } };
+        if (!lockAcquired) {
+          // Another request is building the cache — poll briefly
+          await new Promise((r) => setTimeout(r, 150));
+          const cached2 = await redisClient.get(cacheKey);
+          if (cached2) {
+            cachedData = JSON.parse(cached2);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[Feed] Redis cache error:", err);
+      cachedData = null; // Fall through to standard logic if Redis fails
     }
   }
 
+  let merged = [];
+  let nextCursor = null;
 
-  // ── Pocket query — always needed regardless of auth, start it immediately ────
-  // const pocketPromise = PocketFeedEntry.find(pocketFilter)
-  //   .populate("owner", "username avatar")
-  //   .sort({ publishedAt: -1 })
-  //   .limit(limit)
-  //   .lean();
+  if (cachedData) {
+    // ========================================================================
+    // CACHE HIT PATH
+    // ========================================================================
+    const { ids, nextCursor: cachedNextCursor } = cachedData;
+    nextCursor = cachedNextCursor;
 
-  // ── Post fetch strategy ───────────────────────────────────────────────────────
-  //
-  // BEFORE (broken):
-  //   1. await Gorse                          (sequential)
-  //   2. await AllPost.find($in: gorseIds)    (sequential)
-  //   3. await Promise.all([pocketPromise])   (pockets finally resolve here —
-  //                                            but they've been waiting idle
-  //                                            while steps 1+2 ran)
-  //   4. await Like + Wishlist                (sequential, after everything else)
-  //
-  // AFTER (fixed):
-  //   Gorse path:
-  //     - Gorse + pockets fire in parallel
-  //     - Once Gorse resolves, AllPost.find fires immediately
-  //     - Like + Wishlist fire in parallel after posts are known
-  //
-  //   Guest/fallback path:
-  //     - AllPost.find + pockets fire in parallel from the start
-  //     - (No Like/Wishlist needed for guests)
+    if (ids && ids.length > 0) {
+      // Fetch fresh posts directly from Mongo using cached IDs
+      const docs = await fetchPostsByIds(ids, isAdmin);
 
-  let allPosts = [];
-  let usedGorse = false;
+      // Preserve Gorse's original ranked order (or chronological if guest)
+      const postMap = new Map(docs.map((p) => [p._id.toString(), p]));
+      merged = ids.map((id) => postMap.get(id)).filter(Boolean);
 
-  if (userId) {
-    // ── Logged-in: Gorse + pockets in parallel ──────────────────────────────
-    let gorseIds = [];
-
-    try {
-      // Fire Gorse and pockets at the same time — they're independent
-      const [ids] = await Promise.all([
-        getGorsePostIds(userId, fetchLimit, gorseOffset),
-        // pocketPromise is already running — we don't need to await it here,
-        // we just want to give it a head start while Gorse resolves
-      ]);
-      gorseIds = ids ?? [];
-    } catch (err) {
-      console.warn("[Feed] Gorse unavailable, falling back to chronological:", err.message);
+      // Fire-and-forget impression recording for logged-in users
+      if (userId) {
+        fireAndForget(() => recordServed(userId, ids));
+      }
     }
+  } else {
+    // ========================================================================
+    // CACHE MISS PATH (Execute Recommendations / Chronological logic)
+    // ========================================================================
+    let allPostFilter = {};
+    let gorseOffset = 0;
 
-    if (gorseIds.length > 0) {
-      const safeIds = [...new Set(gorseIds)].filter((id) => id?.length === 24);
-      if (safeIds.length > 0) {
-        // Now fetch posts from Atlas — pockets are still running in parallel
-        const docs = await fetchPostsByIds(safeIds, isAdmin);
-
-
-
-        // Preserve Gorse's rank order using a Map (Atlas returns in _id order)
-        const postMap = new Map(docs.map((p) => [p._id.toString(), p]));
-        allPosts = safeIds.map((id) => postMap.get(id)).filter(Boolean);
-        usedGorse = true;
-
-        // Fire-and-forget impression recording — never block the response
-        const servedIds = allPosts.map((p) => p._id.toString());
-        fireAndForget(() => recordServed(userId, servedIds));
+    if (cursor) {
+      const [type, value] = cursor.split(/:(.+)/);
+      if (type === "a") {
+        allPostFilter = { _id: { $lt: value } };
+      } else if (type === "g") {
+        gorseOffset = parseInt(value, 10) || 0;
+      } else {
+        allPostFilter = { _id: { $lt: cursor } };
       }
     }
 
-    // Gorse returned nothing or failed — fall back to chronological
-    if (!usedGorse) {
-      // Pockets are already in-flight; fetch posts in parallel with them
-      allPosts = await fetchChronological(allPostFilter, fetchLimit, isAdmin);
+    let allPosts = [];
+    let usedGorse = false;
+
+    if (userId) {
+      // ── Logged-in: Gorse path ──────────────────────────────
+      let gorseIds = [];
+      try {
+        const [ids] = await Promise.all([
+          getGorsePostIds(userId, fetchLimit, gorseOffset),
+        ]);
+        gorseIds = ids ?? [];
+      } catch (err) {
+        console.warn("[Feed] Gorse unavailable, falling back:", err.message);
+      }
+
+      if (gorseIds.length > 0) {
+        const safeIds = [...new Set(gorseIds)].filter((id) => id?.length === 24);
+        if (safeIds.length > 0) {
+          const docs = await fetchPostsByIds(safeIds, isAdmin);
+          const postMap = new Map(docs.map((p) => [p._id.toString(), p]));
+          allPosts = safeIds.map((id) => postMap.get(id)).filter(Boolean);
+          usedGorse = true;
+
+          const servedIds = allPosts.map((p) => p._id.toString());
+          fireAndForget(() => recordServed(userId, servedIds));
+        }
+      }
+
+      if (!usedGorse) {
+        allPosts = await fetchChronological(allPostFilter, fetchLimit, isAdmin);
+      }
+    } else {
+      // ── Guest: Chronological path ──────────────────────────
+      [allPosts] = await Promise.all([
+        fetchChronological(allPostFilter, fetchLimit, isAdmin),
+      ]);
     }
-  } else {
-    // ── Guest: chronological posts + pockets fully in parallel ──────────────
-    // pocketPromise is already running from line ~60.
-    // Fire the Atlas query right now so both run concurrently.
-    [allPosts] = await Promise.all([
-      fetchChronological(allPostFilter, fetchLimit, isAdmin),
-      // pocketPromise resolves on its own — collected below
-    ]);
+
+    // ── Normalise to common shape for sorting ───────────────
+    const normalisedAllPosts = allPosts.map((p, idx) => ({
+      ...p,
+      _sortKey: usedGorse
+        ? Date.now() - idx * 1000
+        : p._id.getTimestamp().getTime(),
+      _cursorType: usedGorse ? "g" : "a",
+      _cursorVal: usedGorse
+        ? String(gorseOffset + fetchLimit)
+        : p._id.toString(),
+    }));
+
+    // ── Sort and slice ──────────────────────────────────────
+    merged = [...normalisedAllPosts]
+      .sort((a, b) => b._sortKey - a._sortKey)
+      .slice(0, limit);
+
+    if (merged.length > 0) {
+      const last = merged[merged.length - 1];
+      nextCursor = `${last._cursorType}:${last._cursorVal}`;
+
+      // ── Write Cache Result (Only ordered IDs + Cursor) ───
+      if (cacheKey) {
+        const idsToCache = merged.map((p) => p._id.toString());
+        const cachePayload = { ids: idsToCache, nextCursor };
+        const ttl = 180; // 3 minutes
+
+        redisClient.setEx(cacheKey, ttl, JSON.stringify(cachePayload)).catch((err) => {
+          console.error("[Feed] Redis cache write failed:", err);
+        });
+      }
+    }
   }
 
-  // ── Collect pockets (already in-flight since the top of the function) ────────
-  // const pocketEntries = await pocketPromise;
+  // ========================================================================
+  // COMMON POST-PROCESSING & ENRICHMENTS (Runs on BOTH Hits & Misses)
+  // ========================================================================
+  
+  if (merged.length === 0) {
+    return { posts: [], nextCursor: null };
+  }
 
-  // ── Trim model assets to first only ──────────────────────────────────────────
-  for (const post of allPosts) {
+  // Trim model assets to first only
+  for (const post of merged) {
     if (post.modelPost?.assets?.length > 1) {
       post.modelPost.assets = [post.modelPost.assets[0]];
     }
   }
 
-  // ── Normalise to common shape ─────────────────────────────────────────────────
-  const normalisedAllPosts = allPosts.map((p, idx) => ({
-    ...p,
-    _sortKey: usedGorse
-      ? Date.now() - idx * 1000          // preserve Gorse rank order
-      : p._id.getTimestamp().getTime(),  // chronological order
-    _cursorType: usedGorse ? "g" : "a",
-    _cursorVal: usedGorse
-      ? String(gorseOffset + fetchLimit)
-      : p._id.toString(),
-  }));
-
-  // const normalisedPockets = pocketEntries.map((e) => ({
-  //   _id: e._id,
-  //   createdAt: e.createdAt,
-  //   updatedAt: e.updatedAt,
-  //   publishedAt: e.publishedAt,
-  //   type: "pocket_update",
-  //   user: e.owner,
-  //   likesCount: e.likesCount,
-  //   commentsCount: e.commentsCount,
-  //   isLiked: false,
-  //   brandName: e.brandName,
-  //   tagline: e.tagline,
-  //   compiledBundleUrl: e.compiledBundleUrl,
-  //   _pocketEntryId: e._id,
-  //   _sortKey: new Date(e.publishedAt).getTime(),
-  //   _cursorType: "p",
-  //   _cursorVal: e.publishedAt.toISOString(),
-  // }));
-
-  // ── Merge, sort, slice ────────────────────────────────────────────────────────
-  const merged = [...normalisedAllPosts]
-    .sort((a, b) => b._sortKey - a._sortKey)
-    .slice(0, limit);
-
-  if (merged.length === 0) {
-    return { posts: [], nextCursor: null };
-  }
-
-  // ── Enrich isLiked / isWishlisted (logged-in only) ───────────────────────────
-  // Run Like + Wishlist in parallel — two Atlas round-trips become one wait.
-  // This block previously ran after everything else; now it's the last async
-  // operation and both queries fire simultaneously.
+  // Enrich isLiked / isWishlisted (logged-in only)
   if (userId) {
     const allPostIds = merged
       .filter((p) => p.type !== "pocket_update")
@@ -344,14 +342,13 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
     }
   }
 
-  // ── Build nextCursor ──────────────────────────────────────────────────────────
-  const last = merged[merged.length - 1];
-  const nextCursor = `${last._cursorType}:${last._cursorVal}`;
+  await Promise.all([
+    enrichDemoConsumed(merged, userId),
+    enrichSessionRequests(merged, userId),
+  ]);
 
-  await enrichDemoConsumed(merged, userId);
-
-  await enrichSessionRequests(merged, userId);
-
+  // Strip temporary properties (if they exist from the miss path) before returning
   const posts = merged.map(({ _sortKey, _cursorType, _cursorVal, ...rest }) => rest);
+  
   return { posts, nextCursor };
 }

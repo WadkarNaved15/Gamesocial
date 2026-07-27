@@ -158,7 +158,6 @@ const AdModelPostForm: React.FC<AdModelPostFormProps> = ({ onCancel, onBack }) =
           },
         }),
       });
-      console.log('Ad post creation response:', response);
       if (!response.ok) throw new Error('Database save failed');
       setIsSavingMetadata(false);
       setIsSubmitting(false);

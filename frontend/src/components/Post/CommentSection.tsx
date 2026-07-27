@@ -72,23 +72,11 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
 
   const registerRepliesRef = useCallback(
     (commentId: string, ref: ThreadRepliesHandle | null) => {
-
-      console.log(
-        "registerRepliesRef",
-        commentId,
-        ref ? "SET" : "CLEARED"
-      );
-
       if (ref) {
         repliesRefs.current[commentId] = ref;
       } else {
         delete repliesRefs.current[commentId];
       }
-
-      console.log(
-        "Current refs:",
-        Object.keys(repliesRefs.current)
-      );
     },
     []
   );
@@ -212,10 +200,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
       const threadId = parent.rootComment || parent._id;
 
       const repliesRef = repliesRefs.current[threadId];
-
-      console.log("Parent:", parent._id);
-      console.log("Thread:", threadId);
-      console.log("Replies ref:", repliesRef);
 
       if (!repliesRef) {
         console.error("❌ No replies ref found");

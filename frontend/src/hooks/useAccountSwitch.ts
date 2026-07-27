@@ -19,7 +19,6 @@ export const useAccountSwitch = () => {
         position: "top-right",
         autoClose: 3000,
       });
-    console.log("New user is active:", userId);
   };
 
   return { switchAccount };

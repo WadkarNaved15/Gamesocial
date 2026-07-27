@@ -27,7 +27,6 @@ const PostDetail = ({ post: initialPost, onClose }: { post: ExePostProps; onClos
         );
 
         setPost(res.data);
-        console.log("Full model post fetched:", res.data);
       } catch (err) {
         console.error("Failed to fetch full model post:", err);
       } finally {

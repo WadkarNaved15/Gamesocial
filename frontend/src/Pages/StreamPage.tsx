@@ -11,12 +11,8 @@ export default function StreamPage() {
         `${import.meta.env.VITE_BACKEND_URL}/api/sessions/${sessionId}/stream-token`,
         { withCredentials: true }
       );
-
-      console.log("🎬 Stream token response:", res.data);
       const redirectUrl =
         `${import.meta.env.VITE_BACKEND_URL}${res.data.streamUrl}`;
-
-      console.log("🔀 Redirecting to stream:", redirectUrl);
 
       // 🔥 THIS IS THE KEY
       window.location.replace(res.data.streamUrl);
