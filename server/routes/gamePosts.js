@@ -96,6 +96,7 @@ async function runPublishTransaction(draft, creditPurchase, session) {
           buildType: buildType,
           startPath: draft.game.startPath,
           engine: draft.game.engine,
+          steamUrl: draft.game.steamUrl,
           runMode: "sandboxed",
           maxSessionDurationMinutes: draft.game.maxSessionDurationMinutes,
           price: 0, // price is credit-based; set to 0

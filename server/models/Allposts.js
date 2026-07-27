@@ -121,52 +121,52 @@ const ModelPostSchema = new mongoose.Schema(
 const NormalPostSchema = new mongoose.Schema(
   {
     assets: [
-  {
-    name: String,
+      {
+        name: String,
 
-    type: {
-      type: String,
-      enum: ["image", "video"],
-      required: true,
-    },
+        type: {
+          type: String,
+          enum: ["image", "video"],
+          required: true,
+        },
 
-    // original
-    url: String,
-    key: String,
+        // original
+        url: String,
+        key: String,
 
-    // video only
-    optimizedUrl: String,
-    optimizedKey: String,
+        // video only
+        optimizedUrl: String,
+        optimizedKey: String,
 
-    thumbnailUrl: String,
+        thumbnailUrl: String,
 
-    processingStatus: {
-    type: String,
-    enum: [
-      "pending",
-      "processing",
-      "completed",
-      "failed",
+        processingStatus: {
+          type: String,
+          enum: [
+            "pending",
+            "processing",
+            "completed",
+            "failed",
+          ],
+          default: "pending",
+        },
+
+        processingError: {
+          type: String,
+          default: null,
+        },
+
+        uploadedAt: {
+          type: Date,
+          default: null,
+        },
+
+        processedAt: {
+          type: Date,
+          default: null,
+        },
+      },
     ],
-    default: "pending",
-  },
-
-  processingError: {
-    type: String,
-    default: null,
-  },
-
-  uploadedAt: {
-    type: Date,
-    default: null,
-  },
-
-  processedAt: {
-    type: Date,
-    default: null,
-  },
-  },
-],
   },
   { _id: false }
 );
@@ -205,6 +205,11 @@ const GamePostSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    steamUrl: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     runMode: {
       type: String,
       enum: ["sandboxed"],
@@ -221,24 +226,24 @@ const GamePostSchema = new mongoose.Schema(
       },
     },
     launch: {
-        status: {
-            type: String,
-            enum: [
-                "coming_soon",
-                "live"
-            ],
-            default: "live",
-        },
+      status: {
+        type: String,
+        enum: [
+          "coming_soon",
+          "live"
+        ],
+        default: "live",
+      },
 
-        launchAt: {
-            type: Date,
-            default: null,
-        },
+      launchAt: {
+        type: Date,
+        default: null,
+      },
 
-        launchedAt: {
-            type: Date,
-            default: null,
-        },
+      launchedAt: {
+        type: Date,
+        default: null,
+      },
     },
     price: {
       type: Number,
@@ -246,100 +251,100 @@ const GamePostSchema = new mongoose.Schema(
       min: [0, "Price cannot be negative"],
     },
     sponsorship: {
-        enabled: {
-            type: Boolean,
-            default: false
-            },
+      enabled: {
+        type: Boolean,
+        default: false
+      },
 
-        initialCredits: {
-            type: Number,
-            default: 0,
-            min: 0
-        },
-        sponsoredBy:
-            {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "User",
-                default: null
-            },
+      initialCredits: {
+        type: Number,
+        default: 0,
+        min: 0
+      },
+      sponsoredBy:
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null
+      },
 
-        sponsoredAt:
-            {
-                type: Date,
-                default: null
-            },
+      sponsoredAt:
+      {
+        type: Date,
+        default: null
+      },
 
-        notes:
-            {
-                type: String,
-                default: null
-            },
+      notes:
+      {
+        type: String,
+        default: null
+      },
     },
     videoDemo: {
-  name: {
-    type: String,
-    default: null,
-  },
+      name: {
+        type: String,
+        default: null,
+      },
 
-  // Original upload
-  key: {
-    type: String,
-    default: null,
-  },
+      // Original upload
+      key: {
+        type: String,
+        default: null,
+      },
 
-  url: {
-    type: String,
-    default: null,
-  },
+      url: {
+        type: String,
+        default: null,
+      },
 
-  // Optimized video
-  optimizedKey: {
-    type: String,
-    default: null,
-  },
+      // Optimized video
+      optimizedKey: {
+        type: String,
+        default: null,
+      },
 
-  optimizedUrl: {
-    type: String,
-    default: null,
-  },
+      optimizedUrl: {
+        type: String,
+        default: null,
+      },
 
-  // Generated thumbnail
-  thumbnailUrl: {
-    type: String,
-    default: null,
-  },
+      // Generated thumbnail
+      thumbnailUrl: {
+        type: String,
+        default: null,
+      },
 
-  size: {
-    type: Number,
-    default: null,
-  },
+      size: {
+        type: Number,
+        default: null,
+      },
 
-  processingStatus: {
-    type: String,
-    enum: [
-      "pending",
-      "processing",
-      "completed",
-      "failed",
-    ],
-    default: "pending",
-  },
+      processingStatus: {
+        type: String,
+        enum: [
+          "pending",
+          "processing",
+          "completed",
+          "failed",
+        ],
+        default: "pending",
+      },
 
-  processingError: {
-    type: String,
-    default: null,
-  },
+      processingError: {
+        type: String,
+        default: null,
+      },
 
-  uploadedAt: {
-    type: Date,
-    default: null,
-  },
+      uploadedAt: {
+        type: Date,
+        default: null,
+      },
 
-  processedAt: {
-    type: Date,
-    default: null,
-  },
-},
+      processedAt: {
+        type: Date,
+        default: null,
+      },
+    },
     systemRequirements: {
       ramGB: { type: Number, min: 1 },
       cpuCores: { type: Number, min: 1 },
@@ -628,74 +633,74 @@ const AdModelPostSchema = new mongoose.Schema(
    AD MEDIA POST SCHEMA  ⭐ NEW
 ====================================================== */
 const MediaAdAssetSchema = new mongoose.Schema(
-{
-  name: {
-    type: String,
-    required: true,
-  },
+  {
+    name: {
+      type: String,
+      required: true,
+    },
 
-  type: {
-    type: String,
-    enum: ["image", "video"],
-    required: true,
-  },
+    type: {
+      type: String,
+      enum: ["image", "video"],
+      required: true,
+    },
 
-  // Original asset
-  url: {
-    type: String,
-    required: true,
-  },
+    // Original asset
+    url: {
+      type: String,
+      required: true,
+    },
 
-  key: {
-    type: String,
-    required: true,
-  },
+    key: {
+      type: String,
+      required: true,
+    },
 
-  // Video-only fields
-  optimizedUrl: {
-    type: String,
-    default: null,
-  },
+    // Video-only fields
+    optimizedUrl: {
+      type: String,
+      default: null,
+    },
 
-  optimizedKey: {
-    type: String,
-    default: null,
-  },
+    optimizedKey: {
+      type: String,
+      default: null,
+    },
 
-  thumbnailUrl: {
-    type: String,
-    default: null,
-  },
+    thumbnailUrl: {
+      type: String,
+      default: null,
+    },
 
-  sizeMB: Number,
+    sizeMB: Number,
 
-  processingStatus: {
-    type: String,
-    enum: [
-      "pending",
-      "processing",
-      "completed",
-      "failed",
-    ],
-    default: "pending",
-  },
+    processingStatus: {
+      type: String,
+      enum: [
+        "pending",
+        "processing",
+        "completed",
+        "failed",
+      ],
+      default: "pending",
+    },
 
-  processingError: {
-    type: String,
-    default: null,
-  },
+    processingError: {
+      type: String,
+      default: null,
+    },
 
-  uploadedAt: {
-    type: Date,
-    default: null,
-  },
+    uploadedAt: {
+      type: Date,
+      default: null,
+    },
 
-  processedAt: {
-    type: Date,
-    default: null,
+    processedAt: {
+      type: Date,
+      default: null,
+    },
   },
-},
-{ _id: false }
+  { _id: false }
 );
 
 const MediaAdPostSchema = new mongoose.Schema(
@@ -777,20 +782,20 @@ const PostSchema = new mongoose.Schema(
     },
 
     mentions: [{
-        user: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            required: true,
-        },
-        originalUsername: {
-            type: String,
-            required: true,
-        },
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+      },
+      originalUsername: {
+        type: String,
+        required: true,
+      },
     }],
 
     hasInteractMention: {
-        type: Boolean,
-        default: false,
+      type: Boolean,
+      default: false,
     },
 
     type: {
