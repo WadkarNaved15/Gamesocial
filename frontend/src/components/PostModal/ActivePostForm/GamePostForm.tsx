@@ -243,6 +243,21 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     }
   };
 
+  const handleDiscard = () => {
+    const id = pendingDraft?._id || pendingDraft?.draftId;
+
+    // Instant UI update
+    localStorage.removeItem("activeGameDraftId");
+    setPendingDraft(null);
+
+    // Background cleanup
+    if (id) {
+      api.delete(`/api/gamePosts/draft/${id}`).catch((err) => {
+        console.error("Failed to delete draft:", err);
+      });
+    }
+  };
+
   // ── Draft check on mount ──────────────────────────────────────────────────
   useEffect(() => {
     const checkDrafts = async () => {
@@ -831,10 +846,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
         </div>
         <div className="flex items-center gap-3 mt-4">
           <button
-            onClick={() => {
-              localStorage.removeItem("activeGameDraftId");
-              setPendingDraft(null);
-            }}
+            onClick={() => handleDiscard()}
             className="px-8 py-2.5 rounded-full text-sm font-bold bg-gray-100 hover:bg-gray-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-gray-600 dark:text-gray-300 transition"
           >
             Discard

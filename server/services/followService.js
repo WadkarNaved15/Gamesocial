@@ -141,7 +141,7 @@ class FollowService {
     // Use aggregation with $sample to get RANDOM users, not just the first 5 in the DB
     const suggested = await User.aggregate([
       { $match: { _id: { $nin: excludeIds } } },
-      { $sample: { size: 5 } },
+      { $sample: { size: 7 } },
       { $project: { _id: 1, username: 1, avatar: 1, displayName: 1 } }
     ]);
     // Inject isFollowing (will be false for all since we excluded them, but good for consistency)
