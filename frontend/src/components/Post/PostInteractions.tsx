@@ -18,8 +18,9 @@ interface PostInteractionsProps {
 }
 
 const formatCount = (n: number) => {
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  if (n >= 1000000000) return `${(n / 1000000000).toFixed(1).replace(/\.0$/, "")}B`;
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K`;
   return `${n}`;
 };
 
@@ -53,7 +54,7 @@ const PostInteractions: React.FC<PostInteractionsProps> = ({
             aria-label="Like post"
           >
             <Heart className={`h-5 w-5 mr-1 ${isLiked ? "fill-red-500" : ""}`} />
-            <span>{likes}</span>
+            <span>{formatCount(likes)}</span>
           </button>
 
           <button
@@ -62,7 +63,7 @@ const PostInteractions: React.FC<PostInteractionsProps> = ({
             aria-label="Comment"
           >
             <MessageCircle className="h-5 w-5 mr-1" />
-            <span>{comments}</span>
+            <span>{formatCount(comments)}</span>
           </button>
 
           <button
