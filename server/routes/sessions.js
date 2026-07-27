@@ -356,7 +356,7 @@ router.get(
       })
         .populate({
           path: "gamePost",
-          select: "gamePost.gameName",
+           select: "gamePost.gameName gamePost.steamUrl",
         })
         .select("status gamePost metrics.totalPlayTime")
         .lean();
@@ -395,6 +395,7 @@ router.get(
         sessionId: session._id,
         gameId: session.gamePost._id,
         gameName: session.gamePost.gamePost.gameName,
+        steamUrl: session.gamePost.gamePost.steamUrl || null,
         playTimeMs,
       });
     } catch (err) {

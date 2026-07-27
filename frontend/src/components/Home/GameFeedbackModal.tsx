@@ -10,6 +10,7 @@ interface Props {
     open: boolean;
     onClose: () => void;
     gameName: string;
+    steamUrl?: string | null;
     playTimeMs: number;
 }
 
@@ -17,6 +18,7 @@ export default function GameFeedbackModal({
     open,
     onClose,
     gameName,
+    steamUrl,
     playTimeMs,
 }: Props) {
     const FEEDBACK_STORAGE_KEY = "rigzer_feedback_session";
@@ -46,6 +48,7 @@ export default function GameFeedbackModal({
             sessionId: null,
             gameId: null,
             gameName: null,
+            steamUrl: null,
             playTimeMs: null,
         });
         clearSession();
@@ -141,6 +144,23 @@ export default function GameFeedbackModal({
                     <p className="text-lg font-bold text-zinc-700 mt-1">
                         {gameName}
                     </p>
+                    {steamUrl && (
+                        <a
+                            href={steamUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50/50 dark:bg-white/[0.02] hover:bg-gray-100/80 dark:hover:bg-white/[0.05] transition-colors group w-fit"
+                        >
+                            <img
+                                src="/steamLogo.png"
+                                alt="Steam"
+                                className="h-5 w-5 object-contain flex-shrink-0 opacity-80 dark:invert group-hover:opacity-100 transition-opacity"
+                            />
+                            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                                View on Steam
+                            </span>
+                        </a>
+                    )}
                     <p className="text-sm text-zinc-500 mt-1">
                         You played for <span className="font-semibold">{playTimeText}</span>
                     </p>

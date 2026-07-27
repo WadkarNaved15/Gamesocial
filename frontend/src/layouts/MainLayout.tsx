@@ -254,10 +254,12 @@ function MainLayout() {
               sessionId: null,
               gameId: null,
               gameName: null,
+              steamUrl: null,
               playTimeMs: null
             })
           }
           gameName={feedback.gameName || ""}
+          steamUrl={feedback.steamUrl}
           playTimeMs={feedback.playTimeMs || 0}
         />
 

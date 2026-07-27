@@ -6,6 +6,7 @@ interface FeedbackState {
   sessionId: string | null;
   gameId: string | null;
   gameName: string | null;
+  steamUrl: string | null;
   playTimeMs: number | null;
 }
 interface FeedbackStorage {
@@ -70,6 +71,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     sessionId: null,
     gameId: null,
     gameName: null,
+    steamUrl: null,
     playTimeMs: null,
   });
   const [eventSource, setEventSource] = useState<EventSource | null>(null);
@@ -127,6 +129,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           sessionId: data.sessionId,
           gameId: data.gameId,
           gameName: data.gameName,
+          steamUrl: data.steamUrl,
           playTimeMs: data.playTimeMs,
         });
         // DON'T clear session yet.
