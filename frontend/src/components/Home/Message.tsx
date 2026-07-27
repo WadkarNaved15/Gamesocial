@@ -1008,10 +1008,11 @@ const MessagingComponent = () => {
 
                             {/* Actual Bubble */}
                             <div
-                              className={`px-3 py-2 rounded-lg text-sm shadow-sm ${msg.senderId === currentUser
-                                ? "bg-gray-600 text-white"
-                                : "bg-gray-200 text-black"
-                                }`}
+                              className={`max-w-[75vw] sm:max-w-xs md:max-w-sm lg:max-w-md px-3 py-2 rounded-lg text-sm shadow-sm ${
+                                msg.senderId === currentUser
+                                  ? "bg-gray-600 text-white"
+                                  : "bg-gray-200 text-black"
+                              }`}
                             >
                               {/* IMAGE */}
                               {msg.mediaType === "image" && (
@@ -1070,7 +1071,11 @@ const MessagingComponent = () => {
                               )}
 
                               {/* TEXT */}
-                              {msg.text && <p>{msg.text}</p>}
+                              {msg.text && (
+                                <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                                  {msg.text}
+                                </p>
+                              )}
 
                               {/* POST */}
                               {msg.messageType === "post" && (
