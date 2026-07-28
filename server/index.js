@@ -446,18 +446,22 @@ io.on("connection", (socket) => {
     // Emit to chat room (works across all backends via Redis adapter)
     io.to(finalChatId).emit("receive-message", messageData);
 
-    // Badge update only if receiver not inside room
+    // Badge update only for non-declined chats
     try {
-      // Check if receiver is online in Redis
-      const receiverOnline = await redisClient.sIsMember(`online-users`, receiverId);
+      const chat = await Chat.findById(finalChatId).select("status");
 
-      if (receiverOnline) {
-        // Emit unread badge to receiver
-        // (Socket.IO will handle routing to correct sockets)
-        io.to(`user-${receiverId}`).emit("new-unread-message", {
-          senderId,
-          chatId: finalChatId,
-        });
+      if (chat?.status !== "declined") {
+        const receiverOnline = await redisClient.sIsMember(
+          `online-users`,
+          receiverId
+        );
+
+        if (receiverOnline) {
+          io.to(`user-${receiverId}`).emit("new-unread-message", {
+            senderId,
+            chatId: finalChatId,
+          });
+        }
       }
     } catch (err) {
       console.error("Error checking receiver presence:", err);
@@ -533,15 +537,22 @@ io.on("connection", (socket) => {
     // Send message to active room (works across all backends)
     io.to(finalChatId).emit("receive-message", messageData);
 
-    // Badge update only if receiver not inside room
+    // Badge update only for non-declined chats
     try {
-      const receiverOnline = await redisClient.sIsMember(`online-users`, receiverId);
+      const chat = await Chat.findById(finalChatId).select("status");
 
-      if (receiverOnline) {
-        io.to(`user-${receiverId}`).emit("new-unread-message", {
-          senderId,
-          chatId: finalChatId,
-        });
+      if (chat?.status !== "declined") {
+        const receiverOnline = await redisClient.sIsMember(
+          `online-users`,
+          receiverId
+        );
+
+        if (receiverOnline) {
+          io.to(`user-${receiverId}`).emit("new-unread-message", {
+            senderId,
+            chatId: finalChatId,
+          });
+        }
       }
     } catch (err) {
       console.error("Error checking receiver presence:", err);
