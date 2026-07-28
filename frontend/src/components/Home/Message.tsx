@@ -327,6 +327,7 @@ const MessagingComponent = () => {
   }, [socket]);
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!socket || !currentUser) return;
+    if (!canSendMessages) return;
     const file = e.target.files?.[0];
     if (!file || !currentChatId || !activeChat || !currentUser) return;
 
@@ -474,20 +475,28 @@ const MessagingComponent = () => {
       if (status === "accepted") {
         setActiveChatStatus("accepted");
 
-      } else {
-        // remove conversation
-        setActiveChat(null);
-        setCurrentChatId(null);
-        setConversations(prev => {
-          const copy = { ...prev };
-          if (activeUser)
-            delete copy[activeUser.id];
-          return copy;
-        });
-
         setUsers(prev =>
-          prev.filter(
-            u => u.id !== activeUser?.id
+          prev.map(u =>
+            u.id === activeUser?.id
+              ? {
+                ...u,
+                chatStatus: "accepted",
+              }
+              : u
+          )
+        );
+      } else {
+        setActiveChatStatus("declined");
+
+        // Update the user inside the chat list
+        setUsers(prev =>
+          prev.map(u =>
+            u.id === activeUser?.id
+              ? {
+                ...u,
+                chatStatus: "declined",
+              }
+              : u
           )
         );
       }
@@ -501,6 +510,7 @@ const MessagingComponent = () => {
   };
   const handleSendMessage = () => {
     if (!socket || !currentUser) return;
+    if (!canSendMessages) return;
     if (!message.trim() || !activeChat) return;
     const tempId = Date.now(); // unique temporary ID
     const newMessage = {
@@ -546,6 +556,10 @@ const MessagingComponent = () => {
     .filter((u) => u.id !== currentUser)   // ← ADD THIS
     .filter((u) => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const activeUser = users.find((u) => u.id === activeChat);
+  const canSendMessages =
+    activeChatStatus === "accepted" ||
+    (activeChatStatus === "pending" &&
+      requestedUser?.requestedBy === currentUser);
 
   const toggleOpen = () => {
     setIsOpen(true);
@@ -937,7 +951,7 @@ const MessagingComponent = () => {
                       className={`flex-1 overflow-y-auto p-4 space-y-3 ${isMaximized ? "bg-black/20 backdrop-blur-sm" : "bg-gray-50 dark:bg-gray-900"
                         }`}
                     >
-                  
+
                       {(conversations[activeChat] || []).map((msg) => (
                         <div
                           key={msg._id || msg.tempId || msg.id}
@@ -1008,11 +1022,10 @@ const MessagingComponent = () => {
 
                             {/* Actual Bubble */}
                             <div
-                              className={`max-w-[75vw] sm:max-w-xs md:max-w-sm lg:max-w-md px-3 py-2 rounded-lg text-sm shadow-sm ${
-                                msg.senderId === currentUser
-                                  ? "bg-gray-600 text-white"
-                                  : "bg-gray-200 text-black"
-                              }`}
+                              className={`max-w-[75vw] sm:max-w-xs md:max-w-sm lg:max-w-md px-3 py-2 rounded-lg text-sm shadow-sm ${msg.senderId === currentUser
+                                ? "bg-gray-600 text-white"
+                                : "bg-gray-200 text-black"
+                                }`}
                             >
                               {/* IMAGE */}
                               {msg.mediaType === "image" && (
@@ -1137,6 +1150,33 @@ const MessagingComponent = () => {
                             </div>
                           </div>
                         )}
+                      {/*Declined Status Action Box */}
+                      {activeChatStatus === "declined" &&
+                        requestedUser?.requestedBy !== currentUser && (
+                          <div className="p-4 mt-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-white/50 dark:bg-black/50 backdrop-blur-sm text-center shadow-sm max-w-sm mx-auto animate-fade-in">
+
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              You declined this chat request.
+                            </p>
+
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                              If you&apos;ve changed your mind, you can accept this request and continue the conversation.
+                            </p>
+
+                            <button
+                              onClick={() => handleUpdateChatStatus("accepted")}
+                              disabled={statusLoading !== null}
+                              className="flex items-center justify-center mx-auto px-4 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {statusLoading === "accepted" && (
+                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1.5" />
+                              )}
+
+                              Accept Chat Request
+                            </button>
+
+                          </div>
+                        )}
                       <div ref={messagesEndRef} />
                     </main>
 
@@ -1150,10 +1190,11 @@ const MessagingComponent = () => {
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => fileInputRef.current?.click()}
+                          disabled={!canSendMessages}
                           className={`${isMaximized
-                            ? "text-white/60 hover:text-white"
-                            : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-                            } transition-colors`}
+                              ? "text-white/60 hover:text-white"
+                              : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                            } transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
                         >
                           <Paperclip size={18} />
                         </button>
@@ -1172,7 +1213,14 @@ const MessagingComponent = () => {
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
                             onKeyPress={handleKeyPress}
-                            placeholder={`Message ${activeUser?.name || ""}...`}
+                            disabled={!canSendMessages}
+                            placeholder={
+                              !canSendMessages
+                                ? activeChatStatus === "declined"
+                                  ? "Accept this chat request to send messages..."
+                                  : "Waiting for chat request to be accepted..."
+                                : `Message ${activeUser?.name || ""}...`
+                            }
                             className={`w-full p-2 rounded-lg resize-none focus:outline-none focus:ring-2 focus:border-transparent text-sm ${isMaximized
                               ? "bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/60 focus:ring-white/40"
                               : "border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-gray-400"
@@ -1183,6 +1231,7 @@ const MessagingComponent = () => {
                         </div>
                         <button
                           onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                          disabled={!canSendMessages}
                           className={`${isMaximized
                             ? "text-white/60 hover:text-white"
                             : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"

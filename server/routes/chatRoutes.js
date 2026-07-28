@@ -36,15 +36,6 @@ router.get("/my-chats", verifyToken, async (req, res) => {
     const userId = req.user.id;
     const chats = await Chat.find({
       participants: userId,
-      $or: [
-        {
-          requestedBy: userId
-        },
-        {
-          requestedBy: { $ne: userId },
-          status: { $in: ["accepted", "pending"] }
-        }
-      ]
     }).populate("participants", "username avatar");
 
     // 🔥 Format response → return ONLY other user
@@ -55,6 +46,8 @@ router.get("/my-chats", verifyToken, async (req, res) => {
 
       return {
         chatId: chat._id,
+        status: chat.status,
+        requestedBy: chat.requestedBy,
         user: {
           id: otherUser._id,
           name: otherUser.username,

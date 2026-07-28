@@ -424,7 +424,25 @@ io.on("connection", (socket) => {
 
       finalChatId = chat._id;
     }
+    const chat = await Chat.findById(finalChatId).select(
+      "status requestedBy"
+    );
 
+    if (!chat) {
+      return;
+    }
+
+    const canSend =
+      chat.status === "accepted" ||
+      (chat.status === "pending" &&
+        chat.requestedBy.toString() === senderId);
+
+    if (!canSend) {
+      socket.emit("chat-error", {
+        message: "You cannot send messages in this chat.",
+      });
+      return;
+    }
     const message = await Message.create({
       chatId: finalChatId,
       receiverId,
@@ -481,7 +499,6 @@ io.on("connection", (socket) => {
       tempId,
     } = msg;
     let finalChatId = chatId;
-
     if (!finalChatId) {
       console.log("Creating new chat");
       console.log("status marked as pending");
@@ -508,7 +525,25 @@ io.on("connection", (socket) => {
 
       finalChatId = chat._id;
     }
+    const chat = await Chat.findById(finalChatId).select(
+      "status requestedBy"
+    );
 
+    if (!chat) {
+      return;
+    }
+
+    const canSend =
+      chat.status === "accepted" ||
+      (chat.status === "pending" &&
+        chat.requestedBy.toString() === senderId);
+
+    if (!canSend) {
+      socket.emit("chat-error", {
+        message: "You cannot send messages in this chat.",
+      });
+      return;
+    }
     const message = await Message.create({
       chatId: finalChatId,
       senderId,
