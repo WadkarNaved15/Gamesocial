@@ -442,6 +442,8 @@ const MessagingComponent = () => {
       } else {
         // 🔥 NO CHAT EXISTS → EMPTY STATE
         setCurrentChatId(null);
+        setRequestedUser(null);
+        setActiveChatStatus(null);
         setConversations((prev) => ({
           ...prev,
           [receiverId]: [],
@@ -556,10 +558,13 @@ const MessagingComponent = () => {
     .filter((u) => u.id !== currentUser)   // ← ADD THIS
     .filter((u) => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const activeUser = users.find((u) => u.id === activeChat);
+  const isSender = requestedUser ? requestedUser.requestedBy === currentUser : true;
+
   const canSendMessages =
-    activeChatStatus === "accepted" ||
-    (activeChatStatus === "pending" &&
-      requestedUser?.requestedBy === currentUser);
+    // 1. If user is the sender: always allowed to send messages
+    isSender ||
+    // 2. If user is the receiver: only allowed if they accepted the request
+    activeChatStatus === "accepted";
 
   const toggleOpen = () => {
     setIsOpen(true);
@@ -1192,8 +1197,8 @@ const MessagingComponent = () => {
                           onClick={() => fileInputRef.current?.click()}
                           disabled={!canSendMessages}
                           className={`${isMaximized
-                              ? "text-white/60 hover:text-white"
-                              : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                            ? "text-white/60 hover:text-white"
+                            : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                             } transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
                         >
                           <Paperclip size={18} />
@@ -1216,9 +1221,7 @@ const MessagingComponent = () => {
                             disabled={!canSendMessages}
                             placeholder={
                               !canSendMessages
-                                ? activeChatStatus === "declined"
-                                  ? "Accept this chat request to send messages..."
-                                  : "Waiting for chat request to be accepted..."
+                                ? "Accept this chat request to reply..."
                                 : `Message ${activeUser?.name || ""}...`
                             }
                             className={`w-full p-2 rounded-lg resize-none focus:outline-none focus:ring-2 focus:border-transparent text-sm ${isMaximized
