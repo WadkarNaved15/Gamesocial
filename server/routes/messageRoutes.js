@@ -6,10 +6,10 @@ import mongoose from "mongoose";
 const router = express.Router();
 
 // Send a message
-router.post("/", verifyToken,async (req, res) => {
+router.post("/", verifyToken, async (req, res) => {
   try {
     const senderId = req.user.id;
-    const { chatId, text ,receiverId} = req.body;
+    const { chatId, text, receiverId } = req.body;
 
     const message = await Message.create({
       chatId,
@@ -38,6 +38,28 @@ router.get("/unread-counts", verifyToken, async (req, res) => {
           seen: false,
         },
       },
+
+      // Join with chats
+      {
+        $lookup: {
+          from: "chats",
+          localField: "chatId",
+          foreignField: "_id",
+          as: "chat",
+        },
+      },
+
+      {
+        $unwind: "$chat",
+      },
+
+      // Ignore declined chats
+      {
+        $match: {
+          "chat.status": { $ne: "declined" },
+        },
+      },
+
       {
         $group: {
           _id: "$senderId",
