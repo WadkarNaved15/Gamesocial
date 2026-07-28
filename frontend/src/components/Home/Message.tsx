@@ -1027,20 +1027,18 @@ const MessagingComponent = () => {
 
                             {/* Actual Bubble */}
                             <div
-                              className={`max-w-[75vw] sm:max-w-xs md:max-w-sm lg:max-w-md px-3 py-2 rounded-lg text-sm shadow-sm ${msg.senderId === currentUser
-                                ? "bg-gray-600 text-white"
-                                : "bg-gray-200 text-black"
+                              className={`max-w-[75vw] sm:max-w-xs md:max-w-sm lg:max-w-md text-sm ${msg.mediaType === "image" || msg.mediaType === "video"
+                                  ? "" // Clear padding, shadow, and background for media
+                                  : `px-3 py-2 rounded-lg shadow-sm ${msg.senderId === currentUser
+                                    ? "bg-gray-600 text-white"
+                                    : "bg-gray-200 text-black"
+                                  }`
                                 }`}
                             >
                               {/* IMAGE */}
                               {msg.mediaType === "image" && (
                                 <div
-                                  className="
-                                  cursor-pointer
-                                  overflow-hidden
-                                  rounded-2xl
-                                  bg-black
-                                "
+                                  className="cursor-pointer overflow-hidden rounded-2xl bg-black"
                                   onClick={() =>
                                     setMediaViewer({
                                       url: msg.mediaUrl,
@@ -1053,37 +1051,20 @@ const MessagingComponent = () => {
                                     crossOrigin="anonymous"
                                     alt="media"
                                     loading="lazy"
-                                    className="
-                                    w-full
-                                    max-w-[260px]
-                                    max-h-[320px]
-                                    object-cover
-                                    hover:scale-[1.02]
-                                    transition-transform
-                                  "
+                                    className="w-full max-w-[260px] max-h-[320px] object-cover hover:scale-[1.02] transition-transform"
                                   />
                                 </div>
                               )}
 
                               {/* VIDEO */}
                               {msg.mediaType === "video" && (
-                                <div
-                                  className="
-                                  overflow-hidden
-                                  rounded-2xl
-                                  bg-black
-                                "
-                                >
+                                <div className="overflow-hidden rounded-2xl bg-black">
                                   <video
                                     src={msg.mediaUrl}
                                     crossOrigin="anonymous"
                                     controls
                                     preload="metadata"
-                                    className="
-                                      max-w-[260px]
-                                      max-h-[320px]
-                                      object-cover
-                                    "
+                                    className="max-w-[260px] max-h-[320px] object-cover"
                                   />
                                 </div>
                               )}
@@ -1111,13 +1092,15 @@ const MessagingComponent = () => {
 
                               {/* TIME */}
                               <p
-                                className={`text-xs mt-1 ${msg.senderId === currentUser
-                                  ? "text-gray-200"
-                                  : "text-gray-500"
+                                className={`text-xs mt-1 ${msg.mediaType === "image" || msg.mediaType === "video"
+                                    ? "text-gray-400" // Subtitle color when rendered outside a bubble
+                                    : msg.senderId === currentUser
+                                      ? "text-gray-200"
+                                      : "text-gray-500"
                                   }`}
                               >
                                 {new Date(msg.createdAt).toLocaleString(undefined, {
-                                  timeStyle: "short"
+                                  timeStyle: "short",
                                 })}
                               </p>
                             </div>
