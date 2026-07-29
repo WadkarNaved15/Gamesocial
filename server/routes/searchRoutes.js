@@ -128,7 +128,7 @@ router.get("/", async (req, res) => {
         $limit: 8,
       },
     ]);
-
+    console.log("Users found:", users);
     res.json(users);
   } catch (err) {
     console.error("Search error:", err);
