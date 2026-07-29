@@ -18,6 +18,7 @@ interface User {
   _id: string;
   username: string;
   avatar: string;
+  displayName: string;
   // You can add more properties here as needed
 }
 
@@ -158,9 +159,13 @@ export function Header() {
                           className="w-8 h-8 rounded-full object-cover"
                         />
 
-                        <div className="flex flex-col text-sm">
-                          <span className="font-medium flex items-center gap-1">
-                            {user.username}
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-medium truncate">
+                            {user.displayName}
+                          </span>
+
+                          <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            @{user.username}
                           </span>
                         </div>
                       </Link>
