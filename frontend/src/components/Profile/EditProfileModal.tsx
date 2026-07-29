@@ -1,6 +1,6 @@
 import { X, Camera, Check } from "lucide-react";
 import { useState, useRef, ChangeEvent, useCallback, useEffect } from "react";
-import Cropper from "react-easy-crop"; // Import the cropper
+import Cropper from "react-easy-crop";
 import axios from "axios";
 import { getCroppedImage } from "../../utils/cropImage";
 import { useUser } from "../../context/user";
@@ -24,8 +24,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
   const { user, refreshUser } = useUser();
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
-  // States for the image adjustment UI
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+  
   const [editingImage, setEditingImage] = useState<{ url: string; type: 'avatar' | 'banner' } | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -38,6 +38,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
   const [usernameMessage, setUsernameMessage] = useState("");
   const usernameCache = useRef(new Map());
   const controllerRef = useRef<AbortController | null>(null);
+  
   if (!user) return null;
 
   const [form, setForm] = useState({
@@ -54,6 +55,31 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
     banner: user.banner || null,
   });
 
+  // Handler for single-line inputs: removes all consecutive whitespace (including newlines)
+  const handleSingleLineChange = (field: string, value: string) => {
+    const sanitizedValue = value.trimStart().replace(/\s{2,}/g, ' ');
+    setForm({ ...form, [field]: sanitizedValue });
+  };
+
+// Handler for Bio: allows max 1 empty line, collapses horizontal spaces, and limits TOTAL lines
+  const handleBioChange = (value: string) => {
+    let sanitizedValue = value.trimStart();
+    
+    // 1. Replace 3 or more consecutive newlines with exactly 2 newlines
+    sanitizedValue = sanitizedValue.replace(/\n{3,}/g, '\n\n');
+    
+    // 2. Replace 2 or more horizontal spaces/tabs with a single space
+    sanitizedValue = sanitizedValue.replace(/[ \t]{2,}/g, ' ');
+
+    // 3. Enforce a strict maximum number of lines (e.g., 4 lines total)
+    const MAX_LINES = 4;
+    const lines = sanitizedValue.split('\n');
+    if (lines.length > MAX_LINES) {
+      sanitizedValue = lines.slice(0, MAX_LINES).join('\n');
+    }
+
+    setForm({ ...form, bio: sanitizedValue });
+  };
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>, type: 'avatar' | 'banner') => {
     const file = e.target.files?.[0];
     if (file) {
@@ -64,8 +90,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
       reader.readAsDataURL(file);
     }
   };
-  const uploadToS3 = async (file: Blob, type: "avatar" | "banner") => {
 
+  const uploadToS3 = async (file: Blob, type: "avatar" | "banner") => {
     const res = await axios.post(`${BACKEND_URL}/api/upload/presigned-url`, {
       fileName: `${type}.jpg`,
       fileType: file.type,
@@ -112,18 +138,17 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
   const saveProfile = async () => {
     try {
       setIsSaving(true);
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-
+      
       await axios.patch(
         `${BACKEND_URL}/api/me`,
         {
-          displayName: form.displayName,
+          displayName: form.displayName.trim(),
           username: form.username,
-          bio: form.bio,
-          location: form.location,
-          website: form.website,
+          bio: form.bio.trim(),
+          location: form.location.trim(),
+          website: form.website.trim(),
           birthdate: form.birthDate,
-          jobTitle: form.jobTitle,
+          jobTitle: form.jobTitle.trim(),
           avatar: form.avatar,
           banner: form.banner,
         },
@@ -132,20 +157,19 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
 
       await refreshUser();
       onSaved({
-        displayName: form.displayName,
+        displayName: form.displayName.trim(),
         username: form.username,
-        bio: form.bio,
-        location: form.location,
-        website: form.website,
+        bio: form.bio.trim(),
+        location: form.location.trim(),
+        website: form.website.trim(),
         birthdate: form.birthDate,
-        jobTitle: form.jobTitle,
+        jobTitle: form.jobTitle.trim(),
         avatar: form.avatar ?? undefined,
         banner: form.banner ?? undefined,
-      });// ← call if provided (handles cache clear + modal close)
+      });
     } catch (err) {
       console.error("Update failed", err);
-    }
-    finally {
+    } finally {
       setIsSaving(false);
     }
   };
@@ -154,22 +178,20 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
     if (!user) return;
 
     const username = form.username.trim().toLowerCase();
-    // User didn't change username
+    
     if (username === user.username.toLowerCase()) {
       setUsernameStatus("idle");
       setUsernameMessage("");
       return;
     }
 
-    // Too short, don't hit backend
     if (username.length < 3) {
       setUsernameStatus("idle");
       setUsernameMessage("");
       return;
     }
+    
     const timeout = setTimeout(async () => {
-
-      // Cache hit
       if (usernameCache.current.has(username)) {
         const cached: any = usernameCache.current.get(username);
         setUsernameStatus(
@@ -178,6 +200,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
         setUsernameMessage(cached.error || "");
         return;
       }
+      
       try {
         setUsernameStatus("checking");
         controllerRef.current?.abort();
@@ -212,10 +235,11 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
     return () => clearTimeout(timeout);
 
   }, [form.username, BACKEND_URL, user]);
+
   return (
     <div className="fixed inset-0 z-[100] bg-[#5b7083]/40 backdrop-blur-[2px] flex items-center justify-center p-4">
 
-      {/* CROPPER OVERLAY - This shows up when an image is picked */}
+      {/* CROPPER OVERLAY */}
       {editingImage && (
         <div className="absolute inset-0 z-[110] bg-black flex flex-col">
           <div className="flex items-center justify-between p-4 bg-black z-20">
@@ -263,7 +287,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
             disabled={
               isSaving ||
               usernameStatus === "checking" ||
-              usernameStatus === "taken"
+              usernameStatus === "taken" ||
+              form.displayName.trim().length === 0
             }
             className="bg-white text-black px-4 py-1.5 rounded-full font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed min-w-[70px] text-center"
           >
@@ -298,77 +323,86 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
             </div>
           </div>
 
-          {/* Rest of the Fields (Same as before) */}
           <div className="p-4 pt-0 space-y-6">
+            
             {/* Display Name */}
-            <div className="group border border-zinc-800 rounded p-2 focus-within:border-blue-500">
-              <label className="text-xs text-zinc-500">Display Name</label>
+            <div className={`group border rounded p-2 focus-within:border-blue-500 transition-colors ${form.displayName.length >= 30 ? 'border-red-500/50' : 'border-zinc-800'}`}>
+              <div className="flex justify-between items-center">
+                <label className="text-xs text-zinc-500">Display Name</label>
+                <span className={`text-xs ${form.displayName.length >= 30 ? 'text-red-500' : 'text-zinc-500'}`}>
+                  {form.displayName.length}/30
+                </span>
+              </div>
               <input
                 type="text"
                 value={form.displayName || ''}
-                onChange={e => setForm({ ...form, displayName: e.target.value })}
+                onChange={e => handleSingleLineChange('displayName', e.target.value)}
                 maxLength={30}
                 className="w-full bg-transparent text-white outline-none pt-1"
               />
+              {form.displayName.length >= 30 && (
+                <p className="text-xs text-red-500 mt-1">Maximum character limit reached.</p>
+              )}
             </div>
 
             {/* Username */}
-            <div className="group border border-zinc-800 rounded p-2 focus-within:border-blue-500">
-              <label className="text-xs text-zinc-500">Username</label>
-
+            <div className={`group border border-zinc-800 rounded p-2 focus-within:border-blue-500 ${usernameStatus === 'taken' ? 'border-red-500/50' : ''}`}>
+              <div className="flex justify-between items-center">
+                <label className="text-xs text-zinc-500">Username</label>
+                <span className={`text-xs ${form.username.length >= 20 ? 'text-red-500' : 'text-zinc-500'}`}>
+                  {form.username.length}/20
+                </span>
+              </div>
               <input
                 type="text"
                 value={form.username || ""}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    username: e.target.value.toLowerCase(),
-                  })
-                }
+                onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase().replace(/\s/g, '') })}
+                maxLength={20}
                 className="w-full bg-transparent text-white outline-none pt-1"
               />
-
-              {usernameStatus === "checking" && (
-                <p className="text-xs text-zinc-500 mt-1">
-                  Checking username...
-                </p>
-              )}
-
-              {usernameStatus === "available" && (
-                <p className="text-xs text-green-500 mt-1">
-                  Username available ✓
-                </p>
-              )}
-
-              {usernameStatus === "taken" && (
-                <p className="text-xs text-red-500 mt-1">
-                  {usernameMessage}
-                </p>
-              )}
+              {usernameStatus === "checking" && <p className="text-xs text-zinc-500 mt-1">Checking username...</p>}
+              {usernameStatus === "available" && <p className="text-xs text-green-500 mt-1">Username available ✓</p>}
+              {usernameStatus === "taken" && <p className="text-xs text-red-500 mt-1">{usernameMessage}</p>}
             </div>
 
             {/* Bio */}
-            <div className="group border border-zinc-800 rounded p-2 focus-within:border-blue-500">
-              <label className="text-xs text-zinc-500">Bio</label>
+            <div className={`group border rounded p-2 focus-within:border-blue-500 transition-colors ${form.bio.length >= 180 ? 'border-red-500/50' : 'border-zinc-800'}`}>
+              <div className="flex justify-between items-center">
+                <label className="text-xs text-zinc-500">Bio</label>
+                <span className={`text-xs ${form.bio.length >= 180 ? 'text-red-500' : 'text-zinc-500'}`}>
+                  {form.bio.length}/180 
+                </span>
+              </div>
               <textarea
                 rows={3}
                 value={form.bio || ''}
-                onChange={e => setForm({ ...form, bio: e.target.value })}
-                maxLength={160}
+                onChange={e => handleBioChange(e.target.value)}
+                maxLength={180}
                 className="w-full bg-transparent text-white outline-none pt-1 resize-none"
               />
+              {form.bio.length >= 180 && (
+                <p className="text-xs text-red-500 mt-1">Maximum character limit reached.</p>
+              )}
             </div>
 
             {/* Location */}
-            <div className="group border border-zinc-800 rounded p-2 focus-within:border-blue-500">
-              <label className="text-xs text-zinc-500">Location</label>
+            <div className={`group border rounded p-2 focus-within:border-blue-500 transition-colors ${form.location.length >= 20 ? 'border-red-500/50' : 'border-zinc-800'}`}>
+              <div className="flex justify-between items-center">
+                <label className="text-xs text-zinc-500">Location</label>
+                <span className={`text-xs ${form.location.length >= 20 ? 'text-red-500' : 'text-zinc-500'}`}>
+                  {form.location.length}/20
+                </span>
+              </div>
               <input
                 type="text"
                 value={form.location || ''}
-                onChange={e => setForm({ ...form, location: e.target.value })}
-                maxLength={100}
+                onChange={e => handleSingleLineChange('location', e.target.value)}
+                maxLength={20}
                 className="w-full bg-transparent text-white outline-none pt-1"
               />
+              {form.location.length >= 20 && (
+                <p className="text-xs text-red-500 mt-1">Maximum character limit reached.</p>
+              )}
             </div>
 
             {/* Website */}
@@ -377,7 +411,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
               <input
                 type="url"
                 value={form.website || ''}
-                onChange={e => setForm({ ...form, website: e.target.value })}
+                onChange={e => setForm({ ...form, website: e.target.value.replace(/\s/g, '') })}
                 className="w-full bg-transparent text-white outline-none pt-1"
               />
             </div>
@@ -394,16 +428,25 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
             </div>
 
             {/* Job Title */}
-            <div className="group border border-zinc-800 rounded p-2 focus-within:border-blue-500 pb-4">
-              <label className="text-xs text-zinc-500">Job Title</label>
+            <div className={`group border rounded p-2 focus-within:border-blue-500 pb-4 transition-colors ${form.jobTitle.length >= 50 ? 'border-red-500/50' : 'border-zinc-800'}`}>
+              <div className="flex justify-between items-center">
+                <label className="text-xs text-zinc-500">Job Title</label>
+                <span className={`text-xs ${form.jobTitle.length >= 50 ? 'text-red-500' : 'text-zinc-500'}`}>
+                  {form.jobTitle.length}/50
+                </span>
+              </div>
               <input
                 type="text"
                 value={form.jobTitle || ''}
-                onChange={e => setForm({ ...form, jobTitle: e.target.value })}
-                maxLength={100}
+                onChange={e => handleSingleLineChange('jobTitle', e.target.value)}
+                maxLength={50}
                 className="w-full bg-transparent text-white outline-none pt-1"
               />
+              {form.jobTitle.length >= 50 && (
+                <p className="text-xs text-red-500 mt-1">Maximum character limit reached.</p>
+              )}
             </div>
+            
           </div>
         </div>
       </div>
