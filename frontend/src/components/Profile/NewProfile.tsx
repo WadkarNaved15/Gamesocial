@@ -192,26 +192,35 @@ const ProfilePage: React.FC = () => {
 
       {/* Max-width wrapper */}
       <div className="max-w-6xl">
-
-        {/* ── Header: Username + Actions + Followers ── */}
-        <div className="w-full pb-6 pt-4 ">
-          <div className="grid grid-cols-[1fr_auto] items-end gap-6">
-            <div className="flex flex-col">
-              {/* Name row */}
-              <div className="flex items-center gap-5 flex-wrap">
-                <h1 className="text-4xl font-black tracking-tight text-white italic uppercase leading-none">
+{/* ── Header: Username + Actions + Followers ── */}
+        <div className="w-full pb-6 pt-2">
+          <div className="flex justify-between items-start gap-6">
+            
+            {/* Left Side: Name, Buttons, and Handle */}
+            {/* min-w-0 allows the container to shrink and wrap text properly */}
+            <div className="flex-1 min-w-0 flex flex-col">
+              
+              {/* Name & Buttons Container (Strict Inline Text Flow) */}
+              {/* Added leading-[1.3] so the tall buttons don't overlap lines */}
+              <div className="text-4xl font-black tracking-tight text-white italic uppercase leading-[1.3]">
+                
+                {/* 1. Using a span ensures it wraps perfectly as raw text */}
+                <span className="align-middle mr-4">
                   {profileUser?.displayName ?? profileUser?.username}
-                </h1>
+                </span>
 
+                {/* 2. Action buttons wrapped in a span so they attach to the end of the text like a word */}
                 {isOwnProfile ? (
-                  <button
-                    onClick={() => setEditOpen(true)}
-                    className="bg-white/10 hover:bg-white/20 border border-white/15 text-white px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest backdrop-blur-sm transition-all hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-95"
-                  >
-                    Edit Profile
-                  </button>
+                  <span className="inline-flex align-middle not-italic mb-1">
+                    <button
+                      onClick={() => setEditOpen(true)}
+                      className="bg-white/10 hover:bg-white/20 border border-white/15 text-white px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest backdrop-blur-sm transition-all hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-95"
+                    >
+                      Edit Profile
+                    </button>
+                  </span>
                 ) : (
-                  <div className="flex gap-2">
+                  <span className="inline-flex items-center gap-2 align-middle not-italic mb-1">
                     <FollowButton
                       targetId={profileUser ? profileUser._id : ""}
                       initialFollowing={profileUser?.isFollowing ?? false}
@@ -224,18 +233,18 @@ const ProfilePage: React.FC = () => {
                           avatar: profileUser!.avatar ?? "./default-avatar.png",
                         })
                       }
-                      className="flex items-center gap-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-blue-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest backdrop-blur-sm transition-all active:scale-95"
+                      className="inline-flex items-center gap-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-blue-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest backdrop-blur-sm transition-all active:scale-95"
                     >
                       <MessageSquare size={16} strokeWidth={3} />
                       <span>Chat</span>
                     </button>
-                  </div>
+                  </span>
                 )}
               </div>
 
-              {/* Handle */}
-              <p className="text-sm font-bold text-white/40 mt-1.5 lowercase">
-                @{profileUser?.username?.replace(/\s+/g, "") || "johndeveloper"}
+              {/* Handle Row */}
+              <p className="text-sm font-bold text-white/40 lowercase ">
+                @{profileUser?.username?.replace(/\s+/g, "")}
               </p>
 
               {editOpen && (
@@ -261,19 +270,20 @@ const ProfilePage: React.FC = () => {
               )}
             </div>
 
-            <div className="shrink-0 mb-3">
+            {/* Right Side: Followers/Following */}
+            <div className="shrink-0 mt-2">
               <FollowersList userId={profileUser ? profileUser._id : ""} />
             </div>
+            
           </div>
         </div>
-
-        {/* ── Profile Hero ── */}
+{/* ── Profile Hero ── */}
         <div className="max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-stretch gap-6 ">
 
             {/* LEFT: Profile Card */}
             <div className="flex-1 pt-0 bg-white/[0.03] rounded-3xl">
-              <div className={`${glassCard} relative overflow-hidden h-full min-h-[350px] flex flex-col`}>
+              <div className={`${glassCard} relative overflow-hidden flex flex-col`}>
 
                 {/* Banner */}
                 <div className="relative h-32 md:h-40 shrink-0 overflow-hidden rounded-t-3xl">
@@ -290,7 +300,12 @@ const ProfilePage: React.FC = () => {
                 </div>
 
                 {/* Avatar + bio overlap */}
-                <div className="relative px-8 -mt-14 md:-mt-20 flex flex-col items-center text-center md:flex-row md:items-start md:text-left gap-6 z-10">
+                {/* Increased conditional padding to pb-16 md:pb-20 for better breathing room */}
+                <div 
+                  className={`relative px-8 -mt-14 md:-mt-20 flex flex-col items-center text-center md:flex-row md:items-start md:text-left gap-6 z-10 ${
+                    !(profileUser?.location || profileUser?.website || profileUser?.jobTitle) ? 'pb-16 md:pb-20' : ''
+                  }`}
+                >
                   <div className="relative group shrink-0">
                     <img
                       src={profileUser?.avatar || "/default_avatar.png"}
@@ -299,8 +314,8 @@ const ProfilePage: React.FC = () => {
                     />
                   </div>
 
-                  {/* Bio body (Aligned next to avatar on desktop, pushes down safely with toggle) */}
-                  <div className="md:pt-24 max-w-xl flex flex-col items-center md:items-start md:ml-6"> {/* Added md:ml-6 */}
+                  {/* Bio body */}
+                  <div className="md:pt-24 max-w-xl flex flex-col items-center md:items-start md:ml-6"> 
                     <p className="text-white font-medium text-sm leading-relaxed break-words whitespace-pre-line">
                       {profileUser?.bio
                         ? profileUser.bio
@@ -338,7 +353,7 @@ const ProfilePage: React.FC = () => {
                           href={profileUser.website.startsWith('http') ? profileUser.website : `https://${profileUser.website}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[rgb(98,212,174)] font-semibold hover:underline transition-all" // Custom color and weight applied here
+                          className="text-[rgb(98,212,174)] font-semibold hover:underline transition-all" 
                         >
                           {profileUser.website.replace(/(^\w+:|^)\/\//, '')}
                         </a>

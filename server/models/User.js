@@ -127,12 +127,12 @@ const userSchema = new mongoose.Schema(
 
     avatar: { type: String, default: "" },
     banner: { type: String, default: "" },
-    bio: { type: String, maxlength: 160, default: "" },
+    bio: { type: String, maxlength: 180, default: "" },
     location: {
       type: String,
       trim: true,
       default: "",
-      maxlength: 100,
+      maxlength: 20,
     },
 
     website: {
@@ -145,7 +145,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
-      maxlength: 100,
+      maxlength: 50,
     },
     followersCount: { type: Number, default: 0 },
     followingCount: { type: Number, default: 0 },

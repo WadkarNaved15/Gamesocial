@@ -33,7 +33,7 @@ type NavItem = {
         icon: React.ElementType;
         label: string;
         action: () => void;
-        isDanger?: boolean; // <-- Added this flag
+        isDanger?: boolean;
     }>;
 };
 
@@ -97,15 +97,9 @@ export default function SidebarNavigation({
                         action: () => onOpenSettings("password"),
                     }]
                     : []),
-                {
-                    icon: Trash2,
-                    label: "Delete Account",
-                    action: () => onOpenSettings('delete'),
-                    isDanger: true // <-- Flagged as danger
-                },
-                {
+                                {
                     icon: LogOut,
-                    label: "Logout Session",
+                    label: "Logout/Switch Account",
                     action: () => {
                         if (!logoutButtonRef.current) return;
 
@@ -113,7 +107,13 @@ export default function SidebarNavigation({
                             logoutButtonRef.current.getBoundingClientRect()
                         );
                     },
-                }
+                },
+                {
+                    icon: Trash2,
+                    label: "Delete Account",
+                    action: () => onOpenSettings('delete'),
+                    isDanger: true 
+                },
             ]
         },
     ];
@@ -171,13 +171,19 @@ export default function SidebarNavigation({
                                     {item.subItems?.map((sub) => (
                                         <button
                                             key={sub.label}
-                                            ref={sub.label === "Logout Session" ? logoutButtonRef : undefined}
+                                            // Fixed the label check here so the ref attaches properly
+                                            ref={sub.label === "Logout/Switch Account" ? logoutButtonRef : undefined}
                                             onClick={sub.action}
-                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:bg-white/5 transition-all text-sm font-medium ${sub.isDanger ? 'hover:text-red-500' : 'hover:text-[#62D4AE]'
-                                                }`}
+                                            // Added text-left and leading-tight to fix wrapping, items-start to keep icon at the top
+                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left leading-tight text-gray-400 hover:bg-white/5 transition-all text-sm font-medium ${
+                                                sub.isDanger ? 'hover:text-red-500' : 'hover:text-[#62D4AE]'
+                                            }`}
                                         >
-                                            <sub.icon size={16} />
-                                            {sub.label}
+                                            {/* Shrink-0 prevents the icon from squishing when text wraps */}
+                                            <div className="shrink-0 mt-[2px]">
+                                                <sub.icon size={16} />
+                                            </div>
+                                            <span>{sub.label}</span>
                                         </button>
                                     ))}
                                 </div>

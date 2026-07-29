@@ -9,13 +9,13 @@ import { useNotification } from "../../context/Notifications";
 interface ProfileCoverProps {
   onOpenWishlist: () => void;
 }
-export default function ProfileCover({
-  onOpenWishlist,
-}: ProfileCoverProps) {
+
+export default function ProfileCover({ onOpenWishlist }: ProfileCoverProps) {
   const [bioExpanded, setBioExpanded] = useState(false);
   const navigate = useNavigate();
   const { unreadCount } = useNotification();
   const { user, logout } = useUser();
+  
   const userBio = user?.bio || "Bio goes here...";
   const isBioLong = userBio.length > 40;
   const avatarRef = useRef<HTMLImageElement>(null);
@@ -34,31 +34,24 @@ export default function ProfileCover({
           className="
             relative overflow-visible
             rounded-t-[0.5rem]
-
             bg-gradient-to-br
             from-white/[0.08]
             via-white/[0.04]
             to-white/[0.01]
-
             border border-white/10
-
             shadow-[0_8px_32px_rgba(0,0,0,0.45)]
             shadow-white/[0.02]
-
             transition-all duration-300
-
             before:absolute
             before:inset-0
             before:rounded-t-[0.5rem]
             before:pointer-events-none
-
             before:bg-gradient-to-b
             before:from-white/[0.12]
             before:via-white/[0.03]
             before:to-transparent
             "
         >
-
           <div
             className="
               absolute inset-0
@@ -83,7 +76,7 @@ export default function ProfileCover({
             "
           />
           {/* Content */}
-          <div className="px-4 pt-5 pb-5 text-center">
+          <div className="px-4 pt-5 pb-5 text-center relative z-10">
             {/* Avatar */}
             <div className="mx-auto w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center mb-3">
               <User className="h-8 w-8 text-gray-400 dark:text-gray-500" />
@@ -98,9 +91,13 @@ export default function ProfileCover({
             </p>
 
             {/* Action */}
-            <div className="flex justify-center mt-4">
+            <div className="flex justify-center mt-4 relative z-20">
               <button
-                onClick={() => navigate("/auth")}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  navigate("/auth");
+                }}
                 className="
                 inline-flex items-center gap-2
                 px-4 py-1.5 rounded-full
@@ -118,13 +115,20 @@ export default function ProfileCover({
       </div>
     );
   }
+
   // Dynamic values to match your schema
   const bannerUrl = user?.banner || 'https://fastly.picsum.photos/id/299/800/200.jpg?hmac=xMdRbjiNM_IogJDEgKIJ0GeCxZ8nwOGd5_Wf_ODZ94s';
 
   const handleAvatarClick = (e: React.MouseEvent<HTMLImageElement>) => {
-    openAccountSwitcher(e.currentTarget.getBoundingClientRect());
+    // Prevent outer containers from hijacking the click
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Ensure user has a username before routing
+    if (user.username) {
+      navigate(`/profile/${user.username}`);
+    }
   };
-
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -132,23 +136,16 @@ export default function ProfileCover({
         className="
           relative overflow-hidden
           rounded-xl
-
           bg-white/[0.04]
-
           backdrop-blur-xl
           backdrop-saturate-150
-
           border border-white/10
-
           shadow-[0_8px_32px_rgba(0,0,0,0.45)]
           shadow-white/[0.02]
-
           transition-all duration-300
-
           before:absolute
           before:inset-0
           before:pointer-events-none
-
           before:bg-gradient-to-b
           before:from-white/[0.08]
           before:via-transparent
@@ -162,13 +159,12 @@ export default function ProfileCover({
             left-0
             w-full
             h-px
-
             bg-gradient-to-r
             from-transparent
             via-white/30
             to-transparent
-
             z-20
+            pointer-events-none
           "
         />
         {/* Cover Image for profile */}
@@ -184,16 +180,16 @@ export default function ProfileCover({
           <div
             className="
           absolute inset-0
-
           bg-gradient-to-b
           from-white/[0.02]
           via-black/10
           to-[#1e1e1e]
+          pointer-events-none
         "
           />
 
           {/* Profile Image Container */}
-          <div className="absolute -bottom-8 left-4 flex items-end z-10">
+          <div className="absolute -bottom-8 left-4 flex items-end z-30">
             <div className="relative">
               <img
                 ref={avatarRef}
@@ -206,18 +202,14 @@ export default function ProfileCover({
                   object-cover
                   cursor-pointer
                   border border-white/20
-
                   bg-white/[0.08]
-
                   shadow-[0_0_0_1px_rgba(255,255,255,0.08)]
                   shadow-[0_0_25px_rgba(255,255,255,0.10)]
-
                   hover:brightness-95
                   hover:scale-105
-
                   transition-all duration-300
-
-                  ${accountOverlayOpen ? "opacity-0" : "opacity-100"}
+                  relative z-30
+                  ${accountOverlayOpen ? "opacity-0 pointer-events-none" : "opacity-100"}
                 `}
               />
             </div>
@@ -225,7 +217,7 @@ export default function ProfileCover({
         </div>
 
         {/* Content */}
-        <div className="mt-10 px-4 pb-8 flex flex-col items-start">
+        <div className="mt-10 px-4 pb-8 flex flex-col items-start relative z-10">
           {/* Display Name */}
           <h4 className="text-md font-bold text-gray-900 dark:text-gray-100 leading-tight">
             {user?.displayName || user?.username || ""}
@@ -235,7 +227,6 @@ export default function ProfileCover({
           <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5 lowercase">
             @{user?.username?.replace(/\s+/g, "") || ""}
           </p>
-
         </div>
 
         {accountOverlayOpen && (
