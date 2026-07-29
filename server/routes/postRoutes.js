@@ -62,7 +62,7 @@ router.get("/filter_posts", optionalAuthMiddleware, async (req, res) => {
       filter,
       { score: { $meta: "textScore" } }
     )
-      .populate("user", "username avatar")
+      .populate("user", "username avatar displayName")
       .sort({ score: { $meta: "textScore" }, _id: -1 })
       .limit(Number(limit))
       .lean();
@@ -109,7 +109,7 @@ router.get("/user_posts/:userId", optionalAuthMiddleware, async (req, res) => {
         : { $nin: ["canvas_article"] };
 
     const posts = await Post.find(query)
-      .populate("user", "username avatar")
+      .populate("user", "username avatar displayName")
       .sort({ _id: -1 })
       .limit(Number(limit))
       .lean();

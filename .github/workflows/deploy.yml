@@ -1,9 +1,9 @@
-name: Deploy Backend to Production
+name: Deploy Backend to Staging
 
 on:
   push:
     branches:
-      - main
+      - staging
 
 jobs:
   deploy:
@@ -19,7 +19,7 @@ jobs:
           script: |
             cd ~/Rigzer
             git fetch origin
-            git reset --hard origin/main
+            git reset --hard origin/staging
             cd server
             npm install --production
             pm2 reload index

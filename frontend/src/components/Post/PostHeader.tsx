@@ -54,49 +54,41 @@ const PostHeader: React.FC<PostHeaderProps> = ({
     <div className="flex items-center justify-between w-full mb-1">
 
       {/* LEFT: Identity + Date */}
-      <div className="flex items-center gap-3">
-        {/* flex-col stacks the top row (name/time) and bottom row (username) */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          
-          {/* TOP ROW: Display Name & Timestamp */}
-          <div className="flex items-center flex-col ">
-            <h3
-              onClick={(e) => {
-                e.stopPropagation();
-                onProfileClick?.();
-              }}
-              className="
-                font-semibold leading-tight
-                text-gray-900 dark:text-white
-                cursor-pointer 
-              "
-            >
-              {displayName ?? username}
-            </h3>
+<div className="flex items-start gap-3">
+  <div className="flex flex-col min-w-0">
 
+    {/* Top row */}
+    <div className="flex items-center gap-2 flex-wrap">
+      <h3
+        onClick={(e) => {
+          e.stopPropagation();
+          onProfileClick?.();
+        }}
+        className="font-semibold text-white truncate max-w-[160px] sm:max-w-none"
+      >
+        {displayName || username}
+      </h3>
 
+      <span className="text-gray-500">•</span>
 
-          {/* BOTTOM ROW: Username / Handle */}
-          <span 
-            onClick={(e) => {
-              e.stopPropagation();
-              onProfileClick?.();
-            }}
-            className="
-              text-sm font-normal mt-0.5
-              text-gray-500 dark:text-gray-400 
-              cursor-pointer
-            "
-          >
-            @{username.replace(/\s+/g, "")}
-          </span>
+      <span className="text-sm text-gray-400 whitespace-nowrap">
+        {timestamp}
+      </span>
+    </div>
 
-        </div>
-                    {/* Timestamp Divider & Text */}
-            <span className="text-gray-400 text-sm">•</span>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{timestamp}</p>
-          </div>
-      </div>
+    {/* Bottom row */}
+    <span
+      onClick={(e) => {
+        e.stopPropagation();
+        onProfileClick?.();
+      }}
+      className="text-sm text-gray-400 cursor-pointer truncate"
+    >
+      @{username}
+    </span>
+
+  </div>
+</div>
 
       {/* RIGHT: Menu Button */}
       <div className="flex items-center">
