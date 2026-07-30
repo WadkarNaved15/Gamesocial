@@ -98,10 +98,43 @@ router.put("/seen/:chatId", verifyToken, async (req, res) => {
 router.get("/:chatId", async (req, res) => {
   try {
     const { chatId } = req.params;
-    const messages = await Message.find({ chatId })
-      .sort({ createdAt: 1 });
-    console.log(`Messages for chat ${chatId}:`, messages);
-    res.json(messages);
+    const limit = Math.min(parseInt(req.query.limit, 10) || 30, 100);
+    const before = req.query.before;
+
+    const query = { chatId };
+
+    if (before) {
+      let cursor;
+      try {
+        cursor = JSON.parse(Buffer.from(before, "base64").toString("utf-8"));
+      } catch {
+        return res.status(400).json({ message: "Invalid cursor" });
+      }
+      const cursorDate = new Date(cursor.createdAt);
+      query.$or = [
+        { createdAt: { $lt: cursorDate } },
+        { createdAt: cursorDate, _id: { $lt: cursor._id } },
+      ];
+    }
+
+    const messages = await Message.find(query)
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(limit + 1)
+      .lean();
+
+    const hasMore = messages.length > limit;
+    if (hasMore) messages.pop();
+
+    messages.reverse(); // oldest -> newest
+
+    const nextCursor =
+      messages.length > 0
+        ? Buffer.from(
+          JSON.stringify({ createdAt: messages[0].createdAt, _id: messages[0]._id })
+        ).toString("base64")
+        : null;
+
+    res.json({ messages, hasMore, nextCursor });
   } catch (err) {
     console.error("Fetch messages error:", err);
     res.status(500).json({ message: "Failed to fetch messages" });

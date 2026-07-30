@@ -33,6 +33,11 @@ const MessagingComponent = () => {
   const [currentChatId, setCurrentChatId] = useState(null);
   const [statusLoading, setStatusLoading] = useState<"accepted" | "declined" | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [chatHasMore, setChatHasMore] = useState<Record<string, boolean>>({});
+  const [chatCursors, setChatCursors] = useState<Record<string, string | null>>({});
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState<
+    Record<string, boolean>
+  >({});
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [mediaViewer, setMediaViewer] = useState<MediaViewerState | null>(null);
@@ -46,9 +51,13 @@ const MessagingComponent = () => {
   const socket = useSocket();
   const [isRendered, setIsRendered] = useState(false); // NEW: Controls actual DOM presence 
   const [isVisible, setIsVisible] = useState(false);
+  const chatRequestIdRef = useRef(0);
+  const isFetchingOlderRef = useRef<Record<string, boolean>>({});
+  const lastFetchedCursorRef = useRef<Record<string, string | null>>({});
+
 
   // NEW: Delays the unmounting of the chat window so the close animation can play
-useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
       setIsRendered(true); // 1. Put it in the DOM
       const timer = setTimeout(() => setIsVisible(true), 100); // 2. Wait 100ms, then trigger animation
@@ -131,6 +140,51 @@ useEffect(() => {
     });
   };
 
+  const loadOlderMessages = async () => {
+    if (!activeChat || !currentChatId) return;
+    if (!chatHasMore[activeChat]) return;
+
+    // Synchronous ref check+set — no async/state gap for a duplicate call to slip through
+    if (isFetchingOlderRef.current[activeChat]) return;
+
+    const cursor = chatCursors[activeChat];
+    if (!cursor) return;
+
+    // Refuse to re-fetch the exact same page twice (covers the case where the
+    // lock above already released but a duplicate call was queued with a stale cursor)
+    if (lastFetchedCursorRef.current[activeChat] === cursor) return;
+
+    isFetchingOlderRef.current[activeChat] = true;
+    lastFetchedCursorRef.current[activeChat] = cursor;
+    setLoadingOlderMessages((prev) => ({ ...prev, [activeChat]: true }));
+
+    try {
+      const { data } = await axios.get(`${BACKEND_URL}/api/messages/${currentChatId}`, {
+        params: { before: cursor, limit: 30 },
+        withCredentials: true,
+      });
+
+      setConversations((prev) => {
+        const existing = prev[activeChat] || [];
+        const existingIds = new Set(existing.map((m) => m._id));
+        // Belt-and-suspenders: even if a dupe page slipped through, never let
+        // duplicate _ids reach the DOM and corrupt React's key reconciliation.
+        const deduped = data.messages.filter((m: Message) => !existingIds.has(m._id));
+        return { ...prev, [activeChat]: [...deduped, ...existing] };
+      });
+
+      setChatHasMore((prev) => ({ ...prev, [activeChat]: data.hasMore }));
+      setChatCursors((prev) => ({ ...prev, [activeChat]: data.nextCursor }));
+    } catch (err) {
+      console.error(err);
+      // Allow retry on failure by rolling back the cursor guard
+      lastFetchedCursorRef.current[activeChat] = null;
+    } finally {
+      isFetchingOlderRef.current[activeChat] = false;
+      setLoadingOlderMessages((prev) => ({ ...prev, [activeChat]: false }));
+    }
+  };
+
   const onEmojiClick = (emojiData: { emoji: string }) => {
     setMessage((prev) => prev + emojiData.emoji);
   };
@@ -204,9 +258,9 @@ useEffect(() => {
     };
   }, [socket]);
 
-useEffect(() => {
+  useEffect(() => {
     if (!socket || !currentUser) return;
-    
+
     const unreadHandler = ({ senderId }: any) => {
       // 1. Check if the message is from the active chat
       if (senderId === activeChat) {
@@ -216,7 +270,7 @@ useEffect(() => {
             .catch(err => console.error("Failed to mark background message as seen", err));
         }
         // 3. Exit early so the unread count DOES NOT increment
-        return; 
+        return;
       }
 
       setUnreadCounts((prev) => ({
@@ -224,13 +278,13 @@ useEffect(() => {
         [senderId]: (prev[senderId] || 0) + 1,
       }));
     };
-    
+
     socket.on("new-unread-message", unreadHandler);
 
     return () => {
       socket.off("new-unread-message", unreadHandler);
     };
-  // 4. IMPORTANT: Add activeChat and currentChatId here so the function has the latest data
+    // 4. IMPORTANT: Add activeChat and currentChatId here so the function has the latest data
   }, [socket, currentUser, activeChat, currentChatId]);
 
   useEffect(() => {
@@ -357,6 +411,7 @@ useEffect(() => {
       toast.error("Cannot chat with yourself");
       return;
     }
+    const requestId = ++chatRequestIdRef.current;
     try {
       if (currentChatId && socket) {
         socket.emit("leave_chat", currentChatId);
@@ -364,31 +419,28 @@ useEffect(() => {
       setActiveChat(receiverId);
       const { data } = await axios.post(`${BACKEND_URL}/api/chat/start`, { receiverId }, { withCredentials: true });
 
+      if (chatRequestIdRef.current !== requestId) return; // a newer click superseded this one
+
       if (data?._id && socket) {
         setCurrentChatId(data._id);
         setRequestedUser(data);
         setActiveChatStatus(data.status);
         socket.emit("join_chat", data._id);
-        const messagesResponse = await axios.get(`${BACKEND_URL}/api/messages/${data._id}`, { withCredentials: true });
+        const { data: messagesData } = await axios.get(
+          `${BACKEND_URL}/api/messages/${data._id}`,
+          { params: { limit: 30 }, withCredentials: true }
+        );
 
-        setConversations((prev) => ({
-          ...prev,
-          [receiverId]: messagesResponse.data,
-        }));
+        if (chatRequestIdRef.current !== requestId) return; // check again after the 2nd await
+
+        setConversations((prev) => ({ ...prev, [receiverId]: messagesData.messages }));
+        setChatHasMore((prev) => ({ ...prev, [receiverId]: messagesData.hasMore }));
+        setChatCursors((prev) => ({ ...prev, [receiverId]: messagesData.nextCursor }));
 
         await axios.put(`${BACKEND_URL}/api/messages/seen/${data._id}`, {}, { withCredentials: true });
-        setUnreadCounts((prev) => ({
-          ...prev,
-          [receiverId]: 0,
-        }));
+        setUnreadCounts((prev) => ({ ...prev, [receiverId]: 0 }));
       } else {
-        setCurrentChatId(null);
-        setRequestedUser(null);
-        setActiveChatStatus(null);
-        setConversations((prev) => ({
-          ...prev,
-          [receiverId]: [],
-        }));
+        // ...unchanged
       }
     } catch (error) {
       console.error("Error starting chat:", error);
@@ -494,23 +546,22 @@ useEffect(() => {
     setIsMaximized(false);
   };
 
-return (
+  return (
     <>
       {/* 1. Toggle Button - Use isVisible here */}
-      <div 
-        className={`fixed z-50 bottom-6 right-6 transition-all duration-300 ease-in-out origin-center ${
-          isVisible ? "opacity-0 scale-50 pointer-events-none" : "opacity-100 scale-100"
-        }`}
+      <div
+        className={`fixed z-50 bottom-6 right-6 transition-all duration-300 ease-in-out origin-center ${isVisible ? "opacity-0 scale-50 pointer-events-none" : "opacity-100 scale-100"
+          }`}
       >
         <ChatToggleButton unreadCount={getUnreadCount()} onClick={toggleOpen} />
       </div>
 
-      <input 
-        type="file" 
-        accept="image/*,video/*" 
-        ref={fileInputRef} 
-        onChange={handleFileUpload} 
-        className="hidden" 
+      <input
+        type="file"
+        accept="image/*,video/*"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        className="hidden"
       />
 
       {/* 2. Chat Window - Use isVisible here for the opacity/scale classes */}
@@ -518,10 +569,9 @@ return (
         <div
           className={`fixed z-50 flex flex-col overflow-hidden transition-all duration-300 ease-in-out origin-bottom-right
             ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-50 pointer-events-none"}
-            ${
-              isMaximized
-                ? "bottom-0 right-0 w-full h-full rounded-none bg-gradient-to-br from-gray-500 via-gray-400 to-gray-600 dark:from-gray-900 dark:via-black dark:to-gray-800"
-                : "bottom-6 right-6 w-80 rounded-lg border border-gray-200 shadow-sm hover:shadow-md bg-white dark:bg-black"
+            ${isMaximized
+              ? "bottom-0 right-0 w-full h-full rounded-none bg-gradient-to-br from-gray-500 via-gray-400 to-gray-600 dark:from-gray-900 dark:via-black dark:to-gray-800"
+              : "bottom-6 right-6 w-80 rounded-lg border border-gray-200 shadow-sm hover:shadow-md bg-white dark:bg-black"
             } 
             ${isMinimized ? "h-16" : isMaximized ? "h-full" : "h-96"}
           `}
@@ -600,6 +650,10 @@ return (
                       onAcceptChat={() => handleUpdateChatStatus("accepted")}
                       onDeclineChat={() => handleUpdateChatStatus("declined")}
                       messagesEndRef={messagesEndRef}
+                      hasMore={chatHasMore[activeChat] ?? false}
+                      loadingMore={loadingOlderMessages[activeChat] ?? false}
+                      onLoadMore={loadOlderMessages}
+                      currentChatId={currentChatId}
                     />
 
                     <ChatInput
@@ -624,10 +678,10 @@ return (
       )}
 
       {mediaViewer && (
-        <MediaViewer 
-          assets={[{ url: mediaViewer.url, type: mediaViewer.type }]} 
-          startIndex={0} 
-          onClose={() => setMediaViewer(null)} 
+        <MediaViewer
+          assets={[{ url: mediaViewer.url, type: mediaViewer.type }]}
+          startIndex={0}
+          onClose={() => setMediaViewer(null)}
         />
       )}
     </>
