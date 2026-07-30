@@ -39,6 +39,7 @@ export default function AdsSidebar({
         <button
           className="w-full text-left px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 active:bg-gray-200 transition shadow-sm"
           onClick={() => {
+            setActiveTab("campaigns");
             resetAdGroup();
             setShowComposer(false);
             setActiveComposerType(null);

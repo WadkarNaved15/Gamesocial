@@ -15,16 +15,119 @@ router.get("/", async (req, res) => {
       return res.json([]);
     }
 
-    const users = await User.find({
-      username: {
-        $regex: `^${escapeRegex(q)}`,
-        $options: "i",
-      },
-    })
-      .select("username displayName avatar")
-      .limit(8)
-      .lean();
+    const escaped = escapeRegex(q);
 
+    const users = await User.aggregate([
+      {
+        $match: {
+          $or: [
+            {
+              username: {
+                $regex: escaped,
+                $options: "i",
+              },
+            },
+            {
+              displayName: {
+                $regex: escaped,
+                $options: "i",
+              },
+            },
+          ],
+        },
+      },
+
+      {
+        $addFields: {
+          priority: {
+            $switch: {
+              branches: [
+                // username starts with query
+                {
+                  case: {
+                    $regexMatch: {
+                      input: "$username",
+                      regex: `^${escaped}`,
+                      options: "i",
+                    },
+                  },
+                  then: 1,
+                },
+
+                // displayName starts with query
+                {
+                  case: {
+                    $regexMatch: {
+                      input: "$displayName",
+                      regex: `^${escaped}`,
+                      options: "i",
+                    },
+                  },
+                  then: 2,
+                },
+
+                // query matches a word inside display name
+                {
+                  case: {
+                    $regexMatch: {
+                      input: "$displayName",
+                      regex: `\\b${escaped}`,
+                      options: "i",
+                    },
+                  },
+                  then: 3,
+                },
+
+                // username contains query
+                {
+                  case: {
+                    $regexMatch: {
+                      input: "$username",
+                      regex: escaped,
+                      options: "i",
+                    },
+                  },
+                  then: 4,
+                },
+
+                // display name contains query anywhere
+                {
+                  case: {
+                    $regexMatch: {
+                      input: "$displayName",
+                      regex: escaped,
+                      options: "i",
+                    },
+                  },
+                  then: 5,
+                },
+              ],
+              default: 6,
+            },
+          },
+        },
+      },
+
+      {
+        $sort: {
+          priority: 1,
+          followersCount: -1,
+          username: 1,
+        },
+      },
+
+      {
+        $project: {
+          username: 1,
+          displayName: 1,
+          avatar: 1,
+        },
+      },
+
+      {
+        $limit: 8,
+      },
+    ]);
     res.json(users);
   } catch (err) {
     console.error("Search error:", err);
