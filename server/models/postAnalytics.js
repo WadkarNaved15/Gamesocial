@@ -6,8 +6,6 @@ const PostAnalyticsSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "AllPost",
       required: true,
-      unique: true,
-      index: true,
     },
 
     // ─── TOP-LEVEL COUNTERS (kept for fast reads / backward compat) ───────────

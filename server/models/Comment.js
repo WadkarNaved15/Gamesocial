@@ -59,7 +59,6 @@ const CommentSchema = new mongoose.Schema({
         isGameReview: {
             type: Boolean,
             default: false,
-            index: true,
         },
 
         feedback: {

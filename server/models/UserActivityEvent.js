@@ -13,7 +13,6 @@ const userActivityEventSchema =
       sessionId: {
         type: String,
         required: true,
-        index: true,
       },
 
       eventType: {

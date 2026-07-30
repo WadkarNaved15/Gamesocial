@@ -1,47 +1,25 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useSocket } from "../../context/SocketContext";
-import EmojiPicker from 'emoji-picker-react';
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
-import { Header } from "../Header"; // 1. Add your import
-import SharedPostMessage from "./SharedPostMessage";
 import { useUser } from "../../context/user";
 import { useChat } from "../../context/ChatContext";
-import { useUI } from "../../context/UIContext";
 import { useUsers } from "../../context/UsersContext";
 import MediaViewer from "../Media/MediaViewer";
 import { toast } from "react-toastify";
-import {
-  MessageCircle,
-  X,
-  Send,
-  Minus,
-  Paperclip,
-  Smile,
-  Search,
-  ArrowLeft,
-  Maximize2,
-  Square,
-} from "lucide-react";
-import { MeshGpuData } from "pixi.js";
-interface ApiUser {
-  _id: string;
-  username: string;
-}
-interface User {
-  id: string;
-  name: string;
-  avatar: string;
-  unreadCount: number;
-  status?: string;
-  lastSeen?: string;
-}
+
+import ChatToggleButton from "../Message/ChatToggleButton";
+import ChatHeader from "../Message/ChatHeader";
+import UsersListPanel from "../Message/UsersListPanel";
+import ChatMessageList from "../Message/ChatMessageList";
+import ChatInput from "../Message/ChatInput";
+import { Message, ChatId, MediaViewerState } from "../Message/types";
+import { MessageCircle } from "lucide-react";
+
 type UploadAsset = {
   file: File;
   type: "image" | "video" | "misc";
 };
-type Message = any
-type ChatId = string;
+
 const MessagingComponent = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -57,10 +35,7 @@ const MessagingComponent = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [mediaViewer, setMediaViewer] = useState<{
-    url: string;
-    type: "image" | "video";
-  } | null>(null);
+  const [mediaViewer, setMediaViewer] = useState<MediaViewerState | null>(null);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
   const [activeChatStatus, setActiveChatStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -69,6 +44,21 @@ const MessagingComponent = () => {
   const currentUser = user?._id;
   const { targetUser } = useChat();
   const socket = useSocket();
+  const [isRendered, setIsRendered] = useState(false); // NEW: Controls actual DOM presence 
+  const [isVisible, setIsVisible] = useState(false);
+
+  // NEW: Delays the unmounting of the chat window so the close animation can play
+useEffect(() => {
+    if (isOpen) {
+      setIsRendered(true); // 1. Put it in the DOM
+      const timer = setTimeout(() => setIsVisible(true), 100); // 2. Wait 100ms, then trigger animation
+      return () => clearTimeout(timer);
+    } else {
+      setIsVisible(false); // 1. Trigger the close animation
+      const timer = setTimeout(() => setIsRendered(false), 300); // 2. Wait 300ms, then remove from DOM
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   // CSS animation for shine
   useEffect(() => {
@@ -85,23 +75,18 @@ const MessagingComponent = () => {
     document.head.appendChild(style);
 
     return () => {
-      // Ensure the cleanup returns void
       if (document.head.contains(style)) {
         document.head.removeChild(style);
       }
     };
   }, []);
-  // const socket = io( `${BACKEND_URL}`, {
-  //   withCredentials: true,
-  // });
-  const [conversations, setConversations] = useState<
-    Record<string, Message[]>
-  >({});
+
+  const [conversations, setConversations] = useState<Record<string, Message[]>>({});
+
   const uploadChatMediaToS3 = async (
     asset: UploadAsset,
     onProgress: (percent: number) => void
   ): Promise<{ fileUrl: string; key: string }> => {
-    // 1️⃣ Get presigned URL
     const res = await fetch(`${BACKEND_URL}/api/upload/presigned-url`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -119,7 +104,6 @@ const MessagingComponent = () => {
 
     const { uploadUrl, fileUrl, key } = await res.json();
 
-    // 2️⃣ Upload to S3 with REAL progress
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
 
@@ -135,10 +119,7 @@ const MessagingComponent = () => {
 
       xhr.onload = () => {
         if (xhr.status === 200) {
-          resolve({
-            fileUrl,
-            key,
-          });
+          resolve({ fileUrl, key });
         } else {
           reject(new Error(`Upload failed with status ${xhr.status}`));
         }
@@ -149,35 +130,26 @@ const MessagingComponent = () => {
       xhr.send(asset.file);
     });
   };
+
   const onEmojiClick = (emojiData: { emoji: string }) => {
     setMessage((prev) => prev + emojiData.emoji);
   };
-  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  useEffect(() => {
-    scrollToBottom();
-  }, [conversations, activeChat]);
+
+
 
   useEffect(() => {
     if (!currentUser) return;
 
     const fetchUnreadCounts = async () => {
       try {
-        const res = await axios.get(
-          `${BACKEND_URL}/api/messages/unread-counts`,
-          { withCredentials: true }
-        );
+        const res = await axios.get(`${BACKEND_URL}/api/messages/unread-counts`, { withCredentials: true });
 
         const counts: Record<string, number> = {};
-
         res.data.forEach((item: any) => {
           counts[item._id] = item.count;
         });
 
-        setUnreadCounts((prev) => ({
-          ...prev,
-          ...counts
-        }));
-
+        setUnreadCounts((prev) => ({ ...prev, ...counts }));
       } catch (err) {
         console.error("Failed to load unread counts", err);
       }
@@ -185,12 +157,12 @@ const MessagingComponent = () => {
 
     fetchUnreadCounts();
   }, [currentUser]);
+
   useEffect(() => {
-    if (!targetUser || targetUser.id === currentUser) return;;
+    if (!targetUser || targetUser.id === currentUser) return;
 
     setIsOpen(true);
 
-    // 🔥 Add user to users list IF NOT EXISTS
     setUsers((prev) => {
       const exists = prev.find((u) => u.id === targetUser.id);
       if (exists) return prev;
@@ -207,10 +179,9 @@ const MessagingComponent = () => {
       ];
     });
 
-    // 🔥 Open chat
     handleUserClick(targetUser.id);
-
   }, [targetUser, currentUser]);
+
   useEffect(() => {
     if (!socket) return;
 
@@ -219,15 +190,11 @@ const MessagingComponent = () => {
     });
 
     socket.on("user-online", (userId: string) => {
-      setOnlineUsers((prev) =>
-        prev.includes(userId) ? prev : [...prev, userId]
-      );
+      setOnlineUsers((prev) => (prev.includes(userId) ? prev : [...prev, userId]));
     });
 
     socket.on("user-offline", (userId: string) => {
-      setOnlineUsers((prev) =>
-        prev.filter((id) => id !== userId)
-      );
+      setOnlineUsers((prev) => prev.filter((id) => id !== userId));
     });
 
     return () => {
@@ -236,8 +203,6 @@ const MessagingComponent = () => {
       socket.off("user-offline");
     };
   }, [socket]);
-
-
 
   useEffect(() => {
     if (!socket || !currentUser) return;
@@ -254,7 +219,6 @@ const MessagingComponent = () => {
     };
   }, [socket, currentUser]);
 
-
   useEffect(() => {
     if (!socket || !currentUser) return;
     const handler = (msg: any) => {
@@ -265,35 +229,24 @@ const MessagingComponent = () => {
         socket.emit("join_chat", msg.chatId);
       }
 
-      const otherUserId =
-        msg.senderId === currentUser
-          ? msg.receiverId
-          : msg.senderId;
+      const otherUserId = msg.senderId === currentUser ? msg.receiverId : msg.senderId;
 
       setConversations((prev) => {
         const existingMessages = prev[otherUserId] || [];
 
-        // Replace temp message with DB message
-        if (
-          msg.senderId === currentUser &&
-          msg.tempId
-        ) {
+        if (msg.senderId === currentUser && msg.tempId) {
           return {
             ...prev,
-            [otherUserId]: existingMessages.map((m) =>
-              m.tempId === msg.tempId ? msg : m
-            ),
+            [otherUserId]: existingMessages.map((m) => (m.tempId === msg.tempId ? msg : m)),
           };
         }
 
-        // Receiver side
         return {
           ...prev,
           [otherUserId]: [...existingMessages, msg],
         };
       });
     };
-
 
     socket.on("receive-message", handler);
 
@@ -310,9 +263,7 @@ const MessagingComponent = () => {
         const updated = { ...prev };
 
         Object.keys(updated).forEach((userId) => {
-          updated[userId] = updated[userId].filter(
-            (msg) => msg._id !== messageId
-          );
+          updated[userId] = updated[userId].filter((msg) => msg._id !== messageId);
         });
 
         return updated;
@@ -325,6 +276,7 @@ const MessagingComponent = () => {
       socket.off("message-deleted", handleMessageDeleted);
     };
   }, [socket]);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!socket || !currentUser) return;
     if (!canSendMessages) return;
@@ -337,11 +289,7 @@ const MessagingComponent = () => {
       const { fileUrl, key } = await uploadChatMediaToS3(
         {
           file,
-          type: file.type.startsWith("image")
-            ? "image"
-            : file.type.startsWith("video")
-              ? "video"
-              : "misc",
+          type: file.type.startsWith("image") ? "image" : file.type.startsWith("video") ? "video" : "misc",
         },
         (progress) => {
           toast.update(toastId, {
@@ -358,7 +306,6 @@ const MessagingComponent = () => {
         autoClose: 1200,
       });
       const tempId = Date.now().toString();
-      // Send chat message
       const newMessage = {
         tempId,
         chatId: currentChatId,
@@ -367,17 +314,12 @@ const MessagingComponent = () => {
         text: "",
         mediaUrl: fileUrl,
         mediaKey: key,
-        mediaType: file.type.startsWith("image")
-          ? "image"
-          : file.type.startsWith("video")
-            ? "video"
-            : "misc",
+        mediaType: file.type.startsWith("image") ? "image" : file.type.startsWith("video") ? "video" : "misc",
         createdAt: new Date(),
       };
 
       socket.emit("send-message", newMessage);
 
-      // Optimistic UI
       setConversations((prev) => ({
         ...prev,
         [activeChat]: [...(prev[activeChat] || []), newMessage],
@@ -396,51 +338,36 @@ const MessagingComponent = () => {
     }
   };
 
-
   const handleUserClick = async (receiverId: string) => {
     if (receiverId === currentUser) {
       toast.error("Cannot chat with yourself");
       return;
     }
     try {
-      // ✅ Leave old room first
       if (currentChatId && socket) {
         socket.emit("leave_chat", currentChatId);
       }
       setActiveChat(receiverId);
-      // Hit backend to create or get the chat
-      const { data } = await axios.post(
-        `${BACKEND_URL}/api/chat/start`,
-        { receiverId },
-        { withCredentials: true }
-      );
-      // 🔥 If chat exists
+      const { data } = await axios.post(`${BACKEND_URL}/api/chat/start`, { receiverId }, { withCredentials: true });
+
       if (data?._id && socket) {
         setCurrentChatId(data._id);
-        setRequestedUser(data)
+        setRequestedUser(data);
         setActiveChatStatus(data.status);
         socket.emit("join_chat", data._id);
-        const messagesResponse = await axios.get(
-          `${BACKEND_URL}/api/messages/${data._id}`,
-          { withCredentials: true }
-        );
+        const messagesResponse = await axios.get(`${BACKEND_URL}/api/messages/${data._id}`, { withCredentials: true });
 
         setConversations((prev) => ({
           ...prev,
           [receiverId]: messagesResponse.data,
         }));
-        // ✅ 4️⃣ Mark all received messages as SEEN
-        await axios.put(
-          `${BACKEND_URL}/api/messages/seen/${data._id}`,
-          {},
-          { withCredentials: true }
-        );
+
+        await axios.put(`${BACKEND_URL}/api/messages/seen/${data._id}`, {}, { withCredentials: true });
         setUnreadCounts((prev) => ({
           ...prev,
           [receiverId]: 0,
         }));
       } else {
-        // 🔥 NO CHAT EXISTS → EMPTY STATE
         setCurrentChatId(null);
         setRequestedUser(null);
         setActiveChatStatus(null);
@@ -449,72 +376,34 @@ const MessagingComponent = () => {
           [receiverId]: [],
         }));
       }
-
     } catch (error) {
       console.error("Error starting chat:", error);
     }
   };
 
-
-  const handleUpdateChatStatus = async (
-    status: "accepted" | "declined"
-  ) => {
+  const handleUpdateChatStatus = async (status: "accepted" | "declined") => {
     if (!currentChatId) return;
     setStatusLoading(status);
     try {
-      const endpoint =
-        status === "accepted"
-          ? "accept"
-          : "reject";
+      const endpoint = status === "accepted" ? "accept" : "reject";
 
-      await axios.put(
-        `${BACKEND_URL}/api/chat-requests/${currentChatId}/${endpoint}`,
-        {},
-        {
-          withCredentials: true,
-        }
-      );
-      if (status === "accepted") {
-        setActiveChatStatus("accepted");
+      await axios.put(`${BACKEND_URL}/api/chat-requests/${currentChatId}/${endpoint}`, {}, { withCredentials: true });
 
-        setUsers(prev =>
-          prev.map(u =>
-            u.id === activeUser?.id
-              ? {
-                ...u,
-                chatStatus: "accepted",
-              }
-              : u
-          )
-        );
-      } else {
-        setActiveChatStatus("declined");
-
-        // Update the user inside the chat list
-        setUsers(prev =>
-          prev.map(u =>
-            u.id === activeUser?.id
-              ? {
-                ...u,
-                chatStatus: "declined",
-              }
-              : u
-          )
-        );
-      }
+      setActiveChatStatus(status);
+      setUsers((prev) => prev.map((u) => (u.id === activeUser?.id ? { ...u, chatStatus: status } : u)));
     } catch (err) {
       console.error(err);
       toast.error("Failed to update request");
-    }
-    finally {
+    } finally {
       setStatusLoading(null);
     }
   };
+
   const handleSendMessage = () => {
     if (!socket || !currentUser) return;
     if (!canSendMessages) return;
     if (!message.trim() || !activeChat) return;
-    const tempId = Date.now(); // unique temporary ID
+    const tempId = Date.now();
     const newMessage = {
       tempId,
       chatId: currentChatId || null,
@@ -524,10 +413,8 @@ const MessagingComponent = () => {
       createdAt: new Date(),
     };
 
-    // emit to server
     socket.emit("send-message", newMessage);
 
-    // optimistic update
     setConversations((prev) => ({
       ...prev,
       [activeChat]: [...(prev[activeChat] || []), newMessage],
@@ -539,9 +426,7 @@ const MessagingComponent = () => {
   const handleDeleteMessage = (messageId: string) => {
     if (!socket) return;
 
-    socket.emit("delete-message", {
-      messageId,
-    });
+    socket.emit("delete-message", { messageId });
 
     setOpenMenuId(null);
   };
@@ -552,19 +437,15 @@ const MessagingComponent = () => {
       handleSendMessage();
     }
   };
-  const formatTime = (ts: Date) => ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
   const getUnreadCount = () => Object.values(unreadCounts).reduce((a, b) => a + b, 0);
   const filteredUsers = users
-    .filter((u) => u.id !== currentUser)   // ← ADD THIS
+    .filter((u) => u.id !== currentUser)
     .filter((u) => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
   const activeUser = users.find((u) => u.id === activeChat);
   const isSender = requestedUser ? requestedUser.requestedBy === currentUser : true;
 
-  const canSendMessages =
-    // 1. If user is the sender: always allowed to send messages
-    isSender ||
-    // 2. If user is the receiver: only allowed if they accepted the request
-    activeChatStatus === "accepted";
+  const canSendMessages = isSender || activeChatStatus === "accepted";
 
   const toggleOpen = () => {
     setIsOpen(true);
@@ -585,7 +466,7 @@ const MessagingComponent = () => {
   };
 
   const toggleMaximize = () => {
-    setIsMaximized(prev => !prev);
+    setIsMaximized((prev) => !prev);
   };
 
   const handleRestore = () => {
@@ -599,289 +480,69 @@ const MessagingComponent = () => {
     setIsMaximized(false);
   };
 
-  return (
-    <div className={`fixed z-50 ${isMaximized ? "inset-0" : "bottom-6 right-6"}`}>
-      {/* Floating Button (visible when not open) */}
-      {!isOpen && (
-        <button
-          onClick={toggleOpen}
-          className="
-            bg-black
-            text-white
-            p-4 
-            rounded-full
-            border border-solid border-white/40
-            shadow-5xl   
-            transition-all duration-300 transform
-            hover:scale-110
-            group relative
-            flex items-center justify-center
-          "
-        >
-          <MessageCircle
-            size={24}
-            className="group-hover:animate-pulse text-white"
-          />
+return (
+    <>
+      {/* 1. Toggle Button - Use isVisible here */}
+      <div 
+        className={`fixed z-50 bottom-6 right-6 transition-all duration-300 ease-in-out origin-center ${
+          isVisible ? "opacity-0 scale-50 pointer-events-none" : "opacity-100 scale-100"
+        }`}
+      >
+        <ChatToggleButton unreadCount={getUnreadCount()} onClick={toggleOpen} />
+      </div>
 
-          {getUnreadCount() > 0 && (
-            <div
-              className="
-        absolute -top-2 -right-2
-        bg-red-500 text-white text-xs
-        rounded-full h-5 w-5 flex items-center justify-center
-        animate-pulse
-      "
-            >
-              {getUnreadCount()}
-            </div>
-          )}
-        </button>
-
-
-      )}
-      <input
-        type="file"
-        accept="image/*,video/*"
-        ref={fileInputRef}
-        onChange={handleFileUpload}
-        className="hidden"
+      <input 
+        type="file" 
+        accept="image/*,video/*" 
+        ref={fileInputRef} 
+        onChange={handleFileUpload} 
+        className="hidden" 
       />
 
-
-      {/* Chat Window */}
-      {isOpen && (
+      {/* 2. Chat Window - Use isVisible here for the opacity/scale classes */}
+      {isRendered && (
         <div
-          className={`${isMaximized
-            ? "w-full h-full bg-gradient-to-br from-gray-500 via-gray-400 to-gray-600 dark:from-gray-900 dark:via-black dark:to-gray-800 flex flex-col"
-            : "relative bg-white dark:bg-black w-80 border border-gray-200 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md rounded-lg flex flex-col"
-            } ${isMinimized ? "h-16" : isMaximized ? "h-full" : "h-96"}`}
+          className={`fixed z-50 flex flex-col overflow-hidden transition-all duration-300 ease-in-out origin-bottom-right
+            ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-50 pointer-events-none"}
+            ${
+              isMaximized
+                ? "bottom-0 right-0 w-full h-full rounded-none bg-gradient-to-br from-gray-500 via-gray-400 to-gray-600 dark:from-gray-900 dark:via-black dark:to-gray-800"
+                : "bottom-6 right-6 w-80 rounded-lg border border-gray-200 shadow-sm hover:shadow-md bg-white dark:bg-black"
+            } 
+            ${isMinimized ? "h-16" : isMaximized ? "h-full" : "h-96"}
+          `}
         >
-          {/* {isMaximized && <Header />} */}
-          {/* Header */}
-          <div
-            className={`flex-shrink-0 h-16 ${isMaximized
-              ? "bg-white/10 backdrop-blur-xl border-b border-white/20 text-white"
-              : "bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700"
-              } p-4 flex items-center justify-between`}
-          >
-            {isMinimized ? (
-              // Minimized Header
-              <>
-                <div className="flex items-center space-x-3 cursor-pointer" onClick={handleRestore}>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 dark:bg-gray-700">
-                    <MessageCircle size={16} className="text-gray-600 dark:text-gray-300" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-sm">Messages</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{users.length} contacts</p>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={isMinimized ? toggleModal : toggleMaximize}
-                    className="hover:bg-gray-200 dark:hover:bg-gray-700 p-1 rounded"
-                  >
-                    {isMaximized ? <Square size={16} /> : <Maximize2 size={16} />}
-                  </button>
-                  <button
-                    onClick={toggleClose}
-                    className="hover:bg-gray-200 dark:hover:bg-gray-700 p-1 rounded"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              </>
-            ) : (
-              // Full/Maximized Header"
-              <>
-                <div className="flex items-center space-x-3">
-                  <div
-                    className={`${isMaximized
-                      ? "w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white"
-                      : "w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300"
-                      }`}
-                  >
-                    {activeUser ? (
+          <ChatHeader
+            isMinimized={isMinimized}
+            isMaximized={isMaximized}
+            activeUser={activeUser}
+            usersCount={users.length}
+            onRestore={handleRestore}
+            onMinimizedActionClick={toggleModal}
+            onToggleMaximize={toggleMaximize}
+            onClose={toggleClose}
+          />
 
-                      <img
-                        src={activeUser.avatar ? activeUser.avatar : "/default_avatar.png"}
-                        alt={activeUser.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                        onError={(e) => {
-                          const img = e.currentTarget;
-                          img.onerror = null;
-                          img.src = "/default_avatar.png";
-                        }}
-                      />
-                    ) : (
-                      <MessageCircle size={16} />
-                    )}
-                  </div>
-                  <div>
-                    <h3
-                      className={`font-semibold text-sm ${isMaximized ? "text-white" : "text-gray-900 dark:text-white"
-                        }`}
-                    >
-                      {activeUser ? activeUser.name : "Messages"}
-                    </h3>
-                    {!activeUser && (
-                      <p
-                        className={`text-xs ${isMaximized ? "text-white/80" : "text-gray-500 dark:text-gray-400"
-                          }`}
-                      >
-                        {users.length} contacts
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex space-x-2">
-                  <button
-                    onClick={toggleMaximize}
-                    className={`p-1 rounded ${isMaximized ? "hover:bg-white/20" : "hover:bg-gray-200 dark:hover:bg-gray-700"
-                      }`}
-                  >
-                    {isMaximized ? <Square size={16} /> : <Maximize2 size={16} />}
-                  </button>
-
-                  <button
-                    onClick={toggleClose}
-                    className={`p-1 rounded ${isMaximized ? "hover:bg-white/20" : "hover:bg-gray-200 dark:hover:bg-gray-700"
-                      }`}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Body */}
           {!isMinimized && (
-            <div className="w-full flex-1 flex overflow-hidden">
+            <div className="w-full flex-1 flex flex-col min-h-0 overflow-hidden">
               {!activeChat ? (
-                <div className={`flex w-full ${isMaximized ? "max-w-6xl mx-auto" : "flex-col"}`}>
-                  <div className={`${isMaximized ? "w-80 border border-white/20 flex flex-col" : "w-full flex flex-col"}`}>
-                    {/* Search */}
-                    <div className={`p-4 border-b ${isMaximized ? "border-white/20" : "border-gray-200 dark:border-gray-700"} flex-shrink-0`}>
-                      <div className="relative">
-                        <Search
-                          size={18}
-                          className={`absolute left-3 top-2.5 ${isMaximized ? "text-white/60" : "text-gray-400 dark:text-gray-500"
-                            }`}
-                        />
-                        <input
-                          type="text"
-                          placeholder="Search conversations..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className={`w-full pl-10 pr-4 py-2 rounded-lg text-sm focus:outline-none ${isMaximized
-                            ? "bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/60 focus:ring-2 focus:ring-white/40"
-                            : "border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-gray-400"
-                            }`}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Users List */}
-                    <div className="flex-1 overflow-y-auto">
-                      {loading ? (
-                        // Loading State
-                        <div className="flex flex-col items-center justify-center h-full py-12">
-                          <div className="w-8 h-8 border-4 border-gray-300 dark:border-gray-700 border-t-gray-600 dark:border-t-white rounded-full animate-spin mb-3"></div>
-                          <p className={`${isMaximized ? "text-white/70" : "text-gray-500 dark:text-gray-400"} text-sm`}>
-                            Loading users...
-                          </p>
-                        </div>
-                      ) : filteredUsers.length === 0 ? (
-                        // No Users Found
-                        <div className="flex flex-col items-center justify-center h-full py-16 px-6 text-center">
-                          <div className={`${isMaximized ? "text-white/30" : "text-gray-300 dark:text-gray-600"} mb-4`}>
-                            <MessageCircle size={48} />
-                          </div>
-
-                          <h3 className={`font-medium text-lg mb-2 ${isMaximized ? "text-white" : "text-gray-900 dark:text-white"}`}>
-                            {searchTerm ? "No matching users" : "No users yet"}
-                          </h3>
-
-                          <p className={`${isMaximized ? "text-white/60" : "text-gray-500 dark:text-gray-400"} text-sm max-w-[220px]`}>
-                            {searchTerm
-                              ? `No users found matching "${searchTerm}"`
-                              : "You haven't chatted with anyone yet. Start a conversation!"
-                            }
-                          </p>
-
-                          {searchTerm && (
-                            <button
-                              onClick={() => setSearchTerm("")}
-                              className="mt-4 text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 underline"
-                            >
-                              Clear search
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        // Actual Users List
-                        filteredUsers.map((u) => (
-                          <div
-                            key={u.id}
-                            onClick={() => handleUserClick(u.id)}
-                            className={`flex items-center p-4 cursor-pointer transition-colors border-b ${isMaximized
-                              ? "hover:bg-white/10 border-white/10"
-                              : "hover:bg-gray-50 dark:hover:bg-gray-900 border-gray-100 dark:border-gray-800"
-                              }`}
-                          >
-                            <div className="relative">
-                              <div className="relative w-10 h-10">
-                                <img
-                                  src={u.avatar ? u.avatar : "/default_avatar.png"}
-                                  alt={u.name}
-                                  className="w-10 h-10 rounded-full object-cover"
-                                  onError={(e) => {
-                                    const img = e.currentTarget;
-                                    img.onerror = null;
-                                    img.src = "/default_avatar.png";
-                                  }}
-                                />
-                              </div>
-                              {onlineUsers.includes(u.id) && (
-                                <div
-                                  className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 ${isMaximized ? "border-white" : "border-white dark:border-black"
-                                    } bg-green-400`}
-                                />
-                              )}
-                            </div>
-
-                            <div className="ml-3 flex-1">
-                              <div className="flex items-center justify-between">
-                                <h4
-                                  className={`${isMaximized ? "text-white" : "text-gray-900 dark:text-white"
-                                    } font-semibold text-sm`}
-                                >
-                                  {u.name}
-                                </h4>
-
-                                {(unreadCounts[u.id] ?? 0) > 0 && (
-                                  <div
-                                    className={`text-xs rounded-full h-5 w-5 flex items-center justify-center ${isMaximized
-                                      ? "bg-pink-500 text-white"
-                                      : "bg-gray-600 dark:bg-gray-400 text-white dark:text-black"
-                                      }`}
-                                  >
-                                    {unreadCounts[u.id]}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
+                <div className={`flex w-full h-full overflow-hidden ${isMaximized ? "max-w-6xl mx-auto" : "flex-col"}`}>
+                  <div className={`${isMaximized ? "w-80 border border-white/20 flex flex-col overflow-hidden" : "w-full flex flex-col overflow-hidden min-h-0"}`}>
+                    <UsersListPanel
+                      isMaximized={isMaximized}
+                      isSidebarVariant={false}
+                      loading={loading}
+                      filteredUsers={filteredUsers}
+                      searchTerm={searchTerm}
+                      onSearchChange={setSearchTerm}
+                      onUserClick={handleUserClick}
+                      unreadCounts={unreadCounts}
+                      onlineUsers={onlineUsers}
+                    />
                   </div>
 
-                  {/* Welcome Screen for Maximized View */}
                   {isMaximized && (
-                    <div className="flex-1 flex items-center justify-center">
+                    <div className="flex-1 flex items-center justify-center overflow-hidden">
                       <div className="text-center text-white/80">
                         <MessageCircle size={48} className="mx-auto mb-4 text-white/60" />
                         <h3 className="text-xl font-semibold mb-2">Welcome to Messages</h3>
@@ -891,373 +552,71 @@ const MessagingComponent = () => {
                   )}
                 </div>
               ) : (
-                // Chat View
-                <div className={`flex w-full ${isMaximized ? "max-w-6xl mx-auto" : "flex-col"}`}>
-                  {/* Sidebar for Maximized Chat View */}
+                <div className={`flex w-full h-full overflow-hidden ${isMaximized ? "max-w-6xl mx-auto" : "flex-col"}`}>
                   {isMaximized && (
-                    <aside className="w-80 border border-white/20 flex flex-col">
-                      {/* Search */}
-                      <div className="p-4 border-b border-white/20 flex-shrink-0">
-                        <div className="relative">
-                          <Search size={18} className="absolute left-3 top-2.5 text-white/60" />
-                          <input
-                            type="text"
-                            placeholder="Search conversations..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-transparent text-sm"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Users List */}
-                      <div className="flex-1 overflow-y-auto">
-                        {filteredUsers.map((u) => (
-                          <div
-                            key={u.id}
-                            onClick={() => handleUserClick(u.id)}
-                            className={`flex items-center p-4 cursor-pointer transition-colors border-b border-white/10 ${activeChat === u.id ? "bg-white/20" : "hover:bg-white/10"
-                              }`}
-                          >
-                            <div className="relative">
-                              <div className="relative w-10 h-10">
-                                <img
-                                  src={u.avatar ? u.avatar : "/default_avatar.png"}
-                                  alt={u.name}
-                                  className="w-10 h-10 rounded-full object-cover"
-                                  onError={(e) => {
-                                    const img = e.currentTarget;
-                                    img.onerror = null;
-                                    img.src = "/default_avatar.png";
-                                  }}
-                                />
-                              </div>
-                            </div>
-                            <div className="ml-3 flex-1">
-                              <div className="flex items-center justify-between">
-                                <h4 className="font-semibold text-sm text-white">{u.name}</h4>
-                                {unreadCounts[u.id] > 0 && activeChat !== u.id && (
-                                  <div className="bg-pink-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                                    {unreadCounts[u.id]}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                    <aside className="w-80 border border-white/20 flex flex-col overflow-hidden">
+                      <UsersListPanel
+                        isMaximized={isMaximized}
+                        isSidebarVariant
+                        activeChat={activeChat}
+                        loading={loading}
+                        filteredUsers={filteredUsers}
+                        searchTerm={searchTerm}
+                        onSearchChange={setSearchTerm}
+                        onUserClick={handleUserClick}
+                        unreadCounts={unreadCounts}
+                        onlineUsers={onlineUsers}
+                      />
                     </aside>
                   )}
 
-                  {/* Chat Area */}
-                  <div className="flex-1 flex flex-col">
-                    {/* Messages */}
-                    <main
-                      className={`flex-1 overflow-y-auto p-4 space-y-3 ${isMaximized ? "bg-black/20 backdrop-blur-sm" : "bg-gray-50 dark:bg-gray-900"
-                        }`}
-                    >
+                  <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden">
+                    <ChatMessageList
+                      isMaximized={isMaximized}
+                      messages={conversations[activeChat] || []}
+                      currentUser={currentUser}
+                      openMenuId={openMenuId}
+                      onToggleMenu={(id) => setOpenMenuId(openMenuId === id ? null : id)}
+                      onDeleteMessage={handleDeleteMessage}
+                      onMediaClick={setMediaViewer}
+                      activeChatStatus={activeChatStatus}
+                      requestedByCurrentUser={requestedUser?.requestedBy === currentUser}
+                      activeUserName={activeUser?.name}
+                      statusLoading={statusLoading}
+                      onAcceptChat={() => handleUpdateChatStatus("accepted")}
+                      onDeclineChat={() => handleUpdateChatStatus("declined")}
+                      messagesEndRef={messagesEndRef}
+                    />
 
-                      {(conversations[activeChat] || []).map((msg) => (
-                        <div
-                          key={msg._id || msg.tempId || msg.id}
-                          className={`flex ${msg.senderId === currentUser
-                            ? "justify-end"
-                            : "justify-start"
-                            }`}
-                        >
-                          <div className="relative group max-w-xs">
-
-                            {msg.senderId === currentUser && msg._id && (
-                              <div className="absolute top-1 right-1 z-20">
-
-                                {/* Three dots button */}
-                                <button
-                                  onClick={() =>
-                                    setOpenMenuId(
-                                      openMenuId === (msg._id || msg.tempId)
-                                        ? null
-                                        : (msg._id || msg.tempId)
-                                    )
-                                  }
-                                  className="
-                                    opacity-0 group-hover:opacity-100
-                                    transition-opacity duration-200
-                                    text-white/70 hover:text-white
-                                  "
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="w-4 h-4"
-                                    fill="currentColor"
-                                    viewBox="0 0 20 20"
-                                  >
-                                    <circle cx="10" cy="4" r="1.5" />
-                                    <circle cx="10" cy="10" r="1.5" />
-                                    <circle cx="10" cy="16" r="1.5" />
-                                  </svg>
-                                </button>
-
-                                {/* Dropdown */}
-                                {openMenuId === (msg._id || msg.tempId) && (
-                                  <div
-                                    className="
-                                      absolute right-0 mt-1
-                                      w-40 rounded-lg
-                                      bg-white dark:bg-gray-900
-                                      border border-gray-200 dark:border-gray-700
-                                      shadow-xl overflow-hidden
-                                    "
-                                  >
-                                    <button
-                                      onClick={() => handleDeleteMessage(msg._id)}
-                                      className="
-                                        w-full text-left px-4 py-2
-                                        text-sm text-red-500
-                                        hover:bg-red-50
-                                        dark:hover:bg-red-900/20
-                                        transition-colors
-                                      "
-                                    >
-                                      Delete Message
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Actual Bubble */}
-                            <div
-                              className={`max-w-[75vw] sm:max-w-xs md:max-w-sm lg:max-w-md text-sm ${msg.mediaType === "image" || msg.mediaType === "video"
-                                  ? "" // Clear padding, shadow, and background for media
-                                  : `px-3 py-2 rounded-lg shadow-sm ${msg.senderId === currentUser
-                                    ? "bg-gray-600 text-white"
-                                    : "bg-gray-200 text-black"
-                                  }`
-                                }`}
-                            >
-                              {/* IMAGE */}
-                              {msg.mediaType === "image" && (
-                                <div
-                                  className="cursor-pointer overflow-hidden rounded-2xl bg-black"
-                                  onClick={() =>
-                                    setMediaViewer({
-                                      url: msg.mediaUrl,
-                                      type: "image",
-                                    })
-                                  }
-                                >
-                                  <img
-                                    src={msg.mediaUrl}
-                                    crossOrigin="anonymous"
-                                    alt="media"
-                                    loading="lazy"
-                                    className="w-full max-w-[260px] max-h-[320px] object-cover hover:scale-[1.02] transition-transform"
-                                  />
-                                </div>
-                              )}
-
-                              {/* VIDEO */}
-                              {msg.mediaType === "video" && (
-                                <div className="overflow-hidden rounded-2xl bg-black">
-                                  <video
-                                    src={msg.mediaUrl}
-                                    crossOrigin="anonymous"
-                                    controls
-                                    preload="metadata"
-                                    className="max-w-[260px] max-h-[320px] object-cover"
-                                  />
-                                </div>
-                              )}
-
-                              {/* TEXT */}
-                              {msg.text && (
-                                <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                                  {msg.text}
-                                </p>
-                              )}
-
-                              {/* POST */}
-                              {msg.messageType === "post" && (
-                                <SharedPostMessage
-                                  postId={msg.sharedPostId}
-                                  onOpenPost={(postId: string) => {
-                                    window.open(
-                                      `/post/${postId}`,
-                                      "_blank",
-                                      "noopener,noreferrer"
-                                    );
-                                  }}
-                                />
-                              )}
-
-                              {/* TIME */}
-                              <p
-                                className={`text-xs mt-1 ${msg.mediaType === "image" || msg.mediaType === "video"
-                                    ? "text-gray-400" // Subtitle color when rendered outside a bubble
-                                    : msg.senderId === currentUser
-                                      ? "text-gray-200"
-                                      : "text-gray-500"
-                                  }`}
-                              >
-                                {new Date(msg.createdAt).toLocaleString(undefined, {
-                                  timeStyle: "short",
-                                })}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                      {/*Pending Status Action Box */}
-                      {activeChatStatus === "pending" &&
-                        requestedUser?.requestedBy !== currentUser && (
-                          <div className="p-4 mt-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-white/50 dark:bg-black/50 backdrop-blur-sm text-center shadow-sm max-w-sm mx-auto animate-fade-in">
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                              {activeUser?.name || "This user"} wants to chat with you.
-                            </p>
-                            <div className="flex items-center justify-center space-x-3">
-                              <button
-                                onClick={() => handleUpdateChatStatus("accepted")}
-                                disabled={statusLoading !== null}
-                                className="flex items-center justify-center px-4 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {statusLoading === "accepted" && (
-                                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1.5" />
-                                )}
-                                Accept
-                              </button>
-                              <button
-                                onClick={() => handleUpdateChatStatus("declined")}
-                                disabled={statusLoading !== null}
-                                className="flex items-center justify-center px-4 py-1.5 text-xs font-semibold bg-red-500/10 hover:bg-red-600/20 text-red-500 hover:text-white border border-red-500/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {statusLoading === "declined" && (
-                                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1.5" />
-                                )}
-                                Decline
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      {/*Declined Status Action Box */}
-                      {activeChatStatus === "declined" &&
-                        requestedUser?.requestedBy !== currentUser && (
-                          <div className="p-4 mt-4 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 bg-white/50 dark:bg-black/50 backdrop-blur-sm text-center shadow-sm max-w-sm mx-auto animate-fade-in">
-
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                              You declined this chat request.
-                            </p>
-
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                              If you&apos;ve changed your mind, you can accept this request and continue the conversation.
-                            </p>
-
-                            <button
-                              onClick={() => handleUpdateChatStatus("accepted")}
-                              disabled={statusLoading !== null}
-                              className="flex items-center justify-center mx-auto px-4 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {statusLoading === "accepted" && (
-                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1.5" />
-                              )}
-
-                              Accept Chat Request
-                            </button>
-
-                          </div>
-                        )}
-                      <div ref={messagesEndRef} />
-                    </main>
-
-                    {/* Input */}
-                    <footer
-                      className={`flex-shrink-0 p-4 border-t ${isMaximized
-                        ? "border-white/20 bg-black/20 backdrop-blur-xl"
-                        : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black"
-                        }`}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={!canSendMessages}
-                          className={`${isMaximized
-                            ? "text-white/60 hover:text-white"
-                            : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-                            } transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
-                        >
-                          <Paperclip size={18} />
-                        </button>
-
-                        <div className="flex-1 relative">
-                          {/* The Emoji Picker Popover */}
-                          {showEmojiPicker && (
-                            <div className="absolute bottom-full mb-2 right-0 z-50">
-                              <EmojiPicker
-                                onEmojiClick={onEmojiClick}
-                                height={400}
-                              />
-                            </div>
-                          )}
-                          <textarea
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                            disabled={!canSendMessages}
-                            placeholder={
-                              !canSendMessages
-                                ? "Accept this chat request to reply..."
-                                : `Message ${activeUser?.name || ""}...`
-                            }
-                            className={`w-full p-2 rounded-lg resize-none focus:outline-none focus:ring-2 focus:border-transparent text-sm ${isMaximized
-                              ? "bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/60 focus:ring-white/40"
-                              : "border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-gray-400"
-                              }`}
-                            rows={1}
-                            style={{ minHeight: "36px", maxHeight: "80px" }}
-                          />
-                        </div>
-                        <button
-                          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                          disabled={!canSendMessages}
-                          className={`${isMaximized
-                            ? "text-white/60 hover:text-white"
-                            : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-                            } transition-colors`}
-                        >
-                          <Smile size={18} />
-                        </button>
-                        <button
-                          onClick={handleSendMessage}
-                          disabled={!message.trim()}
-                          className={`p-2 rounded-lg transition-all disabled:cursor-not-allowed ${isMaximized
-                            ? "bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 disabled:from-gray-500 disabled:to-gray-500 text-white"
-                            : "bg-gray-600 dark:bg-gray-400 hover:bg-gray-700 dark:hover:bg-gray-300 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white dark:text-black"
-                            }`}
-                        >
-                          <Send size={16} />
-                        </button>
-                      </div>
-                    </footer>
+                    <ChatInput
+                      isMaximized={isMaximized}
+                      message={message}
+                      onMessageChange={setMessage}
+                      onSend={handleSendMessage}
+                      onKeyPress={handleKeyPress}
+                      canSendMessages={canSendMessages}
+                      activeUserName={activeUser?.name}
+                      onFileButtonClick={() => fileInputRef.current?.click()}
+                      showEmojiPicker={showEmojiPicker}
+                      onToggleEmojiPicker={() => setShowEmojiPicker(!showEmojiPicker)}
+                      onEmojiClick={onEmojiClick}
+                    />
                   </div>
                 </div>
               )}
             </div>
           )}
         </div>
-
       )}
+
       {mediaViewer && (
-        <MediaViewer
-          assets={[
-            {
-              url: mediaViewer.url,
-              type: mediaViewer.type,
-            },
-          ]}
-          startIndex={0}
-          onClose={() => setMediaViewer(null)}
+        <MediaViewer 
+          assets={[{ url: mediaViewer.url, type: mediaViewer.type }]} 
+          startIndex={0} 
+          onClose={() => setMediaViewer(null)} 
         />
       )}
-    </div>
+    </>
   );
 };
 
