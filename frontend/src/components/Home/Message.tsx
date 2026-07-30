@@ -204,20 +204,34 @@ useEffect(() => {
     };
   }, [socket]);
 
-  useEffect(() => {
+useEffect(() => {
     if (!socket || !currentUser) return;
+    
     const unreadHandler = ({ senderId }: any) => {
+      // 1. Check if the message is from the active chat
+      if (senderId === activeChat) {
+        // 2. Tell the backend it was seen immediately
+        if (currentChatId) {
+          axios.put(`${BACKEND_URL}/api/messages/seen/${currentChatId}`, {}, { withCredentials: true })
+            .catch(err => console.error("Failed to mark background message as seen", err));
+        }
+        // 3. Exit early so the unread count DOES NOT increment
+        return; 
+      }
+
       setUnreadCounts((prev) => ({
         ...prev,
         [senderId]: (prev[senderId] || 0) + 1,
       }));
     };
+    
     socket.on("new-unread-message", unreadHandler);
 
     return () => {
       socket.off("new-unread-message", unreadHandler);
     };
-  }, [socket, currentUser]);
+  // 4. IMPORTANT: Add activeChat and currentChatId here so the function has the latest data
+  }, [socket, currentUser, activeChat, currentChatId]);
 
   useEffect(() => {
     if (!socket || !currentUser) return;
