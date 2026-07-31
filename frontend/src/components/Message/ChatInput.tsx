@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import EmojiPicker from "emoji-picker-react";
-import { Paperclip, Smile, Send } from "lucide-react";
+import { Paperclip, Smile, ArrowUp } from "lucide-react";
 
 interface ChatInputProps {
   isMaximized: boolean;
@@ -16,6 +16,8 @@ interface ChatInputProps {
   onEmojiClick: (emojiData: { emoji: string }) => void;
 }
 
+const MAX_HEIGHT = 160; // px, caps growth before it scrolls internally
+
 const ChatInput: React.FC<ChatInputProps> = ({
   isMaximized,
   message,
@@ -29,63 +31,111 @@ const ChatInput: React.FC<ChatInputProps> = ({
   onToggleEmojiPicker,
   onEmojiClick,
 }) => {
-  return (
-    <footer
-      className={`flex-shrink-0 p-4 border-t ${
-        isMaximized ? "border-white/20 bg-black/20 backdrop-blur-xl" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black"
-      }`}
-    >
-      <div className="flex items-center space-x-2">
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Refs for detecting outside clicks
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-grow the textarea (and therefore the pill) as content wraps,
+  // capping at MAX_HEIGHT and letting it scroll internally after that.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    // Resetting to exactly 36px guarantees the height perfectly matches the buttons on line 1
+    el.style.height = "36px"; 
+    const next = Math.min(el.scrollHeight, MAX_HEIGHT);
+    el.style.height = `${next}px`;
+    el.style.overflowY = el.scrollHeight > MAX_HEIGHT ? "auto" : "hidden";
+  }, [message]);
+
+  // Handle click outside to close emoji picker
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        showEmojiPicker &&
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target as Node) &&
+        emojiButtonRef.current &&
+        !emojiButtonRef.current.contains(event.target as Node)
+      ) {
+        onToggleEmojiPicker();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showEmojiPicker, onToggleEmojiPicker]);
+
+return (
+<footer className="flex-shrink-0 pl-2 pr-3 pb-2 sm:pl-3 sm:pr-4 sm:pb-3">
+      {/* 
+        Added mx-[3%] to introduce a 3% margin on both the left and right sides.
+      */}
+<div
+  className={`flex items-end gap-1.5 sm:gap-2 ${isMaximized ? "mx-[3%]" : "" } rounded-[24px] border border-white/10
+    bg-white/[0.05] p-1.5 sm:p-2
+    focus-within:bg-white/[0.08] transition-colors`}
+>
         <button
           onClick={onFileButtonClick}
           disabled={!canSendMessages}
-          className={`${
-            isMaximized ? "text-white/60 hover:text-white" : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-          } transition-colors disabled:opacity-40 disabled:cursor-not-allowed`}
+          className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full
+            text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors
+            disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <Paperclip size={18} />
         </button>
 
-        <div className="flex-1 relative">
+        <div className="flex-1 relative min-w-0 flex flex-col justify-end">
           {showEmojiPicker && (
-            <div className="absolute bottom-full mb-2 right-0 z-50">
+            <div 
+              ref={emojiPickerRef} 
+              className="absolute bottom-full mb-2 right-0 z-50"
+            >
               <EmojiPicker onEmojiClick={onEmojiClick} height={400} />
             </div>
           )}
           <textarea
+            ref={textareaRef}
             value={message}
             onChange={(e) => onMessageChange(e.target.value)}
             onKeyPress={onKeyPress}
             disabled={!canSendMessages}
-            placeholder={!canSendMessages ? "Accept this chat request to reply..." : `Message ${activeUserName || ""}...`}
-            className={`w-full p-2 rounded-lg resize-none focus:outline-none focus:ring-2 focus:border-transparent text-sm ${
-              isMaximized
-                ? "bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/60 focus:ring-white/40"
-                : "border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-gray-400"
-            }`}
+            placeholder={
+              !canSendMessages
+                ? "Accept this chat request to reply..."
+                : "Type a message..."
+            }
             rows={1}
-            style={{ minHeight: "36px", maxHeight: "80px" }}
+            className="w-full bg-transparent resize-none focus:outline-none text-sm
+              text-white placeholder-white/40 m-0 px-1 py-[8px] leading-[20px] border-0"
+            style={{ minHeight: "36px", maxHeight: `${MAX_HEIGHT}px` }} 
           />
         </div>
+
         <button
+          ref={emojiButtonRef}
           onClick={onToggleEmojiPicker}
           disabled={!canSendMessages}
-          className={`${
-            isMaximized ? "text-white/60 hover:text-white" : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-          } transition-colors`}
+          className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full
+            text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors
+            disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <Smile size={18} />
         </button>
+
         <button
           onClick={onSend}
           disabled={!message.trim()}
-          className={`p-2 rounded-lg transition-all disabled:cursor-not-allowed ${
-            isMaximized
-              ? "bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 disabled:from-gray-500 disabled:to-gray-500 text-white"
-              : "bg-gray-600 dark:bg-gray-400 hover:bg-gray-700 dark:hover:bg-gray-300 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white dark:text-black"
-          }`}
+          className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full
+            bg-white text-black hover:bg-white/90
+            disabled:bg-white/10 disabled:text-white/30 disabled:cursor-not-allowed
+            transition-colors shadow-sm"
         >
-          <Send size={16} />
+          <ArrowUp size={18} strokeWidth={2.5} />
         </button>
       </div>
     </footer>

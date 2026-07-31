@@ -180,18 +180,17 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   }, [hasMore, onLoadMore]);
 
   return (
-    <main
-      ref={containerRef}
-      style={{ overflowAnchor: "none" }}
-      className={`flex-1 overflow-y-auto ${isMaximized ? "bg-black/20 backdrop-blur-sm" : "bg-gray-50 dark:bg-gray-900"
-        }`}
-    >
-      {loadingMore && (
-        <div className="flex justify-center py-3">
-          <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
-      <div ref={contentRef} className="p-4 space-y-3">
+<main
+  ref={containerRef}
+  style={{ overflowAnchor: "none" }}
+  className="flex-1 h-full min-h-0 overflow-y-auto"
+>
+  {loadingMore && (
+    <div className="flex justify-center py-3">
+      <div className="w-5 h-5 border-2 border-white/30 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )}
+  <div ref={contentRef} className="pl-2 pr-3 py-3 sm:pl-3 sm:pr-4 sm:py-4 space-y-3">
         {messages.map((msg) => (
           <div key={msg.clientId || msg._id || msg.tempId || msg.id}>
             <MessageBubble

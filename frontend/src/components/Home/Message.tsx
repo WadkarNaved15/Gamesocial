@@ -553,6 +553,10 @@ const MessagingComponent = () => {
     setIsMaximized(false);
   };
 
+  const leftSpacer = isMaximized && (
+  <div className="w-14 shrink-0 border-r border-white/10" />
+);
+
   return (
     <>
       {/* 1. Toggle Button - Use isVisible here */}
@@ -572,21 +576,24 @@ const MessagingComponent = () => {
       />
 
       {/* 2. Chat Window - Use isVisible here for the opacity/scale classes */}
-      {isRendered && (
-        <div
-          className={`fixed z-50 flex flex-col overflow-hidden transition-all duration-300 ease-in-out origin-bottom-right
-            ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-50 pointer-events-none"}
-            ${isMaximized
-              ? "bottom-0 right-0 w-full h-full rounded-none bg-gradient-to-br from-gray-500 via-gray-400 to-gray-600 dark:from-gray-900 dark:via-black dark:to-gray-800"
-              : "bottom-6 right-6 w-80 rounded-lg border border-gray-200 shadow-sm hover:shadow-md bg-white dark:bg-black"
-            } 
-            ${isMinimized ? "h-16" : isMaximized ? "h-full" : "h-96"}
-          `}
-        >
+{isRendered && (
+  <div
+    className={`fixed z-50 flex flex-col overflow-hidden transition-all duration-300 ease-in-out origin-bottom-right
+      ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-50 pointer-events-none"}
+      ${isMaximized
+        ?"bottom-0 right-0 w-full h-full rounded-none"
+        : "bottom-6 right-6 w-80 rounded-lg border border-white/10 shadow-lg"
+      } 
+      ${isMinimized ? "h-16" : isMaximized ? "h-full" : "h-96"}
+    `}
+    style={{
+      backgroundImage:
+        "radial-gradient(150% 150% at 0% 0%, #000000 0%, #000000 20%, #141b2e 100%)",
+    }}
+  >
           <ChatHeader
             isMinimized={isMinimized}
             isMaximized={isMaximized}
-            activeUser={activeUser}
             usersCount={users.length}
             onRestore={handleRestore}
             onMinimizedActionClick={toggleModal}
@@ -597,7 +604,12 @@ const MessagingComponent = () => {
           {!isMinimized && (
             <div className="w-full flex-1 flex flex-col min-h-0 overflow-hidden">
               {!activeChat ? (
-                <div className={`flex w-full h-full overflow-hidden ${isMaximized ? "max-w-6xl mx-auto" : "flex-col"}`}>
+                <div
+                  className={`flex w-full h-full overflow-hidden ${
+                    isMaximized ? "max-w-[1920px] mx-auto" : "flex-col"
+                  }`}
+                >
+                  {leftSpacer}
                   <div className={`${isMaximized ? "w-80 border border-white/20 flex flex-col overflow-hidden" : "w-full flex flex-col overflow-hidden min-h-0"}`}>
                     <UsersListPanel
                       isMaximized={isMaximized}
@@ -623,61 +635,66 @@ const MessagingComponent = () => {
                   )}
                 </div>
               ) : (
-                <div className={`flex w-full h-full overflow-hidden ${isMaximized ? "max-w-6xl mx-auto" : "flex-col"}`}>
-                  {isMaximized && (
-                    <aside className="w-80 border border-white/20 flex flex-col overflow-hidden">
-                      <UsersListPanel
-                        isMaximized={isMaximized}
-                        isSidebarVariant
-                        activeChat={activeChat}
-                        loading={loading}
-                        filteredUsers={filteredUsers}
-                        searchTerm={searchTerm}
-                        onSearchChange={setSearchTerm}
-                        onUserClick={handleUserClick}
-                        unreadCounts={unreadCounts}
-                        onlineUsers={onlineUsers}
-                      />
-                    </aside>
-                  )}
-
-                  <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden">
-                    <ChatMessageList
+              <div
+                className={`flex w-full h-full overflow-hidden ${
+                  isMaximized ? "max-w-[1920px] mx-auto" : "flex-col"
+                }`}
+              >
+                {leftSpacer}
+                {isMaximized && (
+                  <aside className="w-80 border border-white/20 flex flex-col overflow-hidden">
+                    <UsersListPanel
                       isMaximized={isMaximized}
-                      messages={conversations[activeChat] || []}
-                      currentUser={currentUser}
-                      openMenuId={openMenuId}
-                      onToggleMenu={(id) => setOpenMenuId(openMenuId === id ? null : id)}
-                      onDeleteMessage={handleDeleteMessage}
-                      onMediaClick={setMediaViewer}
-                      activeChatStatus={activeChatStatus}
-                      requestedByCurrentUser={requestedUser?.requestedBy === currentUser}
-                      activeUserName={activeUser?.name}
-                      statusLoading={statusLoading}
-                      onAcceptChat={() => handleUpdateChatStatus("accepted")}
-                      onDeclineChat={() => handleUpdateChatStatus("declined")}
-                      messagesEndRef={messagesEndRef}
-                      hasMore={chatHasMore[activeChat] ?? false}
-                      loadingMore={loadingOlderMessages[activeChat] ?? false}
-                      onLoadMore={loadOlderMessages}
-                      currentChatId={currentChatId}
+                      isSidebarVariant
+                      activeChat={activeChat}
+                      loading={loading}
+                      filteredUsers={filteredUsers}
+                      searchTerm={searchTerm}
+                      onSearchChange={setSearchTerm}
+                      onUserClick={handleUserClick}
+                      unreadCounts={unreadCounts}
+                      onlineUsers={onlineUsers}
                     />
+                  </aside>
+                )}
 
-                    <ChatInput
-                      isMaximized={isMaximized}
-                      message={message}
-                      onMessageChange={setMessage}
-                      onSend={handleSendMessage}
-                      onKeyPress={handleKeyPress}
-                      canSendMessages={canSendMessages}
-                      activeUserName={activeUser?.name}
-                      onFileButtonClick={() => fileInputRef.current?.click()}
-                      showEmojiPicker={showEmojiPicker}
-                      onToggleEmojiPicker={() => setShowEmojiPicker(!showEmojiPicker)}
-                      onEmojiClick={onEmojiClick}
-                    />
-                  </div>
+                <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden">
+                  <ChatMessageList
+                    isMaximized={isMaximized}
+                    messages={conversations[activeChat] || []}
+                    currentUser={currentUser}
+                    openMenuId={openMenuId}
+                    onToggleMenu={(id) => setOpenMenuId(openMenuId === id ? null : id)}
+                    onDeleteMessage={handleDeleteMessage}
+                    onMediaClick={setMediaViewer}
+                    activeChatStatus={activeChatStatus}
+                    requestedByCurrentUser={requestedUser?.requestedBy === currentUser}
+                    activeUserName={activeUser?.name}
+                    statusLoading={statusLoading}
+                    onAcceptChat={() => handleUpdateChatStatus("accepted")}
+                    onDeclineChat={() => handleUpdateChatStatus("declined")}
+                    messagesEndRef={messagesEndRef}
+                    hasMore={chatHasMore[activeChat] ?? false}
+                    loadingMore={loadingOlderMessages[activeChat] ?? false}
+                    onLoadMore={loadOlderMessages}
+                    currentChatId={currentChatId}
+                  />
+
+                  <ChatInput
+                    isMaximized={isMaximized}
+                    message={message}
+                    onMessageChange={setMessage}
+                    onSend={handleSendMessage}
+                    onKeyPress={handleKeyPress}
+                    canSendMessages={canSendMessages}
+                    activeUserName={activeUser?.name}
+                    onFileButtonClick={() => fileInputRef.current?.click()}
+                    showEmojiPicker={showEmojiPicker}
+                    onToggleEmojiPicker={() => setShowEmojiPicker(!showEmojiPicker)}
+                    onEmojiClick={onEmojiClick}
+                  />
                 </div>
+              </div>
               )}
             </div>
           )}

@@ -20,39 +20,50 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   onMediaClick,
 }) => {
   const isOwnMessage = msg.senderId === currentUser;
-  const isMedia = msg.mediaType === "image" || msg.mediaType === "video";
-  
-  // 1. Create a reference to the menu container
+  const isMedia =
+    msg.mediaType === "image" || msg.mediaType === "video";
+
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // 2. Add an effect to listen for clicks outside the referenced container
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // If the menu is open, and the click happened outside of our menuRef div...
-      if (isMenuOpen && menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        // Trigger the toggle function to close it
+      if (
+        isMenuOpen &&
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node)
+      ) {
         onToggleMenu((msg._id || msg.tempId) as string);
       }
     };
 
-    // Only attach the listener if the menu is actually open
     if (isMenuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
-    // Cleanup the listener when the component unmounts or menu closes
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside
+      );
     };
   }, [isMenuOpen, onToggleMenu, msg]);
 
   return (
-    <div className={`flex ${isOwnMessage ? "justify-end" : "justify-start"}`}>
-      <div className="relative group max-w-xs">
+    <div
+      className={`flex ${
+        isOwnMessage ? "justify-end" : "justify-start"
+      }`}
+    >
+      <div className="relative group max-w-[85vw] sm:max-w-md md:max-w-lg lg:max-w-xl">
         {isOwnMessage && (msg._id || msg.tempId) && (
-          <div className="absolute top-1 right-1 z-20" ref={menuRef}>
+          <div
+            className="absolute top-1 right-1 z-20"
+            ref={menuRef}
+          >
             <button
-              onClick={() => onToggleMenu((msg._id || msg.tempId) as string)}
+              onClick={() =>
+                onToggleMenu((msg._id || msg.tempId) as string)
+              }
               className="
                 opacity-0 group-hover:opacity-100
                 transition-opacity duration-200
@@ -60,7 +71,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 p-1
               "
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <circle cx="10" cy="4" r="1.5" />
                 <circle cx="10" cy="10" r="1.5" />
                 <circle cx="10" cy="16" r="1.5" />
@@ -95,45 +111,72 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
         )}
 
         <div
-          className={`max-w-[75vw] sm:max-w-xs md:max-w-sm lg:max-w-md text-sm flex flex-col ${
-            isMedia
-              ? ""
-              : `py-2 px-3 rounded-lg shadow-sm ${
-                  isOwnMessage 
-                    ? "bg-gray-600 text-white" 
-                    : "bg-gray-200 text-black" 
-                }`
-          }`}
+className={`text-sm flex flex-col ${
+  isMedia
+    ? ""
+    : `py-2.5 px-4 shadow-sm backdrop-blur-md ${
+        isOwnMessage 
+          ? "bg-white/10 border border-white/10 text-white rounded-2xl rounded-tr-sm" 
+          : "bg-gray-800/50 border border-gray-700/50 text-gray-100 rounded-2xl rounded-tl-sm" 
+      }`
+}`}
         >
           {msg.mediaType === "image" && (
             <div
-              className="cursor-pointer overflow-hidden rounded-2xl bg-black mb-1"
-              onClick={() => onMediaClick({ url: msg.mediaUrl, type: "image" })}
+              className="cursor-pointer overflow-hidden rounded-2xl bg-black/5 dark:bg-black mb-1 w-fit"
+              onClick={() =>
+                onMediaClick({
+                  url: msg.mediaUrl,
+                  type: "image",
+                })
+              }
             >
               <img
                 src={msg.mediaUrl}
                 crossOrigin="anonymous"
                 alt="media"
                 loading="lazy"
-                className="w-full max-w-[260px] max-h-[320px] object-cover hover:scale-[1.02] transition-transform"
+                className="
+                  w-auto h-auto
+                  min-w-[200px]
+                  max-w-[400px]
+                  sm:max-w-[440px]
+                  max-h-[320px]
+                  object-contain
+                  hover:scale-[1.02]
+                  transition-transform
+                  block
+                "
               />
             </div>
           )}
 
           {msg.mediaType === "video" && (
-            <div className="overflow-hidden rounded-2xl bg-black mb-1">
+            <div className="overflow-hidden rounded-2xl bg-black mb-1 w-fit">
               <video
                 src={msg.mediaUrl}
                 crossOrigin="anonymous"
                 controls
                 preload="metadata"
-                className="max-w-[260px] max-h-[320px] object-cover"
+                className="
+                  w-auto h-auto
+                  min-w-[200px]
+                  max-w-[400px]
+                  sm:max-w-[440px]
+                  max-h-[320px]
+                  object-contain
+                  block
+                "
               />
             </div>
           )}
 
           {msg.text && (
-            <p className={`whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${isOwnMessage ? "pr-5" : ""}`}>
+            <p
+              className={`whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
+                isOwnMessage && !isMedia ? "pr-5" : ""
+              }`}
+            >
               {msg.text}
             </p>
           )}
@@ -142,17 +185,27 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             <SharedPostMessage
               postId={msg.sharedPostId}
               onOpenPost={(postId: string) => {
-                window.open(`/post/${postId}`, "_blank", "noopener,noreferrer");
+                window.open(
+                  `/post/${postId}`,
+                  "_blank",
+                  "noopener,noreferrer"
+                );
               }}
             />
           )}
 
           <p
             className={`text-[10px] mt-1 text-right self-end leading-none ${
-              isMedia ? "text-gray-400" : isOwnMessage ? "text-gray-300" : "text-gray-500"
+              isMedia
+                ? "text-gray-400"
+                : isOwnMessage
+                ? "text-gray-300"
+                : "text-gray-500"
             }`}
           >
-            {new Date(msg.createdAt).toLocaleString(undefined, { timeStyle: "short" })}
+            {new Date(msg.createdAt).toLocaleString(undefined, {
+              timeStyle: "short",
+            })}
           </p>
         </div>
       </div>
