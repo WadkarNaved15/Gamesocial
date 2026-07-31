@@ -98,6 +98,7 @@ router.put("/seen/:chatId", verifyToken, async (req, res) => {
 router.get("/:chatId", async (req, res) => {
   try {
     const { chatId } = req.params;
+    // Limit to 30 messages
     const limit = Math.min(parseInt(req.query.limit, 10) || 30, 100);
     const before = req.query.before;
 

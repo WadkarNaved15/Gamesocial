@@ -55,7 +55,6 @@ const MessagingComponent = () => {
   const isFetchingOlderRef = useRef<Record<string, boolean>>({});
   const lastFetchedCursorRef = useRef<Record<string, string | null>>({});
 
-
   // NEW: Delays the unmounting of the chat window so the close animation can play
   useEffect(() => {
     if (isOpen) {
@@ -436,11 +435,19 @@ const MessagingComponent = () => {
         setConversations((prev) => ({ ...prev, [receiverId]: messagesData.messages }));
         setChatHasMore((prev) => ({ ...prev, [receiverId]: messagesData.hasMore }));
         setChatCursors((prev) => ({ ...prev, [receiverId]: messagesData.nextCursor }));
+        setCurrentChatId(data._id);
+        socket.emit("join_chat", data._id);
 
         await axios.put(`${BACKEND_URL}/api/messages/seen/${data._id}`, {}, { withCredentials: true });
         setUnreadCounts((prev) => ({ ...prev, [receiverId]: 0 }));
       } else {
-        // ...unchanged
+        setCurrentChatId(null);
+        setRequestedUser(null);
+        setActiveChatStatus(null);
+        setConversations((prev) => ({
+          ...prev,
+          [receiverId]: [],
+        }));
       }
     } catch (error) {
       console.error("Error starting chat:", error);

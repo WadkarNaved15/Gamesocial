@@ -57,7 +57,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollLockRef = useRef(false); // synchronous — the actual fix
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     initialScrollDone.current = false;
     stickToBottom.current = true;
     anchor.current = null;
@@ -183,17 +183,15 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
     <main
       ref={containerRef}
       style={{ overflowAnchor: "none" }}
-      className={`flex-1 overflow-y-auto ${
-        isMaximized ? "bg-black/20 backdrop-blur-sm" : "bg-gray-50 dark:bg-gray-900"
-      }`}
+      className={`flex-1 overflow-y-auto ${isMaximized ? "bg-black/20 backdrop-blur-sm" : "bg-gray-50 dark:bg-gray-900"
+        }`}
     >
+      {loadingMore && (
+        <div className="flex justify-center py-3">
+          <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
       <div ref={contentRef} className="p-4 space-y-3">
-        {loadingMore && (
-          <div className="flex justify-center py-3">
-            <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
-
         {messages.map((msg) => (
           <div key={msg.clientId || msg._id || msg.tempId || msg.id}>
             <MessageBubble
