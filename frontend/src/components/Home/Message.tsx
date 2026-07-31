@@ -581,7 +581,7 @@ const MessagingComponent = () => {
     className={`fixed z-50 flex flex-col overflow-hidden transition-all duration-300 ease-in-out origin-bottom-right
       ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-50 pointer-events-none"}
       ${isMaximized
-        ? "inset-0 w-full h-full rounded-none"
+        ?"bottom-0 right-0 w-full h-full rounded-none"
         : "bottom-6 right-6 w-80 rounded-lg border border-white/10 shadow-lg"
       } 
       ${isMinimized ? "h-16" : isMaximized ? "h-full" : "h-96"}
