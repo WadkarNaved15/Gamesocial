@@ -1,11 +1,10 @@
 import React from "react";
 import { MessageCircle, X, Maximize2, Square } from "lucide-react";
-import { ChatUser } from "./types";
+import Logo from "../../assets/Icon.svg?react"; // Imported Logo exactly like in your Header
 
 interface ChatHeaderProps {
   isMinimized: boolean;
   isMaximized: boolean;
-  activeUser: ChatUser | undefined;
   usersCount: number;
   onRestore: () => void;
   /** Button shown in the minimized header — mirrors the original component's behavior of always reopening the modal. */
@@ -17,7 +16,6 @@ interface ChatHeaderProps {
 const ChatHeader: React.FC<ChatHeaderProps> = ({
   isMinimized,
   isMaximized,
-  activeUser,
   usersCount,
   onRestore,
   onMinimizedActionClick,
@@ -35,8 +33,9 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
       {isMinimized ? (
         <>
           <div className="flex items-center space-x-3 cursor-pointer" onClick={onRestore}>
-            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200 dark:bg-gray-700">
-              <MessageCircle size={16} className="text-gray-600 dark:text-gray-300" />
+            {/* Logo replacing the default MessageCircle icon */}
+            <div className="flex items-center justify-center">
+              <Logo className="h-8 w-auto text-[#469D84]" />
             </div>
             <div>
               <h3 className="font-semibold text-sm">Messages</h3>
@@ -58,45 +57,27 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({
       ) : (
         <>
           <div className="flex items-center space-x-3">
-            <div
-              className={`${
-                isMaximized
-                  ? "w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white"
-                  : "w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300"
-              }`}
-            >
-              {activeUser ? (
-                <img
-                  src={activeUser.avatar ? activeUser.avatar : "/default_avatar.png"}
-                  alt={activeUser.name}
-                  className="w-10 h-10 rounded-full object-cover"
-                  onError={(e) => {
-                    const img = e.currentTarget;
-                    img.onerror = null;
-                    img.src = "/default_avatar.png";
-                  }}
-                />
-              ) : (
-                <MessageCircle size={16} />
-              )}
+            {/* Logo replacing the activeUser avatar logic */}
+            <div className="flex items-center justify-center">
+              <Logo className="h-9 w-auto text-[#469D84]" />
             </div>
+            
+            {/* Static Messages text replacing the activeUser.name logic */}
             <div>
               <h3
                 className={`font-semibold text-sm ${
                   isMaximized ? "text-white" : "text-gray-900 dark:text-white"
                 }`}
               >
-                {activeUser ? activeUser.name : "Messages"}
+                Messages
               </h3>
-              {!activeUser && (
-                <p
-                  className={`text-xs ${
-                    isMaximized ? "text-white/80" : "text-gray-500 dark:text-gray-400"
-                  }`}
-                >
-                  {usersCount} contacts
-                </p>
-              )}
+              <p
+                className={`text-xs ${
+                  isMaximized ? "text-white/80" : "text-gray-500 dark:text-gray-400"
+                }`}
+              >
+                {usersCount} contacts
+              </p>
             </div>
           </div>
 

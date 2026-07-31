@@ -36,10 +36,9 @@ const UsersListPanel: React.FC<UsersListPanelProps> = ({
 }) => {
   return (
     <>
-      {/* Search */}
 {/* Search */}
       <div
-        className={`p-4 border-b ${
+        className={`py-4 px-2 border-b ${
           isSidebarVariant || isMaximized ? "border-white/20" : "border-gray-200 dark:border-gray-700"
         } flex-shrink-0`}
       >
@@ -103,7 +102,7 @@ const UsersListPanel: React.FC<UsersListPanelProps> = ({
             <div
               key={u.id}
               onClick={() => onUserClick(u.id)}
-              className={`flex items-center p-4 cursor-pointer transition-colors border-b ${
+              className={`flex items-center py-3 px-4 cursor-pointer transition-colors border-b ${
                 isSidebarVariant
                   ? `border-white/10 ${activeChat === u.id ? "bg-white/20" : "hover:bg-white/10"}`
                   : isMaximized

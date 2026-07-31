@@ -1,5 +1,4 @@
 import React from "react";
-import { MessageCircle } from "lucide-react";
 
 interface ChatToggleButtonProps {
   unreadCount: number;
@@ -13,28 +12,37 @@ const ChatToggleButton: React.FC<ChatToggleButtonProps> = ({ unreadCount, onClic
   return (
     <button
       onClick={onClick}
+      style={{ backgroundColor: "transparent" }}
       className="
-        bg-black
-        text-white
-        p-4 
-        rounded-full
-        border border-solid border-white/40
-        shadow-5xl   
-        transition-all duration-300 transform
-        hover:scale-110
-        group relative
         flex items-center justify-center
+        w-[76px] h-[54px] rounded-[30px] 
+        border border-white/30
+        transition-all duration-300 transform
+        hover:scale-105
+        group relative
       "
     >
-      <MessageCircle size={24} className="group-hover:animate-pulse text-white" />
+      {/* 
+        Custom Solid Envelope SVG 
+      */}
+      <svg 
+        width="32" 
+        height="32" 
+        viewBox="0 0 24 24" 
+        fill="white" 
+        xmlns="http://www.w3.org/2000/svg"
+        className="group-hover:animate-pulse"
+      >
+        <path d="M20 4H4C2.9 4 2.01 4.9 2.01 6L2 18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4ZM20 8L12 13L4 8V6L12 11L20 6V8Z" />
+      </svg>
 
       {unreadCount > 0 && (
         <div
           className="
-            absolute -top-2 -right-2
-            bg-red-500 text-white text-xs
-            rounded-full h-5 w-5 flex items-center justify-center
-            animate-pulse
+            absolute -top-1 -right-1
+            bg-red-500 text-white text-xs font-bold
+            rounded-full h-6 w-6 flex items-center justify-center
+            animate-pulse shadow-md
           "
         >
           {unreadCount}
