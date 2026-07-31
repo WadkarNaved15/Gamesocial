@@ -265,8 +265,7 @@ const MessagingComponent = () => {
       if (senderId === activeChat) {
         // 2. Tell the backend it was seen immediately
         if (currentChatId) {
-          axios.put(`${BACKEND_URL}/api/messages/seen/${currentChatId}`, {}, { withCredentials: true })
-            .catch(err => console.error("Failed to mark background message as seen", err));
+           markChatAsSeen(currentChatId, senderId);
         }
         // 3. Exit early so the unread count DOES NOT increment
         return;
@@ -405,6 +404,23 @@ const MessagingComponent = () => {
     }
   };
 
+  const markChatAsSeen = (chatId: string, userId: string) => {
+    if (!unreadCounts[userId]) return;
+
+    axios
+      .put(
+        `${BACKEND_URL}/api/messages/seen/${chatId}`,
+        {},
+        { withCredentials: true }
+      )
+      .catch(console.error);
+
+    setUnreadCounts((prev) => ({
+      ...prev,
+      [userId]: 0,
+    }));
+  };
+
   const handleUserClick = async (receiverId: string) => {
     if (receiverId === currentUser) {
       toast.error("Cannot chat with yourself");
@@ -435,11 +451,8 @@ const MessagingComponent = () => {
         setConversations((prev) => ({ ...prev, [receiverId]: messagesData.messages }));
         setChatHasMore((prev) => ({ ...prev, [receiverId]: messagesData.hasMore }));
         setChatCursors((prev) => ({ ...prev, [receiverId]: messagesData.nextCursor }));
-        setCurrentChatId(data._id);
-        socket.emit("join_chat", data._id);
 
-        await axios.put(`${BACKEND_URL}/api/messages/seen/${data._id}`, {}, { withCredentials: true });
-        setUnreadCounts((prev) => ({ ...prev, [receiverId]: 0 }));
+        markChatAsSeen(data._id, receiverId);
       } else {
         setCurrentChatId(null);
         setRequestedUser(null);
@@ -554,8 +567,8 @@ const MessagingComponent = () => {
   };
 
   const leftSpacer = isMaximized && (
-  <div className="w-14 shrink-0 border-r border-white/10" />
-);
+    <div className="w-14 shrink-0 border-r border-white/10" />
+  );
 
   return (
     <>
@@ -576,21 +589,21 @@ const MessagingComponent = () => {
       />
 
       {/* 2. Chat Window - Use isVisible here for the opacity/scale classes */}
-{isRendered && (
-  <div
-    className={`fixed z-50 flex flex-col overflow-hidden transition-all duration-300 ease-in-out origin-bottom-right
+      {isRendered && (
+        <div
+          className={`fixed z-50 flex flex-col overflow-hidden transition-all duration-300 ease-in-out origin-bottom-right
       ${isVisible ? "opacity-100 scale-100" : "opacity-0 scale-50 pointer-events-none"}
       ${isMaximized
-        ?"bottom-0 right-0 w-full h-full rounded-none"
-        : "bottom-6 right-6 w-80 rounded-lg border border-white/10 shadow-lg"
-      } 
+              ? "bottom-0 right-0 w-full h-full rounded-none"
+              : "bottom-6 right-6 w-80 rounded-lg border border-white/10 shadow-lg"
+            } 
       ${isMinimized ? "h-16" : isMaximized ? "h-full" : "h-96"}
     `}
-    style={{
-      backgroundImage:
-        "radial-gradient(150% 150% at 0% 0%, #000000 0%, #000000 20%, #141b2e 100%)",
-    }}
-  >
+          style={{
+            backgroundImage:
+              "radial-gradient(150% 150% at 0% 0%, #000000 0%, #000000 20%, #141b2e 100%)",
+          }}
+        >
           <ChatHeader
             isMinimized={isMinimized}
             isMaximized={isMaximized}
@@ -605,9 +618,8 @@ const MessagingComponent = () => {
             <div className="w-full flex-1 flex flex-col min-h-0 overflow-hidden">
               {!activeChat ? (
                 <div
-                  className={`flex w-full h-full overflow-hidden ${
-                    isMaximized ? "max-w-[1920px] mx-auto" : "flex-col"
-                  }`}
+                  className={`flex w-full h-full overflow-hidden ${isMaximized ? "max-w-[1920px] mx-auto" : "flex-col"
+                    }`}
                 >
                   {leftSpacer}
                   <div className={`${isMaximized ? "w-80 border border-white/20 flex flex-col overflow-hidden" : "w-full flex flex-col overflow-hidden min-h-0"}`}>
@@ -635,66 +647,65 @@ const MessagingComponent = () => {
                   )}
                 </div>
               ) : (
-              <div
-                className={`flex w-full h-full overflow-hidden ${
-                  isMaximized ? "max-w-[1920px] mx-auto" : "flex-col"
-                }`}
-              >
-                {leftSpacer}
-                {isMaximized && (
-                  <aside className="w-80 border border-white/20 flex flex-col overflow-hidden">
-                    <UsersListPanel
+                <div
+                  className={`flex w-full h-full overflow-hidden ${isMaximized ? "max-w-[1920px] mx-auto" : "flex-col"
+                    }`}
+                >
+                  {leftSpacer}
+                  {isMaximized && (
+                    <aside className="w-80 border border-white/20 flex flex-col overflow-hidden">
+                      <UsersListPanel
+                        isMaximized={isMaximized}
+                        isSidebarVariant
+                        activeChat={activeChat}
+                        loading={loading}
+                        filteredUsers={filteredUsers}
+                        searchTerm={searchTerm}
+                        onSearchChange={setSearchTerm}
+                        onUserClick={handleUserClick}
+                        unreadCounts={unreadCounts}
+                        onlineUsers={onlineUsers}
+                      />
+                    </aside>
+                  )}
+
+                  <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden">
+                    <ChatMessageList
                       isMaximized={isMaximized}
-                      isSidebarVariant
-                      activeChat={activeChat}
-                      loading={loading}
-                      filteredUsers={filteredUsers}
-                      searchTerm={searchTerm}
-                      onSearchChange={setSearchTerm}
-                      onUserClick={handleUserClick}
-                      unreadCounts={unreadCounts}
-                      onlineUsers={onlineUsers}
+                      messages={conversations[activeChat] || []}
+                      currentUser={currentUser}
+                      openMenuId={openMenuId}
+                      onToggleMenu={(id) => setOpenMenuId(openMenuId === id ? null : id)}
+                      onDeleteMessage={handleDeleteMessage}
+                      onMediaClick={setMediaViewer}
+                      activeChatStatus={activeChatStatus}
+                      requestedByCurrentUser={requestedUser?.requestedBy === currentUser}
+                      activeUserName={activeUser?.name}
+                      statusLoading={statusLoading}
+                      onAcceptChat={() => handleUpdateChatStatus("accepted")}
+                      onDeclineChat={() => handleUpdateChatStatus("declined")}
+                      messagesEndRef={messagesEndRef}
+                      hasMore={chatHasMore[activeChat] ?? false}
+                      loadingMore={loadingOlderMessages[activeChat] ?? false}
+                      onLoadMore={loadOlderMessages}
+                      currentChatId={currentChatId}
                     />
-                  </aside>
-                )}
 
-                <div className="flex-1 flex flex-col min-h-0 h-full overflow-hidden">
-                  <ChatMessageList
-                    isMaximized={isMaximized}
-                    messages={conversations[activeChat] || []}
-                    currentUser={currentUser}
-                    openMenuId={openMenuId}
-                    onToggleMenu={(id) => setOpenMenuId(openMenuId === id ? null : id)}
-                    onDeleteMessage={handleDeleteMessage}
-                    onMediaClick={setMediaViewer}
-                    activeChatStatus={activeChatStatus}
-                    requestedByCurrentUser={requestedUser?.requestedBy === currentUser}
-                    activeUserName={activeUser?.name}
-                    statusLoading={statusLoading}
-                    onAcceptChat={() => handleUpdateChatStatus("accepted")}
-                    onDeclineChat={() => handleUpdateChatStatus("declined")}
-                    messagesEndRef={messagesEndRef}
-                    hasMore={chatHasMore[activeChat] ?? false}
-                    loadingMore={loadingOlderMessages[activeChat] ?? false}
-                    onLoadMore={loadOlderMessages}
-                    currentChatId={currentChatId}
-                  />
-
-                  <ChatInput
-                    isMaximized={isMaximized}
-                    message={message}
-                    onMessageChange={setMessage}
-                    onSend={handleSendMessage}
-                    onKeyPress={handleKeyPress}
-                    canSendMessages={canSendMessages}
-                    activeUserName={activeUser?.name}
-                    onFileButtonClick={() => fileInputRef.current?.click()}
-                    showEmojiPicker={showEmojiPicker}
-                    onToggleEmojiPicker={() => setShowEmojiPicker(!showEmojiPicker)}
-                    onEmojiClick={onEmojiClick}
-                  />
+                    <ChatInput
+                      isMaximized={isMaximized}
+                      message={message}
+                      onMessageChange={setMessage}
+                      onSend={handleSendMessage}
+                      onKeyPress={handleKeyPress}
+                      canSendMessages={canSendMessages}
+                      activeUserName={activeUser?.name}
+                      onFileButtonClick={() => fileInputRef.current?.click()}
+                      showEmojiPicker={showEmojiPicker}
+                      onToggleEmojiPicker={() => setShowEmojiPicker(!showEmojiPicker)}
+                      onEmojiClick={onEmojiClick}
+                    />
+                  </div>
                 </div>
-              </div>
               )}
             </div>
           )}

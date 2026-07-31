@@ -26,24 +26,36 @@ router.post("/", verifyToken, async (req, res) => {
   }
 });
 // Get unread message counts
+// Get unread message counts
 router.get("/unread-counts", verifyToken, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = new mongoose.Types.ObjectId(req.user.id);
 
-    // Count unseen messages grouped by sender
     const unread = await Message.aggregate([
+      // Only unread messages for this receiver
       {
         $match: {
-          receiverId: new mongoose.Types.ObjectId(userId),
+          receiverId: userId,
           seen: false,
         },
       },
 
-      // Join with chats
+      // Group by chat + sender first
+      {
+        $group: {
+          _id: {
+            chatId: "$chatId",
+            senderId: "$senderId",
+          },
+          count: { $sum: 1 },
+        },
+      },
+
+      // Lookup chat only once per chat
       {
         $lookup: {
           from: "chats",
-          localField: "chatId",
+          localField: "_id.chatId",
           foreignField: "_id",
           as: "chat",
         },
@@ -60,10 +72,13 @@ router.get("/unread-counts", verifyToken, async (req, res) => {
         },
       },
 
+      // Combine counts from different chats with the same sender
       {
         $group: {
-          _id: "$senderId",
-          count: { $sum: 1 },
+          _id: "$_id.senderId",
+          count: {
+            $sum: "$count",
+          },
         },
       },
     ]);
@@ -71,7 +86,9 @@ router.get("/unread-counts", verifyToken, async (req, res) => {
     res.json(unread);
   } catch (err) {
     console.error("Unread count error:", err);
-    res.status(500).json({ message: "Failed to fetch unread counts" });
+    res.status(500).json({
+      message: "Failed to fetch unread counts",
+    });
   }
 });
 
@@ -80,16 +97,24 @@ router.put("/seen/:chatId", verifyToken, async (req, res) => {
   const userId = req.user.id;
   const { chatId } = req.params;
 
-  await Message.updateMany(
+  const result = await Message.updateMany(
     {
       chatId,
-      senderId: { $ne: userId }, // only messages from other person
-      seen: false
+      senderId: { $ne: userId },
+      seen: false,
     },
     {
-      $set: { seen: true, seenAt: new Date() }
+      $set: {
+        seen: true,
+        seenAt: new Date(),
+      },
     }
   );
+
+  return res.json({
+    success: true,
+    modifiedCount: result.modifiedCount,
+  });
 
   res.json({ success: true });
 });
@@ -99,7 +124,10 @@ router.get("/:chatId", async (req, res) => {
   try {
     const { chatId } = req.params;
     // Limit to 30 messages
-    const limit = Math.min(parseInt(req.query.limit, 10) || 30, 100);
+    const limit = Math.min(
+      parseInt(req.query.limit, 10) || 30,
+      50
+    );
     const before = req.query.before;
 
     const query = { chatId };
@@ -119,6 +147,9 @@ router.get("/:chatId", async (req, res) => {
     }
 
     const messages = await Message.find(query)
+      .select(
+        "senderId receiverId text mediaUrl mediaKey mediaType messageType sharedPostId seen createdAt"
+      )
       .sort({ createdAt: -1, _id: -1 })
       .limit(limit + 1)
       .lean();

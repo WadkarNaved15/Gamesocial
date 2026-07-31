@@ -17,11 +17,9 @@ router.post("/start", verifyToken, async (req, res) => {
     }
     // ALWAYS sort participants to maintain consistency
     const participants = [senderId, receiverId].sort();
-
-    // Find existing chat
-    let chat = await Chat.findOne({
-      participants: participants
-    });
+    const chatKey = participants.join("_");
+    // Lookup using the indexed string
+    const chat = await Chat.findOne({ chatKey }).lean();
     console.log("chat", chat);
     console.log("Chat is found");
     res.json(chat || null);
@@ -36,7 +34,13 @@ router.get("/my-chats", verifyToken, async (req, res) => {
     const userId = req.user.id;
     const chats = await Chat.find({
       participants: userId,
-    }).populate("participants", "username avatar");
+    })
+      .select("participants status requestedBy")
+      .populate({
+        path: "participants",
+        select: "username avatar",
+      })
+      .lean();
 
     // 🔥 Format response → return ONLY other user
     const formatted = chats.map(chat => {

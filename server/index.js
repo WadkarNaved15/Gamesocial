@@ -405,54 +405,78 @@ io.on("connection", (socket) => {
 
   // Send Post
   socket.on("send_post", async (data) => {
-    const { chatId, senderId, receiverId, postId } = data;
-    let finalChatId = chatId;
+    try {
+      const { chatId, senderId, receiverId, postId } = data;
 
-    if (!finalChatId) {
-      console.log("Creating new chat");
-      const participants = [senderId, receiverId].sort();
-      const chatKey = participants.join("_");
-      let chat = await Chat.findOne({ chatKey });
-      if (!chat) {
-        chat = await Chat.create({
-          participants,
-          chatKey,
-          requestedBy: senderId,
-          status: "pending",
-        });
+      let finalChatId = chatId;
+      let chat = null;
+
+      // ----------------------------------------
+      // Find or create chat
+      // ----------------------------------------
+      if (!finalChatId) {
+        const participants = [senderId, receiverId].sort();
+        const chatKey = participants.join("_");
+
+        chat = await Chat.findOne({ chatKey }).lean();
+
+        if (!chat) {
+          chat = await Chat.create({
+            participants,
+            chatKey,
+            requestedBy: senderId,
+            status: "pending",
+          });
+
+          await sendEventToQueue({
+            type: "CHAT_REQUEST",
+            actorId: senderId,
+            recipientId: receiverId,
+            chatId: chat._id,
+            createdAt: new Date(),
+          });
+        }
+
+        finalChatId = chat._id;
+      } else {
+        // Existing chat → fetch only what we need
+        chat = await Chat.findById(finalChatId)
+          .select("status")
+          .lean();
       }
 
-      finalChatId = chat._id;
-    }
+      // ----------------------------------------
+      // Save message
+      // ----------------------------------------
+      const message = await Message.create({
+        chatId: finalChatId,
+        receiverId,
+        senderId,
+        messageType: "post",
+        sharedPostId: postId,
+      });
 
-    const message = await Message.create({
-      chatId: finalChatId,
-      receiverId,
-      senderId,
-      messageType: "post",
-      sharedPostId: postId,
-    });
+      // ----------------------------------------
+      // Emit message
+      // ----------------------------------------
+      const messageData = {
+        _id: message._id,
+        chatId: finalChatId,
+        senderId,
+        receiverId,
+        messageType: "post",
+        sharedPostId: postId,
+        createdAt: message.createdAt,
+      };
 
-    const messageData = {
-      _id: message._id,
-      chatId: finalChatId,
-      senderId,
-      receiverId,
-      messageType: "post",
-      sharedPostId: postId,
-      createdAt: message.createdAt,
-    };
+      io.to(finalChatId).emit("receive-message", messageData);
 
-    // Emit to chat room (works across all backends via Redis adapter)
-    io.to(finalChatId).emit("receive-message", messageData);
-
-    // Badge update only for non-declined chats
-    try {
-      const chat = await Chat.findById(finalChatId).select("status");
-
+      // ----------------------------------------
+      // Emit unread badge
+      // ----------------------------------------
       if (chat?.status !== "declined") {
         const receiverOnline = await redisClient.sIsMember(
-          `online-users`,
+          "online-users",
           receiverId
         );
 
@@ -464,85 +488,100 @@ io.on("connection", (socket) => {
         }
       }
     } catch (err) {
-      console.error("Error checking receiver presence:", err);
+      console.error("send_post error:", err);
     }
   });
 
   // Normal message
   socket.on("send-message", async (msg) => {
-    let {
-      chatId,
-      senderId,
-      receiverId,
-      text,
-      mediaUrl,
-      mediaKey,
-      mediaType,
-      tempId,
-    } = msg;
-    let finalChatId = chatId;
-    if (!finalChatId) {
-      console.log("Creating new chat");
-      console.log("status marked as pending");
-      const participants = [senderId, receiverId].sort();
-      const chatKey = participants.join("_");
+    try {
+      let {
+        chatId,
+        senderId,
+        receiverId,
+        text,
+        mediaUrl,
+        mediaKey,
+        mediaType,
+        tempId,
+      } = msg;
 
-      let chat = await Chat.findOne({ chatKey });
-      if (!chat) {
-        chat = await Chat.create({
-          participants,
-          chatKey,
-          requestedBy: senderId,
-          status: "pending",
-        });
+      let finalChatId = chatId;
+      let chat = null;
 
-        await sendEventToQueue({
-          type: "CHAT_REQUEST",
-          actorId: senderId,
-          recipientId: receiverId,
-          chatId: chat._id,
-          createdAt: new Date(),
-        });
+      // ----------------------------------------
+      // Find or create chat
+      // ----------------------------------------
+      if (!finalChatId) {
+        const participants = [senderId, receiverId].sort();
+        const chatKey = participants.join("_");
+
+        chat = await Chat.findOne({ chatKey }).lean();
+
+        if (!chat) {
+          chat = await Chat.create({
+            participants,
+            chatKey,
+            requestedBy: senderId,
+            status: "pending",
+          });
+
+          await sendEventToQueue({
+            type: "CHAT_REQUEST",
+            actorId: senderId,
+            recipientId: receiverId,
+            chatId: chat._id,
+            createdAt: new Date(),
+          });
+        }
+
+        finalChatId = chat._id;
+      } else {
+        // Existing chat → fetch only the fields we actually need
+        chat = await Chat.findById(finalChatId)
+          .select("status")
+          .lean();
       }
 
-      finalChatId = chat._id;
-    }
+      // ----------------------------------------
+      // Save message
+      // ----------------------------------------
+      const message = await Message.create({
+        chatId: finalChatId,
+        senderId,
+        receiverId,
+        text,
+        mediaUrl,
+        mediaKey,
+        mediaType,
+        messageType: mediaUrl ? "media" : "text",
+      });
 
-    const message = await Message.create({
-      chatId: finalChatId,
-      senderId,
-      receiverId,
-      text,
-      mediaUrl,
-      mediaKey,
-      mediaType,
-      messageType: mediaUrl ? "media" : "text"
-    });
+      // ----------------------------------------
+      // Emit message
+      // ----------------------------------------
+      const messageData = {
+        _id: message._id,
+        tempId,
+        chatId: finalChatId,
+        senderId,
+        receiverId,
+        text,
+        mediaUrl,
+        mediaKey,
+        mediaType,
+        messageType: mediaUrl ? "media" : "text",
+        createdAt: message.createdAt,
+      };
 
-    const messageData = {
-      _id: message._id,
-      tempId,
-      chatId: finalChatId,
-      senderId,
-      receiverId,
-      text,
-      mediaUrl,
-      mediaKey,
-      mediaType,
-      messageType: mediaUrl ? "media" : "text",
-      createdAt: message.createdAt,
-    };
+      io.to(finalChatId).emit("receive-message", messageData);
 
-    // Send message to active room (works across all backends)
-    io.to(finalChatId).emit("receive-message", messageData);
-
-    // Badge update only for non-declined chats
-    try {
-      const chat = await Chat.findById(finalChatId).select("status");
-
+      // ----------------------------------------
+      // Emit unread badge
+      // ----------------------------------------
       if (chat?.status !== "declined") {
         const receiverOnline = await redisClient.sIsMember(
-          `online-users`,
+          "online-users",
           receiverId
         );
 
@@ -554,7 +593,7 @@ io.on("connection", (socket) => {
         }
       }
     } catch (err) {
-      console.error("Error checking receiver presence:", err);
+      console.error("send-message error:", err);
     }
   });
   // Deletion of message
