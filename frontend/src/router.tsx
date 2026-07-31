@@ -44,7 +44,7 @@ import GamePost from "./components/Home/GamePost";
 import Recommendations from "./components/Recommendations";
 import RecommendationPosts from "./components/Home/RecommendationPost";
 import AdsPage from "./Pages/ads/AdsPage";
-
+import GameFeedbackModal from "./components/Home/GameFeedbackModal";
 
 
 export const router = createBrowserRouter([
@@ -79,6 +79,20 @@ export const router = createBrowserRouter([
       { path: "/devlogs/view/:id", element: <GuestProtectedRoute> <DevLogsView /> </GuestProtectedRoute> },
       { path: "/devlogCanvas", element: <GuestProtectedRoute> <DevLogCanvas /> </GuestProtectedRoute> },
       { path: "/devlogviewer/:devlogId", element: <GuestProtectedRoute> <DevlogViewer /> </GuestProtectedRoute> },
+      {
+        path: "/gamefeedback",
+        element: (
+          <GuestProtectedRoute>
+            <GameFeedbackModal
+              open={true}
+              onClose={() => console.log("Modal closed")}
+              gameName="Cyberpunk 2077"
+              playTimeMs={420000} // 7 mins
+              steamUrl="https://store.steampowered.com"
+            />
+          </GuestProtectedRoute>
+        )
+      },
 
       { path: "/models", element: <GuestProtectedRoute> <ModelViewer /> </GuestProtectedRoute> },
       { path: "/gameshow", element: <GuestProtectedRoute> <GameShowcase /> </GuestProtectedRoute> },
@@ -92,7 +106,7 @@ export const router = createBrowserRouter([
       { path: "/analytics", element: <GuestProtectedRoute> <Analytics /> </GuestProtectedRoute> },
 
       { path: "/ads", element: <GuestProtectedRoute> <AdsPage /> </GuestProtectedRoute> },
-      
+
       // ── Admin routes ───────────────────────────────────────────────────────────
       // AdminRoute checks:  not logged in → /login?next=…  |  not admin → 403 page
       // Real security is enforced by isAdmin middleware on every /api/admin/* and

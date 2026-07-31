@@ -3,6 +3,7 @@ import {
     X,
     Loader2,
     MessageSquare,
+    Star,
 } from "lucide-react";
 import { useQueue } from "../../context/QueueContext";
 
@@ -66,26 +67,6 @@ export default function GameFeedbackModal({
         return Math.max(1, Math.min(10, rating));
     };
 
-    const handlePointerDown = (e: ReactMouseEvent<HTMLDivElement>) => {
-        const rating = calculateRating(e.clientX);
-        if (rating !== undefined) {
-            setForm((prev) => ({ ...prev, overall: rating }));
-        }
-        setIsDragging(true);
-    };
-
-    const handlePointerMove = (e: ReactMouseEvent<HTMLDivElement>) => {
-        if (!isDragging) return;
-        const rating = calculateRating(e.clientX);
-        if (rating !== undefined) {
-            setForm((prev) => ({ ...prev, overall: rating }));
-        }
-    };
-
-    const handlePointerUpOrLeave = () => {
-        setIsDragging(false);
-    };
-
     const submit = async () => {
         if (form.overall === 0) {
             alert("Please provide a rating by selecting one of the bars.");
@@ -119,10 +100,6 @@ export default function GameFeedbackModal({
         }
     };
 
-    // 10 distinct bar heights scaled to look organic matching a maximum height of ~82px
-    // Starts small at 14px, climbing smoothly by 4-5px per step up to 52px
-    const waveHeights = [14, 18, 22, 27, 31, 36, 40, 44, 48, 52];
-
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl flex flex-col relative select-none">
@@ -144,32 +121,32 @@ export default function GameFeedbackModal({
                     <p className="text-lg font-bold text-zinc-700 mt-1">
                         {gameName}
                     </p>
+                    <span className="inline-flex items-center gap-1 text-[15px] font-bold tracking-wide shrink-0 text-teal-600 dark:text-[#62d4ae]">
+                        Played {playTimeText}
+                    </span>
                     {steamUrl && (
                         <a
                             href={steamUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="mt-3 flex items-center gap-2.5 px-3 py-2 rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50/50 dark:bg-white/[0.02] hover:bg-gray-100/80 dark:hover:bg-white/[0.05] transition-colors group w-fit"
+                            className="mt-4 mx-auto flex items-center justify-center gap-3 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50/50 dark:bg-white/[0.02] hover:bg-gray-100/80 dark:hover:bg-white/[0.05] transition-colors group w-fit"
                         >
                             <img
                                 src="/steamLogo.png"
                                 alt="Steam"
-                                className="h-5 w-5 object-contain flex-shrink-0 opacity-80 dark:invert group-hover:opacity-100 transition-opacity"
+                                className="h-12 w-12 object-contain flex-shrink-0 opacity-80 dark:invert group-hover:opacity-100 transition-opacity"
                             />
-                            <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                            <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 group-hover:text-amber-500 dark:group-hover:text-amber-300 transition-colors">
                                 View on Steam
                             </span>
                         </a>
                     )}
-                    <p className="text-sm text-zinc-500 mt-1">
-                        You played for <span className="font-semibold">{playTimeText}</span>
-                    </p>
                 </div>
 
                 {/* Form Body */}
                 <div className="space-y-6">
 
-                    {/* Voice Note Waveform Rating */}
+                    {/* Star Rating Section */}
                     <div className="flex flex-col items-center justify-center gap-3 py-2">
                         <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-bold text-zinc-900">
@@ -180,42 +157,41 @@ export default function GameFeedbackModal({
                             </span>
                         </div>
 
-                        {/* Waveform Container - set to explicit h-[90px] */}
+                        {/* 10 Star Rating Container */}
                         <div
-                            ref={containerRef}
-                            onMouseDown={handlePointerDown}
-                            onMouseMove={handlePointerMove}
-                            onMouseUp={handlePointerUpOrLeave}
-                            onMouseLeave={handlePointerUpOrLeave}
-                            className="flex items-center justify-between w-full max-w-[280px] h-[90px] px-2 cursor-pointer overview-resize group/wave"
+                            className="flex items-center gap-1 sm:gap-1.5"
+                            onMouseLeave={() => setIsDragging(false)}
                         >
-                            {waveHeights.map((height, index) => {
-                                const barValue = index + 1;
-                                const isActive = barValue <= form.overall;
+                            {Array.from({ length: 10 }).map((_, index) => {
+                                const ratingValue = index + 1;
+                                const isFilled = ratingValue <= form.overall;
+
                                 return (
-                                    <div
+                                    <button
                                         key={index}
-                                        style={{ height: `${height}px` }}
-                                        className={`w-2.5 rounded-full transition-all duration-150 origin-center ${isActive
-                                            ? "bg-emerald-500 scale-y-105"
-                                            : "bg-zinc-200 group-hover/wave:bg-zinc-300"
-                                            }`}
-                                    />
+                                        type="button"
+                                        onClick={() => setForm((prev) => ({ ...prev, overall: ratingValue }))}
+                                        onMouseEnter={() => setForm((prev) => ({ ...prev, overall: ratingValue }))}
+                                        className="p-0.5 focus:outline-none transition-transform hover:scale-125"
+                                    >
+                                        <Star
+                                            size={22}
+                                            className={`transition-colors duration-150 ${isFilled
+                                                ? "fill-amber-400 text-amber-400"
+                                                : "fill-zinc-100 text-zinc-300 hover:text-amber-300"
+                                                }`}
+                                        />
+                                    </button>
                                 );
                             })}
                         </div>
-                        <p className="text-xs text-zinc-400">Click or drag across the waveform to rate</p>
                     </div>
 
                     {/* Single Feedback Comment Box */}
                     <div>
-                        <label className="flex items-center gap-2 text-sm font-medium text-zinc-600 mb-2">
-                            <MessageSquare size={16} className="text-zinc-400" />
-                            Your Comments
-                        </label>
                         <textarea
                             rows={4}
-                            placeholder="Tell us about your experience..."
+                            placeholder="this will appear in comments..."
                             value={form.comment}
                             onChange={(e) => setForm({ ...form, comment: e.target.value })}
                             className="w-full rounded-xl bg-zinc-50 border border-zinc-200 p-3.5 text-sm text-zinc-900 placeholder-zinc-400 resize-none focus:outline-none focus:border-zinc-400 focus:bg-white transition duration-200"
