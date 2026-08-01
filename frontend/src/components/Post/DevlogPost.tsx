@@ -87,6 +87,7 @@ const DevlogPost: React.FC<DevlogPostProps> = ({
         <div className="flex flex-col flex-1 min-w-0">
           <PostHeader
             displayName={user.displayName || user.username} 
+            postId={_id}
             username={user.username}
             timestamp={timestamp}
             price={0}
