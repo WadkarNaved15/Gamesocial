@@ -794,7 +794,7 @@ const PlayButton = () => {
                         <div className="flex items-center gap-2" >
                           <PlayButton />
 
-                            {(isOwner || isAdmin) && (
+                            {(isOwner) && (
                               <button
                                 onClick={(e) => {
                                   e.preventDefault();
