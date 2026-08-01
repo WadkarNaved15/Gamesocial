@@ -233,10 +233,18 @@ const ProfilePage: React.FC = () => {
                           avatar: profileUser!.avatar ?? "./default-avatar.png",
                         })
                       }
-                      className="inline-flex items-center gap-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-blue-300 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest backdrop-blur-sm transition-all active:scale-95"
+                      className="inline-flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-600 text-white px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest backdrop-blur-sm transition-all active:scale-95"
                     >
-                      <MessageSquare size={16} strokeWidth={3} />
-                      <span>Chat</span>
+                      <svg 
+                        width="16" 
+                        height="16" 
+                        viewBox="0 0 24 24" 
+                        fill="white" 
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="group-hover:animate-pulse"
+                      >
+                        <path d="M20 4H4C2.9 4 2.01 4.9 2.01 6L2 18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4ZM20 8L12 13L4 8V6L12 11L20 6V8Z" />
+                      </svg>
                     </button>
                   </span>
                 )}

@@ -18,7 +18,7 @@ const GamePostDetails: React.FC<GamePostDetailsProps> = ({
       {/* Back */}
       <button
         onClick={onClose}
-        className="flex items-center gap-2 px-4 py-3 text-blue-500 hover:text-blue-600 border-b"
+        className="flex items-center gap-2 px-4 py-3 text-[#10b981] border-b"
       >
         <ArrowLeft size={18} />
         Post

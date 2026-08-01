@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { PostProps } from '../../types/Post';
+import { toast } from "react-toastify";
 
 interface PostHeaderProps {
   username: string;
@@ -8,6 +9,7 @@ interface PostHeaderProps {
   timestamp: string;
   type: 'normal_post' | 'model_post' | 'game_post' | 'devlog_post';
   price: number;
+  postId: string;
   isOwner?: boolean;
   onDelete?: () => void;
   onProfileClick?: () => void;
@@ -19,6 +21,7 @@ const PostHeader: React.FC<PostHeaderProps> = ({
   displayName,
   timestamp,
   price,
+  postId,
   isOwner,
   onDelete,
   onProfileClick,
@@ -48,6 +51,28 @@ const PostHeader: React.FC<PostHeaderProps> = ({
   const toggleMenu = useCallback(() => {
     setMenuOpen((prev) => !prev);
   }, []);
+
+  const handleCopyLink = useCallback(async () => {
+    try {
+      const url = `${window.location.origin}/post/${postId}`;
+
+      await navigator.clipboard.writeText(url);
+
+      toast.success("Copied to clipboard", {
+        position: "top-right",
+        autoClose: 2000,
+      });
+
+      setMenuOpen(false);
+    } catch (err) {
+      console.error("Failed to copy link:", err);
+
+      toast.error("Failed to copy", {
+        position: "top-right",
+        autoClose: 2000,
+      });
+    }
+  }, [postId]);
 
   return (
     // mb-3 creates the space between this header and the description below it
@@ -121,7 +146,7 @@ const PostHeader: React.FC<PostHeaderProps> = ({
                 overflow-hidden z-20
               "
             >
-              {!isOwner && (
+              {/* {!isOwner && (
                 <button
                   className="
                     block w-full text-left px-4 py-2.5 text-sm
@@ -132,9 +157,13 @@ const PostHeader: React.FC<PostHeaderProps> = ({
                 >
                   Report
                 </button>
-              )}
+              )} */}
 
               <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCopyLink();
+                }}
                 className="
                   block w-full text-left px-4 py-2.5 text-sm
                   text-gray-700 dark:text-gray-300

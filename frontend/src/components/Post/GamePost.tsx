@@ -20,6 +20,30 @@ import { trackEvent } from "../../utils/analytics";
 import { useAudio } from "../../context/AudioContext";
 import { loadRazorpay } from "../../utils/loadRazorpay";
 
+const renderTextWithLinks = (text: string) => {
+  if (!text) return null;
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  
+  return parts.map((part, i) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()} // Prevents the post from opening when clicking the link
+          className="text-[rgb(98,212,174)] hover:text-[rgb(78,192,154)] hover:underline break-words"
+        >
+          {part}
+        </a>
+      );
+    }
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
+};
+
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
@@ -71,6 +95,7 @@ const RepurchaseModal = ({
   const selectedCredits = (dollars || 0) * 40;
   const sessionsAdded = Math.floor(selectedCredits / maxSessionDuration);
   const price = dollars || 0;
+
 
   if (!isOpen) return null;
 
@@ -182,6 +207,8 @@ const options = {
       setIsProcessing(false);
     }
   };
+
+  
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
@@ -325,7 +352,12 @@ const GamePost: React.FC<GamePostProps> = ({
   const { user: currentUser } = useUser();
   const isOwner = currentUser?._id === user._id;
   const isAudioActive = audioFocusId === null || audioFocusId === _id;
-  const hasPlayedDemo = gamePost?.demoConsumed === true;
+  const isAdmin = currentUser?.role === "admin";
+
+const hasPlayedDemo =
+  !isAdmin &&
+  !isOwner &&
+  gamePost?.demoConsumed === true;
 
   // Local state for optimistic updates
   const [localRemainingCredits, setLocalRemainingCredits] = useState(gamePost.creditBudget?.remainingCredits || 0);
@@ -334,6 +366,10 @@ const GamePost: React.FC<GamePostProps> = ({
   const [hasRequested, setHasRequested] = useState(gamePost?.sessionRequest?.hasRequested || false);
   const [requestCount, setRequestCount] = useState(gamePost.gameMetrics?.sessionRequests || 0);
   const [requestLoading, setRequestLoading] = useState(false);
+
+  
+  const textRef = useRef<HTMLParagraphElement>(null);
+  const [showReadMore, setShowReadMore] = useState(false);
 
   useEffect(() => {
     setLocalRemainingCredits(gamePost.creditBudget?.remainingCredits || 0);
@@ -401,7 +437,6 @@ const GamePost: React.FC<GamePostProps> = ({
   };
 
   const timestamp = useMemo(() => getRelativeTime(createdAt), [createdAt]);
-  const isAdmin = currentUser?.role === "admin";
 
   const handleStartGame = async () => {
     if (
@@ -515,6 +550,22 @@ const GamePost: React.FC<GamePostProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+  const checkOverflow = () => {
+    if (textRef.current && !isExpanded) {
+      // If scrollHeight is strictly greater than clientHeight, the text is being truncated
+      setShowReadMore(
+        textRef.current.scrollHeight > textRef.current.clientHeight
+      );
+    }
+  };
+
+  checkOverflow();
+  window.addEventListener("resize", checkOverflow);
+  
+  return () => window.removeEventListener("resize", checkOverflow);
+}, [description, isExpanded]);
+
 const PlayButton = () => {
 
   if (hasPlayedDemo) {
@@ -538,7 +589,6 @@ const PlayButton = () => {
   }
 
   if (isExhausted) {
-    if (isOwner) return null;
 
     if (hasRequested) {
         return (
@@ -665,6 +715,7 @@ const PlayButton = () => {
               displayName={user.displayName || user.username} 
               timestamp={timestamp}
               price={gamePost?.price || 0}
+              postId={_id}
               isOwner={isOwner}
               onProfileClick={() => {
                 trackEvent({
@@ -679,23 +730,29 @@ const PlayButton = () => {
             />
 
             {description && (
-              <div>
-                <p className={`text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${!isExpanded ? "line-clamp-2" : ""}`}>
-                  {description}
-                </p>
-                {description.length > 100 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsExpanded(!isExpanded);
-                    }}
-                    className="text-[rgb(98,212,174)] hover:text-[rgb(78,192,154)] font-semibold text-sm mt-1"
-                  >
-                    {isExpanded ? "Show less" : "Show more"}
-                  </button>
-                )}
-              </div>
-            )}
+  <div className="mb-2">
+    <p
+      ref={textRef}
+      className={`text-gray-200 leading-normal whitespace-pre-wrap transition-all ${
+        !isExpanded ? "line-clamp-6" : ""
+      }`}
+    >
+      {renderTextWithLinks(description)}
+    </p>
+
+    {(showReadMore || isExpanded) && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsExpanded(!isExpanded);
+        }}
+        className="text-[rgb(98,212,174)] hover:text-[rgb(78,192,154)] font-semibold text-sm mt-1 focus:outline-none"
+      >
+        {isExpanded ? "Show less" : "Show more"}
+      </button>
+    )}
+  </div>
+)}
 
             {gamePost && (
               <div className="group relative rounded-2xl overflow-hidden border border-white/[0.06] bg-gradient-to-b from-[#1c1c1c] to-[#0a0a0a]">
@@ -737,34 +794,31 @@ const PlayButton = () => {
                         <div className="flex items-center gap-2" >
                           <PlayButton />
 
-                            {(isOwner) && (
-<button
-  onClick={(e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setShowRepurchase(true);
-  }}
-  style={{
-    background: "linear-gradient(to bottom right, #047857, #000000)",
-  }}
-  className="text-white px-3 py-2 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 shrink-0 active:scale-[0.98]"
->
-  <div className="flex flex-col items-start leading-none">
-    <div className="flex items-center gap-1.5">
-      <CreditCard size={14} />
-      <span className="font-semibold text-xs">
-        Add Credits
-      </span>
-    </div>
+                            {(isOwner || isAdmin) && (
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setShowRepurchase(true);
+                                }}
+                                className="px-3 py-2 rounded-2xl transition-all bg-white/5 hover:bg-white/10 backdrop-blur-md shrink-0 active:scale-[0.98] border border-white/10"
+                              >
+                                <div className="flex flex-col items-start leading-none">
+                                  <div className="flex items-center gap-1.5">
+                                    <CreditCard size={14} className="text-gray-300" />
+                                    <span className="font-semibold text-xs text-gray-100">
+                                      Add Credits
+                                    </span>
+                                  </div>
 
-    {isExhausted && (
-      <span className="ml-[20px] mt-1 text-[8px] font-normal text-white/50">
-        Credits exhausted
-      </span>
-    )}
-  </div>
-</button>
-  )}
+                                  {isExhausted && (
+                                    <span className="ml-[20px] mt-1 text-[9px] font-medium text-gray-400">
+                                      Credits exhausted
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                                )}
                         </div>
                       </div>
 
