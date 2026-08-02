@@ -468,6 +468,23 @@ io.on("connection", (socket) => {
         sharedPostId: postId,
         createdAt: message.createdAt,
       };
+      const cacheKey = `chat:messages:${finalChatId}`;
+      try {
+        const pipeline = redisClient.multi();
+
+        // Add newest message
+        pipeline.rPush(cacheKey, JSON.stringify(messageData));
+
+        // Keep only the latest 31 messages
+        pipeline.lTrim(cacheKey, -31, -1);
+
+        // Refresh cache expiry
+        pipeline.expire(cacheKey, 60 * 60 * 6);
+
+        await pipeline.exec();
+      } catch (err) {
+        console.error("Redis chat cache update failed:", err);
+      }
 
       io.to(finalChatId).emit("receive-message", messageData);
 
@@ -573,6 +590,24 @@ io.on("connection", (socket) => {
         messageType: mediaUrl ? "media" : "text",
         createdAt: message.createdAt,
       };
+      const cacheKey = `chat:messages:${finalChatId}`;
+
+      try {
+        const pipeline = redisClient.multi();
+
+        // Add newest message
+        pipeline.rPush(cacheKey, JSON.stringify(messageData));
+
+        // Keep only latest 31 messages
+        pipeline.lTrim(cacheKey, -31, -1);
+
+        // Refresh cache expiry
+        pipeline.expire(cacheKey, 60 * 60 * 6);
+
+        await pipeline.exec();
+      } catch (err) {
+        console.error("Redis chat cache update failed:", err);
+      }
 
       io.to(finalChatId).emit("receive-message", messageData);
 
@@ -622,6 +657,9 @@ io.on("connection", (socket) => {
       const chatId = message.chatId;
 
       await Message.findByIdAndDelete(messageId);
+
+      // Invalidate Redis cache for this chat
+      await redisClient.del(`chat:messages:${chatId}`);
 
       io.to(chatId.toString()).emit("message-deleted", {
         messageId,

@@ -1,41 +1,48 @@
-import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import { createClient } from "redis";
 
 dotenv.config();
 
-async function testSMTP() {
+const redisConfig = {
+  host: process.env.REDIS_HOST,
+  port: Number(process.env.REDIS_PORT),
+  username: "default",
+  password: process.env.REDIS_PASSWORD,
+};
+
+const client = createClient({
+  username: redisConfig.username,
+  password: redisConfig.password,
+  socket: {
+    host: redisConfig.host,
+    port: redisConfig.port,
+    tls: false,
+  },
+});
+
+client.on("error", (err) => console.error("❌ Redis Client Error:", err));
+
+async function clearChatCache() {
   try {
-    console.log("Connecting to GoDaddy SMTP...");
+    await client.connect();
+    console.log("✅ Connected to Redis");
 
-    const transporter = nodemailer.createTransport({
-      host: "smtpout.secureserver.net",
-      port: 465, // try 587 if this fails
-      secure: true, // SSL for 465
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+    // Fetch matching keys
+    const keys = await client.keys("chat:messages:*");
 
-    // Step 1: Verify connection
-    await transporter.verify();
-    console.log("✅ SMTP connection successful!");
-
-    // Step 2: Send test email
-    const info = await transporter.sendMail({
-      from: `"Rigzer Test" <${process.env.EMAIL_USER}>`,
-      to: "sayedusaid880@gmail.com", // <-- change this
-      subject: "SMTP Test Email",
-      text: "If you received this email, GoDaddy SMTP is working correctly.",
-    });
-
-    console.log("✅ Email sent successfully!");
-    console.log("Message ID:", info.messageId);
-
+    if (keys.length > 0) {
+      await client.del(keys);
+      console.log(`🧹 Successfully deleted ${keys.length} key(s).`);
+    } else {
+      console.log("ℹ️ No matching keys found to delete.");
+    }
   } catch (error) {
-    console.error("❌ SMTP Test Failed:");
-    console.error(error);
+    console.error("❌ Error clearing cache:", error);
+  } finally {
+    // Gracefully disconnect from Redis
+    await client.disconnect();
+    console.log("🔌 Disconnected from Redis");
   }
 }
 
-testSMTP();
+clearChatCache();

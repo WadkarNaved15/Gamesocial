@@ -45,6 +45,7 @@ import Recommendations from "./components/Recommendations";
 import RecommendationPosts from "./components/Home/RecommendationPost";
 import AdsPage from "./Pages/ads/AdsPage";
 import GameFeedbackModal from "./components/Home/GameFeedbackModal";
+import StreamFeedbackModal from "./components/Home/StreamFeedback";
 
 
 export const router = createBrowserRouter([
@@ -93,6 +94,18 @@ export const router = createBrowserRouter([
           </GuestProtectedRoute>
         )
       },
+      {
+        path: "/streamfeedback",
+        element: (
+          <GuestProtectedRoute>
+            <StreamFeedbackModal
+              open={true}
+              onClose={() => console.log("Modal closed")}
+            />
+          </GuestProtectedRoute>
+        )
+      },
+      
 
       { path: "/models", element: <GuestProtectedRoute> <ModelViewer /> </GuestProtectedRoute> },
       { path: "/gameshow", element: <GuestProtectedRoute> <GameShowcase /> </GuestProtectedRoute> },

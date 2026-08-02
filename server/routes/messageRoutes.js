@@ -3,8 +3,9 @@ import Message from "../models/Message.js";
 import Chat from "../models/Chat.js";
 import verifyToken from "../middlewares/authMiddleware.js";
 import mongoose from "mongoose";
+import redisClient from "../config/redis.js";
 const router = express.Router();
-
+const CHAT_CACHE_LIMIT = 30;
 // Send a message
 router.post("/", verifyToken, async (req, res) => {
   try {
@@ -25,7 +26,6 @@ router.post("/", verifyToken, async (req, res) => {
     res.status(500).json({ message: "Failed to send message" });
   }
 });
-// Get unread message counts
 // Get unread message counts
 router.get("/unread-counts", verifyToken, async (req, res) => {
   try {
@@ -123,26 +123,95 @@ router.put("/seen/:chatId", verifyToken, async (req, res) => {
 router.get("/:chatId", async (req, res) => {
   try {
     const { chatId } = req.params;
-    // Limit to 30 messages
+
     const limit = Math.min(
-      parseInt(req.query.limit, 10) || 30,
+      parseInt(req.query.limit, 10) || CHAT_CACHE_LIMIT,
       50
     );
+
     const before = req.query.before;
+    const cacheKey = `chat:messages:${chatId}`;
+
+    // ====================================================
+    // FIRST PAGE -> Try Redis Cache
+    // ====================================================
+    if (!before && limit === CHAT_CACHE_LIMIT) {
+      console.log("Cache hit for chat:", chatId);
+      // Read one extra message exactly like Mongo does
+      // Read the newest cache window instead of the oldest
+      const totalMessages = await redisClient.lLen(cacheKey);
+
+      const start = Math.max(
+        0,
+        totalMessages - (CHAT_CACHE_LIMIT + 1)
+      );
+
+      const end = totalMessages - 1;
+
+      const cached = await redisClient.lRange(
+        cacheKey,
+        start,
+        end
+      );
+
+      if (cached.length > 0) {
+        const hasMore = cached.length > CHAT_CACHE_LIMIT;
+
+        if (hasMore) {
+          cached.shift();
+        }
+
+        const messages = cached
+          .map((msg) => JSON.parse(msg))
+
+        const oldest = messages[0];
+
+        const nextCursor = oldest
+          ? Buffer.from(
+            JSON.stringify({
+              createdAt: oldest.createdAt,
+              _id: oldest._id,
+            })
+          ).toString("base64")
+          : null;
+
+        return res.json({
+          messages,
+          hasMore,
+          nextCursor,
+        });
+      }
+    }
+
+    // ====================================================
+    // MongoDB Query
+    // ====================================================
 
     const query = { chatId };
 
     if (before) {
       let cursor;
+
       try {
-        cursor = JSON.parse(Buffer.from(before, "base64").toString("utf-8"));
+        cursor = JSON.parse(
+          Buffer.from(before, "base64").toString("utf8")
+        );
       } catch {
-        return res.status(400).json({ message: "Invalid cursor" });
+        return res.status(400).json({
+          message: "Invalid cursor",
+        });
       }
+
       const cursorDate = new Date(cursor.createdAt);
+
       query.$or = [
-        { createdAt: { $lt: cursorDate } },
-        { createdAt: cursorDate, _id: { $lt: cursor._id } },
+        {
+          createdAt: { $lt: cursorDate },
+        },
+        {
+          createdAt: cursorDate,
+          _id: { $lt: cursor._id },
+        },
       ];
     }
 
@@ -150,26 +219,65 @@ router.get("/:chatId", async (req, res) => {
       .select(
         "senderId receiverId text mediaUrl mediaKey mediaType messageType sharedPostId seen createdAt"
       )
-      .sort({ createdAt: -1, _id: -1 })
+      .sort({
+        createdAt: -1,
+        _id: -1,
+      })
       .limit(limit + 1)
       .lean();
 
+    // Keep all fetched documents for Redis
+    const cacheMessages = [...messages];
+
     const hasMore = messages.length > limit;
-    if (hasMore) messages.pop();
 
-    messages.reverse(); // oldest -> newest
+    if (hasMore) {
+      messages.pop();
+    }
 
-    const nextCursor =
-      messages.length > 0
-        ? Buffer.from(
-          JSON.stringify({ createdAt: messages[0].createdAt, _id: messages[0]._id })
-        ).toString("base64")
-        : null;
+    messages.reverse();
 
-    res.json({ messages, hasMore, nextCursor });
+    const oldest = messages[0];
+
+    const nextCursor = oldest
+      ? Buffer.from(
+        JSON.stringify({
+          createdAt: oldest.createdAt,
+          _id: oldest._id,
+        })
+      ).toString("base64")
+      : null;
+
+    // ====================================================
+    // Refresh Redis Cache (ONLY first page)
+    // ====================================================
+
+    if (!before && limit === CHAT_CACHE_LIMIT) {
+      const pipeline = redisClient.multi();
+      pipeline.del(cacheKey);
+
+      // Store newest -> oldest
+      for (const message of cacheMessages.reverse()) {
+        pipeline.rPush(
+          cacheKey,
+          JSON.stringify(message)
+        );
+      }
+      pipeline.expire(cacheKey, 60 * 60 * 6);
+
+      await pipeline.exec();
+    }
+
+    res.json({
+      messages,
+      hasMore,
+      nextCursor,
+    });
   } catch (err) {
     console.error("Fetch messages error:", err);
-    res.status(500).json({ message: "Failed to fetch messages" });
+    res.status(500).json({
+      message: "Failed to fetch messages",
+    });
   }
 });
 // Share a post in a chat
