@@ -14,6 +14,31 @@ import { useAudio } from "../../context/AudioContext";
 import { Play, Loader2, AlertCircle, VolumeX, Volume2 } from "lucide-react";
 import { trackEvent } from "../../utils/analytics";
 
+
+const renderTextWithLinks = (text: string) => {
+  if (!text) return null;
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  
+  return parts.map((part, i) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()} // Prevents the post from opening when clicking the link
+          className="text-[rgb(98,212,174)] hover:text-[rgb(78,192,154)] hover:underline break-words"
+        >
+          {part}
+        </a>
+      );
+    }
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
+};
+
 const NormalPost: React.FC<NormalPostProps> = ({
   _id,
   user,
@@ -46,6 +71,8 @@ const NormalPost: React.FC<NormalPostProps> = ({
   const navigate = useNavigate();
   const { likesCount: localLikesCount, isLiked: localIsLiked, handleLike } = useLikes(_id, BACKEND_URL);
   const { isWishlisted: localIsWishlisted, handleWishlist } = useWishlist(_id, BACKEND_URL);
+  const textRef = useRef<HTMLParagraphElement>(null);
+  const [showReadMore, setShowReadMore] = useState(false);
 
   const rawAssets = normalPost?.assets || [];
 
@@ -158,6 +185,23 @@ const NormalPost: React.FC<NormalPostProps> = ({
     return "grid-cols-2 grid-rows-2";
   };
 
+
+  useEffect(() => {
+  const checkOverflow = () => {
+    if (textRef.current && !isExpanded) {
+      // If scrollHeight is strictly greater than clientHeight, the text is being truncated
+      setShowReadMore(
+        textRef.current.scrollHeight > textRef.current.clientHeight
+      );
+    }
+  };
+
+  checkOverflow();
+  window.addEventListener("resize", checkOverflow);
+  
+  return () => window.removeEventListener("resize", checkOverflow);
+}, [description, isExpanded]);
+
   return (
     <article
       ref={postRef}
@@ -196,6 +240,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
             timestamp={timestamp}
             price={0}
             type="normal_post"
+            postId={_id}
             isOwner={isOwner}
             onDelete={() => setDeleteOpen(true)}
             onProfileClick={() => {
@@ -212,28 +257,29 @@ const NormalPost: React.FC<NormalPostProps> = ({
           />
 
           {description && (
-            <div>
-              <p
-                className={`text-gray-200 leading-normal whitespace-pre-wrap transition-all ${
-                  !isExpanded ? "line-clamp-6" : ""
-                }`}
-              >
-                {description}
-              </p>
+  <div className="mb-2">
+    <p
+      ref={textRef}
+      className={`text-gray-200 leading-normal whitespace-pre-wrap transition-all ${
+        !isExpanded ? "line-clamp-6" : ""
+      }`}
+    >
+      {renderTextWithLinks(description)}
+    </p>
 
-              {description.length > 300 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsExpanded(!isExpanded);
-                  }}
-                  className="text-[rgb(98,212,174)] hover:text-[rgb(78,192,154)] font-semibold text-sm mt-1 focus:outline-none"
-                >
-                  {isExpanded ? "Show less" : "Show more"}
-                </button>
-              )}
-            </div>
-          )}
+    {(showReadMore || isExpanded) && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsExpanded(!isExpanded);
+        }}
+        className="text-[rgb(98,212,174)] hover:text-[rgb(78,192,154)] font-semibold text-sm mt-1 focus:outline-none"
+      >
+        {isExpanded ? "Show less" : "Show more"}
+      </button>
+    )}
+  </div>
+)}
 
           {/* -------------------- MEDIA GRID -------------------- */}
           {displayAssets.length > 0 && (

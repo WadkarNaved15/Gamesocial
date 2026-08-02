@@ -14,7 +14,7 @@ interface Props {
 export default function ShareActionModal({ postId, currentUserId, onClose }: Props) {
   const [openChatShare, setOpenChatShare] = useState(false);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-  const shareLink = `${window.location.origin}/?post=${postId}`;
+  const shareLink = `${window.location.origin}/post/${postId}`;
 
   const handleCopy = async () => {
     try {

@@ -15,7 +15,7 @@ const ChatToggleButton: React.FC<ChatToggleButtonProps> = ({ unreadCount, onClic
       style={{ backgroundColor: "transparent" }}
       className="
         flex items-center justify-center
-        w-[76px] h-[54px] rounded-[30px] 
+        w-[72px] h-[51px] rounded-[26px] 
         border border-white/30
         transition-all duration-300 transform
         hover:scale-105

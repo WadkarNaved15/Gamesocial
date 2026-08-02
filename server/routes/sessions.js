@@ -76,19 +76,50 @@ router.post(
       const userId = req.user.id;
       const { gamePostId } = req.body;
 
+            // ✅ Get game post
+let post = await cacheService.getGamePost(gamePostId);
+
+if (!post) {
+  post = await AllPost.findById(gamePostId)
+    .select("type user gamePost")
+    .lean();
+
+  if (!post || post.type !== "game_post" || !post.gamePost) {
+    return res.status(404).json({ error: "Game not found" });
+  }
+
+  if (!post.gamePost.file?.url || !post.gamePost.startPath) {
+    return res.status(400).json({
+      error: "Game configuration incomplete",
+    });
+  }
+
+  await cacheService.setGamePost(gamePostId, post);
+}
+
+      const isAdmin = req.user.role === "admin";
+
+const isOwner =
+  post.user?.toString() === userId;
+
+const skipDemoConsumption =
+  isAdmin || isOwner;
 
 
-      const alreadyUsed = await DemoConsumption.findOne({
-        user: userId,
-        gamePost: gamePostId,
-        status: "consumed",
-      }).lean();
 
-      if (alreadyUsed) {
-        return res.status(403).json({
-          error: "Demo already consumed for this game",
-        });
-      }
+if (!skipDemoConsumption) {
+  const alreadyUsed = await DemoConsumption.findOne({
+    user: userId,
+    gamePost: gamePostId,
+    status: "consumed",
+  }).lean();
+
+  if (alreadyUsed) {
+    return res.status(403).json({
+      error: "Demo already consumed for this game",
+    });
+  }
+}
 
       // ✅ Check concurrent session limit
       const activeSessions = await GameSession.countDocuments({
@@ -101,27 +132,6 @@ router.post(
           error: "Maximum concurrent sessions reached",
           active: activeSessions,
         });
-      }
-
-      // ✅ Get game post
-      let post = await cacheService.getGamePost(gamePostId);
-
-      if (!post) {
-        post = await AllPost.findById(gamePostId)
-          .select("type gamePost")
-          .lean();
-
-        if (!post || post.type !== "game_post" || !post.gamePost) {
-          return res.status(404).json({ error: "Game not found" });
-        }
-
-        if (!post.gamePost.file?.url || !post.gamePost.startPath) {
-          return res.status(400).json({
-            error: "Game configuration incomplete",
-          });
-        }
-
-        await cacheService.setGamePost(gamePostId, post);
       }
 
       const game = post.gamePost;
@@ -204,6 +214,7 @@ router.post(
           gameVersion: game.version,
           platform: game.platform,
           gpuRequired: game.systemRequirements?.gpuRequired || false,
+           skipDemoConsumption,
         },
       });
       response202.sessionId = session._id;

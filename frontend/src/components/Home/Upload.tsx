@@ -1,4 +1,4 @@
-import { FaUpload } from "react-icons/fa";
+import { FaUpload , FaPlus } from "react-icons/fa";
 
 export default function UploadBox({
   onUploadClick,
@@ -36,8 +36,8 @@ export default function UploadBox({
     shadow-[0_8px_25px_rgba(255,255,255,0.15)]
   "
       >
-        <FaUpload size={14} />
-        <span>Upload</span>
+        <FaPlus size={14} />
+        <span>Post</span>
       </button>
     </div>
   );

@@ -13,6 +13,30 @@ import { toast } from "react-toastify";
 import { useUser } from "../../context/user";
 import { trackEvent } from '../../utils/analytics';
 
+const renderTextWithLinks = (text: string) => {
+  if (!text) return null;
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  
+  return parts.map((part, i) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()} // Prevents the post from opening when clicking the link
+          className="text-[rgb(98,212,174)] hover:text-[rgb(78,192,154)] hover:underline break-words"
+        >
+          {part}
+        </a>
+      );
+    }
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
+};
+
 const ExePost: React.FC<ExePostProps> = ({
   user,
   description,
@@ -53,6 +77,9 @@ const ExePost: React.FC<ExePostProps> = ({
   const location = useLocation();
   let viewStartTime = useRef<number | null>(null);
   const asset = modelPost?.assets?.[0];
+
+  const textRef = useRef<HTMLParagraphElement>(null);
+const [showReadMore, setShowReadMore] = useState(false);
 
   const modelUrl =
     asset?.optimization?.status === "completed"
@@ -138,6 +165,22 @@ const ExePost: React.FC<ExePostProps> = ({
     };
   }, [asset?.fieldOfView, modelUrl]);
 
+  useEffect(() => {
+  const checkOverflow = () => {
+    if (textRef.current && !isExpanded) {
+      // If scrollHeight is strictly greater than clientHeight, the text is being truncated
+      setShowReadMore(
+        textRef.current.scrollHeight > textRef.current.clientHeight
+      );
+    }
+  };
+
+  checkOverflow();
+  window.addEventListener("resize", checkOverflow);
+  
+  return () => window.removeEventListener("resize", checkOverflow);
+}, [description, isExpanded]);
+
 return (
     <article
       ref={postRef}
@@ -176,6 +219,7 @@ return (
             displayName={user.displayName || user.username} // Use displayName if available, otherwise fallback to username
             timestamp={timestamp}
             price={price ?? 0}
+            postId={_id}
             type='model_post'
             isOwner={isOwner}
             onDelete={() => setDeleteOpen(true)}
@@ -194,23 +238,29 @@ return (
           />
 
           {description && (
-            <div>
-              <p className={`text-gray-200 leading-relaxed whitespace-pre-wrap transition-all ${!isExpanded ? "line-clamp-2" : ""}`}>
-                {description}
-              </p>
-              {description.length > 100 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsExpanded(!isExpanded);
-                  }}
-                  className="text-[rgb(98,212,174)] hover:text-[rgb(78,192,154)] font-semibold text-sm focus:outline-none"
-                >
-                  {isExpanded ? "Show less" : "Show more"}
-                </button>
-              )}
-            </div>
-          )}
+  <div className="mb-2">
+    <p
+      ref={textRef}
+      className={`text-gray-200 leading-normal whitespace-pre-wrap transition-all ${
+        !isExpanded ? "line-clamp-6" : ""
+      }`}
+    >
+      {renderTextWithLinks(description)}
+    </p>
+
+    {(showReadMore || isExpanded) && (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsExpanded(!isExpanded);
+        }}
+        className="text-[rgb(98,212,174)] hover:text-[rgb(78,192,154)] font-semibold text-sm mt-1 focus:outline-none"
+      >
+        {isExpanded ? "Show less" : "Show more"}
+      </button>
+    )}
+  </div>
+)}
         </div>
       </div>
 
