@@ -44,8 +44,8 @@ import GamePost from "./components/Home/GamePost";
 import Recommendations from "./components/Recommendations";
 import RecommendationPosts from "./components/Home/RecommendationPost";
 import AdsPage from "./Pages/ads/AdsPage";
-import GameFeedbackModal from "./components/Home/GameFeedbackModal";
-import StreamFeedbackModal from "./components/Home/StreamFeedback";
+import GameFeedbackModal from "./components/Feedback/GameFeedbackModal";
+import StreamFeedbackModal from "./components/Feedback/StreamFeedback";
 
 
 export const router = createBrowserRouter([
@@ -85,7 +85,6 @@ export const router = createBrowserRouter([
         element: (
           <GuestProtectedRoute>
             <GameFeedbackModal
-              open={true}
               onClose={() => console.log("Modal closed")}
               gameName="Cyberpunk 2077"
               playTimeMs={420000} // 7 mins
@@ -99,8 +98,6 @@ export const router = createBrowserRouter([
         element: (
           <GuestProtectedRoute>
             <StreamFeedbackModal
-              open={true}
-              onClose={() => console.log("Modal closed")}
             />
           </GuestProtectedRoute>
         )

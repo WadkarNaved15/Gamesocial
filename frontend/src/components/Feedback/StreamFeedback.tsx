@@ -4,8 +4,6 @@ import { useQueue } from "../../context/QueueContext";
 import Logo from "../../assets/Icon.svg?react";
 
 interface Props {
-    open: boolean;
-    onClose: () => void;
     streamId?: string | null;
 }
 
@@ -16,13 +14,12 @@ const ISSUE_OPTIONS = [
     { id: "other", label: "Other issue", icon: HelpCircle },
 ];
 
-export default function StreamFeedbackModal({ open, onClose, streamId }: Props) {
+export default function StreamFeedbackModal({ streamId }: Props) {
     const { clearSession } = useQueue();
     const [loading, setLoading] = useState(false);
     const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
     const [comment, setComment] = useState("");
 
-    if (!open) return null;
 
     const toggleIssue = (id: string) => {
         setSelectedIssues((prev) =>
@@ -34,7 +31,7 @@ export default function StreamFeedbackModal({ open, onClose, streamId }: Props) 
         setSelectedIssues([]);
         setComment("");
         clearSession();
-        onClose();
+
     };
 
     const submit = async () => {
@@ -71,7 +68,7 @@ export default function StreamFeedbackModal({ open, onClose, streamId }: Props) 
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+        <div className="w-full max-w-sm rounded-2xl bg-gray p-6 shadow-xl flex flex-col relative">
             {/* Main glassmorphism modal card */}
             <div className="w-full max-w-md rounded-2xl bg-white/10 backdrop-blur-xl border border-white/10 p-6 shadow-2xl flex flex-col relative select-none">
                 

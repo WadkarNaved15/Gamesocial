@@ -1,4 +1,4 @@
-import GameFeedbackModal from "../Home/GameFeedbackModal";
+import GameFeedbackPanel from "./GameFeedbackModal";
 
 interface Props {
     open: boolean;
@@ -15,13 +15,16 @@ export default function GameSessionFeedbackModal({
     steamUrl,
     playTimeMs,
 }: Props) {
+    if (!open) return null;
+
     return (
-        <GameFeedbackModal
-            open={open}
-            onClose={onClose}
-            gameName={gameName}
-            steamUrl={steamUrl}
-            playTimeMs={playTimeMs}
-        />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4">
+            <GameFeedbackPanel
+                onClose={onClose}
+                gameName={gameName}
+                steamUrl={steamUrl}
+                playTimeMs={playTimeMs}
+            />
+        </div>
     );
 }

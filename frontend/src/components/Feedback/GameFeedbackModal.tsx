@@ -8,7 +8,6 @@ import {
 import { useQueue } from "../../context/QueueContext";
 
 interface Props {
-    open: boolean;
     onClose: () => void;
     gameName: string;
     steamUrl?: string | null;
@@ -16,7 +15,6 @@ interface Props {
 }
 
 export default function GameFeedbackModal({
-    open,
     onClose,
     gameName,
     steamUrl,
@@ -40,7 +38,7 @@ export default function GameFeedbackModal({
             ? `${totalMinutes} min${totalMinutes > 1 ? "s" : ""} ${totalSeconds} sec`
             : `${totalSeconds} sec`;
 
-    if (!open) return null;
+
 
     const handleCloseAction = () => {
         localStorage.removeItem(FEEDBACK_STORAGE_KEY);
@@ -101,7 +99,7 @@ export default function GameFeedbackModal({
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl flex flex-col relative">
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl flex flex-col relative select-none">
 
                 {/* Close Button */}
