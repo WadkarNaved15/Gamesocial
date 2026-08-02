@@ -25,11 +25,10 @@ export default function GameSessionFeedbackModal({
     const [streamForm, setStreamForm] = useState({
         issues: [] as string[],
     });
-    if (!open) return null;
     const FEEDBACK_STORAGE_KEY = "rigzer_feedback_session";
     const { feedback, setFeedback, clearSession } = useQueue();
     const [loading, setLoading] = useState(false);
-
+    if (!open) return null;
     const handleCloseAction = () => {
         localStorage.removeItem(FEEDBACK_STORAGE_KEY);
         setFeedback({
