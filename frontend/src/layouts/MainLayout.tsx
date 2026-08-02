@@ -20,7 +20,7 @@ import GuestSessionExpired from "../components/Auth/GuestSessionExpired";
 import LegalModal from "../Pages/LegalModal";
 import SettingsModal from "../components/SettingsModal";
 import { useQueue } from "../context/QueueContext";
-import GameFeedbackModal from "../components/Home/GameFeedbackModal";
+import GameSessionFeedbackModal from "../components/Feedback/GameSessionFeedbackModal";
 
 const ProfileCover = lazy(() => import("../components/Home/Profile"));
 
@@ -246,7 +246,7 @@ function MainLayout() {
           isOpen={isFeedbackOpen}
           onClose={() => setIsFeedbackOpen(false)}
         />
-        <GameFeedbackModal
+        <GameSessionFeedbackModal
           open={feedback.open}
           onClose={() =>
             setFeedback({
