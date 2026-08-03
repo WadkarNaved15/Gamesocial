@@ -68,6 +68,26 @@ export default function GameSessionFeedbackModal({
             );
 
             if (!res.ok) throw new Error("Failed to submit feedback");
+            // if (streamForm.issues.length > 0) {
+            //     const streamRes = await fetch(
+            //         `${import.meta.env.VITE_BACKEND_URL}/api/stream-feedback`,
+            //         {
+            //             method: "POST",
+            //             credentials: "include",
+            //             headers: {
+            //                 "Content-Type": "application/json",
+            //             },
+            //             body: JSON.stringify({
+            //                 sessionId: feedback.sessionId,
+            //                 issues: streamForm.issues,
+            //             }),
+            //         }
+            //     );
+
+            //     if (!streamRes.ok) {
+            //         throw new Error("Failed to submit stream feedback");
+            //     }
+            // }
             handleCloseAction();
         } catch (err) {
             console.error(err);
