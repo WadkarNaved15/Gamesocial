@@ -43,15 +43,14 @@ export default function StreamFeedbackModal({ streamId, streamForm, setStreamFor
 
 
     return (
-        <div className="w-full max-w-md rounded-2xl bg-white/10 backdrop-blur-xl border border-white/10 p-6 shadow-2xl flex flex-col relative select-none">
-
+        <div className="w-full max-w-md rounded-2xl bg-zinc-700/80 border border-zinc-700/50 p-6 shadow-2xl flex flex-col relative select-none">
             {/* Close Button */}
-            <button
+            {/* <button
                 onClick={handleCloseAction}
                 className="absolute top-5 right-5 p-1 text-zinc-300 hover:text-white transition"
             >
                 <X size={20} />
-            </button>
+            </button> */}
 
             {/* Header with Logo */}
             <div className="flex flex-col items-center text-center mb-6">

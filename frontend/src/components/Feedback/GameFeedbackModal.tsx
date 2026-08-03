@@ -60,14 +60,6 @@ export default function GameFeedbackModal({
     return (
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl flex flex-col relative select-none">
 
-                {/* Close Button */}
-                <button
-                    onClick={onClose}
-                    className="absolute top-5 right-5 p-1 text-zinc-400 hover:text-zinc-600 transition"
-                >
-                    <X size={20} />
-                </button>
-
                 {/* Header */}
                 <div className="mb-6">
                     <h2 className="text-xl font-bold text-zinc-900">

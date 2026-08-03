@@ -2,6 +2,7 @@ import GameFeedbackPanel from "./GameFeedbackModal";
 import StreamFeedbackPanel from "./StreamFeedback";
 import { useQueue } from "../../context/QueueContext";
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 interface Props {
     open: boolean;
@@ -106,24 +107,19 @@ export default function GameSessionFeedbackModal({
                     >
                         Cancel
                     </button>
-
                     <button
                         type="button"
                         onClick={handleSubmit}
                         disabled={loading}
-                        className="px-6 py-2 rounded-xl bg-gray-500 hover:bg-gray-600 disabled:bg-zinc-500 text-white font-medium flex items-center gap-2"
+                        className="px-6 py-2 rounded-xl bg-gray-600 hover:bg-gray-500 disabled:bg-zinc-500 text-white font-medium flex items-center gap-2"
                     >
                         {loading && (
-                            <p className="animate-spin">⌛</p>
+                            <p className="animate-spin"><Loader2 size={16} /></p>
                         )}
-
                         Submit Feedback
                     </button>
-
                 </div>
-
             </div>
-
         </div>
     );
 }
