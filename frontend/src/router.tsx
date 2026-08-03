@@ -56,7 +56,7 @@ export const router = createBrowserRouter([
         children: [
           { path: "/", element: <Home /> },
           { path: "/search", element: <GuestProtectedRoute> <Home /> </GuestProtectedRoute> },
-          { path: "/post/:postId", element: <GuestProtectedRoute> <PostDetailsPage /> </GuestProtectedRoute> },
+          { path: "/post/:postId", element:  <PostDetailsPage /> },
           { path: "/profile/:username", element: <GuestProtectedRoute> <ProfilePageWrapper /> </GuestProtectedRoute> },
           { path: "/articles/:canvasId", element: <GuestProtectedRoute> <ArticleOverlay /> </GuestProtectedRoute> },
           { path: "/create", element: <GuestProtectedRoute> <PostModal /> </GuestProtectedRoute> },
