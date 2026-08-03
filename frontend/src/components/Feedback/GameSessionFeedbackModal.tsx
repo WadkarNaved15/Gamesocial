@@ -102,7 +102,7 @@ export default function GameSessionFeedbackModal({
 
                     <button
                         type="button"
-                        onClick={onClose}
+                        onClick={handleCloseAction}
                         className="px-4 py-2 text-zinc-300 hover:text-white"
                     >
                         Cancel
