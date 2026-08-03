@@ -15,6 +15,7 @@ import fetch from "node-fetch";
 import GameSession from "../models/GameSession.js";
 import { releaseInstance } from "./instanceAllocator.js";
 import { finalizeSession } from "../helper/session.js"; 
+import { reconcileCapacity } from "./capacityReconciler.js";
 
 dotenv.config();
 
@@ -103,14 +104,36 @@ async function cleanupStaleSessions(lockId) {
         await finalizeSession(session, "stale_abandoned");
 
         // Release the instance lease
-        if (session.instanceId && session.leaseToken) {
-          try {
-            await releaseInstance(session.instanceId, session.leaseToken);
-            console.log(`[Cleanup] ✓ Released instance: ${session.instanceId}`);
-          } catch (err) {
-            console.warn(`[Cleanup] ⚠ Failed to release instance ${session.instanceId}:`, err.message);
-          }
-        }
+if (session.instanceId && session.leaseToken) {
+  try {
+    await releaseInstance(
+      session.instanceId,
+      session.leaseToken,
+      session.instanceRegion
+    );
+
+    console.log(`[Cleanup] ✓ Released instance: ${session.instanceId}`);
+
+    // Reconcile ASG capacity after releasing the lease
+try {
+  await reconcileCapacity(session.instanceRegion);
+  console.log(
+    `[Cleanup] ✓ Reconciled capacity for ${session.instanceRegion}`
+  );
+} catch (err) {
+  console.error(
+    `[Cleanup] Failed to reconcile capacity for ${session.instanceRegion}:`,
+    err
+  );
+}
+
+  } catch (err) {
+    console.warn(
+      `[Cleanup] ⚠ Failed to release instance ${session.instanceId}:`,
+      err.message
+    );
+  }
+}
 
         console.log(`[Cleanup] ✅ Session ${session._id} cleaned up`);
         cleanedCount++;
