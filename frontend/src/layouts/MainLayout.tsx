@@ -21,6 +21,7 @@ import LegalModal from "../Pages/LegalModal";
 import SettingsModal from "../components/SettingsModal";
 import { useQueue } from "../context/QueueContext";
 import GameSessionFeedbackModal from "../components/Feedback/GameSessionFeedbackModal";
+import { usePosts } from "../context/PostContext";
 
 const ProfileCover = lazy(() => import("../components/Home/Profile"));
 
@@ -56,9 +57,14 @@ function MainLayout() {
   const isArticlePage = location.pathname.startsWith("/articles/");
   const isCreatePage = location.pathname === "/create";
   const isPostDetailsPage = location.pathname.startsWith("/post/");
+  const { postId } = useParams();
+  const { getPost } = usePosts();
+
+  const currentPost = postId ? getPost(postId) : undefined;
 
   const isModelPost =
-    isPostDetailsPage && location.state?.post?.type === "model_post";
+    isPostDetailsPage &&
+    currentPost?.type === "model_post";
 
   const handleUploadClick = () => {
     if (!user) {

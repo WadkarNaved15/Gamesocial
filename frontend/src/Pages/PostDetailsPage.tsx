@@ -7,11 +7,13 @@ import DevlogPostDetails from "./DevlogPostDetails";
 import PostDetail from "./PostDetail";
 import CircleLoader from "../components/Loader/CircleLoader";
 import ContentNotFound from "./ErrorHandling/ContentNotFound";
+import { usePosts } from "../context/PostContext";
 
 const PostDetailsPage = () => {
   const { postId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { addPosts } = usePosts();
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
   // 👇 get post from navigation state
@@ -33,6 +35,7 @@ const PostDetailsPage = () => {
           { withCredentials: true }
         );
         setPost(res.data);
+        addPosts([res.data]);
       } catch (err) {
         console.error("Failed to fetch post:", err);
       } finally {
