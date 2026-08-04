@@ -116,6 +116,8 @@ export const CommentCard = memo(
             user?._id === postOwnerId ||
             user?.role === "admin";
 
+        const hasCommentText = (comment.text ?? "").trim().length > 0;
+
         const formatPlayTime = (ms?: number) => {
             if (!ms) return "";
             const totalSeconds = Math.floor(ms / 1000);
@@ -199,7 +201,7 @@ export const CommentCard = memo(
                                             <MoreHorizontal size={16} />
                                         </button>
 
-                                        {showMenu && !comment.isDeleted &&(
+                                        {showMenu && !comment.isDeleted && (
                                             <div className="absolute right-0 mt-2 w-36 rounded-lg bg-white dark:bg-zinc-900 shadow-xl border border-gray-200 dark:border-zinc-700 z-50">
                                                 <button
                                                     onClick={(e) => {
@@ -219,13 +221,15 @@ export const CommentCard = memo(
                             </div>
                         </div>
 
-                        <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
-                            {comment.isDeleted ? (
+                        {comment.isDeleted ? (
+                            <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
                                 <span className="italic text-gray-400 dark:text-zinc-500">
                                     [deleted]
                                 </span>
-                            ) : (
-                                comment.text.split(urlRegex).map((part: string, i: number) =>
+                            </div>
+                        ) : hasCommentText ? (
+                            <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
+                                {comment.text.split(urlRegex).map((part, i) =>
                                     urlRegex.test(part) ? (
                                         <a
                                             key={i}
@@ -244,9 +248,9 @@ export const CommentCard = memo(
                                             mentions={comment.mentions}
                                         />
                                     )
-                                )
-                            )}
-                        </div>
+                                )}
+                            </div>
+                        ) : null}
 
                         <div className="mt-1.5">
                             {!comment.isDeleted && (

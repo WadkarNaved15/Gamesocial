@@ -22,7 +22,7 @@ export const createGameFeedback = async (req, res) => {
 
   try {
     const { sessionId, overall, suggestions } = req.body;
-
+    const reviewText = suggestions?.trim() || "";
     if (!sessionId || !overall) {
       return res.status(400).json({
         error: "Session ID and rating are required",
@@ -62,7 +62,7 @@ export const createGameFeedback = async (req, res) => {
           gamePost: session.gamePost,
 
           overall,
-          suggestions,
+          suggestions: reviewText,
 
           playTimeMs: session.metrics.totalPlayTime,
           creditsConsumed: session.billing.creditsConsumed,
@@ -80,7 +80,7 @@ export const createGameFeedback = async (req, res) => {
         [{
           post: session.gamePost,
           user: session.user,
-          text: suggestions || "",
+          text: reviewText,
 
           review: {
             isGameReview: true,

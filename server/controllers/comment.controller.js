@@ -20,6 +20,7 @@ export const createComment = async (req, res) => {
 
     try {
         const { postId, text, parentCommentId = null } = req.body;
+        const cleanedText = text?.trim() || "";
         const userId = req.user.id;
 
         // ---------------------------------------------------
@@ -41,19 +42,19 @@ export const createComment = async (req, res) => {
             });
         }
 
-        if (!text?.trim()) {
+        if (!cleanedText) {
             return res.status(400).json({
                 message: "Comment cannot be empty",
             });
         }
 
-        if (text.length > 2000) {
+        if (cleanedText.length > 2000) {
             return res.status(400).json({
                 message: "Comment too long",
             });
         }
 
-        const mentionData = await parseMentions(text);
+        const mentionData = await parseMentions(cleanedText);
 
         session.startTransaction();
 
@@ -146,7 +147,7 @@ export const createComment = async (req, res) => {
                 {
                     post: postId,
                     user: userId,
-                    text: text.trim(),
+                    text: cleanedText,
                     parentComment:
                         parentComment?._id || null,
                     rootComment,
