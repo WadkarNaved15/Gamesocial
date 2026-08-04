@@ -21,7 +21,7 @@ const PostDetailsPage = () => {
 
   const [post, setPost] = useState<any>(initialPost);
   const [loading, setLoading] = useState(!initialPost);
-
+  const from = location.state?.from;
   useEffect(() => {
     // If post already exists (came from feed), don't fetch
     if (initialPost) return;
@@ -52,7 +52,13 @@ const PostDetailsPage = () => {
   if (!post) return <ContentNotFound />;
 
   const handleBack = () => {
-    navigate(-1);
+    if (from) {
+      navigate(from);
+    } else {
+      navigate("/", {
+        replace: true,
+      });
+    }
   };
   if (post.type === "game_post") {
     return (

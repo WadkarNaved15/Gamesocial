@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import Post from "../components/Post";
 import CircleLoader from "../components/Loader/CircleLoader";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation} from "react-router-dom";
 import type { PostProps } from "../types/Post";
 
 const WishlistPage = () => {
@@ -14,6 +14,7 @@ const WishlistPage = () => {
   const [hasMore, setHasMore] = useState(true);
   const loaderRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const [isFetching, setIsFetching] = useState(false);
   const scrollPositionRef = useRef<number>(0);
 
@@ -85,7 +86,12 @@ const WishlistPage = () => {
             {...post}
             onOpenDetails={() => {
               scrollPositionRef.current = window.scrollY;
-              navigate(`/post/${post._id}`, { state: { post } });
+              navigate(`/post/${post._id}`, {
+                state: {
+                  post,
+                  from: location,
+                },
+              });
             }}
           />
         ))}

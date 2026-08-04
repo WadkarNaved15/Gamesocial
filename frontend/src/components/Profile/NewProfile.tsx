@@ -5,7 +5,7 @@ import FollowButton from "../FollowButton";
 import type { ArticleProps } from "../../types/Article";
 import FollowersList from "../FollowersList";
 import { useEffect, useState, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useScrollRestoration } from "../../hooks/useScrollRestoration";
 import { saveProfileCache, getProfileCache, clearProfileCache } from "../../utils/profileCache";
 import type { ProfileUser } from "../../utils/profileCache";
@@ -30,7 +30,7 @@ const ProfilePage: React.FC = () => {
   const { addPosts } = usePosts();
   const navigate = useNavigate();
   const { openChatWith } = useChat();
-
+  const location = useLocation();
   const cachedRef = useRef(username ? getProfileCache(username) : null);
   const cached = cachedRef.current;
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(cached?.profileUser ?? null);
@@ -192,18 +192,18 @@ const ProfilePage: React.FC = () => {
 
       {/* Max-width wrapper */}
       <div className="max-w-6xl">
-{/* ── Header: Username + Actions + Followers ── */}
+        {/* ── Header: Username + Actions + Followers ── */}
         <div className="w-full pb-6 pt-2">
           <div className="flex justify-between items-start gap-6">
-            
+
             {/* Left Side: Name, Buttons, and Handle */}
             {/* min-w-0 allows the container to shrink and wrap text properly */}
             <div className="flex-1 min-w-0 flex flex-col">
-              
+
               {/* Name & Buttons Container (Strict Inline Text Flow) */}
               {/* Added leading-[1.3] so the tall buttons don't overlap lines */}
               <div className="text-4xl font-black tracking-tight text-white italic uppercase leading-[1.3]">
-                
+
                 {/* 1. Using a span ensures it wraps perfectly as raw text */}
                 <span className="align-middle mr-4">
                   {profileUser?.displayName ?? profileUser?.username}
@@ -235,11 +235,11 @@ const ProfilePage: React.FC = () => {
                       }
                       className="inline-flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-600 text-white px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest backdrop-blur-sm transition-all active:scale-95"
                     >
-                      <svg 
-                        width="16" 
-                        height="16" 
-                        viewBox="0 0 24 24" 
-                        fill="white" 
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="white"
                         xmlns="http://www.w3.org/2000/svg"
                         className="group-hover:animate-pulse"
                       >
@@ -282,10 +282,10 @@ const ProfilePage: React.FC = () => {
             <div className="shrink-0 mt-2">
               <FollowersList userId={profileUser ? profileUser._id : ""} />
             </div>
-            
+
           </div>
         </div>
-{/* ── Profile Hero ── */}
+        {/* ── Profile Hero ── */}
         <div className="max-w-6xl">
           <div className="flex flex-col md:flex-row justify-between items-stretch gap-6 ">
 
@@ -309,10 +309,9 @@ const ProfilePage: React.FC = () => {
 
                 {/* Avatar + bio overlap */}
                 {/* Increased conditional padding to pb-16 md:pb-20 for better breathing room */}
-                <div 
-                  className={`relative px-8 -mt-14 md:-mt-20 flex flex-col items-center text-center md:flex-row md:items-start md:text-left gap-6 z-10 ${
-                    !(profileUser?.location || profileUser?.website || profileUser?.jobTitle) ? 'pb-16 md:pb-20' : ''
-                  }`}
+                <div
+                  className={`relative px-8 -mt-14 md:-mt-20 flex flex-col items-center text-center md:flex-row md:items-start md:text-left gap-6 z-10 ${!(profileUser?.location || profileUser?.website || profileUser?.jobTitle) ? 'pb-16 md:pb-20' : ''
+                    }`}
                 >
                   <div className="relative group shrink-0">
                     <img
@@ -323,7 +322,7 @@ const ProfilePage: React.FC = () => {
                   </div>
 
                   {/* Bio body */}
-                  <div className="md:pt-24 max-w-xl flex flex-col items-center md:items-start md:ml-6"> 
+                  <div className="md:pt-24 max-w-xl flex flex-col items-center md:items-start md:ml-6">
                     <p className="text-white font-medium text-sm leading-relaxed break-words whitespace-pre-line">
                       {profileUser?.bio
                         ? profileUser.bio
@@ -361,7 +360,7 @@ const ProfilePage: React.FC = () => {
                           href={profileUser.website.startsWith('http') ? profileUser.website : `https://${profileUser.website}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[rgb(98,212,174)] font-semibold hover:underline transition-all" 
+                          className="text-[rgb(98,212,174)] font-semibold hover:underline transition-all"
                         >
                           {profileUser.website.replace(/(^\w+:|^)\/\//, '')}
                         </a>
@@ -408,7 +407,12 @@ const ProfilePage: React.FC = () => {
                       profileOwnerId: profileUser?._id,
                     },
                   });
-                  navigate(`/post/${post._id}`, { state: { post } });
+                  navigate(`/post/${post._id}`, {
+                    state: {
+                      post,
+                      from: location,
+                    },
+                  });
                 }}
               />
             ))}

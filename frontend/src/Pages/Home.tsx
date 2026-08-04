@@ -5,7 +5,7 @@ import {
   useCallback,
   useRef,
 } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useLocation } from "react-router-dom";
 import { usePosts } from "../context/PostContext";
 import { useFeed } from "../context/FeedContext";
 import Post from "../components/Post";
@@ -41,6 +41,7 @@ function Home() {
   const [searchExecuted, setSearchExecuted] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchCursor, setSearchCursor] = useState<string | null>(null);
+  const location = useLocation();
   const [searchHasMore, setSearchHasMore] = useState(true);
 
   // ── Fetch Main Feed ──────────────────────────────────────────────────────
@@ -283,7 +284,10 @@ function Home() {
                   });
 
                   navigate(`/post/${post._id}`, {
-                    state: { post },
+                    state: {
+                      post,
+                      from: location,
+                    },
                   });
                 }}
               />
@@ -309,7 +313,10 @@ function Home() {
                       });
 
                       navigate(`/post/${post._id}`, {
-                        state: { post },
+                        state: {
+                          post,
+                          from: location,
+                        },
                       });
                     }}
                   />
