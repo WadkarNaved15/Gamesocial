@@ -1,7 +1,7 @@
 import { X, UserPlus, LogIn } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuthGate } from "../../context/AuthGate";
-
+import { saveRedirect } from "../../utils/authRedirect";
 export default function AuthGateModal() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -19,6 +19,7 @@ export default function AuthGateModal() {
   };
 
   const goToAuth = (tab?: string) => {
+    saveRedirect(location.pathname + location.search + location.hash);
     closeGate();
     navigate(tab === "login" ? "/auth?tab=login" : "/auth");
   };

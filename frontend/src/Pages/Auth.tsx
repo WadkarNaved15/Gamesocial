@@ -3,6 +3,7 @@ import { Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle2, Plus, ArrowLe
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { saveAccount } from "../utils/accountRegistry.js";
 import { useNavigate, useLocation } from "react-router-dom";
+import { consumeRedirect } from '../utils/authRedirect.js';
 import axios from 'axios';
 import { useUser } from "../context/user.js";
 import LegalModal from './LegalModal';
@@ -53,16 +54,16 @@ function calculateAge(birthdateStr: string): number | null {
 
 
 // Custom Select Component for exact control over height and direction
-const CustomSelect = ({ 
-  value, 
-  onChange, 
-  options, 
-  placeholder, 
-  error 
-}: { 
-  value: string | number; 
-  onChange: (val: string) => void; 
-  options: { val: string | number; name: string | number }[]; 
+const CustomSelect = ({
+  value,
+  onChange,
+  options,
+  placeholder,
+  error
+}: {
+  value: string | number;
+  onChange: (val: string) => void;
+  options: { val: string | number; name: string | number }[];
   placeholder: string;
   error?: boolean;
 }) => {
@@ -87,13 +88,12 @@ const CustomSelect = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-3 py-2.5 flex items-center justify-between bg-white/5 border rounded-lg text-sm focus:outline-none transition-colors ${
-          error 
-            ? 'border-red-500/40 text-white' 
-            : isOpen 
-              ? 'border-[#62D4AE]/50 text-white' 
+        className={`w-full px-3 py-2.5 flex items-center justify-between bg-white/5 border rounded-lg text-sm focus:outline-none transition-colors ${error
+            ? 'border-red-500/40 text-white'
+            : isOpen
+              ? 'border-[#62D4AE]/50 text-white'
               : 'border-white/10 text-white'
-        } ${!selectedOption ? 'text-white/50' : ''}`}
+          } ${!selectedOption ? 'text-white/50' : ''}`}
       >
         <span className="truncate">{selectedOption ? selectedOption.name : placeholder}</span>
         <svg className={`w-4 h-4 transition-transform text-white/40 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,11 +111,10 @@ const CustomSelect = ({
                   onChange(opt.val.toString());
                   setIsOpen(false);
                 }}
-                className={`px-3 py-2 text-sm cursor-pointer transition-colors ${
-                  value.toString() === opt.val.toString() 
-                    ? 'bg-[#62D4AE]/20 text-[#62D4AE]' 
+                className={`px-3 py-2 text-sm cursor-pointer transition-colors ${value.toString() === opt.val.toString()
+                    ? 'bg-[#62D4AE]/20 text-[#62D4AE]'
                     : 'text-white/80 hover:bg-white/10 hover:text-white'
-                }`}
+                  }`}
               >
                 {opt.name}
               </li>
@@ -130,7 +129,7 @@ const CustomSelect = ({
 export default function Auth() {
   const { login, user, loading } = useUser();
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-  
+
   const [mode, setMode] = useState<AuthMode>('login');
   const [status, setStatus] = useState<{ type: 'error' | 'success', message: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -139,7 +138,7 @@ export default function Auth() {
   const [agreedToLegal, setAgreedToLegal] = useState(false);
   const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | null>(null);
   const [activeFeature, setActiveFeature] = useState<number | null>(null);
-  
+
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const addMode = searchParams.get("add") === "true";
@@ -197,7 +196,7 @@ export default function Auth() {
       if (name) {
         setFormData(prev => ({ ...prev, displayName: decodeURIComponent(name) }));
       }
-      
+
       // Clean up URL to hide token
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -259,7 +258,7 @@ export default function Auth() {
           const dx = particles[i].x - particles[j].x;
           const dy = particles[i].y - particles[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          
+
           if (dist < 140) {
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
@@ -279,7 +278,7 @@ export default function Auth() {
         ctx.fillStyle = `rgba(98,212,174,${a.toFixed(3)})`;
         ctx.fill();
         p.x += p.vx; p.y += p.vy;
-        
+
         if (p.x < -10) p.x = W + 10; if (p.x > W + 10) p.x = -10;
         if (p.y < -10) p.y = H + 10; if (p.y > H + 10) p.y = -10;
       });
@@ -296,7 +295,11 @@ export default function Auth() {
 
   useEffect(() => {
     if (user && !loading && !addMode) {
-      navigate("/");
+      const redirect = consumeRedirect();
+
+      navigate(redirect || "/", {
+        replace: true,
+      });
     }
   }, [user, loading, addMode, navigate]);
 
@@ -480,7 +483,7 @@ export default function Auth() {
           login(user);
           navigate("/");
         }
-      } 
+      }
       // ── Standard Signup ──
       else if (mode === 'signup') {
         const response = await axios.post(`${BACKEND_URL}/api/auth/register`, {
@@ -490,7 +493,7 @@ export default function Auth() {
           password: formData.password,
           birthdate: formData.birthdate
         }, { withCredentials: true });
-        
+
         if (response.data.requiresVerification) {
           setPendingEmail(formData.email);
           setShowOTP(true);
@@ -556,7 +559,7 @@ export default function Auth() {
   return (
     <div className="fixed inset-0 bg-[#080A09] text-white overflow-hidden font-sans z-[9999] flex flex-col md:flex-row">
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-0 pointer-events-none" />
-      <div 
+      <div
         className="absolute inset-0 z-[1] pointer-events-none"
         style={{
           backgroundImage: `
@@ -566,7 +569,7 @@ export default function Auth() {
           backgroundSize: '40px 40px',
           maskImage: 'radial-gradient(ellipse at center, transparent 20%, black 100%)',
           WebkitMaskImage: 'radial-gradient(ellipse at center, transparent 20%, black 100%)'
-        }} 
+        }}
       />
       <div className="absolute inset-0 z-[2] pointer-events-none bg-[radial-gradient(ellipse_90%_100%_at_50%_50%,transparent_30%,rgba(4,6,5,0.85)_100%)]" />
 
@@ -584,18 +587,16 @@ export default function Auth() {
             <div className="flex flex-wrap gap-x-3 gap-y-3">
               {FEATURES.map((feature) => (
                 <div key={feature.id} className="relative">
-                  <button 
+                  <button
                     onClick={() => setActiveFeature(activeFeature === feature.id ? null : feature.id)}
-                    className={`group flex items-center gap-2.5 px-3 py-1.5 rounded-full transition-all duration-300 border ${
-                      activeFeature === feature.id 
-                        ? 'bg-[#62D4AE]/10 border-[#62D4AE]/30 text-white' 
+                    className={`group flex items-center gap-2.5 px-3 py-1.5 rounded-full transition-all duration-300 border ${activeFeature === feature.id
+                        ? 'bg-[#62D4AE]/10 border-[#62D4AE]/30 text-white'
                         : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-                    }`}
+                      }`}
                   >
-                    <Plus 
-                      className={`w-4 h-4 text-[#62D4AE] transition-transform duration-300 ease-in-out ${
-                        activeFeature === feature.id ? 'rotate-45' : 'rotate-0 group-hover:scale-110'
-                      }`} 
+                    <Plus
+                      className={`w-4 h-4 text-[#62D4AE] transition-transform duration-300 ease-in-out ${activeFeature === feature.id ? 'rotate-45' : 'rotate-0 group-hover:scale-110'
+                        }`}
                     />
                     <span className="text-[14px] font-medium">{feature.title}</span>
                   </button>
@@ -636,36 +637,35 @@ export default function Auth() {
         </div>
 
         {status && (
-          <div className={`p-4 rounded-lg flex items-center gap-3 mb-6 animate-fade-up ${
-            status.type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-green-500/10 text-green-400 border border-green-500/20'
-          }`}>
+          <div className={`p-4 rounded-lg flex items-center gap-3 mb-6 animate-fade-up ${status.type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-green-500/10 text-green-400 border border-green-500/20'
+            }`}>
             {status.type === 'error' ? <AlertCircle className="h-5 w-5 shrink-0" /> : <CheckCircle2 className="h-5 w-5 shrink-0" />}
             <p className="text-sm font-medium">{status.message}</p>
           </div>
         )}
 
-        <form 
-  onSubmit={(e) => {
-    e.preventDefault();
-    // If we already sent the reset email or are showing OTP, don't let the main actions re-fire
-    if (mode === 'forgot-password' && resetSent) {
-      setMode('login');
-      setResetSent(false);
-      setResetEmail("");
-      setStatus(null);
-      return;
-    }
-    
-    // Otherwise, pass through to your regular handlers
-    if (mode === 'forgot-password') {
-      handleForgotPassword(e);
-    } else {
-      handleSubmit(e);
-    }
-  }} 
-  className="space-y-4 animate-fade-up" 
-  style={{ animationDelay: '0.1s' }}
->
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            // If we already sent the reset email or are showing OTP, don't let the main actions re-fire
+            if (mode === 'forgot-password' && resetSent) {
+              setMode('login');
+              setResetSent(false);
+              setResetEmail("");
+              setStatus(null);
+              return;
+            }
+
+            // Otherwise, pass through to your regular handlers
+            if (mode === 'forgot-password') {
+              handleForgotPassword(e);
+            } else {
+              handleSubmit(e);
+            }
+          }}
+          className="space-y-4 animate-fade-up"
+          style={{ animationDelay: '0.1s' }}
+        >
           {showOTP ? (
             <div className="space-y-5">
               <div className="text-center">
@@ -764,13 +764,12 @@ export default function Auth() {
                         setFormData(prev => ({ ...prev, username: cleaned }));
                         if (status) setStatus(null);
                       }}
-                      className={`w-full pl-10 pr-9 py-2.5 bg-white/5 border rounded-lg focus:outline-none focus:ring-1 text-white placeholder-white/20 transition-all text-sm ${
-                        usernameStatus === 'taken' || usernameStatus === 'invalid'
+                      className={`w-full pl-10 pr-9 py-2.5 bg-white/5 border rounded-lg focus:outline-none focus:ring-1 text-white placeholder-white/20 transition-all text-sm ${usernameStatus === 'taken' || usernameStatus === 'invalid'
                           ? 'border-red-500/40 focus:border-red-500/60 focus:ring-red-500/40'
                           : usernameStatus === 'available'
-                          ? 'border-[#62D4AE]/40 focus:border-[#62D4AE]/60 focus:ring-[#62D4AE]/40'
-                          : 'border-white/10 focus:border-[#62D4AE]/50 focus:ring-[#62D4AE]/50'
-                      }`}
+                            ? 'border-[#62D4AE]/40 focus:border-[#62D4AE]/60 focus:ring-[#62D4AE]/40'
+                            : 'border-white/10 focus:border-[#62D4AE]/50 focus:ring-[#62D4AE]/50'
+                        }`}
                       placeholder="lowercase, no spaces"
                     />
                     <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
@@ -807,7 +806,7 @@ export default function Auth() {
                 <div className="space-y-1.5">
                   <label className="text-[13px] font-medium text-white/70">Date of birth</label>
                   <div className="flex gap-2 w-full">
-                    
+
                     <CustomSelect
                       value={birthMonth}
                       onChange={setBirthMonth}
@@ -958,9 +957,9 @@ export default function Auth() {
 
         </form>
       </div>
-      
+
       <LegalModal type={activeModal} onClose={() => setActiveModal(null)} />
-      
+
       <style>{`
       .custom-scrollbar::-webkit-scrollbar { width: 4px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
