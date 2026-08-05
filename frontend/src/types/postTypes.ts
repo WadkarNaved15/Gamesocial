@@ -17,8 +17,8 @@ export const POST_TYPES: { id: PostType; label: string }[] = [
   { id: "model",    label: "3D Model"      },
   { id: "media",    label: "Media"         },
   { id: "game",     label: "Game"          },
-  { id: "devlog",   label: "Devlog"        },
-  { id: "article",  label: "Article"       },
+  { id: "devlog",   label: "Canvas"        },
+  { id: "article",  label: "Blog"     },
   { id: "ad_model", label: "Ad Model"      },
   { id: "pocket",   label: "Pocket Update" },
 ];
