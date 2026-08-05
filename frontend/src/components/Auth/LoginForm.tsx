@@ -17,7 +17,7 @@ const LoginForm: React.FC = () => {
       <main className="relative z-10 w-full max-w-[1440px] mx-auto min-h-screen flex items-center justify-start p-4 md:p-16">
         {/* Transparent glassmorphism card container */}
         <div
-          className="bg-white/10 backdrop-blur-md text-white rounded-[2rem] border border-white/20 relative z-10 w-full max-w-[600px] flex flex-col justify-between p-8 md:p-16 min-h-[700px] shadow-2xl"
+          className="bg-white/10 backdrop-blur-xl text-white rounded-[2rem] border border-white/20 relative z-10 w-full max-w-[600px] flex flex-col justify-between p-8 md:p-16 min-h-[700px] shadow-2xl"
           style={{
             maskImage: 'radial-gradient(circle at right center, transparent 40px, black 41px)',
             WebkitMaskImage: 'radial-gradient(circle at right center, transparent 40px, black 41px)',
