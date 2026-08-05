@@ -644,7 +644,36 @@ router.post("/:sessionId/cancel", verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Unauthorized" });
     }
 
-    // ✅ Release instance if allocated
+    // Tell the controller to stop the session if an instance exists.
+    if (session.instanceIp) {
+      try {
+        const controllerRes = await fetch(
+          `http://${session.instanceIp}:4443/stop-session`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Session-Id": session._id.toString(),
+            },
+            body: JSON.stringify({
+              session_id: session._id.toString(),
+            }),
+          }
+        );
+
+        const text = await controllerRes.text();
+        console.log(
+          `[Cancel] Controller stop response ${controllerRes.status}: ${text}`
+        );
+      } catch (err) {
+        console.error(
+          "[Cancel] Failed to notify controller:",
+          err.message
+        );
+      }
+    }
+
+    // Release instance
     if (session.instanceId && session.leaseToken) {
       try {
         const releaseResult = await releaseInstance(
@@ -652,39 +681,43 @@ router.post("/:sessionId/cancel", verifyToken, async (req, res) => {
           session.leaseToken,
           session.instanceRegion
         );
+
         console.log("[Cancel] Release result:", releaseResult);
       } catch (err) {
-        console.error("[Cancel] Error releasing instance:", err.message);
+        console.error(
+          "[Cancel] Error releasing instance:",
+          err.message
+        );
       }
     }
 
-    // ✅ Mark as ended
     const reason =
       session.status === "allocation_ready"
         ? "user_cancelled"
         : "user_abandoned";
 
-    console.log(`[Session Cancel] User cancelled session ${sessionId} with reason ${reason}`);
-
-    await finalizeSession(
-      session,
-      reason
+    console.log(
+      `[Session Cancel] User cancelled session ${sessionId} with reason ${reason}`
     );
 
-    reconcileCapacity(
-        session.instanceRegion
-    ).catch(console.error);
+    await finalizeSession(session, reason);
+
+    reconcileCapacity(session.instanceRegion).catch(console.error);
 
     const send = sessionStreams.get(sessionId.toString());
     if (send) send({ status: "ended", reason });
 
-    return res.json({ message: "Session cancelled", sessionId });
+    return res.json({
+      message: "Session cancelled",
+      sessionId,
+    });
   } catch (err) {
     console.error("Session cancel error:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({
+      error: "Internal server error",
+    });
   }
 });
-
 
 /**
  * POST /api/sessions/cancel-by-token/:token
