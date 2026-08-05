@@ -88,10 +88,10 @@ export const QueueNotification: React.FC<QueueNotificationProps> = ({
           className="text-white px-4 py-3 flex items-center justify-between"
         >
           <div className="flex items-center gap-2.5">
-            <div className="relative flex h-3 w-3">
+            {/* <div className="relative flex h-3 w-3">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
               <span className="relative inline-flex rounded-full h-3 w-3 bg-white/30" />
-            </div>
+            </div> */}
             <div>
               <h3 className="font-bold text-sm leading-tight">In Queue</h3>
               <p className="text-xs text-white/60">Position #{queuePosition}</p>

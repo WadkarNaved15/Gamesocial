@@ -46,34 +46,31 @@ export const trackPostView = async (req, res) => {
       });
     }
 
-    const redisResult = await markViewInRedis({
-      postId,
-      viewerId,
-    });
+const redisResult = await markViewInRedis({
+  postId,
+  viewerId,
+});
 
-    if (!redisResult.countedThisTime) {
-      return res.status(200).json({
-        message: "View already counted recently",
-        counted: false,
-        unique: false,
-      });
-    }
+if (!redisResult.countedThisTime) {
+  return res.status(200).json({
+    message: "View already counted recently",
+    counted: false,
+  });
+}
 
-    await enqueuePostView({
-      postId,
-      viewerId,
-      source,
-      deviceType,
-      watchTimeMs,
-      isUnique: redisResult.isUnique,
-      viewedAt: new Date().toISOString(),
-    });
+await enqueuePostView({
+  postId,
+  viewerId,
+  source,
+  deviceType,
+  watchTimeMs,
+  viewedAt: new Date().toISOString(),
+});
 
-    return res.status(200).json({
-      message: "View queued",
-      counted: true,
-      unique: redisResult.isUnique,
-    });
+return res.status(200).json({
+  message: "View queued",
+  counted: true,
+});
   } catch (error) {
     console.error("trackPostView error:", error);
     return res.status(500).json({ message: "Failed to track view" });
