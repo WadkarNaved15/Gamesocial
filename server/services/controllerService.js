@@ -126,14 +126,28 @@ export async function callController(session, lease) {
   }
 }
 
-function determineCleanupPolicy(game) {
-  const isLargeGame = game.file?.size > 1024 * 1024 * 1024;
+// function determineCleanupPolicy(game) {
+//   const isLargeGame = game.file?.size > 1024 * 1024 * 1024;
 
+//   return {
+//     on_normal_exit: true,
+//     on_violation: true,
+//     on_timeout: true,
+//     delete_game_files: isLargeGame,
+//     shared_build: false
+//   };
+// }
+
+
+function determineCleanupPolicy(game) {
   return {
     on_normal_exit: true,
     on_violation: true,
     on_timeout: true,
-    delete_game_files: isLargeGame,
+
+    // Never delete the build
+    delete_game_files: false,
+
     shared_build: false
   };
 }
