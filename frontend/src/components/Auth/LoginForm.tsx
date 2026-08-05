@@ -11,21 +11,22 @@ const LoginForm: React.FC = () => {
 
   return (
     <div
-      className="relative min-h-screen text-[#e5e2e1] font-body overflow-hidden antialiased bg-cover bg-center bg-no-repeat"
+      className="relative min-h-screen text-white font-body overflow-hidden antialiased bg-cover bg-center bg-no-repeat"
       style={{ backgroundImage: "url('/loginBackground.jpeg')" }}
     >
       <main className="relative z-10 w-full max-w-[1440px] mx-auto min-h-screen flex items-center justify-start p-4 md:p-16">
+        {/* Transparent glassmorphism card container */}
         <div
-          className="bg-black/40 backdrop-blur-md text-white rounded-[2rem] border border-white/20 relative z-10 w-full max-w-[600px] flex flex-col justify-between p-8 md:p-16 min-h-[700px] shadow-2xl"
+          className="bg-white/10 backdrop-blur-md text-white rounded-[2rem] border border-white/20 relative z-10 w-full max-w-[600px] flex flex-col justify-between p-8 md:p-16 min-h-[700px] shadow-2xl"
           style={{
             maskImage: 'radial-gradient(circle at right center, transparent 40px, black 41px)',
-            WebkitMaskImage: 'radial-gradient(circle at right center, transparent 40px, black 41px)'
+            WebkitMaskImage: 'radial-gradient(circle at right center, transparent 40px, black 41px)',
           }}
         >
           <div className="mt-12 md:mt-0 flex-grow flex flex-col justify-center">
             <div className="mb-12">
               {/* Top Line: WELCOME */}
-              <h1 className="font-headline text-[40px] sm:text-[56px] md:text-[68px] text-white uppercase leading-[1.1] font-bold tracking-[0.35em] text-left">
+              <h1 className="font-headline text-[40px] sm:text-[56px] md:text-[68px] text-white uppercase leading-[1.1] font-bold tracking-[0.35em] text-left drop-shadow-md">
                 WELCOME
               </h1>
 
@@ -33,17 +34,17 @@ const LoginForm: React.FC = () => {
               <div className="mt-4 flex items-end justify-start gap-8 sm:gap-10 md:gap-12">
                 {/* Left Column: Need an account? / Sign Up */}
                 <div className="font-body text-sm md:text-base flex flex-col items-start justify-end gap-1 pb-1 shrink-0">
-                  <span className="text-gray-300">Need an account?</span>
+                  <span className="text-gray-200 drop-shadow">Need an account?</span>
                   <a
                     href="#signup"
-                    className="text-white font-label-mono hover:underline transition-colors font-bold text-base md:text-lg"
+                    className="text-white font-label-mono hover:underline transition-colors font-bold text-base md:text-lg drop-shadow"
                   >
                     Sign Up
                   </a>
                 </div>
 
                 {/* Right Column: BACK */}
-                <div className="font-headline text-[40px] sm:text-[56px] md:text-[68px] text-white uppercase leading-[1.1] font-bold tracking-[0.35em] text-left">
+                <div className="font-headline text-[40px] sm:text-[56px] md:text-[68px] text-white uppercase leading-[1.1] font-bold tracking-[0.35em] text-left drop-shadow-md">
                   BACK
                 </div>
               </div>
@@ -60,7 +61,7 @@ const LoginForm: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Your email"
-                    className="w-full px-4 py-4 rounded-lg bg-black/30 border border-white/20 text-white transition-all duration-300 focus:border-white focus:bg-black/50 focus:shadow-[inset_0_0_0_1px_#ffffff] focus:outline-none placeholder-gray-400"
+                    className="w-full px-4 py-4 rounded-lg bg-black/20 border border-white/20 text-white transition-all duration-300 focus:border-white focus:bg-black/30 focus:outline-none placeholder-gray-300 backdrop-blur-sm"
                   />
                 </div>
                 <div>
@@ -72,37 +73,40 @@ const LoginForm: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Your password"
-                    className="w-full px-4 py-4 rounded-lg bg-black/30 border border-white/20 text-white transition-all duration-300 focus:border-white focus:bg-black/50 focus:shadow-[inset_0_0_0_1px_#ffffff] focus:outline-none placeholder-gray-400"
+                    className="w-full px-4 py-4 rounded-lg bg-black/20 border border-white/20 text-white transition-all duration-300 focus:border-white focus:bg-black/30 focus:outline-none placeholder-gray-300 backdrop-blur-sm"
                   />
                   <div className="flex justify-end items-center text-sm mt-2">
-                    <a href="#forgot" className="text-gray-300 hover:text-white transition-colors text-xs md:text-sm">
+                    <a href="#forgot" className="text-gray-200 hover:text-white transition-colors text-xs md:text-sm drop-shadow">
                       Forgot password?
                     </a>
                   </div>
                 </div>
               </div>
 
-              {/* Fully transparent Sign In button */}
+              {/* Exact same Sign In button */}
               <button
                 type="submit"
-                className="w-full h-[72px] rounded-full relative overflow-hidden flex items-center justify-between px-8 border border-white/40 bg-transparent backdrop-blur-sm transition-all duration-300 hover:border-white hover:bg-white/10 active:scale-[0.98]"
+                className="w-full h-[72px] rounded-full relative overflow-hidden flex items-center justify-between px-8 border-2 border-gray-900 bg-cover bg-center bg-fixed transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] shadow-inner"
+                style={{ backgroundImage: "url('/loginBackground.jpeg')" }}
               >
-                <span className="font-bold text-xl tracking-tight text-white">Sign In</span>
-                <div className="w-12 h-12 bg-[#EFFF00] rounded-full flex items-center justify-center shadow-lg">
+                <span className="font-bold text-xl tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                  Sign In
+                </span>
+                <div className="w-12 h-12 bg-[#EFFF00] rounded-full flex items-center justify-center shadow-lg shrink-0">
                   <span className="material-symbols-outlined text-black font-bold" style={{ fontSize: '24px' }}>
                     north_east
                   </span>
                 </div>
               </button>
 
-              {/* or ------------ Login with Google [Logo] */}
+              {/* Divider & Google Login Button */}
               <div className="flex items-center gap-4 pt-2">
                 <span className="text-xs font-label-mono text-gray-300 shrink-0">or</span>
                 <div className="h-[1px] bg-white/20 flex-grow"></div>
                 <button
                   type="button"
                   aria-label="Login with Google"
-                  className="flex items-center gap-3 px-5 py-3 rounded-full border border-white/20 bg-black/30 hover:bg-white/10 hover:border-white transition-all duration-300 text-sm font-medium text-white shrink-0"
+                  className="flex items-center gap-3 px-5 py-3 rounded-full border border-white/20 bg-white/10 hover:bg-white/20 hover:border-white/40 transition-all duration-300 text-sm font-medium text-white shrink-0 backdrop-blur-sm"
                 >
                   <span>Login with Google</span>
                   <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none">
