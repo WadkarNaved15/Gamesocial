@@ -46,6 +46,7 @@ import RecommendationPosts from "./components/Home/RecommendationPost";
 import AdsPage from "./Pages/ads/AdsPage";
 import GameSessionFeedbackModal from "./components/Feedback/GameSessionFeedbackModal";
 import LoginForm from "./components/Auth/LoginForm";
+import RegisterForm from "./components/Auth/RegisterForm";
 
 export const router = createBrowserRouter([
   {
@@ -70,6 +71,7 @@ export const router = createBrowserRouter([
       { path: "/reset-password", element: <ResetPassword /> },
       { path: "/verify-email", element: <VerifyEmail /> },
       { path: "/login", element: <LoginForm /> },
+      { path: "/register", element: <RegisterForm /> },
 
       { path: "/stream/:sessionId", element: <GuestProtectedRoute> <StreamPage /> </GuestProtectedRoute> },
       { path: "/publisher", element: <GuestProtectedRoute> <PublisherForm /> </GuestProtectedRoute> },
