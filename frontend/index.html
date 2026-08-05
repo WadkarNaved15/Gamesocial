@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <script type="application/ld+json">
+
+<head>
+  <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -10,7 +11,7 @@
   "logo": "https://www.rigzer.com/Logo.png"
 }
 </script>
-<script type="application/ld+json">
+  <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "WebSite",
@@ -18,51 +19,52 @@
   "url": "https://www.rigzer.com"
 }
 </script>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GPNNYM06V7"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-GPNNYM06V7"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
 
-      gtag('config', 'G-GPNNYM06V7');
-    </script>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/Logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    gtag('config', 'G-GPNNYM06V7');
+  </script>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="/Logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <script>
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    </script>
+  <script>
+    document.documentElement.classList.add("dark");
+    localStorage.setItem("theme", "dark");
+  </script>
 
-    <title>Rigzer</title>
+  <title>Rigzer</title>
 
-    <meta
-      name="description"
-      content="Play PC games instantly from the cloud, connect with friends, and share your gaming experiences on Rigzer."
-    />
+  <meta name="description"
+    content="Play PC games instantly from the cloud, connect with friends, and share your gaming experiences on Rigzer." />
 
-    <meta
-      name="keywords"
-      content="Rigzer, cloud gaming, game streaming, gaming social platform"
-    />
+  <meta name="keywords" content="Rigzer, cloud gaming, game streaming, gaming social platform" />
 
-    <meta name="robots" content="index, follow" />
+  <meta name="robots" content="index, follow" />
 
-    <meta property="og:title" content="Rigzer - Cloud Gaming & Gaming Social Platform" />
-    <meta property="og:description" content="Play PC games instantly from the cloud and connect with gamers on Rigzer." />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://www.rigzer.com" />
-    <meta property="og:image" content="https://www.rigzer.com/Logo.png" />
-    <link rel="canonical" href="https://www.rigzer.com/" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-    <script
-      type="module"
-      src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"
-    ></script>
-  </body>
+  <meta property="og:title" content="Rigzer - Cloud Gaming & Gaming Social Platform" />
+  <meta property="og:description" content="Play PC games instantly from the cloud and connect with gamers on Rigzer." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://www.rigzer.com" />
+  <meta property="og:image" content="https://www.rigzer.com/Logo.png" />
+  <link rel="canonical" href="https://www.rigzer.com/" />
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+</body>
+
 </html>
