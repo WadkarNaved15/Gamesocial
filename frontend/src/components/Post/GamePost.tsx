@@ -439,6 +439,10 @@ const hasPlayedDemo =
   const timestamp = useMemo(() => getRelativeTime(createdAt), [createdAt]);
 
   const handleStartGame = async () => {
+    if (!currentUser) {
+      navigate("/auth");
+      return;
+    }
     if (
       isStarting ||
       hasActiveSession ||
