@@ -49,6 +49,7 @@ import messageRoutes from "./routes/messageRoutes.js";
 import feedBackRoutes from "./routes/feedback.js";
 import homeFeedbackRoutes from "./routes/feedbackRoutes.js"
 import gameFeedbackRoutes from "./routes/gameFeedbackRoutes.js"
+import streamFeedbackRoutes from "./routes/streamFeedback.js";
 import commentRoutes from "./routes/comment.js";
 import gameRoutes from "./routes/gameRoutes.js";
 import interactionRoutes from "./routes/interactions.js"
@@ -262,6 +263,7 @@ app.use("/api/fetchpockets", pocketFetchRoutes);
 app.use("/api/feedback", feedBackRoutes);
 app.use("/api/v1/feedback", homeFeedbackRoutes);
 app.use("/api/game-feedback", gameFeedbackRoutes);
+app.use("/api/stream-feedback", streamFeedbackRoutes);
 app.use("/api/recommend", recommendationRoutes);
 app.use("/api/compression", modelUploadRouter);
 app.use("/api/gameupload", gameZip);
