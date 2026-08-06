@@ -273,9 +273,9 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
         </div>
       )}
 
-      <div className="bg-black w-full max-w-[600px] h-full max-h-[90vh] rounded-2xl overflow-hidden flex flex-col border border-white/20">
+      <div className="bg-[#0B0F19] w-full max-w-[600px] h-full max-h-[90vh] rounded-2xl overflow-hidden flex flex-col border border-slate-800/80 shadow-2xl shadow-black/80">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 sticky top-0 bg-black/80 backdrop-blur-md z-10 border-b border-white/10">
+        <div className="flex items-center justify-between px-4 py-3 sticky top-0 bg-[#0B0F19]/80 backdrop-blur-md z-10 border-b border-slate-800/60">
           <div className="flex items-center gap-8">
             <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
               <X className="w-5 h-5 text-white" />
@@ -311,7 +311,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
 
             {/* Avatar */}
             <div className="absolute -bottom-16 left-4">
-              <div className="w-32 h-32 rounded-full border-4 border-black bg-zinc-900 overflow-hidden relative">
+              <div className="w-32 h-32 rounded-full border-4 border-[#0B0F19] bg-blue-950 overflow-hidden relative">
                 {form.avatar && <img src={form.avatar} className="w-full h-full object-cover" alt="Avatar" />}
                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                   <button onClick={() => avatarInputRef.current?.click()} className="p-2 bg-black/50 rounded-full hover:bg-black/70 border border-white/20">
