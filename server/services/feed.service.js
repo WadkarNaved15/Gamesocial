@@ -261,10 +261,21 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
         console.warn("[Feed] Gorse unavailable, falling back:", err.message);
       }
 
+      console.log("[Feed] User:", userId);
+console.log("[Feed] Gorse IDs:", gorseIds);
+
       if (gorseIds.length > 0) {
         const safeIds = [...new Set(gorseIds)].filter((id) => id?.length === 24);
         if (safeIds.length > 0) {
           const docs = await fetchPostsByIds(safeIds, isAdmin , canViewTestUploads);
+          console.log(
+  "[Feed] Mongo returned:",
+  docs.map(p => ({
+    id: p._id.toString(),
+    owner: p.user.toString ? p.user.toString() : p.user._id?.toString(),
+    game: p.gamePost?.gameName
+  }))
+);
           const postMap = new Map(docs.map((p) => [p._id.toString(), p]));
           allPosts = safeIds.map((id) => postMap.get(id)).filter(Boolean);
           usedGorse = true;
@@ -368,6 +379,15 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
 
   // Strip temporary properties (if they exist from the miss path) before returning
   const posts = merged.map(({ _sortKey, _cursorType, _cursorVal, ...rest }) => rest);
+
+  console.log(
+  "[Feed] Final feed:",
+  posts.map(p => ({
+    id: p._id.toString(),
+    owner: p.user._id?.toString() ?? p.user.toString(),
+    game: p.gamePost?.gameName
+  }))
+);
   
   return { posts, nextCursor };
 }
