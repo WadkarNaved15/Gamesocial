@@ -128,34 +128,98 @@ class FollowService {
     return count;
   }
 
-  static async getSuggestedUsers(userId) {
-    const cacheKey = `suggested:${userId}`;
-    const cached = await redis.get(cacheKey);
-    if (cached) return JSON.parse(cached);
-    // Get following set
-    const following = await Follow.find({ follower: userId }).select("following");
-    const followingSet = new Set(following.map(f => f.following.toString()));
-    // Convert string/ObjectId array to proper ObjectIds for the aggregation pipeline
-    const excludeIds = [...followingSet, userId].map(id => new mongoose.Types.ObjectId(id));
+static async getSuggestedUsers(userId) {
+  const cacheKey = `suggested:${userId}`;
+  const cached = await redis.get(cacheKey);
+  if (cached) return JSON.parse(cached);
 
-    // Use aggregation with $sample to get RANDOM users, not just the first 5 in the DB
-    const suggested = await User.aggregate([
-      { $match: { _id: { $nin: excludeIds } } },
-      { $sample: { size: 7 } },
-      { $project: { _id: 1, username: 1, avatar: 1, displayName: 1 } }
+  const LIMIT = 7;
+
+  // Get users the current user is already following
+  const following = await Follow.find({ follower: userId }).select("following");
+  const followingSet = new Set(following.map(f => f.following.toString()));
+
+  // Exclude current user and already followed users
+  const excludeIds = [...followingSet, userId].map(
+    id => new mongoose.Types.ObjectId(id)
+  );
+
+  // First, randomly select users WITH profile photos
+  const usersWithAvatar = await User.aggregate([
+    {
+      $match: {
+        _id: { $nin: excludeIds },
+        avatar: {
+          $exists: true,
+          $nin: ["", null],
+        },
+      },
+    },
+    { $sample: { size: LIMIT } },
+    {
+      $project: {
+        _id: 1,
+        username: 1,
+        avatar: 1,
+        displayName: 1,
+      },
+    },
+  ]);
+
+  let suggested = usersWithAvatar;
+
+  // Fill remaining slots with users without profile photos
+  if (suggested.length < LIMIT) {
+    const remaining = LIMIT - suggested.length;
+
+    const usersWithoutAvatar = await User.aggregate([
+      {
+        $match: {
+          _id: {
+            $nin: [
+              ...excludeIds,
+              ...usersWithAvatar.map(user => user._id),
+            ],
+          },
+          $or: [
+            { avatar: "" },
+            { avatar: null },
+            { avatar: { $exists: false } },
+          ],
+        },
+      },
+      { $sample: { size: remaining } },
+      {
+        $project: {
+          _id: 1,
+          username: 1,
+          avatar: 1,
+          displayName: 1,
+        },
+      },
     ]);
-    // Inject isFollowing (will be false for all since we excluded them, but good for consistency)
-    const enriched = suggested.map(user => ({
-      ...user,
-      isFollowing: false,
-    }));
 
-    // Cache for 2 minutes instead of 10 seconds and avoid empty arrays
-    if (enriched.length > 0) {
-      await redis.set(cacheKey, JSON.stringify(enriched), { EX: 120 });
+    suggested = [...usersWithAvatar, ...usersWithoutAvatar];
+
+    // Fisher-Yates shuffle
+    for (let i = suggested.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [suggested[i], suggested[j]] = [suggested[j], suggested[i]];
     }
-    return enriched;
   }
+
+  const enriched = suggested.map(user => ({
+    ...user,
+    isFollowing: false,
+  }));
+
+  // Cache for 2 minutes
+  if (enriched.length > 0) {
+    await redis.set(cacheKey, JSON.stringify(enriched), { EX: 120 });
+  }
+
+  return enriched;
+}
 }
 
 export default FollowService;
