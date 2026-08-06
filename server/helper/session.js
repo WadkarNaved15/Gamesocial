@@ -144,6 +144,8 @@ export async function finalizeSession(
 
   const isTestUpload = post?.gamePost?.isTestUpload === true;
 
+  
+
   // --- CREDIT RECONCILIATION ---
   if (!isTestUpload) {
     const expectedCredits = Math.max(

@@ -77,7 +77,10 @@ async function runPublishTransaction(draft, creditPurchase, session) {
   console.log(`Running publish transaction for draft ${draft._id}`);
   
   const isTestUploadFlow = draft.game.isTestUpload === true;
-  const isSponsoredFlow = draft.game.sponsorship.enabled && draft.game.sponsorship.status === "approved";
+const isSponsoredFlow =
+  !isTestUploadFlow &&
+  draft.game.sponsorship.enabled &&
+  draft.game.sponsorship.status === "approved";
   const startCredits = isSponsoredFlow ? draft.game.sponsorship.initialCredits : draft.selectedCredits;
   const buildType =
     draft.game.buildType ??

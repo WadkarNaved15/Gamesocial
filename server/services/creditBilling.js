@@ -56,26 +56,24 @@ export async function processBilling(sessionId) {
     );
 
     // --- TEST UPLOAD BYPASS ---
-    if (post?.gamePost?.isTestUpload) {
-      const billedMs = requestedCredits * CREDIT_INTERVAL_MS;
-      
-      await GameSession.updateOne(
-        {
-          _id: session._id,
-        },
-        {
-          $set: {
-            "billing.lastBillingAt": new Date(
-              new Date(lastBilling).getTime() + billedMs
-            ),
-          },
-        }
-      );
+const isTestUpload = post?.gamePost?.isTestUpload === true;
 
-      return {
-        exhausted: false,
-      };
+if (isTestUpload) {
+  const billedMs = requestedCredits * CREDIT_INTERVAL_MS;
+
+  await GameSession.updateOne(
+    { _id: session._id },
+    {
+      $set: {
+        "billing.lastBillingAt": new Date(
+          new Date(lastBilling).getTime() + billedMs
+        ),
+      },
     }
+  );
+
+  return { exhausted: false };
+}
     // --------------------------
 
     if (!post?.gamePost?.creditBudget) {
