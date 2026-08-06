@@ -4,8 +4,6 @@ import PostAnalytics from "../models/postAnalytics.js";
 import CreditAudit from "../models/CreditAudit.js";
 import AllPost from "../models/Allposts.js";
 
-
-
 /* ================= HELPERS ================= */
 
 const CONFIG = {
@@ -21,9 +19,6 @@ const DEMO_CONFIG = {
   MIN_ACTIVE_SECONDS: 180,   // consume demo after 180s of healthy play
   HEARTBEAT_GRACE_SECONDS: 25, // allow short disconnect gaps
 };
-
-
-
 
 export async function getQueueData(
   session
@@ -67,7 +62,6 @@ export async function getQueueData(
   };
 }
 
-
 export async function getAverageSessionDurationMinutes() {
   const result =
     await GameSession.aggregate([
@@ -94,37 +88,38 @@ export async function getAverageSessionDurationMinutes() {
     result[0]?.avgPlayTimeMs || 0;
 
   if (!avgMs) {
-  return 10;
-}
+    return 10;
+  }
 
-return Math.ceil(avgMs / 60000);
+  return Math.ceil(avgMs / 60000);
 }
 
 export async function finalizeSession(
   session,
   exitReason
 ) {
-    const lockSession =
-  await GameSession.findOneAndUpdate(
-    {
-      _id: session._id,
-      analyticsProcessed: {
-        $ne: true,
+  const lockSession =
+    await GameSession.findOneAndUpdate(
+      {
+        _id: session._id,
+        analyticsProcessed: {
+          $ne: true,
+        },
       },
-    },
-    {
-      $set: {
-        analyticsProcessed: true,
+      {
+        $set: {
+          analyticsProcessed: true,
+        },
       },
-    },
-    {
-      new: true,
-    }
-  );
+      {
+        new: true,
+      }
+    );
 
-if (!lockSession) {
-  return;
-}
+  if (!lockSession) {
+    return;
+  }
+
   const endedAt = new Date();
 
   const playTimeMs =
@@ -139,128 +134,132 @@ if (!lockSession) {
       : 0;
 
   let creditsConsumed =
-  session.billing?.creditsConsumed || 0;
-
-  const expectedCredits = Math.max(
-  1,
-  Math.round(playTimeMs / 60000)
-);
-
-  const creditAdjustment =
-    expectedCredits -
-    creditsConsumed;
+    session.billing?.creditsConsumed || 0;
 
   const post = await AllPost.findById(
-  session.gamePost
-).select(
-  "gamePost.creditBudget.remainingCredits"
-);
-
-const availableCredits =
-  post?.gamePost?.creditBudget
-    ?.remainingCredits || 0;
-
-const adjustmentToCharge =
-  Math.min(
-    creditAdjustment,
-    availableCredits
+    session.gamePost
+  ).select(
+    "gamePost.creditBudget.remainingCredits gamePost.isTestUpload"
   );
 
+  const isTestUpload = post?.gamePost?.isTestUpload === true;
 
+  // --- CREDIT RECONCILIATION ---
+  if (!isTestUpload) {
+    const expectedCredits = Math.max(
+      1,
+      Math.round(playTimeMs / 60000)
+    );
 
-  if (adjustmentToCharge > 0) {
-  const billedMs =
-  adjustmentToCharge * 60000;
+    const creditAdjustment =
+      expectedCredits -
+      creditsConsumed;
+
+    const availableCredits =
+      post?.gamePost?.creditBudget
+        ?.remainingCredits || 0;
+
+    const adjustmentToCharge =
+      Math.min(
+        creditAdjustment,
+        availableCredits
+      );
+
+    if (adjustmentToCharge > 0) {
+      const billedMs =
+        adjustmentToCharge * 60000;
+
+      await AllPost.updateOne(
+        {
+          _id: session.gamePost,
+        },
+        {
+          $inc: {
+            "gamePost.creditBudget.usedCredits":
+              adjustmentToCharge,
+
+            "gamePost.creditBudget.remainingCredits":
+              -adjustmentToCharge,
+
+            "gamePost.gameMetrics.totalSessionTimeMs":
+              billedMs,
+          },
+        }
+      );
+
+      await GameSession.updateOne(
+        {
+          _id: session._id,
+        },
+        {
+          $inc: {
+            "billing.creditsConsumed":
+              adjustmentToCharge,
+
+            "billing.billedPlayTimeMs":
+              billedMs,
+          },
+        }
+      );
+
+      session.billing.creditsConsumed +=
+        adjustmentToCharge;
+
+      creditsConsumed =
+        session.billing.creditsConsumed;
+
+      session.billing.billedPlayTimeMs =
+        (session.billing
+          ?.billedPlayTimeMs || 0) +
+        billedMs;
+    }
+  }
+  // -----------------------------
+
+  await GameSession.updateOne(
+    { _id: session._id },
+    {
+      $set: {
+        status: "ended",
+        endedAt,
+        exitReason,
+        "metrics.totalPlayTime":
+          playTimeMs,
+      },
+    }
+  );
+
+  const totalSessions =
+    await GameSession.countDocuments({
+      gamePost: session.gamePost,
+      status: "ended",
+      startedAt: { $exists: true },
+    });
+
+  const uniquePlayers =
+    await GameSession.distinct(
+      "user",
+      {
+        gamePost: session.gamePost,
+        status: "ended",
+        startedAt: { $exists: true },
+      }
+    );
 
   await AllPost.updateOne(
     {
       _id: session.gamePost,
     },
     {
-      $inc: {
-        "gamePost.creditBudget.usedCredits":
-          adjustmentToCharge,
+      $set: {
+        "gamePost.gameMetrics.totalSessions":
+          totalSessions,
 
-        "gamePost.creditBudget.remainingCredits":
-          -adjustmentToCharge,
-
-        "gamePost.gameMetrics.totalSessionTimeMs":
-          billedMs,
+        "gamePost.gameMetrics.uniquePlayers":
+          uniquePlayers.length,
       },
     }
   );
-
-  await GameSession.updateOne(
-    {
-      _id: session._id,
-    },
-    {
-      $inc: {
-        "billing.creditsConsumed":
-          adjustmentToCharge,
-
-        "billing.billedPlayTimeMs":
-          billedMs,
-      },
-    }
-  );
-
-  session.billing.creditsConsumed +=
-    adjustmentToCharge;
-
-  creditsConsumed =
-  session.billing.creditsConsumed;
-
-  session.billing.billedPlayTimeMs =
-    (session.billing
-      ?.billedPlayTimeMs || 0) +
-    billedMs;
-}
-
-  await GameSession.updateOne(
-  { _id: session._id },
-  {
-    $set: {
-      status: "ended",
-      endedAt,
-      exitReason,
-      "metrics.totalPlayTime":
-        playTimeMs,
-    },
-  }
-);
-
-const totalSessions =
-  await GameSession.countDocuments({
-    gamePost: session.gamePost,
-    status: "ended",
-    startedAt: { $exists: true },
-  });
-
-const uniquePlayers =
-  await GameSession.distinct(
-    "user",
-    {
-      gamePost: session.gamePost,
-      status: "ended",
-      startedAt: { $exists: true },
-    }
-  );
-
-await AllPost.updateOne(
-  {
-    _id: session.gamePost,
-  },
-  {
-    $set: {
-      "gamePost.gameMetrics.totalSessions":
-        totalSessions,
-
-      "gamePost.gameMetrics.uniquePlayers":
-        uniquePlayers.length,
-    },
-  }
-);
 
   if (
     playTimeMs > 0 ||
@@ -273,7 +272,7 @@ await AllPost.updateOne(
       session.user.toString()
     );
 
-    if (creditsConsumed > 0) {
+    if (!isTestUpload && creditsConsumed > 0) {
       await createConsumptionAudit(
         session
       );
@@ -288,24 +287,24 @@ await AllPost.updateOne(
 }
 
 export async function recordSessionAnalytics(gamePostId, sessionId, playTimeMs, userId) {
-
-    await PostAnalytics.findOneAndUpdate(
-  {
-    post: gamePostId,
-  },
-  {
-    $setOnInsert: {
+  await PostAnalytics.findOneAndUpdate(
+    {
       post: gamePostId,
-      dailyStats: [],
-      hourlyStats: [],
     },
-  },
-  {
-    upsert: true,
-  }
-);
+    {
+      $setOnInsert: {
+        post: gamePostId,
+        dailyStats: [],
+        hourlyStats: [],
+      },
+    },
+    {
+      upsert: true,
+    }
+  );
+  
   const dateKey = new Date().toISOString().split("T")[0];
- 
+  
   // ── 1. Write totalPlayTime into the GameSession itself ───────────────────
   //
   // FIX: This was never done anywhere. metrics.totalPlayTime stayed 0
@@ -316,32 +315,32 @@ export async function recordSessionAnalytics(gamePostId, sessionId, playTimeMs, 
   });
 
   const hasPreviousSession =
-  await GameSession.exists({
-    gamePost: gamePostId,
-    user: userId,
-    _id: { $ne: sessionId },
-  });
- 
- 
+    await GameSession.exists({
+      gamePost: gamePostId,
+      user: userId,
+      _id: { $ne: sessionId },
+    });
+  
   // ── 4. Update dailyStats ──────────────────────────────────────────────────
-const dailyResult = await PostAnalytics.updateOne(
-  {
-    post: gamePostId,
-    "dailyStats.date": dateKey,
-  },
-  {
-    $inc: {
-      "dailyStats.$.sessions": 1,
-      "dailyStats.$.sessionPlayTimeMs": playTimeMs,
-
-      ...(hasPreviousSession
-        ? {}
-        : {
-            "dailyStats.$.uniquePlayers": 1,
-          }),
+  const dailyResult = await PostAnalytics.updateOne(
+    {
+      post: gamePostId,
+      "dailyStats.date": dateKey,
     },
-  }
-);
+    {
+      $inc: {
+        "dailyStats.$.sessions": 1,
+        "dailyStats.$.sessionPlayTimeMs": playTimeMs,
+
+        ...(hasPreviousSession
+          ? {}
+          : {
+              "dailyStats.$.uniquePlayers": 1,
+            }),
+      },
+    }
+  );
+  
   if (dailyResult.matchedCount === 0) {
     await PostAnalytics.updateOne(
       { post: gamePostId, "dailyStats.date": { $ne: dateKey } },
@@ -358,14 +357,14 @@ const dailyResult = await PostAnalytics.updateOne(
             sessions: 1,
             sessionPlayTimeMs: playTimeMs,
             uniquePlayers:
-  hasPreviousSession ? 0 : 1,
+              hasPreviousSession ? 0 : 1,
           },
         },
       }
     );
   }
 }
- 
+
 /**
  * Called when a DemoConsumption is marked "consumed".
  *
@@ -377,20 +376,20 @@ const dailyResult = await PostAnalytics.updateOne(
  */
 export async function recordDemoConsumptionAnalytics(gamePostId) {
   const dateKey = new Date().toISOString().split("T")[0];
- 
+  
   // lifetime increment
   await PostAnalytics.findOneAndUpdate(
     { post: gamePostId },
     { $inc: { "lifetime.demoConsumptions": 1 } },
     { upsert: true }
   );
- 
+  
   // dailyStats increment
   const dailyResult = await PostAnalytics.updateOne(
     { post: gamePostId, "dailyStats.date": dateKey },
     { $inc: { "dailyStats.$.demoConsumptions": 1 } }
   );
- 
+  
   if (dailyResult.matchedCount === 0) {
     await PostAnalytics.updateOne(
       { post: gamePostId, "dailyStats.date": { $ne: dateKey } },
@@ -413,17 +412,17 @@ export async function recordDemoConsumptionAnalytics(gamePostId) {
     );
   }
 }
- 
+
 // ─── DEMO CONSUMPTION LOGIC ──────────────────────────────────────────────────
- 
+
 export async function startOrTouchDemoConsumption(session, now = new Date()) {
   const existing = await DemoConsumption.findOne({
     user: session.user,
     gamePost: session.gamePost,
   });
- 
+  
   if (existing?.status === "consumed") return existing;
- 
+  
   if (!existing) {
     return DemoConsumption.create({
       user: session.user,
@@ -443,11 +442,11 @@ export async function startOrTouchDemoConsumption(session, now = new Date()) {
       },
     });
   }
- 
+  
   if (existing.status === "active") {
     const last = existing.lastHeartbeatAt || existing.firstHeartbeatAt || existing.startedAt;
     const deltaSeconds = Math.max(0, Math.floor((now - last) / 1000));
- 
+  
     if (deltaSeconds <= DEMO_CONFIG.HEARTBEAT_GRACE_SECONDS) {
       existing.connectedSeconds += deltaSeconds;
       existing.lastHeartbeatAt = now;
@@ -460,41 +459,41 @@ export async function startOrTouchDemoConsumption(session, now = new Date()) {
       await existing.save();
     }
   }
- 
+  
   return existing;
 }
- 
+
 export async function finalizeDemoConsumption(session, reason = "user_exit", exitSeconds = null) {
   const demo = await DemoConsumption.findOne({
     user: session.user,
     gamePost: session.gamePost,
   });
- 
+  
   if (!demo) return;
 
   if (demo.status === "consumed") {
-  return;
-}
- 
+    return;
+  }
+  
   const now = new Date();
   const totalSeconds = Math.max(demo.connectedSeconds || 0, exitSeconds || 0);
   const shouldConsume = totalSeconds >= DEMO_CONFIG.MIN_ACTIVE_SECONDS;
- 
+  
   demo.endedAt = now;
   demo.connectedSeconds = totalSeconds;
- 
+  
   if (shouldConsume) {
     demo.status = "consumed";
     demo.consumedAt = now;
     demo.consumedReason = "min_playtime_reached";
- 
+  
     // FIX: Write analytics — was broken before due to undefined variables
     await recordDemoConsumptionAnalytics(session.gamePost);
   } else {
     demo.status = reason === "user_cancelled" ? "cancelled" : "expired";
     demo.consumedReason = "user_exit_before_threshold";
   }
- 
+  
   await demo.save();
 }
 
@@ -509,28 +508,24 @@ export async function createConsumptionAudit(session) {
   const post = await AllPost.findById(
     session.gamePost
   ).select(
-    "user gamePost.creditBudget.remainingCredits"
+    "user gamePost.creditBudget.remainingCredits gamePost.isTestUpload"
   );
 
-  if (!post) return;
+  if (!post || post.gamePost?.isTestUpload === true) {
+    return;
+  }
 
   await CreditAudit.create({
     gamePost: session.gamePost,
     creator: post.user,
-
     action: "consumption",
-
     credits: session.billing.creditsConsumed,
-
     previousBalance:
       post.gamePost.creditBudget.remainingCredits +
       session.billing.creditsConsumed,
-
     newBalance:
       post.gamePost.creditBudget.remainingCredits,
-
     reason: `Session ${session._id}`,
-
     metadata: {
       sessionId: session._id.toString(),
     },
@@ -547,19 +542,23 @@ export async function createConsumptionAudit(session) {
 }
 
 export function calculateSessionDuration(game) {
-    const creatorLimit =
-        (game.maxSessionDurationMinutes || 10) * 60;
+  const creatorLimit =
+    (game.maxSessionDurationMinutes || 10) * 60;
 
-    const remainingCredits =
-        game.creditBudget?.remainingCredits || 0;
+  if (game.isTestUpload === true) {
+    return creatorLimit;
+  }
 
-    const creditLimit =
-        remainingCredits * 60;
+  const remainingCredits =
+    game.creditBudget?.remainingCredits || 0;
 
-    return Math.min(
-        creatorLimit,
-        creditLimit
-    );
+  const creditLimit =
+    remainingCredits * 60;
+
+  return Math.min(
+    creatorLimit,
+    creditLimit
+  );
 }
 
 export function determineCleanupPolicy(game) {
@@ -568,7 +567,7 @@ export function determineCleanupPolicy(game) {
     on_normal_exit: true,
     on_violation: true,
     on_timeout: true,
-    delete_game_files: isLargeGame,
+    delete_game_files: false,
     shared_build: false,
   };
 }

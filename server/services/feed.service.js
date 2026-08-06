@@ -72,6 +72,7 @@ const POST_PROJECTION = {
   "gamePost.gameMetrics.uniquePlayers": 1,
   "gamePost.gameMetrics.totalSessionTimeMs": 1,
   "gamePost.gameMetrics.sessionRequests": 1,
+  "gamePost.isTestUpload": 1,
 
   "normalPost.assets": 1,
 
@@ -94,18 +95,23 @@ const POST_PROJECTION = {
 
 // ── Chronological fetch (guest fallback + Gorse fallback) ─────────────────────
 
-async function fetchPostsByIds(ids, isAdmin = false) {
+async function fetchPostsByIds(ids, isAdmin = false ,canViewTestUploads = false) {
   // Used by Gorse path & Cache hit path: fetch exact IDs, no sort (JS preserves rank)
   const filter = {
     _id: { $in: ids },
     type: { $ne: "canvas_article" },
   };
 
+  if (!canViewTestUploads) {
+    filter["gamePost.isTestUpload"] = { $ne: true };
+}
+
   if (!isAdmin) {
     filter.type = {
       $nin: ["canvas_article"],
     };
   }
+
 
   const docs = await AllPost.find(filter)
     .select(POST_PROJECTION)
@@ -116,8 +122,11 @@ async function fetchPostsByIds(ids, isAdmin = false) {
   return docs;
 }
 
-async function fetchChronological(filter, limit, isAdmin = false) {
+async function fetchChronological(filter, limit, isAdmin = false , canViewTestUploads = false) {
   // Used by guest/fallback path: sort by _id desc
+  if (!canViewTestUploads) {
+    filter["gamePost.isTestUpload"] = { $ne: true };
+}
   const query = {
     ...filter,
   };
@@ -125,6 +134,9 @@ async function fetchChronological(filter, limit, isAdmin = false) {
   query.type = !isAdmin
     ? { $nin: ["canvas_article"] }
     : { $ne: "canvas_article" };
+
+    
+  
 
   return AllPost.find(query)
     .select(POST_PROJECTION)
@@ -142,9 +154,16 @@ async function fetchChronological(filter, limit, isAdmin = false) {
  */
 export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
   let isAdmin = false;
+  let canViewTestUploads = false;
 
   if (userId) {
-    const user = await User.findById(userId).select("role").lean();
+    const user = await User.findById(userId)
+  .select("role isGameTester")
+  .lean();
+
+ canViewTestUploads =
+  user?.role === "admin" ||
+  user?.isGameTester === true;
     isAdmin = user?.role === "admin";
   }
   
@@ -198,7 +217,7 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
 
     if (ids && ids.length > 0) {
       // Fetch fresh posts directly from Mongo using cached IDs
-      const docs = await fetchPostsByIds(ids, isAdmin);
+      const docs = await fetchPostsByIds(ids, isAdmin , canViewTestUploads);
 
       // Preserve Gorse's original ranked order (or chronological if guest)
       const postMap = new Map(docs.map((p) => [p._id.toString(), p]));
@@ -245,7 +264,7 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
       if (gorseIds.length > 0) {
         const safeIds = [...new Set(gorseIds)].filter((id) => id?.length === 24);
         if (safeIds.length > 0) {
-          const docs = await fetchPostsByIds(safeIds, isAdmin);
+          const docs = await fetchPostsByIds(safeIds, isAdmin , canViewTestUploads);
           const postMap = new Map(docs.map((p) => [p._id.toString(), p]));
           allPosts = safeIds.map((id) => postMap.get(id)).filter(Boolean);
           usedGorse = true;
@@ -256,12 +275,12 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
       }
 
       if (!usedGorse) {
-        allPosts = await fetchChronological(allPostFilter, fetchLimit, isAdmin);
+        allPosts = await fetchChronological(allPostFilter, fetchLimit, isAdmin , canViewTestUploads);
       }
     } else {
       // ── Guest: Chronological path ──────────────────────────
       [allPosts] = await Promise.all([
-        fetchChronological(allPostFilter, fetchLimit, isAdmin),
+        fetchChronological(allPostFilter, fetchLimit, isAdmin , canViewTestUploads),
       ]);
     }
 

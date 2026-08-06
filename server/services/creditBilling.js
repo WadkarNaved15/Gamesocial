@@ -52,8 +52,31 @@ export async function processBilling(sessionId) {
     const post = await AllPost.findById(
       session.gamePost
     ).select(
-      "gamePost.creditBudget"
+      "gamePost.creditBudget gamePost.isTestUpload"
     );
+
+    // --- TEST UPLOAD BYPASS ---
+    if (post?.gamePost?.isTestUpload) {
+      const billedMs = requestedCredits * CREDIT_INTERVAL_MS;
+      
+      await GameSession.updateOne(
+        {
+          _id: session._id,
+        },
+        {
+          $set: {
+            "billing.lastBillingAt": new Date(
+              new Date(lastBilling).getTime() + billedMs
+            ),
+          },
+        }
+      );
+
+      return {
+        exhausted: false,
+      };
+    }
+    // --------------------------
 
     if (!post?.gamePost?.creditBudget) {
       return {
@@ -64,8 +87,6 @@ export async function processBilling(sessionId) {
     const availableCredits =
       post.gamePost.creditBudget
         .remainingCredits || 0;
-
-
 
     if (availableCredits <= 0) {
       return {
@@ -102,58 +123,57 @@ export async function processBilling(sessionId) {
         }
       );
       
-const remainingCredits =
-  updatedPost?.gamePost?.creditBudget
-    ?.remainingCredits || 0;
+    const remainingCredits =
+      updatedPost?.gamePost?.creditBudget
+        ?.remainingCredits || 0;
 
-if (remainingCredits <= 0) {
-  await AllPost.updateOne(
-    {
-      _id: session.gamePost,
-    },
-    {
-      $set: {
-        "gamePost.creditBudget.status":
-          "exhausted",
-      },
+    if (remainingCredits <= 0) {
+      await AllPost.updateOne(
+        {
+          _id: session.gamePost,
+        },
+        {
+          $set: {
+            "gamePost.creditBudget.status":
+              "exhausted",
+          },
+        }
+      );
+
+      return {
+        exhausted: true,
+      };
     }
-  );
 
-  return {
-    exhausted: true,
-  };
-}
-
-if (
-  remainingCredits > 0 &&
-  remainingCredits <= 100
-) {
-  await AllPost.updateOne(
-    {
-      _id: session.gamePost,
-    },
-    {
-      $set: {
-        "gamePost.creditBudget.status":
-          "low_credits",
-      },
+    if (
+      remainingCredits > 0 &&
+      remainingCredits <= 100
+    ) {
+      await AllPost.updateOne(
+        {
+          _id: session.gamePost,
+        },
+        {
+          $set: {
+            "gamePost.creditBudget.status":
+              "low_credits",
+          },
+        }
+      );
     }
-  );
-}
-else {
-  await AllPost.updateOne(
-    {
-      _id: session.gamePost,
-    },
-    {
-      $set: {
-        "gamePost.creditBudget.status":
-          "active",
-      },
+    else {
+      await AllPost.updateOne(
+        {
+          _id: session.gamePost,
+        },
+        {
+          $set: {
+            "gamePost.creditBudget.status":
+              "active",
+          },
+        }
+      );
     }
-  );
-}
-
 
     await GameSession.updateOne(
       {

@@ -154,6 +154,11 @@ const userSchema = new mongoose.Schema(
       enum: ["user", "admin"],
       default: "user",
     },
+    isGameTester: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     // Granted manually by admin — only these accounts can create/edit a Pocket.
     // Being verified does NOT automatically grant this.
     isPocketEligible: { type: Boolean, default: false },

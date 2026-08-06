@@ -10,6 +10,7 @@
  * POST   /game-posts/draft/:draftId/video   mark video uploaded (optional)
  * POST   /game-posts/create-payment-order   create Razorpay order
  * POST   /game-posts/verify-payment         verify signature → queue publish job
+ * POST   /game-posts/draft/:draftId/publish-test admin: publish test upload
  * POST   /game-posts/retry-publish/:draftId admin: retry failed publish
  * GET    /game-posts/draft/:draftId         poll draft status
  * ─────────────────────────────────────────────────────────────
@@ -74,6 +75,8 @@ function formatFromFileName(fileName) {
  */
 async function runPublishTransaction(draft, creditPurchase, session) {
   console.log(`Running publish transaction for draft ${draft._id}`);
+  
+  const isTestUploadFlow = draft.game.isTestUpload === true;
   const isSponsoredFlow = draft.game.sponsorship.enabled && draft.game.sponsorship.status === "approved";
   const startCredits = isSponsoredFlow ? draft.game.sponsorship.initialCredits : draft.selectedCredits;
   const buildType =
@@ -81,6 +84,7 @@ async function runPublishTransaction(draft, creditPurchase, session) {
     (draft.buildFile.format === "exe"
       ? "executable"
       : "archive");
+      
   console.log("Creating AllPost in public transaction");
   // 1. Create AllPost
   const [post] = await AllPost.create(
@@ -91,6 +95,7 @@ async function runPublishTransaction(draft, creditPurchase, session) {
         type: "game_post",
         gamePost: {
           gameName: draft.game.gameName,
+          isTestUpload: isTestUploadFlow,
           version: draft.game.version,
           platform: "windows",
           buildType: buildType,
@@ -103,7 +108,6 @@ async function runPublishTransaction(draft, creditPurchase, session) {
           file: draft.buildFile,
           sponsorship: {
             enabled: isSponsoredFlow,
-
             initialCredits: isSponsoredFlow
               ? draft.game.sponsorship.initialCredits
               : 0,
@@ -127,11 +131,11 @@ async function runPublishTransaction(draft, creditPurchase, session) {
             processedAt: draft.videoDemo.processedAt,
           } : null,
           creditBudget: {
-            purchasedCredits: isSponsoredFlow ? 0 : startCredits, // Changed
-            giftedCredits: isSponsoredFlow ? startCredits : 0,    // Changed
+            purchasedCredits: isTestUploadFlow || isSponsoredFlow ? 0 : startCredits,
+            giftedCredits: isTestUploadFlow ? 0 : (isSponsoredFlow ? startCredits : 0),
             deductedCredits: 0,
             usedCredits: 0,
-            remainingCredits: startCredits,                       // Changed
+            remainingCredits: isTestUploadFlow ? 0 : startCredits,
             status: "active",
             lastCreditAddedAt: new Date(),
           },
@@ -153,29 +157,31 @@ async function runPublishTransaction(draft, creditPurchase, session) {
     { session }
   );
 
-  // 2. Create CreditAudit entry (purchase action)
-  await CreditAudit.create(
-    [
-      {
-        gamePost: post._id,
-        creator: draft.creator,
-        admin: isSponsoredFlow ? draft.game.sponsorship.reviewedBy : null, // Changed
-        action: isSponsoredFlow ? "gift" : "purchase",    // Changed
-        credits: startCredits,
-        previousBalance: 0,
-        newBalance: startCredits,
-        reason: isSponsoredFlow ? "Admin sponsored game post" : "Initial credit purchase at publish", // Changed
-        metadata: creditPurchase ? {
-          paymentId: creditPurchase.paymentId,
-          invoiceId: creditPurchase.invoiceId ?? null,
-        } : {},
-      },
-    ],
-    { session }
-  );
+  // 2. Create CreditAudit entry (purchase action) - skip for test uploads
+  if (!isTestUploadFlow) {
+    await CreditAudit.create(
+      [
+        {
+          gamePost: post._id,
+          creator: draft.creator,
+          admin: isSponsoredFlow ? draft.game.sponsorship.reviewedBy : null,
+          action: isSponsoredFlow ? "gift" : "purchase",
+          credits: startCredits,
+          previousBalance: 0,
+          newBalance: startCredits,
+          reason: isSponsoredFlow ? "Admin sponsored game post" : "Initial credit purchase at publish",
+          metadata: creditPurchase ? {
+            paymentId: creditPurchase.paymentId,
+            invoiceId: creditPurchase.invoiceId ?? null,
+          } : {},
+        },
+      ],
+      { session }
+    );
+  }
 
   // 3. Update CreditPurchase: link to post, mark fulfilled
-  if (creditPurchase && !isSponsoredFlow) {
+  if (creditPurchase && !isSponsoredFlow && !isTestUploadFlow) {
     await CreditPurchase.updateOne(
       { _id: creditPurchase._id },
       {
@@ -219,6 +225,12 @@ router.post("/draft", verifyToken, async (req, res) => {
         ? duration
         : 10;
 
+    // Admin validation for test upload
+    const isTestReq = game?.isTestUpload === true || game?.testUpload?.enabled === true;
+    if (isTestReq && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden: Only admins can create test uploads." });
+    }
+
     let draft;
     if (draftId) {
       // Update existing draft (must belong to caller)
@@ -237,8 +249,8 @@ router.post("/draft", verifyToken, async (req, res) => {
       }
 
       draft.description = description;
-
       draft.game.gameName = game.gameName ?? draft.game.gameName;
+      draft.game.isTestUpload = isTestReq;
       draft.game.version = game.version ?? draft.game.version;
       draft.game.platform = "windows";
       draft.game.startPath = game.startPath ?? draft.game.startPath;
@@ -259,6 +271,7 @@ router.post("/draft", verifyToken, async (req, res) => {
       });
 
       draft.game.gameName = game.gameName;
+      draft.game.isTestUpload = isTestReq;
       draft.game.version = game.version;
       draft.game.platform = "windows";
       draft.game.startPath = game.startPath;
@@ -329,10 +342,6 @@ router.post("/draft/:draftId/build", verifyToken, async (req, res) => {
  * POST /game-posts/draft/:draftId/video
  * Called after optional gameplay trailer upload completes.
  */
-/**
- * POST /game-posts/draft/:draftId/video
- * Called after optional gameplay trailer upload completes.
- */
 router.post("/draft/:draftId/video", verifyToken, async (req, res) => {
   try {
     const { name, key, url, size } = req.body;
@@ -378,6 +387,7 @@ router.post("/draft/:draftId/video", verifyToken, async (req, res) => {
     res.status(500).json({ message: "Failed to update video metadata" });
   }
 });
+
 /**
  * POST /game-posts/draft/:draftId/ready
  * Frontend calls this after uploads finish to advance status to ready_for_payment.
@@ -433,6 +443,10 @@ router.post("/create-payment-order", verifyToken, async (req, res) => {
     });
 
     if (!draft) return res.status(404).json({ message: "Draft not found" });
+
+    if (draft.game.isTestUpload) {
+      return res.status(400).json({ message: "Test uploads do not require payment." });
+    }
 
     if (draft.status === "payment_pending" && draft.razorpayOrderId) {
       return res.json({
@@ -509,6 +523,11 @@ router.post(
         razorpayPaymentId,
         razorpaySignature,
       } = req.body;
+
+      const draft = await GamePostDraft.findById(draftId);
+      if (draft && draft.game.isTestUpload) {
+        return res.status(400).json({ message: "Test uploads do not require payment." });
+      }
 
       const expected =
         crypto
@@ -632,8 +651,8 @@ export async function runPublishJob(draftId, creditPurchaseId) {
     }
 
     // Paid games require a CreditPurchase.
-    // Sponsored games do not.
-    if (!draft.game.sponsorship.enabled && !creditPurchase) {
+    // Sponsored and Test games do not.
+    if (!draft.game.sponsorship.enabled && !draft.game.isTestUpload && !creditPurchase) {
       throw new Error(
         "Paid publish requires a CreditPurchase"
       );
@@ -693,6 +712,36 @@ export async function runPublishJob(draftId, creditPurchaseId) {
     await session.endSession();
   }
 }
+
+/**
+ * POST /game-posts/draft/:draftId/publish-test
+ * TEST UPLOAD PUBLISH ENDPOINT
+ * Bypasses Razorpay entirely if the draft is marked as a test upload.
+ */
+router.post("/draft/:draftId/publish-test", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const draft = await GamePostDraft.findOne({ _id: req.params.draftId, creator: req.user._id });
+    if (!draft) return res.status(404).json({ message: "Draft not found" });
+
+    if (!draft.game.isTestUpload) {
+      return res.status(400).json({ message: "Draft is not marked as a test upload" });
+    }
+    if (draft.status !== "ready_for_payment") {
+      return res.status(409).json({ message: "Draft uploads must be finished before publishing" });
+    }
+
+    draft.status = "payment_completed"; // Sets status so runPublishJob picks it up
+    await draft.save();
+
+    // Queue publish job natively without a creditPurchaseId
+    await publishGameQueue.add("publishGame", { draftId: draft._id.toString() }, { attempts: 1 });
+
+    res.json({ message: "Publishing test game…", draftId: draft._id, status: "payment_completed" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to publish test game" });
+  }
+});
+
 /**
  * POST /game-posts/retry-publish/:draftId
  * Admin endpoint: retry a failed publish job.
@@ -708,6 +757,11 @@ router.post("/retry-publish/:draftId", verifyToken, requireAdmin, async (req, re
     if (draft.game.sponsorship.enabled) {
       await publishGameQueue.add("publishGame", { draftId: draft._id.toString() }, { attempts: 5, backoff: { type: "exponential", delay: 10000 } });
       return res.json({ message: "Publish retry queued for Sponsored Game", draftId: draft._id });
+    }
+
+    if (draft.game.isTestUpload) {
+      await publishGameQueue.add("publishGame", { draftId: draft._id.toString() }, { attempts: 5, backoff: { type: "exponential", delay: 10000 } });
+      return res.json({ message: "Publish retry queued for Test Upload", draftId: draft._id });
     }
 
     const creditPurchase = await CreditPurchase.findOne({
@@ -889,6 +943,10 @@ router.post("/:postId/create-repurchase-order", verifyToken, async (req, res) =>
       return res.status(404).json({ message: "Game post not found or unauthorized" });
     }
 
+    if (post.gamePost.isTestUpload) {
+      return res.status(400).json({ message: "Repurchase is not available for test uploads." });
+    }
+
     const amount = Math.round((selectedCredits / 40) * 100);
 
     const order = await getRazorpay().orders.create({
@@ -956,6 +1014,12 @@ router.post("/:postId/verify-repurchase-payment", verifyToken, async (req, res) 
 
     if (!post) {
       throw new Error("Game post not found during verification");
+    }
+
+    if (post.gamePost.isTestUpload) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: "Repurchase is not available for test uploads." });
     }
 
     // Create CreditPurchase explicitly linked to the post
@@ -1084,6 +1148,10 @@ router.post("/:postId/request-session", verifyToken, async (req, res) => {
       return res.status(404).json({
         message: "Game not found.",
       });
+    }
+
+    if (post.gamePost.isTestUpload) {
+      return res.status(400).json({ message: "Session requests are disabled for test uploads." });
     }
 
     if (String(post.user) === String(req.user._id)) {

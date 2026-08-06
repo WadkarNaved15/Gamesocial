@@ -54,6 +54,18 @@ router.get("/filter_posts", optionalAuthMiddleware, async (req, res) => {
       $text: { $search: query },
     };
 
+const canViewTestUploads = Boolean(
+    req.user &&
+    (
+        req.user.role === "admin" ||
+        req.user.isGameTester
+    )
+);
+
+  if (!canViewTestUploads) {
+      filter["gamePost.isTestUpload"] = { $ne: true };
+  }
+
     if (cursor) {
       filter._id = { $lt: cursor };
     }
@@ -102,6 +114,18 @@ router.get("/user_posts/:userId", optionalAuthMiddleware, async (req, res) => {
       user: userId,
       ...(cursor && { _id: { $lt: cursor } }),
     };
+
+const canViewTestUploads = Boolean(
+    req.user &&
+    (
+        req.user.role === "admin" ||
+        req.user.isGameTester
+    )
+);
+
+if (!canViewTestUploads) {
+    query["gamePost.isTestUpload"] = { $ne: true };
+}
 
     query.type =
       req.user?.role === "admin"
@@ -177,6 +201,23 @@ router.get("/:postId", optionalAuthMiddleware, async (req, res) => {
       .lean();
 
     if (!post) return res.status(404).json({ deleted: true });
+
+const canViewTestUploads = Boolean(
+    req.user &&
+    (
+        req.user.role === "admin" ||
+        req.user.isGameTester
+    )
+);
+
+if (
+    post?.gamePost?.isTestUpload &&
+    !canViewTestUploads
+) {
+    return res.status(404).json({
+        deleted: true,
+    });
+}
 
     const viewerId = req.user?._id?.toString();
 

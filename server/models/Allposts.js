@@ -179,6 +179,10 @@ const GamePostSchema = new mongoose.Schema(
       trim: true,
       maxlength: 120,
     },
+    isTestUpload: {
+      type: Boolean,
+      default: false,
+  },
     version: {
       type: String,
       default: "1.0.0",
