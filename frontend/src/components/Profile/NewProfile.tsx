@@ -312,7 +312,7 @@ const ProfilePage: React.FC = () => {
                   <img
                     src={
                       profileUser?.banner ||
-                      "https://fastly.picsum.photos/id/299/800/200.jpg?hmac=xMdRbjiNM_IogJDEgKIJ0GeCxZ8nwOGd5_Wf_ODZ94s"
+                      "/Rigzer_Banner.jpeg"
                     }
                     className="w-full h-full object-cover"
                     alt="Cover"
