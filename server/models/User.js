@@ -154,6 +154,10 @@ const userSchema = new mongoose.Schema(
       enum: ["user", "admin"],
       default: "user",
     },
+    isRigzer: {
+      type: Boolean,
+      default: false,
+    },
     isGameTester: {
       type: Boolean,
       default: false,

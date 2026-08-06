@@ -15,6 +15,7 @@ export interface UserSummary {
   displayName: string;
   email: string;
   avatar?: string;
+  isRigzer?: boolean; // optional, only present if the user is a Rigzer team member
   isFollowing?: boolean; // optional, only present if the current user is logged in and has a following relationship with this user
 }
 

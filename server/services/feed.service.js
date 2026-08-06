@@ -115,7 +115,7 @@ async function fetchPostsByIds(ids, isAdmin = false ,canViewTestUploads = false)
 
   const docs = await AllPost.find(filter)
     .select(POST_PROJECTION)
-    .populate("user", "username avatar displayName")
+    .populate("user", "username avatar displayName isRigzer")
     .populate("mentions.user", "username displayName avatar")
     .lean();
 
@@ -140,7 +140,7 @@ async function fetchChronological(filter, limit, isAdmin = false , canViewTestUp
 
   return AllPost.find(query)
     .select(POST_PROJECTION)
-    .populate("user", "username avatar displayName")
+    .populate("user", "username avatar displayName isRigzer")
     .populate("mentions.user", "username displayName avatar")
     .sort({ _id: -1 })
     .limit(limit)

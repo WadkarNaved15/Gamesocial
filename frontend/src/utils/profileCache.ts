@@ -8,6 +8,7 @@ export interface ProfileUser {
   banner?: string;
   bio?: string;
   displayName?: string;
+  isRigzer?: boolean;
   location?: string;
   website?: string;
   jobTitle?: string;

@@ -583,7 +583,7 @@ export const deletePost = async (req, res) => {
     // OWNERSHIP CHECK
     // =====================================================
 
-    if (post.user.toString() !== req.user.id) {
+    if (post.user.toString() !== req.user.id && req.user.role !== "admin") {
       return res.status(403).json({
         message: "Unauthorized",
       });

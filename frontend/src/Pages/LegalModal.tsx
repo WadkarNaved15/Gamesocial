@@ -12,7 +12,7 @@ const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
 
   const isTerms = type === 'terms';
   const isPrivacy = type === 'privacy';
-  const isPaid = type === 'paid';
+  // const isPaid = type === 'paid';
 
   let title = '';
   let subtitle = '';
@@ -23,9 +23,9 @@ const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
   } else if (isPrivacy) {
     title = 'Privacy Policy';
     subtitle = 'Our Approach to Your Privacy';
-  } else if (isPaid) {
-    title = 'Paid Services Policy';
-    subtitle = 'Understanding Cloud Stream Services';
+  // } else if (isPaid) {
+  //   title = 'Paid Services Policy';
+  //   subtitle = 'Understanding Cloud Stream Services';
   }
 
   return (
@@ -94,7 +94,6 @@ const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                   </p>
                 </section>
 
-                {/* --- ADDED TABLE OF CONTENTS --- */}
                 <section>
                   <h3 className="text-lg font-bold mb-2">TABLE OF CONTENTS</h3>
                   <ol className="list-decimal list-inside space-y-1.5 text-sm leading-relaxed text-gray-800">
@@ -517,94 +516,237 @@ const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
               // --- PRIVACY POLICY CONTENT ---
               <>
                 <section>
-                  <p className="text-sm leading-relaxed text-gray-800">
-                    We built Rigzer as a creative platform where people share 3D posts, play game demos through cloud gaming, build coding spaces in Pockets, and connect with other creators. We want you to feel in control of your information while enjoying these features. This policy explains in clear language what data we collect, why we collect it, how we use it, and what choices you have. We only gather information that is genuinely needed to run the platform safely and make your experience better.
-                  </p>
-                </section>
-                
-                <section>
-                  <h3 className="text-lg font-bold mb-2">Creating an Account</h3>
-                  <p className="text-sm leading-relaxed text-gray-800">
-                    You need to create an account to access most of Rigzer's features and services. Without an account you cannot post 3D content, maintain Pockets, upload or play game demos, or fully interact with the community. During signup we collect basic details such as a username, email address, and password so you can sign in securely and manage your activity. You are free to use any username or pseudonym you like instead of your real name.
+                  <p className="text-sm font-semibold text-gray-800">
+                    Last updated August 01, 2026
                   </p>
                 </section>
 
                 <section>
-                  <h3 className="text-lg font-bold mb-2">The Information We Gather</h3>
-                  <p className="text-sm leading-relaxed text-gray-800 mb-2">
-                    We collect several types of information to make Rigzer work properly:
+                  <p className="text-sm leading-relaxed text-gray-800">
+                    This Privacy Notice for Rigzer Private Limited ("we," "us," or "our"), describes how and why we might access, collect, store, use, and/or share ("process") your personal information when you use our services ("Services"), including when you:
                   </p>
-                  <ul className="text-sm leading-relaxed list-disc list-inside space-y-1.5 text-gray-800">
-                    <li><span className="font-semibold">Content you create and share:</span> This includes your 3D models, game demos, code and projects inside Pockets, text, images, videos, and comments.</li>
-                    <li><span className="font-semibold">Usage information:</span> Data on which features you use most, time spent playing games, etc.</li>
-                    <li><span className="font-semibold">Device information:</span> Type of device, operating system, browser, screen size.</li>
-                    <li><span className="font-semibold">Log information:</span> Login times, session durations, error reports, and technical logs.</li>
-                    <li><span className="font-semibold">Approximate location:</span> Based on your IP address to deliver better performance for cloud gaming.</li>
-                    <li><span className="font-semibold">Preferences:</span> Notification settings, content visibility choices, etc.</li>
-                    <li><span className="font-semibold">Billing information:</span> If we introduce paid products, details for transactions and subscriptions.</li>
-                    <li><span className="font-semibold">Third-party sign-in:</span> Basic profile information if using Google, Apple, etc.</li>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    Questions or concerns? Reading this Privacy Notice will help you understand your privacy rights and choices. We are responsible for making decisions about how your personal information is processed. If you do not agree with our policies and practices, please do not use our Services.
+                  </p>
+                </section>
+
+                <section>
+                  <h3 className="text-lg font-bold mb-2">SUMMARY OF KEY POINTS</h3>
+                  <p className="text-sm leading-relaxed text-gray-800">
+                    This summary provides key points from our Privacy Notice, but you can find out more details about any of these topics by clicking the link following each key point or by using our table of contents below to find the section you are looking for.
+                  </p>
+                  <ul className="list-disc list-inside space-y-1.5 text-sm leading-relaxed text-gray-800 mt-2">
+                    <li><strong>What personal information do we process?</strong> When you visit, use, or navigate our Services, we may process personal information depending on how you interact with us and the Services, the choices you make, and the products and features you use.</li>
+                    <li><strong>Do we process any sensitive personal information?</strong> Some of the information may be considered "special" or "sensitive" in certain jurisdictions, for example your racial or ethnic origins, sexual orientation, and religious beliefs. We do not process sensitive personal information.</li>
+                    <li><strong>Do we collect any information from third parties?</strong> We may collect information from public databases, marketing partners, social media platforms, and other outside sources.</li>
+                    <li><strong>How do we process your information?</strong> We process your information to provide, improve, and administer our Services, communicate with you, for security and fraud prevention, and to comply with law. We may also process your information for other purposes with your consent. We process your information only when we have a valid legal reason to do so.</li>
+                    <li><strong>In what situations and with which parties do we share personal information?</strong> We may share information in specific situations and with specific third parties.</li>
+                    <li><strong>What are your rights?</strong> Depending on where you are located geographically, the applicable privacy law may mean you have certain rights regarding your personal information.</li>
+                    <li><strong>How do you exercise your rights?</strong> The easiest way to exercise your rights is by submitting a data subject access request, or by contacting us. We will consider and act upon any request in accordance with applicable data protection laws.</li>
+                  </ul>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    Want to learn more about what we do with any information we collect? Review the Privacy Notice in full.
+                  </p>
+                </section>
+
+                <section>
+                  <h3 className="text-lg font-bold mb-2">TABLE OF CONTENTS</h3>
+                  <ol className="list-decimal list-inside space-y-1.5 text-sm leading-relaxed text-gray-800">
+                    <li>WHAT INFORMATION DO WE COLLECT?</li>
+                    <li>HOW DO WE PROCESS YOUR INFORMATION?</li>
+                    <li>WHEN AND WITH WHOM DO WE SHARE YOUR PERSONAL INFORMATION?</li>
+                    <li>DO WE USE COOKIES AND OTHER TRACKING TECHNOLOGIES?</li>
+                    <li>HOW DO WE HANDLE YOUR SOCIAL LOGINS?</li>
+                    <li>IS YOUR INFORMATION TRANSFERRED INTERNATIONALLY?</li>
+                    <li>HOW LONG DO WE KEEP YOUR INFORMATION?</li>
+                    <li>DO WE COLLECT INFORMATION FROM MINORS?</li>
+                    <li>WHAT ARE YOUR PRIVACY RIGHTS?</li>
+                    <li>CONTROLS FOR DO-NOT-TRACK FEATURES</li>
+                    <li>DO WE MAKE UPDATES TO THIS NOTICE?</li>
+                    <li>HOW CAN YOU CONTACT US ABOUT THIS NOTICE?</li>
+                    <li>HOW CAN YOU REVIEW, UPDATE, OR DELETE THE DATA WE COLLECT FROM YOU?</li>
+                  </ol>
+                </section>
+
+                <section>
+                  <h3 className="text-lg font-bold mb-2">1. WHAT INFORMATION DO WE COLLECT?</h3>
+                  <p className="text-sm font-bold text-gray-800 mt-2">Personal information you disclose to us</p>
+                  <p className="text-sm leading-relaxed text-gray-800">
+                    <em>In Short: We collect personal information that you provide to us.</em>
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    We collect personal information that you voluntarily provide to us when you register on the Services, express an interest in obtaining information about us or our products and Services, when you participate in activities on the Services, or otherwise when you contact us.
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    <strong>Sensitive Information.</strong> We do not process sensitive information.
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    All personal information that you provide to us must be true, complete, and accurate, and you must notify us of any changes to such personal information.
+                  </p>
+
+                  <p className="text-sm font-bold text-gray-800 mt-4">Information automatically collected</p>
+                  <p className="text-sm leading-relaxed text-gray-800">
+                    <em>In Short: Some information — such as your Internet Protocol (IP) address and/or browser and device characteristics — is collected automatically when you visit our Services.</em>
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    We automatically collect certain information when you visit, use, or navigate the Services. This information does not reveal your specific identity (like your name or contact information) but may include device and usage information, such as your IP address, browser and device characteristics, operating system, language preferences, referring URLs, device name, country, location, information about how and when you use our Services, and other technical information. This information is primarily needed to maintain the security and operation of our Services, and for our internal analytics and reporting purposes.
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    Like many businesses, we also collect information through cookies and similar technologies.
+                  </p>
+                </section>
+
+                <section>
+                  <h3 className="text-lg font-bold mb-2">2. HOW DO WE PROCESS YOUR INFORMATION?</h3>
+                  <p className="text-sm leading-relaxed text-gray-800">
+                    <em>In Short: We process your information to provide, improve, and administer our Services, communicate with you, for security and fraud prevention, and to comply with law. We may also process your information for other purposes with your consent.</em>
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    We process your personal information for a variety of reasons, depending on how you interact with our Services.
+                  </p>
+                </section>
+
+                <section>
+                  <h3 className="text-lg font-bold mb-2">3. WHEN AND WITH WHOM DO WE SHARE YOUR PERSONAL INFORMATION?</h3>
+                  <p className="text-sm leading-relaxed text-gray-800">
+                    <em>In Short: We may share information in specific situations described in this section and/or with the following third parties.</em>
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    We may need to share your personal information in the following situations:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1.5 text-sm leading-relaxed text-gray-800 mt-2">
+                    <li><strong>Business Transfers.</strong> We may share or transfer your information in connection with, or during negotiations of, any merger, sale of company assets, financing, or acquisition of all or a portion of our business to another company.</li>
+                    <li><strong>Affiliates.</strong> We may share your information with our affiliates, in which case we will require those affiliates to honor this Privacy Notice. Affiliates include our parent company and any subsidiaries, joint venture partners, or other companies that we control or that are under common control with us.</li>
+                    <li><strong>Business Partners.</strong> We may share your information with our business partners to offer you certain products, services, or promotions.</li>
                   </ul>
                 </section>
 
                 <section>
-                  <h3 className="text-lg font-bold mb-2">Cookies and Similar Technologies</h3>
+                  <h3 className="text-lg font-bold mb-2">4. DO WE USE COOKIES AND OTHER TRACKING TECHNOLOGIES?</h3>
                   <p className="text-sm leading-relaxed text-gray-800">
-                    We use cookies and similar tracking technologies to make Rigzer function smoothly. Cookies help us remember that you are logged in, save your preferences for 3D viewer settings or Pocket layouts, keep track of your progress in game demos, and understand how people use different features. You can manage or disable cookies through your browser settings.
+                    <em>In Short: We may use cookies and other tracking technologies to collect and store your information.</em>
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    We may use cookies and similar tracking technologies (like web beacons and pixels) to gather information when you interact with our Services. Some online tracking technologies help us maintain the security of our Services, prevent crashes, fix bugs, save your preferences, and assist with basic site functions.
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    We also permit third parties and service providers to use online tracking technologies on our Services for analytics and advertising, including to help manage and display advertisements or to tailor advertisements to your interests. The third parties and service providers use their technology to provide advertising about products and services tailored to your interests which may appear either on our Services or on other websites.
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    Specific information about how we use such technologies and how you can refuse certain cookies is set out in our Cookie Notice.
                   </p>
                 </section>
 
                 <section>
-                  <h3 className="text-lg font-bold mb-2">Advertisements</h3>
+                  <h3 className="text-lg font-bold mb-2">5. HOW DO WE HANDLE YOUR SOCIAL LOGINS?</h3>
                   <p className="text-sm leading-relaxed text-gray-800">
-                    If we display advertisements on Rigzer in the future, we may use some of the information we collect (such as usage patterns and preferences) to show ads that are more relevant to your interests as a creator or player. We do not use sensitive personal information for advertising purposes.
+                    <em>In Short: If you choose to register or log in to our Services using a social media account, we may have access to certain information about you.</em>
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    Our Services offer you the ability to register and log in using your third-party social media account details (like your Facebook or X logins). Where you choose to do this, we will receive certain profile information about you from your social media provider. The profile information we receive may vary depending on the social media provider concerned, but will often include your name, email address, friends list, and profile picture, as well as other information you choose to make public on such a social media platform.
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    We will use the information we receive only for the purposes that are described in this Privacy Notice or that are otherwise made clear to you on the relevant Services. Please note that we do not control, and are not responsible for, other uses of your personal information by your third-party social media provider. We recommend that you review their privacy notice to understand how they collect, use, and share your personal information, and how you can set your privacy preferences on their sites and apps.
                   </p>
                 </section>
 
                 <section>
-                  <h3 className="text-lg font-bold mb-2">How We Use Your Information</h3>
+                  <h3 className="text-lg font-bold mb-2">6. IS YOUR INFORMATION TRANSFERRED INTERNATIONALLY?</h3>
                   <p className="text-sm leading-relaxed text-gray-800">
-                    We use your information primarily to operate and improve Rigzer. Account details let you log in and manage your profile and content. Usage, device, and log information helps us keep the platform secure, fix technical issues with 3D loading or cloud gaming, and make features more reliable.
+                    <em>In Short: We may transfer, store, and process your information in countries other than your own.</em>
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    Our servers are located in [Insert location here]. Regardless of your location, please be aware that your information may be transferred to, stored by, and processed by us in our facilities and in the facilities of the third parties with whom we may share your personal information (see "WHEN AND WITH WHOM DO WE SHARE YOUR PERSONAL INFORMATION?" above).
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    If you are a resident in the European Economic Area (EEA), United Kingdom (UK), or Switzerland, then these countries may not necessarily have data protection laws or other similar laws as comprehensive as those in your country. However, we will take all necessary measures to protect your personal information in accordance with this Privacy Notice and applicable law.
                   </p>
                 </section>
 
                 <section>
-                  <h3 className="text-lg font-bold mb-2">Sharing What You Share</h3>
+                  <h3 className="text-lg font-bold mb-2">7. HOW LONG DO WE KEEP YOUR INFORMATION?</h3>
                   <p className="text-sm leading-relaxed text-gray-800">
-                    Most of the content you post on Rigzer is public by design. We may share limited information with trusted service providers who help run parts of the platform, such as cloud hosting for game demos. We do not sell your personal information to third parties.
+                    <em>In Short: We keep your information for as long as necessary to fulfill the purposes outlined in this Privacy Notice unless otherwise required by law.</em>
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    We will only keep your personal information for as long as it is necessary for the purposes set out in this Privacy Notice, unless a longer retention period is required or permitted by law (such as tax, accounting, or other legal requirements).
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    When we have no ongoing legitimate business need to process your personal information, we will either delete or anonymize such information, or, if this is not possible (for example, because your personal information has been stored in backup archives), then we will securely store your personal information and isolate it from any further processing until deletion is possible.
                   </p>
                 </section>
 
                 <section>
-                  <h3 className="text-lg font-bold mb-2">Your Control Over Your Data</h3>
+                  <h3 className="text-lg font-bold mb-2">8. DO WE COLLECT INFORMATION FROM MINORS?</h3>
                   <p className="text-sm leading-relaxed text-gray-800">
-                    You can edit or delete most of your profile information, content, and preferences at any time through your account settings. You can delete your entire account at any time. After deletion we remove or securely delete your personal information from our active systems within a reasonable period.
+                    <em>In Short: We do not knowingly collect data from or market to children under 18 years of age.</em>
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    We do not knowingly collect, solicit data from, or market to children under 18 years of age, nor do we knowingly sell such personal information. By using the Services, you represent that you are at least 18 or that you are the parent or guardian of such a minor and consent to such minor dependent’s use of the Services. If we learn that personal information from users less than 18 years of age has been collected, we will deactivate the account and take reasonable measures to promptly delete such data from our records. If you become aware of any data we may have collected from children under age 18, please contact us at adamya@rigzer.com.
                   </p>
                 </section>
 
                 <section>
-                  <h3 className="text-lg font-bold mb-2">Keeping Data Safe and How Long We Keep It</h3>
+                  <h3 className="text-lg font-bold mb-2">9. WHAT ARE YOUR PRIVACY RIGHTS?</h3>
                   <p className="text-sm leading-relaxed text-gray-800">
-                    We use reasonable technical and organisational measures to protect your information against unauthorised access, loss, or misuse. We keep your information only as long as it is needed to provide the services, meet legal obligations, resolve disputes, or enforce our agreements.
+                    <em>In Short: You may review, change, or terminate your account at any time, depending on your country, province, or state of residence.</em>
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    <strong>Withdrawing your consent:</strong> If we are relying on your consent to process your personal information, which may be express and/or implied consent depending on the applicable law, you have the right to withdraw your consent at any time. You can withdraw your consent at any time by contacting us by using the contact details provided in the section "HOW CAN YOU CONTACT US ABOUT THIS NOTICE?" below.
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    However, please note that this will not affect the lawfulness of the processing before its withdrawal nor, when applicable law allows, will it affect the processing of your personal information conducted in reliance on lawful processing grounds other than consent.
+                  </p>
+                  <p className="text-sm font-bold text-gray-800 mt-4">Account Information</p>
+                  <p className="text-sm leading-relaxed text-gray-800">
+                    If you would at any time like to review or change the information in your account or terminate your account, you can contact us.
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    Upon your request to terminate your account, we will deactivate or delete your account and information from our active databases. However, we may retain some information in our files to prevent fraud, troubleshoot problems, assist with any investigations, enforce our legal terms and/or comply with applicable legal requirements.
                   </p>
                 </section>
 
                 <section>
-                  <h3 className="text-lg font-bold mb-2">Privacy for Younger Users</h3>
+                  <h3 className="text-lg font-bold mb-2">10. CONTROLS FOR DO-NOT-TRACK FEATURES</h3>
                   <p className="text-sm leading-relaxed text-gray-800">
-                    Rigzer is intended for users aged 13 and above. We do not knowingly collect personal information from children under 13.
+                    Most web browsers and some mobile operating systems and mobile applications include a Do-Not-Track ("DNT") feature or setting you can activate to signal your privacy preference not to have data about your online browsing activities monitored and collected. At this stage, no uniform technology standard for recognizing and implementing DNT signals has been finalized. As such, we do not currently respond to DNT browser signals or any other mechanism that automatically communicates your choice not to be tracked online. If a standard for online tracking is adopted that we must follow in the future, we will inform you about that practice in a revised version of this Privacy Notice.
                   </p>
                 </section>
 
                 <section>
-                  <h3 className="text-lg font-bold mb-2">Updates to This Policy</h3>
+                  <h3 className="text-lg font-bold mb-2">11. DO WE MAKE UPDATES TO THIS NOTICE?</h3>
                   <p className="text-sm leading-relaxed text-gray-800">
-                    We may update this Privacy Policy from time to time as Rigzer grows and we add new features. When we make significant changes we will notify you through the platform or by email.
+                    <em>In Short: Yes, we will update this notice as necessary to stay compliant with relevant laws.</em>
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-800 mt-2">
+                    We may update this Privacy Notice from time to time. The updated version will be indicated by an updated "Revised" date at the top of this Privacy Notice. If we make material changes to this Privacy Notice, we may notify you either by prominently posting a notice of such changes or by directly sending you a notification. We encourage you to review this Privacy Notice frequently to be informed of how we are protecting your information.
+                  </p>
+                </section>
+
+                <section>
+                  <h3 className="text-lg font-bold mb-2">12. HOW CAN YOU CONTACT US ABOUT THIS NOTICE?</h3>
+                  <p className="text-sm leading-relaxed text-gray-800">
+                    If you have questions or comments about this notice, you may contact us by post at:
+                  </p>
+                  <div className="text-sm leading-relaxed text-gray-800 mt-2">
+                    <p>Rigzer Private Limited</p>
+                    <p>15 JP colony</p>
+                    <p>Jaipur, Rajasthan 302015</p>
+                    <p>India</p>
+                    <p>adamya@rigzer.com</p>
+                  </div>
+                </section>
+
+                <section>
+                  <h3 className="text-lg font-bold mb-2">13. HOW CAN YOU REVIEW, UPDATE, OR DELETE THE DATA WE COLLECT FROM YOU?</h3>
+                  <p className="text-sm leading-relaxed text-gray-800">
+                    Based on the applicable laws of your country, you may have the right to request access to the personal information we collect from you, details about how we have processed it, correct inaccuracies, or delete your personal information. You may also have the right to withdraw your consent to our processing of your personal information. These rights may be limited in some circumstances by applicable law. To request to review, update, or delete your personal information, please fill out and submit a data subject access request.
                   </p>
                 </section>
               </>
             )}
 
-            {isPaid && (
+            {/* {isPaid && (
               // --- PAID SERVICES POLICY CONTENT ---
               <>
                 <section>
@@ -717,7 +859,7 @@ const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                   </p>
                 </section>
               </>
-            )}
+            )} */}
 
           </div>
 

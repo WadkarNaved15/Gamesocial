@@ -162,6 +162,7 @@ static async getSuggestedUsers(userId) {
         username: 1,
         avatar: 1,
         displayName: 1,
+        isRigzer: 1,
       },
     },
   ]);
@@ -195,6 +196,7 @@ static async getSuggestedUsers(userId) {
           username: 1,
           avatar: 1,
           displayName: 1,
+          isRigzer: 1,
         },
       },
     ]);

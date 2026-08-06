@@ -11,6 +11,8 @@ interface PostHeaderProps {
   price: number;
   postId: string;
   isOwner?: boolean;
+  isAdmin?: boolean;
+  isRigzer?: boolean;
   onDelete?: () => void;
   onProfileClick?: () => void;
 }
@@ -23,6 +25,8 @@ const PostHeader: React.FC<PostHeaderProps> = ({
   price,
   postId,
   isOwner,
+  isAdmin,
+  isRigzer,
   onDelete,
   onProfileClick,
 }) => {
@@ -84,15 +88,25 @@ const PostHeader: React.FC<PostHeaderProps> = ({
 
     {/* Top row */}
     <div className="flex items-center gap-2 flex-wrap">
-      <h3
-        onClick={(e) => {
-          e.stopPropagation();
-          onProfileClick?.();
-        }}
-        className="font-semibold text-white truncate max-w-[160px] sm:max-w-none"
-      >
-        {displayName || username}
-      </h3>
+<h3
+  onClick={(e) => {
+    e.stopPropagation();
+    onProfileClick?.();
+  }}
+  className="flex items-center gap-1.5 font-semibold text-white truncate max-w-[160px] sm:max-w-none"
+>
+  <span className="truncate">
+    {displayName || username}
+  </span>
+
+  {isRigzer && (
+    <img
+      src="/Logo.png"
+      alt="Rigzer"
+      className="w-4 h-4 shrink-0"
+    />
+  )}
+</h3>
 
       <span className="text-gray-500">•</span>
 
@@ -101,16 +115,16 @@ const PostHeader: React.FC<PostHeaderProps> = ({
       </span>
     </div>
 
-    {/* Bottom row */}
-    <span
-      onClick={(e) => {
-        e.stopPropagation();
-        onProfileClick?.();
-      }}
-      className="text-sm text-gray-400 cursor-pointer truncate"
-    >
-      @{username}
-    </span>
+{/* Bottom row */}
+<span
+  onClick={(e) => {
+    e.stopPropagation();
+    onProfileClick?.();
+  }}
+  className="text-sm text-gray-400 cursor-pointer truncate"
+>
+  @{username}
+</span>
 
   </div>
 </div>
@@ -174,7 +188,7 @@ const PostHeader: React.FC<PostHeaderProps> = ({
                 Copy link
               </button>
 
-              {isOwner && (
+              {(isOwner || isAdmin) && (
                 <>
                   <div className="border-t border-gray-200 dark:border-white/10" />
 

@@ -23,7 +23,7 @@ type NavWithHints = Navigator & {
   };
 };
 
-const MIN_DOWNLOAD = 60;
+const MIN_DOWNLOAD = 80;
 const MAX_JITTER = 20;
 const MAX_LATENCY = 80;
 
