@@ -5,6 +5,7 @@ import { useUser } from '../../context/user.js';
 import { saveAccount } from '../../utils/accountRegistry.js';
 import { consumeRedirect } from '../../utils/authRedirect.js';
 
+
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 const LoginForm: React.FC = () => {
@@ -70,15 +71,20 @@ const LoginForm: React.FC = () => {
     window.location.href = `${BACKEND_URL}/api/auth/google`;
   };
 
+  const bgStyle = {
+    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('/masantocreative.png')`,
+    backgroundSize: '100% auto',
+  };
+
   return (
     <div
-      className="relative min-h-screen text-white font-body overflow-hidden antialiased bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: "url('/loginBackground.jpeg')" }}
+      className="relative min-h-screen text-white font-body overflow-hidden antialiased bg-center bg-no-repeat bg-fixed"
+      style={bgStyle}
     >
-      <main className="relative z-10 w-full max-w-[1440px] mx-auto min-h-screen flex items-center justify-start p-4 md:p-16">
-        {/* Transparent glassmorphism card container */}
+      <main className="relative z-10 w-full max-w-[1440px] mx-auto min-h-screen flex items-center justify-between p-4 md:p-16 gap-8">
+        {/* Left Side: Transparent glassmorphism card container */}
         <div
-          className="bg-white/10 backdrop-blur-xl text-white rounded-[2rem] border border-white/20 relative z-10 w-full max-w-[600px] flex flex-col justify-between p-8 md:p-16 min-h-[700px] shadow-2xl"
+          className="bg-white/10 backdrop-blur-xl text-white rounded-[2rem] border border-white/20 relative z-10 w-full max-w-[600px] flex flex-col justify-between p-8 md:p-16 min-h-[700px] shadow-2xl shrink-0"
           style={{
             maskImage: 'radial-gradient(circle at right center, transparent 40px, black 41px)',
             WebkitMaskImage: 'radial-gradient(circle at right center, transparent 40px, black 41px)',
@@ -168,8 +174,8 @@ const LoginForm: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-[72px] rounded-full relative overflow-hidden flex items-center justify-between px-8 border-2 border-gray-900 bg-cover bg-center bg-fixed transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] shadow-inner disabled:opacity-50 disabled:pointer-events-none"
-                style={{ backgroundImage: "url('/loginBackground.jpeg')" }}
+                className="w-full h-[72px] rounded-full relative overflow-hidden flex items-center justify-between px-8 border-2 border-gray-900 bg-center bg-fixed transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] shadow-inner disabled:opacity-50 disabled:pointer-events-none"
+                style={bgStyle}
               >
                 <span className="font-bold text-xl tracking-tight text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                   {isLoading ? 'Signing In...' : 'Sign In'}
@@ -218,6 +224,19 @@ const LoginForm: React.FC = () => {
               </div>
             </form>
           </div>
+        </div>
+
+        {/* Right Side: Animated 3D Floating Butterfly Container */}
+        <div className="hidden lg:flex flex-grow h-[600px] items-center justify-center relative -translate-y-20">
+          {/* <model-viewer
+            src="/models/butterfly.glb"
+            alt="3D Floating Butterfly"
+            autoplay
+            auto-rotate
+            shadow-intensity="1"
+            style={{ width: '100%', height: '100%', minHeight: '500px' }}
+            class="animate-pulse" // Optional subtle visual effect
+          /> */}
         </div>
       </main>
     </div>

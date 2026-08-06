@@ -1,6 +1,7 @@
 // controllers/feedbackController.js
 
 import Feedback from "../models/Feedback.js";
+import StreamFeedback from "../models/StreamFeedback.js";
 
 export const createFeedback = async (req, res) => {
   try {
@@ -36,17 +37,44 @@ export const getAllFeedback = async (req, res) => {
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = 20;
 
-    const feedback = await Feedback.find()
-      .populate("user", "displayName username avatar email")
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
+    const [feedback, streamFeedback] = await Promise.all([
+      Feedback.find()
+        .populate("user", "displayName username avatar email")
+        .lean(),
 
-    const total = await Feedback.countDocuments();
+      StreamFeedback.find()
+        .populate("user", "displayName username avatar email")
+        .lean(),
+    ]);
+
+    const combined = [
+      ...feedback,
+      ...streamFeedback.map((item) => ({
+        ...item,
+
+        category: "Stream Feedback",
+
+        message:
+          item.issues && item.issues.length
+            ? item.issues.join(", ")
+            : "No issues selected",
+      })),
+    ];
+
+    combined.sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+    const total = combined.length;
+
+    const paginated = combined.slice(
+      (page - 1) * limit,
+      page * limit
+    );
 
     res.status(200).json({
       success: true,
-      feedback,
+      feedback: paginated,
       hasMore: page * limit < total,
       currentPage: page,
     });
