@@ -91,6 +91,8 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
   const [publishSuccess, setPublishSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const [isTestUpload, setIsTestUpload] = useState(false); // For testing purposes
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -119,10 +121,11 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     isValidStartPath &&
     maxSessionDurationMinutes >= 1 && // Added it here instead
     maxSessionDurationMinutes <= 120;
+    
   const isSponsoredApproved = isSponsored && approvalStatus === 'approved';
   const canPayAndPublish =
     canProceedToPayment &&
-    ((totalDollars >= 100 && totalDollars <= 5000) || isSponsoredApproved);
+    (isTestUpload || isSponsoredApproved || (totalDollars >= 100 && totalDollars <= 5000));
 
   const finalCredits = isSponsoredApproved ? sponsoredCredits : effectiveCredits;
 
@@ -193,7 +196,8 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     setMaxSessionDurationMinutes(
       data.game?.maxSessionDurationMinutes ?? 10
     );
-
+    
+    setIsTestUpload(data.game?.testUpload?.enabled || data.game?.isTestUpload || false);
     setApprovalStatus(data.game?.sponsorship?.status || 'pending');
     setIsSponsored(data.game?.sponsorship?.enabled || false);
     setSponsoredCredits(data.game?.sponsorship?.initialCredits || 0);
@@ -323,7 +327,17 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     const payload = {
       draftId: currentDraftId,
       description,
-      game: { gameName, startPath, platform: 'windows', maxSessionDurationMinutes, steamUrl },
+      game: { 
+        gameName, 
+        startPath, 
+        platform: 'windows', 
+        maxSessionDurationMinutes, 
+        steamUrl,
+        isTestUpload,
+        testUpload: {
+          enabled: isTestUpload,
+        }
+      },
     };
     try {
       const { data } = await api.post('/api/gamePosts/draft', payload);
@@ -708,6 +722,17 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
       }
 
       // --------------------------------------------------
+      // TEST UPLOAD FAST-TRACK
+      // --------------------------------------------------
+      if (isTestUpload) {
+        setIsPublishing(true);
+        await api.post(`/api/gamePosts/draft/${activeDraftId}/publish-test`);
+        setDraftStatus("payment_completed");
+        startPolling(activeDraftId!);
+        return;
+      }
+
+      // --------------------------------------------------
       // SPONSORED FAST-TRACK
       // --------------------------------------------------
       if (isSponsoredApproved) {
@@ -883,10 +908,10 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
         {/* Header Text */}
         <div className="text-center space-y-2 mb-8 z-10">
           <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">
-            Game Published!
+            {isTestUpload ? 'Test upload published successfully' : 'Game Published!'}
           </h2>
           <p className="text-[#3D7A6E] dark:text-[#4A9384] font-medium text-sm sm:text-base">
-            Your game is now live on Rigzer.
+            {isTestUpload ? 'Your test upload is now live and visible to authorized testers.' : 'Your game is now live on Rigzer.'}
           </p>
         </div>
 
@@ -898,34 +923,38 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
               {gameName || 'Untitled Game'}
             </h3>
             <p className="text-[#3D7A6E] dark:text-[#4A9384] font-bold text-sm mt-1">
-              {finalCredits} credits added
+              {isTestUpload ? 'Test Mode' : `${finalCredits} credits added`}
             </p>
           </div>
 
           {/* Granular Stats (Label / Value pairs) */}
           <div className="space-y-3">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-500 dark:text-gray-400 font-medium">Playable time</span>
-              <span className="font-bold text-gray-900 dark:text-white">{playableMinutes} min</span>
-            </div>
+            {!isTestUpload && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Playable time</span>
+                <span className="font-bold text-gray-900 dark:text-white">{playableMinutes} min</span>
+              </div>
+            )}
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-500 dark:text-gray-400 font-medium">Demo length</span>
               <span className="font-bold text-gray-900 dark:text-white">{maxSessionDurationMinutes} min</span>
             </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-500 dark:text-gray-400 font-medium">Est. sessions</span>
-              <span className="font-bold text-gray-900 dark:text-white flex items-center gap-1">
-                ≈{estimatedSessions}
-                <span className="text-gray-400 dark:text-gray-500 font-normal text-[11px]">
-                  ({maxSessionDurationMinutes}m each)
+            {!isTestUpload && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Est. sessions</span>
+                <span className="font-bold text-gray-900 dark:text-white flex items-center gap-1">
+                  ≈{estimatedSessions}
+                  <span className="text-gray-400 dark:text-gray-500 font-normal text-[11px]">
+                    ({maxSessionDurationMinutes}m each)
+                  </span>
                 </span>
-              </span>
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Sponsor Badge */}
-        {isSponsoredApproved && (
+        {isSponsoredApproved && !isTestUpload && (
           <div className="mb-8 z-10 flex items-center justify-center gap-2 bg-emerald-500/10 px-4 py-2 rounded-full border border-emerald-500/20">
             <Gift size={14} className="text-emerald-600 dark:text-emerald-400" />
             <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 tracking-widest uppercase">
@@ -955,6 +984,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
     if (isUploading) return 'Uploading…';
     if (isCreatingOrder) return 'Creating order…';
     if (isPublishing) return publishingStates[draftStatus] || 'Publishing…';
+    if (isTestUpload) return 'Publish Test Upload';
     if (isSponsoredApproved) return 'Publish Sponsored Game';
     return `Pay $${totalDollars.toFixed(2)} & Publish`;
   })();
@@ -1062,7 +1092,6 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
       <div className="flex flex-col flex-1 overflow-y-auto custom-scrollbar">
 
         {/* ══ TAB: Details & Media ══ */}
-        {/* ══ TAB: Details & Media ══ */}
         {activeTab === 'details' && (
           <div className="flex flex-1 p-6 gap-5">
             <div className="flex-shrink-0">
@@ -1129,7 +1158,6 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
                 <input ref={videoInputRef} type="file" hidden accept="video/mp4,video/webm,video/quicktime" onChange={handleVideoChange} />
               </div>
 
-              {/* Steam URL Input Field */}
               {/* Steam URL Input Field */}
               <div className="flex flex-col gap-1.5 mt-2">
                 <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors ${steamUrlError
@@ -1333,7 +1361,37 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
         {/* ══ TAB: Payment ══ */}
         {activeTab === 'payment' && (
           <div className="p-6 flex flex-col gap-6">
-            {isSponsoredApproved ? (
+
+            {/* Test Upload Toggle for Admins */}
+            {user?.role === "admin" && (
+              <section className="rounded-2xl border border-gray-200 dark:border-white/[0.1] bg-gray-50 dark:bg-white/[0.02] p-5 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">Test Upload</h3>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Publish without payment or credits for internal testing.</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={isTestUpload}
+                    onChange={(e) => setIsTestUpload(e.target.checked)}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-white/[0.1] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#3D7A6E]"></div>
+                </label>
+              </section>
+            )}
+
+            {isTestUpload ? (
+              // Test Upload Information View
+              <section className="rounded-2xl border border-[#3D7A6E]/30 bg-[#3D7A6E]/5 p-6">
+                <div className="flex gap-3">
+                  <Info size={20} className="text-[#3D7A6E] shrink-0 mt-0.5" />
+                  <p className="text-sm text-[#3D7A6E] dark:text-[#4A9384] font-medium leading-relaxed">
+                    This upload is marked as a Test Upload. It will be published without payment or credits and will only be visible to authorized testers.
+                  </p>
+                </div>
+              </section>
+            ) : isSponsoredApproved ? (
               // Clean, minimal Sponsored View
               <section className="rounded-2xl border border-gray-200 dark:border-white/[0.1] bg-gray-50 dark:bg-white/[0.02] p-6 space-y-5">
                 <div>
@@ -1440,7 +1498,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
             )}
 
             {/* Clean Purchase Summary */}
-            {!isSponsoredApproved && (
+            {!isTestUpload && !isSponsoredApproved && (
               <section className="rounded-2xl border border-gray-200 dark:border-white/[0.1] overflow-hidden bg-gray-50 dark:bg-white/[0.02]">
                 <div className="px-5 py-4 border-b border-gray-200 dark:border-white/[0.08]">
                   <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Purchase Summary</p>
@@ -1467,7 +1525,7 @@ const GamePostForm: React.FC<PostModalProps> = ({ onCancel, onBack }) => {
             )}
 
             {/* Elevated Information Box */}
-            {!isSponsoredApproved && (
+            {!isTestUpload && !isSponsoredApproved && (
               <div className="flex gap-3 p-4 rounded-xl bg-gray-100 dark:bg-white/[0.06] border border-gray-300 dark:border-white/[0.15] shadow-sm">
                 <Info size={18} className="text-gray-600 dark:text-gray-300 shrink-0 mt-0.5" />
                 <p className="text-xs text-gray-800 dark:text-gray-200 leading-relaxed">

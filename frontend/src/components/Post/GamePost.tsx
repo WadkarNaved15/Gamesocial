@@ -96,7 +96,6 @@ const RepurchaseModal = ({
   const sessionsAdded = Math.floor(selectedCredits / maxSessionDuration);
   const price = dollars || 0;
 
-
   if (!isOpen) return null;
 
   const handlePayment = async () => {
@@ -123,75 +122,70 @@ const RepurchaseModal = ({
         throw new Error("Failed to load Razorpay SDK");
       }
 
-const options = {
-  key: order.keyId,
-  amount: order.amount,
-  currency: order.currency,
+      const options = {
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency,
 
-  name: "Rigzer",
-  image: "/Logo.png",
+        name: "Rigzer",
+        image: "/Logo.png",
 
-  description: `${selectedCredits} Credits — ${gameName}`,
+        description: `${selectedCredits} Credits — ${gameName}`,
 
-  order_id: order.orderId,
+        order_id: order.orderId,
 
-  prefill: {
-    name: currentUser?.username || "",
-    email: currentUser?.email || "",
-  },
+        prefill: {
+          name: currentUser?.username || "",
+          email: currentUser?.email || "",
+        },
 
-  theme: {
-    color: "#3D7A6E",
-  },
+        theme: {
+          color: "#3D7A6E",
+        },
 
-  handler: async (response: any) => {
-    try {
-      const verifyRes = await fetch(
-        `${BACKEND_URL}/api/gamePosts/${postId}/verify-repurchase-payment`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch(
+              `${BACKEND_URL}/api/gamePosts/${postId}/verify-repurchase-payment`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify({
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature,
+                  selectedCredits,
+                }),
+              }
+            );
+
+            if (!verifyRes.ok) {
+              throw new Error("Verification failed");
+            }
+
+            toast.success("Sessions repurchased successfully!");
+            setIsProcessing(false);
+            onSuccess(selectedCredits);
+            onClose();
+          } catch (err) {
+            console.error(err);
+            setIsProcessing(false);
+            toast.error(
+              "Payment verification failed. Please contact support."
+            );
+          }
+        },
+
+        modal: {
+          ondismiss: () => {
+            setIsProcessing(false);
+            toast.info("Payment cancelled");
           },
-          credentials: "include",
-          body: JSON.stringify({
-            razorpayOrderId: response.razorpay_order_id,
-            razorpayPaymentId: response.razorpay_payment_id,
-            razorpaySignature: response.razorpay_signature,
-            selectedCredits,
-          }),
-        }
-      );
-
-      if (!verifyRes.ok) {
-        throw new Error("Verification failed");
-      }
-
-      toast.success("Sessions repurchased successfully!");
-
-      setIsProcessing(false);
-
-      onSuccess(selectedCredits);
-
-      onClose();
-    } catch (err) {
-      console.error(err);
-
-      setIsProcessing(false);
-
-      toast.error(
-        "Payment verification failed. Please contact support."
-      );
-    }
-  },
-
-  modal: {
-    ondismiss: () => {
-      setIsProcessing(false);
-      toast.info("Payment cancelled");
-    },
-  },
-};
+        },
+      };
 
       // @ts-ignore
       const rzp = new window.Razorpay(options);
@@ -208,8 +202,6 @@ const options = {
     }
   };
 
-  
-
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
       <div 
@@ -217,8 +209,6 @@ const options = {
         aria-modal="true"
         className="bg-[#121212] border border-white/10 rounded-3xl p-6 w-full max-w-md shadow-2xl relative overflow-hidden"
       >
-        {/* <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500" /> */}
-        
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <CreditCard size={20} className="text-white" />
@@ -339,6 +329,16 @@ const GamePost: React.FC<GamePostProps> = ({
   _id,
   gamePost,
 }) => {
+  const { user: currentUser } = useUser();
+  
+  // ─── COMPUTED VALUES ────────────────────────────────────────────────────────
+  const isTestUpload = gamePost?.isTestUpload === true;
+  const isOwner = currentUser?._id === user._id;
+  const isAdmin = currentUser?.role === "admin";
+  
+  const isCreditLimited = !isTestUpload;
+  const canRepurchase = isOwner && !isTestUpload;
+
   const postRef = useRef(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -349,15 +349,8 @@ const GamePost: React.FC<GamePostProps> = ({
   const [showRepurchase, setShowRepurchase] = useState(false);
   
   const { isMuted, toggleMute, audioFocusId, setAudioFocusId } = useAudio();
-  const { user: currentUser } = useUser();
-  const isOwner = currentUser?._id === user._id;
+  
   const isAudioActive = audioFocusId === null || audioFocusId === _id;
-  const isAdmin = currentUser?.role === "admin";
-
-const hasPlayedDemo =
-  !isAdmin &&
-  !isOwner &&
-  gamePost?.demoConsumed === true;
 
   // Local state for optimistic updates
   const [localRemainingCredits, setLocalRemainingCredits] = useState(gamePost.creditBudget?.remainingCredits || 0);
@@ -366,7 +359,6 @@ const hasPlayedDemo =
   const [hasRequested, setHasRequested] = useState(gamePost?.sessionRequest?.hasRequested || false);
   const [requestCount, setRequestCount] = useState(gamePost.gameMetrics?.sessionRequests || 0);
   const [requestLoading, setRequestLoading] = useState(false);
-
   
   const textRef = useRef<HTMLParagraphElement>(null);
   const [showReadMore, setShowReadMore] = useState(false);
@@ -413,13 +405,22 @@ const hasPlayedDemo =
   const thumbnailUrl = videoDemo?.thumbnailUrl;
   const hasVideo = !!videoUrl;
 
+  const hasPlayedDemo =
+    !isAdmin &&
+    !isOwner &&
+    gamePost?.demoConsumed === true;
+
   // ─── SESSION CALCULATIONS ───────────────────────
   const usedCredits = gamePost.creditBudget?.usedCredits || 0;
   const totalCredits = usedCredits + localRemainingCredits;
   const maxSessionDuration = gamePost.maxSessionDurationMinutes || 10; 
+  
   const possibleSessions = Math.floor(totalCredits / maxSessionDuration);
+  const possibleSessionsDisplay = isTestUpload ? '∞' : possibleSessions;
+  
   const completedSessions = gamePost.gameMetrics?.totalSessions || 0;
-  const isExhausted = localRemainingCredits === 0;
+  
+  const isExhausted = isCreditLimited && localRemainingCredits === 0;
 
   const getRelativeTime = (date: string | Date) => {
     const now = new Date();
@@ -679,7 +680,7 @@ const PlayButton = () => {
       </span>
 
       <span className="text-[11px] font-medium opacity-80 border-l border-white/30 pl-1.5 ml-0.5">
-        {completedSessions}/{possibleSessions}
+        {completedSessions}/{possibleSessionsDisplay}
       </span>
     </button>
   );
@@ -791,14 +792,17 @@ const PlayButton = () => {
                         }}
                       />
 
-                      <div className="absolute top-4 left-4 z-40 flex items-center gap-3">
-                        <h3 className="text-2xl font-black text-white tracking-tight leading-none drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
-                          {gamePost.gameName}
+                      <div className="absolute top-4 left-4 z-40 flex items-center gap-3 w-[90%]">
+                        <h3 className="text-2xl font-black text-white tracking-tight leading-none drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] flex items-center min-w-0">
+                          <span className="truncate">{gamePost.gameName}</span>
+                          {isTestUpload && isAdmin && (
+                            <span className="ml-3 bg-amber-500/20 border border-amber-500/50 text-amber-400 text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-full shadow-sm drop-shadow-none shrink-0">TEST BUILD</span>
+                          )}
                         </h3>
-                        <div className="flex items-center gap-2" >
+                        <div className="flex items-center gap-2 shrink-0">
                           <PlayButton />
 
-                            {(isOwner) && (
+                            {(canRepurchase) && (
                               <button
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -853,14 +857,17 @@ const PlayButton = () => {
                     </>
                   ) : (
                     <div className="relative w-full h-full p-6">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-2xl font-black text-white tracking-tight leading-none">
-                          {gamePost.gameName}
+                      <div className="flex items-center gap-3 mb-2 w-full">
+                        <h3 className="text-2xl font-black text-white tracking-tight leading-none flex items-center min-w-0">
+                          <span className="truncate">{gamePost.gameName}</span>
+                          {isTestUpload && isAdmin && (
+                            <span className="ml-3 bg-amber-500/20 border border-amber-500/50 text-amber-400 text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-full shadow-sm shrink-0">TEST BUILD</span>
+                          )}
                         </h3>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           <PlayButton />
 
-                          {(isOwner) && (
+                          {(canRepurchase) && (
 <button
   onClick={(e) => {
     e.stopPropagation();
@@ -903,7 +910,7 @@ const PlayButton = () => {
                           <Gamepad2 size={12} className="text-gray-400" />
                           <div className="flex flex-col items-start leading-none">
                             <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">Sessions</span>
-                            <span className="text-xs font-bold text-white">{completedSessions} / {possibleSessions}</span>
+                            <span className="text-xs font-bold text-white">{completedSessions} / {possibleSessionsDisplay}</span>
                           </div>
                         </div>
                       </div>
@@ -934,15 +941,6 @@ const PlayButton = () => {
                   </div>
                 )}
 
-                {/* Waiting indicator */}
-                {/* {hasActiveSession && queue.status === 'waiting' && (
-                  <div className="mt-4 w-full bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
-                    <p className="text-xs text-blue-400 font-medium flex items-center gap-2 justify-center">
-                      <Loader2 size={14} className="animate-spin" />
-                      Getting your instance ready ...
-                    </p>
-                  </div>
-                )} */}
               </div>
             )}
 

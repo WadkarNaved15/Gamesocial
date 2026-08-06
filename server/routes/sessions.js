@@ -136,14 +136,17 @@ if (!skipDemoConsumption) {
 
       const game = post.gamePost;
 
-      if (
+if (
+    !game.isTestUpload &&
+    (
         game.creditBudget?.status === "exhausted" ||
         (game.creditBudget?.remainingCredits ?? 0) <= 0
-      ) {
-        return res.status(403).json({
-          error: "Credits exhausted",
-        });
-      }
+    )
+) {
+    return res.status(403).json({
+        error: "Credits exhausted",
+    });
+}
 
       const maxDurationSeconds = calculateSessionDuration(game);
 

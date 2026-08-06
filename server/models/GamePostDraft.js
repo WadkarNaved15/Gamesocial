@@ -30,6 +30,10 @@ const GamePostDraftSchema = new mongoose.Schema(
         maxlength: 120,
         default: "",
       },
+      isTestUpload: {
+          type: Boolean,
+          default: false,
+      },
       version: {
         type: String,
         default: "1.0.0",

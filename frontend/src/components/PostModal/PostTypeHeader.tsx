@@ -54,7 +54,6 @@ const PostTypeHeader: React.FC<PostTypeHeaderProps> = ({ active, onChange, onCan
         {visibleTypes.map((t) => {
           // ADDED t.id === "game" to the disabled condition
           const isDisabled =
-            (t.id === "game" && !isAdmin) ||
             t.id === "devlog" ||
             t.id === "article";
 
