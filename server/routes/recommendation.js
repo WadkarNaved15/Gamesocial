@@ -15,7 +15,7 @@ router.get("/", verfiyToken, async (req, res) => {
 
         if (!interactions.length)
             return res.json({
-                preferences: { topTags: {}, topGenres: {} },
+                preferences: { topTags: {}, topGenres: {} }, 
                 recommendations: []
             });
 
