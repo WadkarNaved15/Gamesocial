@@ -66,6 +66,7 @@ const ExePost: React.FC<ExePostProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const { user: currentUser } = useUser();
   const isOwner = currentUser?._id === user._id;
+  const isAdmin = currentUser?.role === "admin";
   const [localCommentsCount, setLocalCommentsCount] = useState<number>(commentsCount ?? 0);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
   const { likesCount: localLikesCount, isLiked: localIsLiked, handleLike } = useLikes(_id, BACKEND_URL);
@@ -222,6 +223,8 @@ return (
             postId={_id}
             type='model_post'
             isOwner={isOwner}
+            isAdmin={isAdmin}
+            isRigzer={user.isRigzer}
             onDelete={() => setDeleteOpen(true)}
              onProfileClick={() => {
                 trackEvent({

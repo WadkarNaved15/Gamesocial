@@ -74,7 +74,7 @@ const canViewTestUploads = Boolean(
       filter,
       { score: { $meta: "textScore" } }
     )
-      .populate("user", "username avatar displayName")
+      .populate("user", "username avatar displayName isRigzer")
       .sort({ score: { $meta: "textScore" }, _id: -1 })
       .limit(Number(limit))
       .lean();
@@ -133,7 +133,7 @@ if (!canViewTestUploads) {
         : { $nin: ["canvas_article"] };
 
     const posts = await Post.find(query)
-      .populate("user", "username avatar displayName")
+      .populate("user", "username avatar displayName isRigzer")
       .sort({ _id: -1 })
       .limit(Number(limit))
       .lean();
@@ -197,7 +197,7 @@ if (!canViewTestUploads) {
 router.get("/:postId", optionalAuthMiddleware, async (req, res) => {
   try {
     const post = await Post.findById(req.params.postId)
-      .populate("user", "username avatar displayName")
+      .populate("user", "username avatar displayName isRigzer")
       .lean();
 
     if (!post) return res.status(404).json({ deleted: true });

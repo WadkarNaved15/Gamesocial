@@ -18,6 +18,7 @@ import { useUser } from "../../context/user";
 import { trackEvent } from "../../utils/analytics";
 import api from "../../utils/api";
 import ProfileNotFound from "../../Pages/ErrorHandling/ProfileNotFound";
+import Logo from "../../assets/Icon.svg?react";
 
 // Shared glass card style used across all panels
 const glassCard =
@@ -53,6 +54,9 @@ const ProfilePage: React.FC = () => {
   const contentReady = !loadingProfile && userPosts.length > 0;
   const savedScrollY = cached?.scrollY ?? 0;
   useScrollRestoration(`profile_${username}`, savedScrollY, contentReady);
+  const showRigzerLogo = isOwnProfile
+  ? user?.isRigzer
+  : profileUser?.isRigzer;
 
   // ── Save to cache on unmount ──────────────────────────────────────────────
   const stateRef = useRef({ userPosts, cursor, hasMorePosts, userArticles, profileUser });
@@ -250,10 +254,20 @@ const ProfilePage: React.FC = () => {
                 )}
               </div>
 
-              {/* Handle Row */}
-              <p className="text-sm font-bold text-white/40 lowercase ">
-                @{profileUser?.username?.replace(/\s+/g, "")}
-              </p>
+<p
+  className="flex items-center gap-1.5 text-sm font-bold text-white/40 lowercase"
+>
+  <span>@{profileUser?.username?.replace(/\s+/g, "")}</span>
+
+  {showRigzerLogo && (
+    <img
+      src="/Logo.png"
+      alt="Rigzer"
+      className="w-4 h-4 shrink-0"
+    />
+  )}
+</p>
+                
 
               {editOpen && (
                 <EditProfileModal

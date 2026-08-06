@@ -722,6 +722,8 @@ const PlayButton = () => {
               price={gamePost?.price || 0}
               postId={_id}
               isOwner={isOwner}
+              isAdmin={isAdmin}
+              isRigzer={user.isRigzer}
               onProfileClick={() => {
                 trackEvent({
                   eventType: "profile_view",

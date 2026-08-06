@@ -17,6 +17,7 @@ type User = {
   banner?: string;
   bio?: string;
   role?: "user" | "admin";
+  isRigzer?: boolean;
   isPocketEligible?: boolean;
   isGoogleUser?: boolean;
   followersCount?: number;

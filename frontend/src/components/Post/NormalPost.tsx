@@ -62,6 +62,7 @@ const NormalPost: React.FC<NormalPostProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const { user: currentUser } = useUser();
   const isOwner = currentUser?._id === user._id;
+  const isAdmin = currentUser?.role === "admin";
   const [viewerOpen, setViewerOpen] = useState(false);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const [viewerIndex, setViewerIndex] = useState(0);
@@ -242,6 +243,8 @@ const NormalPost: React.FC<NormalPostProps> = ({
             type="normal_post"
             postId={_id}
             isOwner={isOwner}
+            isAdmin={isAdmin} // Pass the isAdmin prop to PostHeader
+            isRigzer={user.isRigzer} // Pass the isRigzer prop to PostHeader
             onDelete={() => setDeleteOpen(true)}
             onProfileClick={() => {
                 trackEvent({
