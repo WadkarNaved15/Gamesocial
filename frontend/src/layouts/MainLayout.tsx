@@ -42,7 +42,7 @@ function MainLayout() {
   const [feedLocked, setFeedLocked] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
-  const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | 'paid' | null>(null);
+  const [activeModal, setActiveModal] = useState<'terms' | 'privacy' | null>(null);
 
   // Track both the open state AND which view to show
   const [settingsConfig, setSettingsConfig] = useState<{ isOpen: boolean, view: 'password' | 'delete' }>({
@@ -156,13 +156,13 @@ function MainLayout() {
                     Privacy Policy
                   </button>
                   <span>|</span>
-                  <button
+                  {/* <button
                     onClick={() => setActiveModal('paid')}
                     className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline transition-colors"
                   >
                     Paid Services Policy
                   </button>
-                  <span>|</span>
+                  <span>|</span> */}
                   <button
                     onClick={() => setIsFeedbackOpen(true)}
                     className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 hover:underline transition-colors font-medium"

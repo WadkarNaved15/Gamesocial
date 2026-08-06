@@ -12,7 +12,7 @@ const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
 
   const isTerms = type === 'terms';
   const isPrivacy = type === 'privacy';
-  const isPaid = type === 'paid';
+  // const isPaid = type === 'paid';
 
   let title = '';
   let subtitle = '';
@@ -23,9 +23,9 @@ const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
   } else if (isPrivacy) {
     title = 'Privacy Policy';
     subtitle = 'Our Approach to Your Privacy';
-  } else if (isPaid) {
-    title = 'Paid Services Policy';
-    subtitle = 'Understanding Cloud Stream Services';
+  // } else if (isPaid) {
+  //   title = 'Paid Services Policy';
+  //   subtitle = 'Understanding Cloud Stream Services';
   }
 
   return (
@@ -746,7 +746,7 @@ const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
               </>
             )}
 
-            {isPaid && (
+            {/* {isPaid && (
               // --- PAID SERVICES POLICY CONTENT ---
               <>
                 <section>
@@ -859,7 +859,7 @@ const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
                   </p>
                 </section>
               </>
-            )}
+            )} */}
 
           </div>
 
