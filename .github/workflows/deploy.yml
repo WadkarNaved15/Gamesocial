@@ -1,26 +1,86 @@
-name: Deploy Backend to Staging
+name: Deploy Rigzer Development
 
 on:
   push:
     branches:
       - staging
 
+  workflow_dispatch:
+
+concurrency:
+  group: staging-deployment
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to EC2
+      - name: Deploy to Development EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.DEV_EC2_HOST }}
+          username: ${{ secrets.DEV_EC2_USER }}
+          key: ${{ secrets.DEV_EC2_SSH_KEY }}
+
           script: |
+            set -e
+
+            echo "======================================"
+            echo "Deploying Rigzer Development"
+            echo "======================================"
+
             cd ~/Rigzer
+
+            echo "Fetching latest staging code..."
             git fetch origin
             git reset --hard origin/staging
-            cd server
-            npm install --production
-            pm2 reload index
+
+            echo "======================================"
+            echo "Installing backend dependencies"
+            echo "======================================"
+
+            cd ~/Rigzer/server
+
+            npm ci --omit=dev
+
+            echo "======================================"
+            echo "Deploying Backend"
+            echo "======================================"
+
+            pm2 reload index-dev || pm2 start index.js --name index-dev
+
+            echo "======================================"
+            echo "Deploying Workers"
+            echo "======================================"
+
+            cd ~/Rigzer
+
+            pm2 reload game-worker-dev || \
+              pm2 start deploy/workers/ecosystem.workers.staging.config.cjs --only game-worker-dev
+
+            pm2 reload notification-worker-dev || \
+              pm2 start deploy/workers/ecosystem.workers.staging.config.cjs --only notification-worker-dev
+
+            pm2 reload view-worker-dev || \
+              pm2 start deploy/workers/ecosystem.workers.staging.config.cjs --only view-worker-dev
+
+            echo "======================================"
+            echo "Deploying Gorse"
+            echo "======================================"
+
+            cd ~/Rigzer/deploy/gorse
+
+            docker compose up -d --build
+
+            echo "======================================"
+            echo "Saving PM2"
+            echo "======================================"
+
             pm2 save
+
+            echo "======================================"
+            echo "Development deployment completed"
+            echo "======================================"
+
+            pm2 status
