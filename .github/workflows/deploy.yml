@@ -71,7 +71,7 @@ jobs:
 
             cd ~/Rigzer/deploy/gorse
 
-            docker compose up -d --build
+            docker-compose up -d --build
 
             echo "======================================"
             echo "Saving PM2"
