@@ -201,7 +201,7 @@ export default function Auth() {
         <div className="max-w-2xl animate-fade-up pb-8" style={{ animationDelay: '0.1s' }}>
 
           {/* 3D Model Viewer directly above the heading */}
-          <div className="w-full h-80 -mt-4 mb-8 flex justify-center items-center">
+          <div className="w-full h-72 -mt-4 mb-6 -translate-x-8 flex justify-center items-center">
             <model-viewer
               src="/models/butterfly.glb"
               alt="3D Butterfly Model"

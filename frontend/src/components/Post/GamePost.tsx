@@ -677,9 +677,8 @@ const PlayButton = () => {
           : "Play"}
       </span>
 
-      <Users size={14} className="animate-pulse" />
-
-      <span className="text-[11px] font-medium opacity-80 border-l border-white/30 pl-1.5 ml-0.5">
+      <span className="text-[11px] font-medium opacity-80 border-l border-white/30 pl-1.5 ml-0.5 flex items-center gap-2">
+        <Users size={14} className="animate-pulse" />
         {completedSessions}/{possibleSessionsDisplay}
       </span>
     </button>
