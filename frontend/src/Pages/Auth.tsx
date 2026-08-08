@@ -199,6 +199,30 @@ export default function Auth() {
           <span className="text-xl font-bold tracking-[0.1em] uppercase text-white">Rigzer</span>
         </div>
         <div className="max-w-2xl animate-fade-up pb-8" style={{ animationDelay: '0.1s' }}>
+
+          {/* 3D Model Viewer directly above the heading */}
+          <div className="w-full h-80 -mt-4 mb-8 flex justify-center items-center">
+            <model-viewer
+              src="/models/butterfly.glb"
+              alt="3D Butterfly Model"
+              // Animation
+              autoplay
+              animation-crossfade-duration="300"
+              // Interaction & Camera Controls
+              camera-controls
+              touch-action="pan-y"
+              interaction-prompt="auto"
+              // Auto Rotation Settings
+              auto-rotate
+              auto-rotate-delay="2000"
+              rotation-per-second="30deg"
+              // Visual & Lighting Quality
+              shadow-intensity="1"
+              shadow-softness="0.8"
+              exposure="1"
+              style={{ width: '100%', height: '100%', backgroundColor: 'transparent' }}
+            />
+          </div>
           <h1 className="text-3xl lg:text-4xl font-bold leading-tight tracking-tight mb-8 text-transparent bg-clip-text bg-gradient-to-br from-white to-white/70">
             The Next-Generation Social Interactive Media Platform.
           </h1>
@@ -208,16 +232,14 @@ export default function Auth() {
                 <div key={feature.id} className="relative">
                   <button
                     onClick={() => setActiveFeature(activeFeature === feature.id ? null : feature.id)}
-                    className={`group flex items-center gap-2.5 px-3 py-1.5 rounded-full transition-all duration-300 border ${
-                      activeFeature === feature.id
+                    className={`group flex items-center gap-2.5 px-3 py-1.5 rounded-full transition-all duration-300 border ${activeFeature === feature.id
                         ? 'bg-[#62D4AE]/10 border-[#62D4AE]/30 text-white'
                         : 'bg-white/5 border-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Plus
-                      className={`w-4 h-4 text-[#62D4AE] transition-transform duration-300 ease-in-out ${
-                        activeFeature === feature.id ? 'rotate-45' : 'rotate-0 group-hover:scale-110'
-                      }`}
+                      className={`w-4 h-4 text-[#62D4AE] transition-transform duration-300 ease-in-out ${activeFeature === feature.id ? 'rotate-45' : 'rotate-0 group-hover:scale-110'
+                        }`}
                     />
                     <span className="text-[14px] font-medium">{feature.title}</span>
                   </button>
@@ -281,14 +303,14 @@ export default function Auth() {
             </div>
           ) : (
             <form onSubmit={handleForgotPassword} className="space-y-4 animate-fade-up">
-                    <div className="mb-6">
-                      <h1 className="font-headline text-2xl sm:text-3xl text-white uppercase tracking-[0.15em] text-left">
-                        Reset Access
-                      </h1>
-                      <div className="mt-1 flex items-center gap-2 text-sm sm:text-sm text-gray-300">
-                        <span>Enter your email to recieve a reset link</span>
-                      </div>
-                    </div>
+              <div className="mb-6">
+                <h1 className="font-headline text-2xl sm:text-3xl text-white uppercase tracking-[0.15em] text-left">
+                  Reset Access
+                </h1>
+                <div className="mt-1 flex items-center gap-2 text-sm sm:text-sm text-gray-300">
+                  <span>Enter your email to recieve a reset link</span>
+                </div>
+              </div>
               <div className="space-y-1.5">
                 <label className="text-[13px] font-medium text-white/70">Email address</label>
                 <div className="relative group">

@@ -665,8 +665,6 @@ const PlayButton = () => {
       }}
       className="text-white px-3 py-2 rounded-2xl shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center gap-1.5 shrink-0 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      <Users size={14} className="animate-pulse" />
-
       <span className="font-semibold text-xs">
         {checkingEligibility
           ? "Checking..."
@@ -678,6 +676,8 @@ const PlayButton = () => {
           ? "Unavailable"
           : "Play"}
       </span>
+
+      <Users size={14} className="animate-pulse" />
 
       <span className="text-[11px] font-medium opacity-80 border-l border-white/30 pl-1.5 ml-0.5">
         {completedSessions}/{possibleSessionsDisplay}

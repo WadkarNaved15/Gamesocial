@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const lambda = new LambdaClient({
-  region: process.env.AWS_REGION,
+  region: "ap-south-1",
 });
 
 const MAX_RETRIES = 3;
