@@ -117,7 +117,7 @@ export default function ProfileCover({ onOpenWishlist }: ProfileCoverProps) {
   }
 
   // Dynamic values to match your schema
-  const bannerUrl = user?.banner || 'https://fastly.picsum.photos/id/299/800/200.jpg?hmac=xMdRbjiNM_IogJDEgKIJ0GeCxZ8nwOGd5_Wf_ODZ94s';
+  const bannerUrl = user?.banner || "/Rigzer_Banner.jpeg";
 
   const handleAvatarClick = (e: React.MouseEvent<HTMLImageElement>) => {
     // Prevent outer containers from hijacking the click
