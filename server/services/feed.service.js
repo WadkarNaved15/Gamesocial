@@ -95,7 +95,7 @@ const POST_PROJECTION = {
 
 // ── Chronological fetch (guest fallback + Gorse fallback) ─────────────────────
 
-async function fetchPostsByIds(ids, isAdmin = false ,canViewTestUploads = false) {
+async function fetchPostsByIds(ids, isAdmin = false, canViewTestUploads = false) {
   // Used by Gorse path & Cache hit path: fetch exact IDs, no sort (JS preserves rank)
   const filter = {
     _id: { $in: ids },
@@ -104,7 +104,7 @@ async function fetchPostsByIds(ids, isAdmin = false ,canViewTestUploads = false)
 
   if (!canViewTestUploads) {
     filter["gamePost.isTestUpload"] = { $ne: true };
-}
+  }
 
   if (!isAdmin) {
     filter.type = {
@@ -122,11 +122,11 @@ async function fetchPostsByIds(ids, isAdmin = false ,canViewTestUploads = false)
   return docs;
 }
 
-async function fetchChronological(filter, limit, isAdmin = false , canViewTestUploads = false) {
+async function fetchChronological(filter, limit, isAdmin = false, canViewTestUploads = false) {
   // Used by guest/fallback path: sort by _id desc
   if (!canViewTestUploads) {
     filter["gamePost.isTestUpload"] = { $ne: true };
-}
+  }
   const query = {
     ...filter,
   };
@@ -135,8 +135,8 @@ async function fetchChronological(filter, limit, isAdmin = false , canViewTestUp
     ? { $nin: ["canvas_article"] }
     : { $ne: "canvas_article" };
 
-    
-  
+
+
 
   return AllPost.find(query)
     .select(POST_PROJECTION)
@@ -153,28 +153,55 @@ async function fetchChronological(filter, limit, isAdmin = false , canViewTestUp
  * @param {{ cursor?: string, limit?: number, userId?: string|null }} opts
  */
 export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
+
+  console.log(
+    "\n%c================================================",
+    "color: #ff9900; font-weight: bold;"
+  );
+
+  console.log(
+    "%c[FEED SERVICE] getFeedPage()",
+    "color: #ff9900; font-weight: bold;"
+  );
+
+  console.log("[FEED SERVICE] timestamp:", new Date().toISOString());
+  console.log("[FEED SERVICE] cursor:", cursor ?? null);
+  console.log("[FEED SERVICE] limit:", limit);
+  console.log("[FEED SERVICE] userId:", userId ?? null);
+
   let isAdmin = false;
   let canViewTestUploads = false;
 
   if (userId) {
     const user = await User.findById(userId)
-  .select("role isGameTester")
-  .lean();
+      .select("role isGameTester")
+      .lean();
 
- canViewTestUploads =
-  user?.role === "admin" ||
-  user?.isGameTester === true;
+    canViewTestUploads =
+      user?.role === "admin" ||
+      user?.isGameTester === true;
     isAdmin = user?.role === "admin";
   }
-  
+
   const fetchLimit = limit + 3;
   const isFirstPage = !cursor;
-  
+
+  console.log(
+    "%c[FEED SERVICE] PAGINATION",
+    "color: #00bfff; font-weight: bold;",
+    {
+      requestedLimit: limit,
+      fetchLimit,
+      cursor: cursor ?? null,
+      isFirstPage,
+    }
+  );
+
   // ── Cache configuration ───────────────────────────────────────────────────────
   const cacheUserKey = userId ?? "guest";
   const cacheKey = isFirstPage ? `feed:${cacheUserKey}:first` : null;
   let cachedData = null;
-  
+
 
   // ── Cache Lookup & Stampede Protection ────────────────────────────────────────
   if (cacheKey) {
@@ -217,7 +244,7 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
 
     if (ids && ids.length > 0) {
       // Fetch fresh posts directly from Mongo using cached IDs
-      const docs = await fetchPostsByIds(ids, isAdmin , canViewTestUploads);
+      const docs = await fetchPostsByIds(ids, isAdmin, canViewTestUploads);
 
       // Preserve Gorse's original ranked order (or chronological if guest)
       const postMap = new Map(docs.map((p) => [p._id.toString(), p]));
@@ -237,13 +264,41 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
 
     if (cursor) {
       const [type, value] = cursor.split(/:(.+)/);
+
+      console.log(
+        "%c[FEED SERVICE] CURSOR PARSED",
+        "color: #ff00ff; font-weight: bold;",
+        {
+          rawCursor: cursor,
+          cursorType: type,
+          cursorValue: value,
+        }
+      );
+
       if (type === "a") {
         allPostFilter = { _id: { $lt: value } };
+
+        console.log("[FEED SERVICE] Chronological cursor:", value);
+
       } else if (type === "g") {
         gorseOffset = parseInt(value, 10) || 0;
+
+        console.log(
+          "%c[FEED SERVICE] GORSE OFFSET:",
+          "color: #ff00ff; font-weight: bold;",
+          gorseOffset
+        );
+
       } else {
         allPostFilter = { _id: { $lt: cursor } };
+
+        console.log("[FEED SERVICE] Unknown cursor type:", type);
       }
+    } else {
+      console.log(
+        "%c[FEED SERVICE] FIRST PAGE - NO CURSOR",
+        "color: #00ff88; font-weight: bold;"
+      );
     }
 
     let allPosts = [];
@@ -253,29 +308,66 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
       // ── Logged-in: Gorse path ──────────────────────────────
       let gorseIds = [];
       try {
+        console.log(
+          "%c[FEED SERVICE] CALLING GORSE",
+          "color: #ff9900; font-weight: bold;",
+          {
+            userId,
+            limit: fetchLimit,
+            offset: gorseOffset,
+            incomingCursor: cursor ?? null,
+          }
+        );
+
+        const gorseStartTime = Date.now();
+
         const [ids] = await Promise.all([
           getGorsePostIds(userId, fetchLimit, gorseOffset),
         ]);
+
         gorseIds = ids ?? [];
+
+        console.log(
+          "%c[FEED SERVICE] GORSE RESPONSE",
+          "color: #00ff88; font-weight: bold;",
+          {
+            durationMs: Date.now() - gorseStartTime,
+            requestedOffset: gorseOffset,
+            requestedLimit: fetchLimit,
+            returnedCount: gorseIds.length,
+            returnedIds: gorseIds,
+          }
+        );
       } catch (err) {
         console.warn("[Feed] Gorse unavailable, falling back:", err.message);
       }
 
       console.log("[Feed] User:", userId);
-console.log("[Feed] Gorse IDs:", gorseIds);
+      console.log("[Feed] Gorse IDs:", gorseIds);
 
       if (gorseIds.length > 0) {
         const safeIds = [...new Set(gorseIds)].filter((id) => id?.length === 24);
         if (safeIds.length > 0) {
-          const docs = await fetchPostsByIds(safeIds, isAdmin , canViewTestUploads);
+          const docs = await fetchPostsByIds(safeIds, isAdmin, canViewTestUploads);
           console.log(
-  "[Feed] Mongo returned:",
-  docs.map(p => ({
-    id: p._id.toString(),
-    owner: p.user.toString ? p.user.toString() : p.user._id?.toString(),
-    game: p.gamePost?.gameName
-  }))
-);
+            "%c[FEED SERVICE] MONGO FETCH",
+            "color: #00bfff; font-weight: bold;",
+            {
+              gorseIdsCount: safeIds.length,
+              mongoDocsCount: docs.length,
+
+              gorseIds: safeIds,
+
+              mongoIds: docs.map((p) => p._id.toString()),
+
+              missingFromMongo: safeIds.filter(
+                (id) =>
+                  !docs.some(
+                    (p) => p._id.toString() === id
+                  )
+              ),
+            }
+          );
           const postMap = new Map(docs.map((p) => [p._id.toString(), p]));
           allPosts = safeIds.map((id) => postMap.get(id)).filter(Boolean);
           usedGorse = true;
@@ -286,14 +378,23 @@ console.log("[Feed] Gorse IDs:", gorseIds);
       }
 
       if (!usedGorse) {
-        allPosts = await fetchChronological(allPostFilter, fetchLimit, isAdmin , canViewTestUploads);
+        allPosts = await fetchChronological(allPostFilter, fetchLimit, isAdmin, canViewTestUploads);
       }
     } else {
       // ── Guest: Chronological path ──────────────────────────
       [allPosts] = await Promise.all([
-        fetchChronological(allPostFilter, fetchLimit, isAdmin , canViewTestUploads),
+        fetchChronological(allPostFilter, fetchLimit, isAdmin, canViewTestUploads),
       ]);
     }
+
+    console.log(
+      "%c[FEED SERVICE] ALL POSTS BEFORE NORMALISATION",
+      "color: #00bfff; font-weight: bold;",
+      {
+        count: allPosts.length,
+        ids: allPosts.map((p) => p._id.toString()),
+      }
+    );
 
     // ── Normalise to common shape for sorting ───────────────
     const normalisedAllPosts = allPosts.map((p, idx) => ({
@@ -312,9 +413,47 @@ console.log("[Feed] Gorse IDs:", gorseIds);
       .sort((a, b) => b._sortKey - a._sortKey)
       .slice(0, limit);
 
+    console.log(
+      "%c[FEED SERVICE] AFTER SORT + SLICE",
+      "color: #ff00ff; font-weight: bold;",
+      {
+        beforeSliceCount: normalisedAllPosts.length,
+        requestedLimit: limit,
+        returnedCount: merged.length,
+
+        beforeSliceIds: normalisedAllPosts.map(
+          (p) => p._id.toString()
+        ),
+
+        returnedIds: merged.map(
+          (p) => p._id.toString()
+        ),
+
+        skippedWithinBatch: normalisedAllPosts
+          .slice(limit)
+          .map((p) => p._id.toString()),
+      }
+    );
+
     if (merged.length > 0) {
       const last = merged[merged.length - 1];
       nextCursor = `${last._cursorType}:${last._cursorVal}`;
+
+      console.log(
+        "%c[FEED SERVICE] NEXT CURSOR CREATED",
+        "color: #00ff88; font-weight: bold;",
+        {
+          lastReturnedPost: last._id.toString(),
+          cursorType: last._cursorType,
+          cursorValue: last._cursorVal,
+          nextCursor,
+
+          returnedCount: merged.length,
+          returnedIds: merged.map(
+            (p) => p._id.toString()
+          ),
+        }
+      );
 
       // ── Write Cache Result (Only ordered IDs + Cursor) ───
       if (cacheKey) {
@@ -332,7 +471,7 @@ console.log("[Feed] Gorse IDs:", gorseIds);
   // ========================================================================
   // COMMON POST-PROCESSING & ENRICHMENTS (Runs on BOTH Hits & Misses)
   // ========================================================================
-  
+
   if (merged.length === 0) {
     return { posts: [], nextCursor: null };
   }
@@ -381,13 +520,37 @@ console.log("[Feed] Gorse IDs:", gorseIds);
   const posts = merged.map(({ _sortKey, _cursorType, _cursorVal, ...rest }) => rest);
 
   console.log(
-  "[Feed] Final feed:",
-  posts.map(p => ({
-    id: p._id.toString(),
-    owner: p.user._id?.toString() ?? p.user.toString(),
-    game: p.gamePost?.gameName
-  }))
-);
-  
+    "%c[FEED SERVICE] FINAL PAGE",
+    "color: #00ff88; font-weight: bold;",
+    {
+      incomingCursor: cursor ?? null,
+
+      returnedCount: posts.length,
+
+      returnedIds: posts.map(
+        (p) => p._id.toString()
+      ),
+
+      nextCursor,
+
+      posts: posts.map((p) => ({
+        id: p._id.toString(),
+        ownerId:
+          p.user?._id?.toString?.() ??
+          p.user?.toString?.(),
+        type: p.type,
+        createdAt: p.createdAt,
+        gameName: p.gamePost?.gameName,
+      })),
+    }
+  );
+
+  console.log(
+    "%c================================================\n",
+    "color: #ff9900; font-weight: bold;"
+  );
+
+  return { posts, nextCursor };
+
   return { posts, nextCursor };
 }

@@ -25,6 +25,21 @@ router.get("/fetch_posts", optionalAuthMiddleware, async (req, res) => {
   const { cursor, limit = 10 } = req.query;
   const userId = req.user?._id?.toString() || null;
 
+  console.log(
+    "\n%c========== [FEED API REQUEST] ==========",
+    "color: #00bfff; font-weight: bold;"
+  );
+
+  console.log("[FEED API] Time:", new Date().toISOString());
+  console.log("[FEED API] Cursor:", cursor);
+  console.log("[FEED API] Limit:", limit);
+  console.log("[FEED API] User:", userId);
+
+  console.log(
+    "%c========================================\n",
+    "color: #00bfff; font-weight: bold;"
+  );
+
   try {
     // All caching logic, stampede protection, and cache hit/miss flows
     // are now securely abstracted into getFeedPage.
@@ -33,6 +48,18 @@ router.get("/fetch_posts", optionalAuthMiddleware, async (req, res) => {
       limit: Number(limit),
       userId,
     });
+
+    console.log(
+      "%c[FEED API RESPONSE]",
+      "color: #00ff88; font-weight: bold;",
+      {
+        requestedCursor: cursor || null,
+        requestedLimit: Number(limit),
+        returnedCount: posts.length,
+        nextCursor,
+        postIds: posts.map((p) => p._id.toString()),
+      }
+    );
 
     res.status(200).json({ posts, nextCursor });
   } catch (error) {
@@ -54,17 +81,17 @@ router.get("/filter_posts", optionalAuthMiddleware, async (req, res) => {
       $text: { $search: query },
     };
 
-const canViewTestUploads = Boolean(
-    req.user &&
-    (
+    const canViewTestUploads = Boolean(
+      req.user &&
+      (
         req.user.role === "admin" ||
         req.user.isGameTester
-    )
-);
+      )
+    );
 
-  if (!canViewTestUploads) {
+    if (!canViewTestUploads) {
       filter["gamePost.isTestUpload"] = { $ne: true };
-  }
+    }
 
     if (cursor) {
       filter._id = { $lt: cursor };
@@ -115,17 +142,17 @@ router.get("/user_posts/:userId", optionalAuthMiddleware, async (req, res) => {
       ...(cursor && { _id: { $lt: cursor } }),
     };
 
-const canViewTestUploads = Boolean(
-    req.user &&
-    (
+    const canViewTestUploads = Boolean(
+      req.user &&
+      (
         req.user.role === "admin" ||
         req.user.isGameTester
-    )
-);
+      )
+    );
 
-if (!canViewTestUploads) {
-    query["gamePost.isTestUpload"] = { $ne: true };
-}
+    if (!canViewTestUploads) {
+      query["gamePost.isTestUpload"] = { $ne: true };
+    }
 
     query.type =
       req.user?.role === "admin"
@@ -202,22 +229,22 @@ router.get("/:postId", optionalAuthMiddleware, async (req, res) => {
 
     if (!post) return res.status(404).json({ deleted: true });
 
-const canViewTestUploads = Boolean(
-    req.user &&
-    (
+    const canViewTestUploads = Boolean(
+      req.user &&
+      (
         req.user.role === "admin" ||
         req.user.isGameTester
-    )
-);
+      )
+    );
 
-if (
-    post?.gamePost?.isTestUpload &&
-    !canViewTestUploads
-) {
-    return res.status(404).json({
+    if (
+      post?.gamePost?.isTestUpload &&
+      !canViewTestUploads
+    ) {
+      return res.status(404).json({
         deleted: true,
-    });
-}
+      });
+    }
 
     const viewerId = req.user?._id?.toString();
 
@@ -228,7 +255,7 @@ if (
         follower: viewerId,
         following: post.user._id
       });
-      
+
       post.user.isFollowing = !!isFollowing;
     }
 
