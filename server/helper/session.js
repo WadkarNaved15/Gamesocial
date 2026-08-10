@@ -432,7 +432,7 @@ export async function startOrTouchDemoConsumption(session, now = new Date()) {
       gameSession: session._id,
       status: "active",
       startedAt: now,
-      firstHeartbeatAt: now,
+      firstHeartbeatAt: now, 
       lastHeartbeatAt: now,
       connectedSeconds: 0,
       graceSecondsUsed: 0,
