@@ -303,10 +303,9 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
 
     let allPosts = [];
     let usedGorse = false;
-
+    let gorseIds = [];
     if (userId) {
       // ── Logged-in: Gorse path ──────────────────────────────
-      let gorseIds = [];
       try {
         console.log(
           "%c[FEED SERVICE] CALLING GORSE",
