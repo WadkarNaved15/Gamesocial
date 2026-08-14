@@ -13,15 +13,21 @@ THREE.ImageBitmapLoader.prototype.load = function () { return null; };
 // Download file to a temporary path
 const downloadFile = (url, outputPath) => {
   return new Promise((resolve, reject) => {
+    console.log("Downloading model from:", url);
     const file = fs.createWriteStream(outputPath);
     https.get(url, (res) => {
       if (res.statusCode !== 200) {
-        return reject(new Error(`Download failed with status ${res.statusCode}`));
+        res.resume(); // consume response
+        file.close();
+        fs.unlink(outputPath, () => { });
+        return reject(
+          new Error(`Download failed with status ${res.statusCode}`)
+        );
       }
       res.pipe(file);
       file.on("finish", () => file.close(resolve));
     }).on("error", (err) => {
-      fs.unlink(outputPath, () => {}); // clean up partial file
+      fs.unlink(outputPath, () => { }); // clean up partial file
       reject(err);
     });
   });
@@ -33,6 +39,7 @@ export const extractMetadataFromUrl = async (fileUrl) => {
   const tempPath = path.join(tempDir, `${Date.now()}.glb`);
 
   try {
+    console.log("MODEL URL:", fileUrl);
     await downloadFile(fileUrl, tempPath);
 
     const loader = new GLTFLoader();
