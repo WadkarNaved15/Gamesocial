@@ -1,25 +1,33 @@
-import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
-import { X, Image as ImageIcon, Box , DollarSign, ZoomIn } from 'lucide-react';
+// src/components/post/PostModal.tsx
+import React, { useState, useRef, ChangeEvent } from 'react';
+import { Box } from 'lucide-react';
 import '@google/model-viewer';
 import { useUser } from '../../../context/user';
 import { MentionTextarea } from './MentionTextarea';
-
-interface PostModalProps {
-  onCancel: () => void;
-}
+import { ModelViewerSection } from './PostComponents/ModelViewerSection';
+import { BackgroundControls, BgType } from './PostComponents/BackgroundControls';
 
 interface Asset {
   id: string;
   file: File;
   previewUrl: string;
+  uploadedUrl?: string;
+  originalKey?: string;
 
-  uploadedUrl?: string;   // CloudFront URL
-  originalKey?: string;   // S3 key (CRITICAL)
   fieldOfView?: string;
+
+  backgroundType?: BgType;
+  backgroundColor?: string;
+  backgroundColor1?: string;
+  backgroundColor2?: string;
 
   name: string;
   progress?: number;
-  status?: "pending" | "uploading" | "done" | "error";
+  status?: 'pending' | 'uploading' | 'done' | 'error';
+}
+
+interface PostModalProps {
+  onCancel: () => void;
 }
 
 const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
@@ -33,27 +41,36 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
 
+  // Background Control States
+  
+  const [gradientColor1, setGradientColor1] = useState('#1e293b');
+  const [gradientColor2, setGradientColor2] = useState('#0f172a');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const viewerRef = useRef<HTMLElement>(null); // ✅ NEW: Ref for the 3D viewer
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+  const viewerRef = useRef<HTMLElement>(null);
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
 
     const filesToProcess = [files[0]];
-
     const newAssets: Asset[] = [];
 
     filesToProcess.forEach((file) => {
-      if (!file.name.endsWith(".glb")) return;
+      if (!file.name.endsWith('.glb')) return;
 
       newAssets.push({
         id: crypto.randomUUID(),
         file,
         previewUrl: URL.createObjectURL(file),
         name: file.name,
-        fieldOfView: "auto", // ✅ CHANGED: Let the model decide the best initial zoom
+        fieldOfView: 'auto',
+
+        backgroundType: 'solid',
+        backgroundColor: '#00000000',
+        backgroundColor1: '#1e293b',
+        backgroundColor2: '#0f172a',
       });
     });
 
@@ -62,91 +79,126 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
       setActiveIndex(0);
     }
 
-    e.target.value = "";
+    e.target.value = '';
   };
 
   const handleZoomChange = (e: ChangeEvent<HTMLInputElement>) => {
     const newValue = `${e.target.value}deg`;
-    
-    // Use a proper immutable update so React detects the deep change
+    updateActiveAsset({ fieldOfView: newValue });
+  };
+
+  const handleFovChange = (fov: string) => {
+    updateActiveAsset({ fieldOfView: fov });
+  };
+
+  const updateActiveAsset = (updates: Partial<Asset>) => {
     setAssets((prevAssets) =>
       prevAssets.map((asset, idx) =>
-        idx === activeIndex
-          ? { ...asset, fieldOfView: newValue } // Create a new object for the active asset
-          : asset
+        idx === activeIndex ? { ...asset, ...updates } : asset
       )
     );
   };
 
-  // ✅ NEW: Two-way synchronization between mouse-wheel and slider
-  useEffect(() => {
-    const viewer = viewerRef.current as any;
-    if (!viewer) return;
+  const handleSolidColorChange = (color: string) => {
+    updateActiveAsset({
+      backgroundType: 'solid',
+      backgroundColor: color,
+    });
+  };
 
-    // Sync slider when user scrolls mouse wheel
-    const handleCameraChange = (e: any) => {
-      if (e.detail.source === 'user-interaction') {
-        const currentFov = viewer.getFieldOfView();
-        setAssets((prevAssets) =>
-          prevAssets.map((asset, idx) =>
-            idx === activeIndex
-              ? { ...asset, fieldOfView: `${Math.round(currentFov)}deg` }
-              : asset
-          )
-        );
-      }
-    };
+  const handleGradientChange = (c1: string, c2: string) => {
+    updateActiveAsset({
+      backgroundType: 'gradient',
+      backgroundColor1: c1,
+      backgroundColor2: c2,
+    });
+  };
 
-    // Sync slider the exact moment the model first loads and calculates "auto"
-    const handleLoad = () => {
-      const initialFov = viewer.getFieldOfView();
-      setAssets((prevAssets) =>
-        prevAssets.map((asset, idx) =>
-          idx === activeIndex
-            ? { ...asset, fieldOfView: `${Math.round(initialFov)}deg` }
-            : asset
-        )
-      );
-    };
+  const handleStripesGradientChange = (primary: string, secondary: string) => {
+    updateActiveAsset({
+      backgroundType: 'stripes',
+      backgroundColor1: primary,
+      backgroundColor2: secondary,
+    });
+  };
 
-    viewer.addEventListener('camera-change', handleCameraChange);
-    viewer.addEventListener('load', handleLoad);
+  const handleSpotlightGradientChange = (c1: string, c2: string) => {
+    updateActiveAsset({
+      backgroundType: 'spotlight',
+      backgroundColor1: c1,
+      backgroundColor2: c2,
+    });
+  };
 
-    return () => {
-      viewer.removeEventListener('camera-change', handleCameraChange);
-      viewer.removeEventListener('load', handleLoad);
-    };
-  }, [activeIndex, assets.length]); // Re-bind when active tab or assets change
+  const handleFocusGradientChange = (c1: string, c2: string) => {
+    updateActiveAsset({
+      backgroundType: 'focus',
+      backgroundColor1: c1,
+      backgroundColor2: c2,
+    });
+  };
+
+  const handleBgTypeChange = (type: BgType) => {
+
+    if (type === 'solid') {
+      updateActiveAsset({
+        backgroundType: 'solid',
+      });
+      return;
+    }
+
+    updateActiveAsset({
+      backgroundType: type,
+      backgroundColor1: gradientColor1,
+      backgroundColor2: gradientColor2,
+    });
+  };
+
+  const handleGradientColor1Change = (color: string) => {
+    setGradientColor1(color);
+
+    if (!activeAsset) return;
+
+    updateActiveAsset({
+      backgroundColor1: color,
+    });
+  };
+
+  const handleGradientColor2Change = (color: string) => {
+    setGradientColor2(color);
+
+    if (!activeAsset) return;
+
+    updateActiveAsset({
+      backgroundColor2: color,
+    });
+  };
 
   const uploadAssetToS3 = async (
     asset: Asset,
     onProgress: (percent: number) => void
   ): Promise<{ fileUrl: string; key: string }> => {
     const res = await fetch(`${BACKEND_URL}/api/upload/presigned-url`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         fileName: asset.file.name,
-        fileType: asset.file.type || "model/gltf-binary",
-        category: "original",
+        fileType: asset.file.type || 'model/gltf-binary',
+        category: 'original',
         fileSize: asset.file.size,
         fieldOfView: asset.fieldOfView,
       }),
     });
 
-    if (!res.ok) throw new Error("Failed to get upload URL");
+    if (!res.ok) throw new Error('Failed to get upload URL');
 
     const { uploadUrl, key } = await res.json();
-
     const fileUrl = `${import.meta.env.VITE_GAMES_STORAGE_PRIVATE_CLOUDFRONT}/${key}`;
 
     await new Promise<void>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open("PUT", uploadUrl);
-      xhr.setRequestHeader(
-        "Content-Type",
-        asset.file.type || "model/gltf-binary"
-      );
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', asset.file.type || 'model/gltf-binary');
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
@@ -155,9 +207,9 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
       };
 
       xhr.onload = () =>
-        xhr.status === 200 ? resolve() : reject(new Error("Upload failed"));
+        xhr.status === 200 ? resolve() : reject(new Error('Upload failed'));
 
-      xhr.onerror = () => reject(new Error("Upload error"));
+      xhr.onerror = () => reject(new Error('Upload error'));
 
       xhr.send(asset.file);
     });
@@ -176,7 +228,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
 
       await Promise.all(
         updatedAssets.map(async (asset, index) => {
-          updatedAssets[index].status = "uploading";
+          updatedAssets[index].status = 'uploading';
           updatedAssets[index].progress = 0;
           setAssets([...updatedAssets]);
 
@@ -187,7 +239,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
 
           updatedAssets[index].uploadedUrl = fileUrl;
           updatedAssets[index].originalKey = key;
-          updatedAssets[index].status = "done";
+          updatedAssets[index].status = 'done';
           updatedAssets[index].progress = 100;
 
           setAssets([...updatedAssets]);
@@ -197,11 +249,11 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
       setIsSavingMetadata(true);
 
       const response = await fetch(`${BACKEND_URL}/api/allposts`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: "model_post",
+          type: 'model_post',
           title,
           description,
           price: Number(price),
@@ -209,19 +261,24 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
             name: a.name,
             originalUrl: a.uploadedUrl,
             originalKey: a.originalKey,
-            fieldOfView: a.fieldOfView || "45deg", // safe fallback
+            fieldOfView: a.fieldOfView || '45deg',
+            background: {
+              type: a.backgroundType || 'solid',
+              color: a.backgroundColor || '#00000000',
+              color1: a.backgroundColor1 || '#1e293b',
+              color2: a.backgroundColor2 || '#0f172a',
+            },
           })),
         }),
       });
 
-      if (!response.ok) throw new Error("Database save failed");
+      if (!response.ok) throw new Error('Database save failed');
 
       setIsSavingMetadata(false);
       setIsSubmitting(false);
       onCancel();
-
     } catch (err) {
-      console.error("Post creation failed", err);
+      console.error('Post creation failed', err);
 
       const uploadedKeys = updatedAssets
         .map((a: Asset) => a.originalKey)
@@ -229,9 +286,9 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
 
       if (uploadedKeys.length > 0) {
         await fetch(`${BACKEND_URL}/api/upload/cleanup`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ keys: uploadedKeys }),
         });
       }
@@ -241,28 +298,21 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
     }
   };
 
-  const removeAsset = (index: number) => {
-    const updated = assets.filter((_, i) => i !== index);
-    setAssets(updated);
-    if (activeIndex >= updated.length) {
-      setActiveIndex(Math.max(0, updated.length - 1));
-    }
-  };
+  const activeAsset = assets[activeIndex];
 
   return (
     <div className="w-full max-w-2xl mx-auto bg-white/[0.03] backdrop-blur-2xl min-h-[75vh] rounded-3xl border border-gray-200 dark:border-white/[0.06] flex flex-col overflow-hidden shadow-2xl">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 sticky top-0 bg-transparent z-30 border-b border-gray-100 dark:border-white/[0.06]">
-        <div className="flex items-center gap-6">
-          <h2 className="text-xl font-bold text-black dark:text-white tracking-tight">Compose 3D Bundle</h2>
-        </div>
-
+        <h2 className="text-xl font-bold text-black dark:text-white tracking-tight">
+          Compose 3D Bundle
+        </h2>
         <button
           onClick={handlePostSubmit}
           disabled={!title || !description || assets.length === 0 || isSubmitting}
           className="bg-[#3D7A6E] hover:bg-[#2F5E55] disabled:opacity-50 text-white font-bold px-6 py-2 rounded-full transition shadow-sm"
         >
-          {isSubmitting ? "Posting..." : "Post"}
+          {isSubmitting ? 'Posting...' : 'Post'}
         </button>
       </div>
 
@@ -273,7 +323,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
             {user?.avatar ? (
               <img
                 src={logoImage}
-                alt={`${user.username || 'User'}'s avatar`}
+                alt="Avatar"
                 className="h-full w-full object-cover"
                 onError={(e) => {
                   e.currentTarget.src = '/default_avatar.png';
@@ -286,7 +336,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
         </div>
 
         <div className="flex-1 flex flex-col gap-5">
-          {/* Inputs Section */}
+          {/* Form Inputs */}
           <div className="space-y-2">
             <input
               type="text"
@@ -303,58 +353,32 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
             />
           </div>
 
-          {/* 3D Asset Management UI */}
+          {/* 3D Model Viewer & Controls */}
           {assets.length > 0 ? (
             <div className="flex flex-col gap-3">
-              {/* Main Preview Area */}
-              <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-white/[0.06] bg-gray-50 dark:bg-black/20 group">
-                {/* @ts-ignore */}
-                <model-viewer
-                  ref={viewerRef} // ✅ NEW: Ref attached here
-                  src={assets[activeIndex].uploadedUrl || assets[activeIndex].previewUrl}
-                  camera-controls
-                  auto-rotate
-                  exposure="1.0"
-                  environment-image="neutral"
-                  shadow-intensity="1"
-                  field-of-view={assets[activeIndex].fieldOfView || "auto"} // Fallback handles initial render
-                  camera-orbit="auto auto auto"
-                  bounds="tight"
-                  min-field-of-view="1deg" 
-                  max-field-of-view="90deg" 
-                  style={{ width: "100%", height: "400px", backgroundColor: "transparent" }}
-                />
+              <ModelViewerSection
+                asset={activeAsset}
+                viewerRef={viewerRef}
+                onFovChange={handleFovChange}
+              />
 
-                <div className="absolute top-4 right-4 pointer-events-none bg-black/40 backdrop-blur-md px-3 py-1 rounded-lg text-white text-[10px] font-bold uppercase tracking-wider">
-                  Previewing: {assets[activeIndex].name.substring(0, 15)}{assets[activeIndex].name.length > 15 ? '...' : ''}
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-4 px-2 py-3 bg-gray-50 dark:bg-white/[0.02] rounded-xl border border-gray-200 dark:border-white/[0.06]">
-                <ZoomIn size={18} className="text-gray-400" />
-                <div className="flex-1 flex flex-col gap-1">
-                  <div className="flex justify-between text-xs font-semibold text-gray-500">
-                    <span>Zoomed In</span>
-                    <span>Zoomed Out</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1" 
-                    max="90" 
-                    // ✅ CHANGED: Safely parse 'auto' into a temporary visual number while it loads
-                    value={
-                      assets[activeIndex].fieldOfView === "auto" 
-                        ? 45 
-                        : parseInt(assets[activeIndex].fieldOfView || "45")
-                    }
-                    onChange={handleZoomChange}
-                    className="w-full accent-[#3D7A6E] cursor-pointer"
-                  />
-                </div>
-              </div>
+              <BackgroundControls
+                activeAsset={activeAsset}
+                bgType={activeAsset.backgroundType || 'solid'}
+                gradientColor1={gradientColor1}
+                gradientColor2={gradientColor2}
+                onBgTypeChange={handleBgTypeChange}
+                onSolidColorChange={handleSolidColorChange}
+                onGradientChange={handleGradientChange}
+                onFocusGradientChange={handleFocusGradientChange}
+                onStripesGradientChange={handleStripesGradientChange}
+                onSpotlightGradientChange={handleSpotlightGradientChange}
+                onZoomChange={handleZoomChange}
+                onGradientColor1Change={handleGradientColor1Change}
+                onGradientColor2Change={handleGradientColor2Change}
+              />
             </div>
           ) : (
-            /* Upload Placeholder */
             <div
               onClick={() => fileInputRef.current?.click()}
               className="border border-dashed border-gray-200 dark:border-white/[0.1] rounded-2xl py-16 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-all group"
@@ -362,15 +386,14 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
               <div className="p-3 rounded-full bg-white/10 dark:bg-white/20 text-white group-hover:scale-110 transition-transform">
                 <Box size={32} />
               </div>
-              <p className="text-gray-500 font-medium">Upload a .glb assets</p>
+              <p className="text-gray-500 font-medium">Upload a .glb asset</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Enhanced Upload Progress Overlay */}
+      {/* Progress Overlay */}
       <div className="space-y-3 px-2 mt-2">
-        {/* Metadata Saving Overlay */}
         {isSavingMetadata && (
           <div className="mx-4 p-4 rounded-xl border border-[#3D7A6E]/20 dark:border-[#3D7A6E]/30 bg-[#3D7A6E]/10 flex items-center justify-center gap-3 animate-pulse">
             <div className="w-5 h-5 border-2 border-[#3D7A6E] border-t-transparent rounded-full animate-spin" />
@@ -379,33 +402,30 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
             </span>
           </div>
         )}
-        {assets.map((asset) => (
-          asset.status === "uploading" && (
-            <div
-              key={asset.id}
-              className="mx-4 p-3 rounded-xl border border-gray-100 dark:border-white/[0.08] bg-gray-50/50 dark:bg-black/20 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2 duration-300"
-            >
-              <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <div className="flex-shrink-0 w-2 h-2 rounded-full bg-[#3D7A6E] animate-pulse" />
+        {assets.map(
+          (asset) =>
+            asset.status === 'uploading' && (
+              <div
+                key={asset.id}
+                className="mx-4 p-3 rounded-xl border border-gray-100 dark:border-white/[0.08] bg-gray-50/50 dark:bg-black/20 backdrop-blur-sm"
+              >
+                <div className="flex justify-between items-center mb-2">
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
                     Uploading {asset.name}
                   </span>
+                  <span className="text-[10px] font-bold text-[#3D7A6E]">
+                    {asset.progress || 0}%
+                  </span>
                 </div>
-                <span className="text-[10px] font-bold text-[#3D7A6E] tabular-nums">
-                  {asset.progress || 0}%
-                </span>
+                <div className="relative w-full h-1.5 bg-gray-200 dark:bg-white/[0.05] rounded-full overflow-hidden">
+                  <div
+                    className="absolute top-0 left-0 h-full bg-[#3D7A6E] transition-all duration-300 rounded-full"
+                    style={{ width: `${asset.progress || 0}%` }}
+                  />
+                </div>
               </div>
-
-              <div className="relative w-full h-1.5 bg-gray-200 dark:bg-white/[0.05] rounded-full overflow-hidden">
-                <div
-                  className="absolute top-0 left-0 h-full bg-[#3D7A6E] transition-all duration-300 ease-out rounded-full shadow-[0_0_8px_rgba(61,122,110,0.4)]"
-                  style={{ width: `${asset.progress || 0}%` }}
-                />
-              </div>
-            </div>
-          )
-        ))}
+            )
+        )}
       </div>
 
       <input

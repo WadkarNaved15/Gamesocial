@@ -132,9 +132,18 @@ export const createPost = async (req, res) => {
           optimizedKey: null,
           originalUrl: asset.originalUrl,
           optimizedUrl: null,
+
           fieldOfView: asset.fieldOfView || "auto",
+
+          background: {
+            type: asset.background?.type || "solid",
+            color: asset.background?.color || "#00000000",
+            color1: asset.background?.color1 || "#1e293b",
+            color2: asset.background?.color2 || "#0f172a",
+          },
           sizeMB: Number(metadata.fileSizeMB),
           optimization: { status: "pending" },
+          
           metadata: {
             fileName: metadata.fileName,
             downloadSizeMB: Number(metadata.fileSizeMB),
