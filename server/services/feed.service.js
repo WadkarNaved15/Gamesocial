@@ -57,6 +57,11 @@ const POST_PROJECTION = {
   "modelPost.assets.originalUrl": 1,
   "modelPost.assets.optimizedUrl": 1,
   "modelPost.assets.fieldOfView": 1,
+  // MODEL BACKGROUND
+  "modelPost.assets.background.type": 1,
+  "modelPost.assets.background.color": 1,
+  "modelPost.assets.background.color1": 1,
+  "modelPost.assets.background.color2": 1,
 
   // GAME POST
   "gamePost.gameName": 1,
@@ -183,7 +188,7 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
     isAdmin = user?.role === "admin";
   }
 
-  const fetchLimit = limit + 3;
+  const fetchLimit = limit;
   const isFirstPage = !cursor;
 
   console.log(
@@ -303,10 +308,9 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
 
     let allPosts = [];
     let usedGorse = false;
-
+    let gorseIds = [];
     if (userId) {
       // ── Logged-in: Gorse path ──────────────────────────────
-      let gorseIds = [];
       try {
         console.log(
           "%c[FEED SERVICE] CALLING GORSE",
@@ -321,9 +325,11 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
 
         const gorseStartTime = Date.now();
 
-        const [ids] = await Promise.all([
-          getGorsePostIds(userId, fetchLimit, gorseOffset),
-        ]);
+        const ids = await getGorsePostIds(
+          userId,
+          fetchLimit,
+          gorseOffset
+        );
 
         gorseIds = ids ?? [];
 
@@ -336,6 +342,7 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
             requestedLimit: fetchLimit,
             returnedCount: gorseIds.length,
             returnedIds: gorseIds,
+            nextGorseOffset: gorseOffset + gorseIds.length,
           }
         );
       } catch (err) {
@@ -397,21 +404,21 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
     );
 
     // ── Normalise to common shape for sorting ───────────────
-    const normalisedAllPosts = allPosts.map((p, idx) => ({
+    const gorseNextOffset = gorseOffset + gorseIds.length;
+
+    const normalisedAllPosts = allPosts.map((p) => ({
       ...p,
       _sortKey: usedGorse
-        ? Date.now() - idx * 1000
+        ? 0
         : p._id.getTimestamp().getTime(),
-      _cursorType: usedGorse ? "g" : "a",
-      _cursorVal: usedGorse
-        ? String(gorseOffset + fetchLimit)
-        : p._id.toString(),
     }));
 
     // ── Sort and slice ──────────────────────────────────────
-    merged = [...normalisedAllPosts]
-      .sort((a, b) => b._sortKey - a._sortKey)
-      .slice(0, limit);
+    merged = usedGorse
+      ? normalisedAllPosts.slice(0, limit)
+      : [...normalisedAllPosts]
+        .sort((a, b) => b._sortKey - a._sortKey)
+        .slice(0, limit);
 
     console.log(
       "%c[FEED SERVICE] AFTER SORT + SLICE",
@@ -428,16 +435,15 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
         returnedIds: merged.map(
           (p) => p._id.toString()
         ),
-
-        skippedWithinBatch: normalisedAllPosts
-          .slice(limit)
-          .map((p) => p._id.toString()),
       }
     );
 
     if (merged.length > 0) {
       const last = merged[merged.length - 1];
-      nextCursor = `${last._cursorType}:${last._cursorVal}`;
+
+      nextCursor = usedGorse
+        ? `g:${gorseNextOffset}`
+        : `a:${last._id.toString()}`;
 
       console.log(
         "%c[FEED SERVICE] NEXT CURSOR CREATED",
