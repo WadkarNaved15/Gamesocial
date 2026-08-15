@@ -57,6 +57,11 @@ const POST_PROJECTION = {
   "modelPost.assets.originalUrl": 1,
   "modelPost.assets.optimizedUrl": 1,
   "modelPost.assets.fieldOfView": 1,
+  // MODEL BACKGROUND
+  "modelPost.assets.background.type": 1,
+  "modelPost.assets.background.color": 1,
+  "modelPost.assets.background.color1": 1,
+  "modelPost.assets.background.color2": 1,
 
   // GAME POST
   "gamePost.gameName": 1,
