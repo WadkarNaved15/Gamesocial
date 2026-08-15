@@ -127,6 +127,7 @@ export const ModelViewerSection: React.FC<ModelViewerSectionProps> = ({
         src={asset.uploadedUrl || asset.previewUrl}
         camera-controls
         auto-rotate
+        autoplay
         exposure="1.0"
         environment-image="neutral"
         shadow-intensity="1"
