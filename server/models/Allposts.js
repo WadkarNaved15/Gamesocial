@@ -19,6 +19,35 @@ const ModelAssetSchema = new mongoose.Schema(
       default: "auto", // Your current default from ExePost
     },
 
+    background: {
+      type: {
+        type: String,
+        enum: [
+          "solid",
+          "gradient",
+          "focus",
+          "stripes",
+          "spotlight",
+        ],
+        default: "solid",
+      },
+
+      color: {
+        type: String,
+        default: "#00000000",
+      },
+
+      color1: {
+        type: String,
+        default: "#1e293b",
+      },
+
+      color2: {
+        type: String,
+        default: "#0f172a",
+      },
+    },
+
     optimization: {
       status: {
         type: String,
@@ -484,35 +513,6 @@ const AdModelAssetSchema = new mongoose.Schema(
     fieldOfView: {
       type: String,
       default: "auto", // Your current default from ExePost
-    },
-
-    background: {
-      type: {
-        type: String,
-        enum: [
-          "solid",
-          "gradient",
-          "focus",
-          "stripes",
-          "spotlight",
-        ],
-        default: "solid",
-      },
-
-      color: {
-        type: String,
-        default: "#00000000",
-      },
-
-      color1: {
-        type: String,
-        default: "#1e293b",
-      },
-
-      color2: {
-        type: String,
-        default: "#0f172a",
-      },
     },
 
     optimization: {
