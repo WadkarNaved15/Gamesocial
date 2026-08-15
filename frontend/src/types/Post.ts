@@ -44,7 +44,7 @@ export interface NormalPostAsset {
   url: string;
   key?: string;
   type: 'image' | 'video';
-  
+
   // New Video Optimization Fields
   optimizedUrl?: string;
   optimizedKey?: string;
@@ -69,6 +69,12 @@ export interface ModelAsset {
   optimizedUrl?: string | null;
   sizeMB?: number;
   fieldOfView?: string;
+  background?: {
+    type?: 'solid' | 'gradient' | 'stripes' | 'spotlight' | 'focus';
+    color?: string;
+    color1?: string;
+    color2?: string;
+  };
   optimization?: OptimizationInfo;
   metadata?: ModelMetadata;
 }
@@ -109,7 +115,7 @@ export interface AdModelPost {
     ctaColor?: string;
   }
   asset: AdModelAsset;
-  
+
 }
 
 export interface AdModelPostFormProps {
@@ -194,7 +200,7 @@ export interface GamePost {
   price: number;
   systemRequirements?: GameSystemRequirements;
   file: GameFile;
-  
+
   // Add the video demo typing here
   videoDemo?: {
     name: string;
@@ -234,8 +240,8 @@ export interface AdModelPostProps extends CommonPostFields {
 
 export interface PocketPostProps extends CommonPostFields {
   type: 'pocket_update';
-  brandName:         string;
-  tagline?:          string;
+  brandName: string;
+  tagline?: string;
   compiledBundleUrl: string;
 }
 

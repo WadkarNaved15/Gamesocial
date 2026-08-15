@@ -17,7 +17,7 @@ const renderTextWithLinks = (text: string) => {
   if (!text) return null;
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
-  
+
   return parts.map((part, i) => {
     if (part.match(urlRegex)) {
       return (
@@ -78,9 +78,71 @@ const ExePost: React.FC<ExePostProps> = ({
   const location = useLocation();
   let viewStartTime = useRef<number | null>(null);
   const asset = modelPost?.assets?.[0];
+  const background = asset?.background;
+
+  const getModelBackgroundStyle = (): React.CSSProperties => {
+    if (!background) {
+      return {
+        background: '#00000000',
+      };
+    }
+
+    switch (background.type) {
+      case 'solid':
+        return {
+          background: background.color || '#00000000',
+        };
+
+      case 'gradient':
+        return {
+          background: `linear-gradient(
+          135deg,
+          ${background.color1} 0%,
+          ${background.color1} 40%,
+          ${background.color2} 100%
+        )`,
+        };
+
+      case 'stripes':
+        return {
+          background: `linear-gradient(
+          180deg,
+          ${background.color2} 0%,
+          ${background.color1} 35%,
+          ${background.color1} 65%,
+          ${background.color2} 100%
+        )`,
+        };
+
+      case 'spotlight':
+        return {
+          background: `radial-gradient(
+          ellipse 85% 65% at 50% 40%,
+          ${background.color1} 0%,
+          ${background.color1}33 50%,
+          ${background.color2} 100%
+        )`,
+        };
+
+      case 'focus':
+        return {
+          background: `radial-gradient(
+          circle at center,
+          ${background.color2 || '#0f172a'} 0%,
+          ${background.color1 || '#1e293b'} 40%,
+          ${background.color2 || '#0f172a'} 100%
+        )`,
+        };
+
+      default:
+        return {
+          background: '#00000000',
+        };
+    }
+  };
 
   const textRef = useRef<HTMLParagraphElement>(null);
-const [showReadMore, setShowReadMore] = useState(false);
+  const [showReadMore, setShowReadMore] = useState(false);
 
   const modelUrl =
     asset?.optimization?.status === "completed"
@@ -151,7 +213,7 @@ const [showReadMore, setShowReadMore] = useState(false);
       // The 3D model has fully downloaded. 
       // Now we apply your custom FOV, mimicking a "change afterwards"
       setCurrentFov(asset?.fieldOfView?.trim() || "auto");
-      
+
       // Force it to snap without a smooth animation delay
       if (typeof viewer.jumpCameraToGoal === 'function') {
         setTimeout(() => viewer.jumpCameraToGoal(), 10);
@@ -167,22 +229,22 @@ const [showReadMore, setShowReadMore] = useState(false);
   }, [asset?.fieldOfView, modelUrl]);
 
   useEffect(() => {
-  const checkOverflow = () => {
-    if (textRef.current && !isExpanded) {
-      // If scrollHeight is strictly greater than clientHeight, the text is being truncated
-      setShowReadMore(
-        textRef.current.scrollHeight > textRef.current.clientHeight
-      );
-    }
-  };
+    const checkOverflow = () => {
+      if (textRef.current && !isExpanded) {
+        // If scrollHeight is strictly greater than clientHeight, the text is being truncated
+        setShowReadMore(
+          textRef.current.scrollHeight > textRef.current.clientHeight
+        );
+      }
+    };
 
-  checkOverflow();
-  window.addEventListener("resize", checkOverflow);
-  
-  return () => window.removeEventListener("resize", checkOverflow);
-}, [description, isExpanded]);
+    checkOverflow();
+    window.addEventListener("resize", checkOverflow);
 
-return (
+    return () => window.removeEventListener("resize", checkOverflow);
+  }, [description, isExpanded]);
+
+  return (
     <article
       ref={postRef}
       onClick={(e) => {
@@ -204,9 +266,10 @@ return (
               eventType: "profile_view",
               targetType: "user",
               targetId: user._id,
-              metadata: { from: "post",
+              metadata: {
+                from: "post",
                 postId: _id,
-               },
+              },
             });
             navigate(`/profile/${user.username}`);
           }}
@@ -226,53 +289,52 @@ return (
             isAdmin={isAdmin}
             isRigzer={user.isRigzer}
             onDelete={() => setDeleteOpen(true)}
-             onProfileClick={() => {
-                trackEvent({
-                  eventType: "profile_view",
-                  targetType: "user",
-                  targetId: user._id,
-                  metadata: { from: "post" ,
-                    postId: _id,
-                  },
-                });
+            onProfileClick={() => {
+              trackEvent({
+                eventType: "profile_view",
+                targetType: "user",
+                targetId: user._id,
+                metadata: {
+                  from: "post",
+                  postId: _id,
+                },
+              });
 
-                navigate(`/profile/${user.username}`);
-              }}
+              navigate(`/profile/${user.username}`);
+            }}
           />
 
           {description && (
-  <div className="mb-2">
-    <p
-      ref={textRef}
-      className={`text-gray-200 leading-normal whitespace-pre-wrap transition-all ${
-        !isExpanded ? "line-clamp-6" : ""
-      }`}
-    >
-      {renderTextWithLinks(description)}
-    </p>
+            <div className="mb-2">
+              <p
+                ref={textRef}
+                className={`text-gray-200 leading-normal whitespace-pre-wrap transition-all ${!isExpanded ? "line-clamp-6" : ""
+                  }`}
+              >
+                {renderTextWithLinks(description)}
+              </p>
 
-    {(showReadMore || isExpanded) && (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsExpanded(!isExpanded);
-        }}
-        className="text-[rgb(98,212,174)] hover:text-[rgb(78,192,154)] font-semibold text-sm mt-1 focus:outline-none"
-      >
-        {isExpanded ? "Show less" : "Show more"}
-      </button>
-    )}
-  </div>
-)}
+              {(showReadMore || isExpanded) && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsExpanded(!isExpanded);
+                  }}
+                  className="text-[rgb(98,212,174)] hover:text-[rgb(78,192,154)] font-semibold text-sm mt-1 focus:outline-none"
+                >
+                  {isExpanded ? "Show less" : "Show more"}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* 2. MIDDLE SECTION: Full-Width 3D Model (No Borders) */}
-{/* 2. MIDDLE SECTION: Full-Width 3D Model (No Borders) */}
-      <div 
-        className={`group relative mt-2 flex justify-center overflow-hidden w-full h-[450px] bg-black/20 ${
-          detailed ? "grayscale" : ""
-        }`}
+      <div
+        className={`group relative mt-2 flex justify-center overflow-hidden w-full h-[450px] ${detailed ? "grayscale" : ""
+          }`}
+        style={getModelBackgroundStyle()}
       >
         {modelUrl ? (
           /* @ts-ignore */
@@ -286,7 +348,7 @@ return (
             animation-name="*"
             exposure="1.2"
             environment-image="neutral"
-            field-of-view={currentFov}            
+            field-of-view={currentFov}
             camera-orbit="auto auto auto"
             min-field-of-view="1deg"
             max-field-of-view="90deg"
@@ -301,7 +363,7 @@ return (
       <div className="flex gap-3 px-4">
         {/* Invisible spacer to keep interactions aligned with the text column above (Twitter style) */}
         <div className="h-10 w-10 shrink-0 opacity-0 hidden sm:block"></div>
-        
+
         <div className="flex flex-col flex-1 min-w-0">
           <div onClick={(e) => e.stopPropagation()}>
             <PostInteractions
@@ -313,7 +375,7 @@ return (
               onLike={handleLike}
               isWishlisted={localIsWishlisted}
               onWishlist={handleWishlist}
-              onCommentToggle={() => onOpenDetails?.()} 
+              onCommentToggle={() => onOpenDetails?.()}
             />
           </div>
 
@@ -324,7 +386,7 @@ return (
           )}
         </div>
       </div>
-      
+
       <ConfirmDeleteModal
         open={deleteOpen}
         onClose={() => setDeleteOpen(false)}
