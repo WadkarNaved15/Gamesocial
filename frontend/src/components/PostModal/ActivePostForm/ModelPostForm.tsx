@@ -362,7 +362,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
                 onFovChange={handleFovChange}
               />
 
-              {/* <BackgroundControls
+              <BackgroundControls
                 activeAsset={activeAsset}
                 bgType={activeAsset.backgroundType || 'solid'}
                 gradientColor1={gradientColor1}
@@ -376,7 +376,7 @@ const PostModal: React.FC<PostModalProps> = ({ onCancel }) => {
                 onZoomChange={handleZoomChange}
                 onGradientColor1Change={handleGradientColor1Change}
                 onGradientColor2Change={handleGradientColor2Change}
-              /> */}
+              />
             </div>
           ) : (
             <div

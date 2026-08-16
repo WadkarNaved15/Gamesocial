@@ -332,9 +332,8 @@ const ExePost: React.FC<ExePostProps> = ({
 
       {/* 2. MIDDLE SECTION: Full-Width 3D Model (No Borders) */}
       <div
-        className={`group relative mt-2 flex justify-center overflow-hidden w-full h-[450px] ${detailed ? "grayscale" : ""
+        className={`group relative mt-2 flex justify-center overflow-hidden w-full h-[450px] bg-black/20 ${detailed ? "grayscale" : ""
           }`}
-        style={getModelBackgroundStyle()}
       >
         {modelUrl ? (
           /* @ts-ignore */
