@@ -66,17 +66,16 @@ export const BackgroundControls: React.FC<BackgroundControlsProps> = ({
         </div>
       </div>
 
-      <hr className="border-gray-200 dark:border-white/[0.06]" />
+      {/* <hr className="border-gray-200 dark:border-white/[0.06]" /> */}
 
       {/* Background Modes Section */}
-      <div className="flex flex-col gap-2">
+      {/* <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-semibold text-gray-500">
             <Palette size={16} />
             <span>Background Style</span>
           </div>
 
-          {/* Mode Selector Tabs */}
           <div className="flex items-center bg-gray-200 dark:bg-white/[0.06] p-0.5 rounded-lg text-xs">
             <button
               type="button"
@@ -131,7 +130,6 @@ export const BackgroundControls: React.FC<BackgroundControlsProps> = ({
           </div>
         </div>
 
-        {/* Dynamic Controls per Mode */}
         {bgType === 'solid' ? (
           <div className="flex items-center gap-3">
             <input
@@ -196,7 +194,7 @@ export const BackgroundControls: React.FC<BackgroundControlsProps> = ({
             </div>
           </div>
         )}
-      </div>
+      </div> */}
     </div>
   );
 };
