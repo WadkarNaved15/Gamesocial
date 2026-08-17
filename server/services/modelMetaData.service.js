@@ -14,20 +14,43 @@ THREE.ImageBitmapLoader.prototype.load = function () { return null; };
 const downloadFile = (url, outputPath) => {
   return new Promise((resolve, reject) => {
     console.log("Downloading model from:", url);
+
     const file = fs.createWriteStream(outputPath);
-    https.get(url, (res) => {
-      if (res.statusCode !== 200) {
-        res.resume(); // consume response
-        file.close();
-        fs.unlink(outputPath, () => { });
-        return reject(
-          new Error(`Download failed with status ${res.statusCode}`)
-        );
+
+    const request = https.get(
+      url,
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          "Accept": "*/*",
+        },
+      },
+      (res) => {
+        console.log("CloudFront status:", res.statusCode);
+        console.log("CloudFront headers:", res.headers);
+
+        if (res.statusCode !== 200) {
+          res.resume();
+          file.destroy();
+
+          fs.unlink(outputPath, () => {});
+
+          return reject(
+            new Error(`Download failed with status ${res.statusCode}`)
+          );
+        }
+
+        res.pipe(file);
+
+        file.on("finish", () => {
+          file.close(resolve);
+        });
       }
-      res.pipe(file);
-      file.on("finish", () => file.close(resolve));
-    }).on("error", (err) => {
-      fs.unlink(outputPath, () => { }); // clean up partial file
+    );
+
+    request.on("error", (err) => {
+      file.destroy();
+      fs.unlink(outputPath, () => {});
       reject(err);
     });
   });
@@ -44,11 +67,14 @@ export const extractMetadataFromUrl = async (fileUrl) => {
 
     const loader = new GLTFLoader();
     const buffer = fs.readFileSync(tempPath);
+    const arrayBuffer = buffer.buffer.slice(
+      buffer.byteOffset,
+      buffer.byteOffset + buffer.byteLength
+    );
 
     const gltf = await new Promise((resolve, reject) => {
-      loader.parse(buffer.buffer, "", resolve, reject);
+      loader.parse(arrayBuffer, "", resolve, reject);
     });
-
     const scene = gltf.scene;
 
     // Initialize counters
