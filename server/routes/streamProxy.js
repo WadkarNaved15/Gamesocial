@@ -15,7 +15,31 @@ const proxy = httpProxy.createProxyServer({
 
 // Extract stream token from subdomain
 function getStreamToken(hostname = "") {
-  return hostname.split(".")[0];
+  const streamDomain = process.env.STREAM_DOMAIN;
+
+  if (!streamDomain) {
+    console.error("[StreamProxy] STREAM_DOMAIN is not configured");
+    return null;
+  }
+
+  // Remove port if present
+  hostname = hostname.split(":")[0].toLowerCase();
+
+  const suffix = `.${streamDomain.toLowerCase()}`;
+
+  // Must be: <token>.<STREAM_DOMAIN>
+  if (!hostname.endsWith(suffix)) {
+    return null;
+  }
+
+  const token = hostname.slice(0, -suffix.length);
+
+  // Only allow one subdomain token
+  if (!token || token.includes(".")) {
+    return null;
+  }
+
+  return token;
 }
 
 // Verify auth cookie
@@ -36,7 +60,13 @@ function getUserIdFromCookie(req) {
 router.use(async (req, res) => {
   const streamToken = getStreamToken(req.hostname);
 
-  if (!streamToken) return res.sendStatus(400);
+  if (!streamToken) {
+    console.warn(
+      `[StreamProxy] Invalid stream hostname: ${req.hostname}`
+    );
+
+    return res.sendStatus(404);
+  }
 
   let cached;
   try {
@@ -116,7 +146,18 @@ router.use(async (req, res) => {
    WebSocket Upgrade Handler
 ================================ */
 export async function handleWsUpgrade(req, socket, head) {
-  const streamToken = getStreamToken(req.headers.host ?? "");
+  const hostname = (req.headers.host || "").split(":")[0];
+
+  const streamToken = getStreamToken(hostname);
+
+  if (!streamToken) {
+    console.warn(
+      `[StreamProxy] Invalid WS hostname: ${hostname}`
+    );
+
+    socket.destroy();
+    return;
+  }
 
   try {
     const cached = await cacheService.get(`stream:${streamToken}`);

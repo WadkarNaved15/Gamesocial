@@ -122,24 +122,38 @@ redisIoSubClient.on("error", (err) => console.error("❌ Redis IO Sub Client Err
 // ============================================
 
 app.use(async (req, res, next) => {
-  const host = req.headers.host?.split(":")[0];
+  const host = req.headers.host?.split(":")[0].toLowerCase();
 
-  if (!host?.endsWith(".stream.rigzer.com")) {
+  const streamDomain = process.env.STREAM_DOMAIN?.toLowerCase();
+
+  if (!streamDomain) {
+    console.error("[STREAM] STREAM_DOMAIN is not configured");
     return next();
   }
 
-  const token = host.replace(".stream.rigzer.com", "");
+  const suffix = `.${streamDomain}`;
+
+  // Not a stream subdomain
+  if (!host?.endsWith(suffix)) {
+    return next();
+  }
+
+  // Extract token
+  const token = host.slice(0, -suffix.length);
+
+  // Make sure only one subdomain exists
+  if (!token || token.includes(".")) {
+    return res.sendStatus(404);
+  }
 
   try {
-    // Check if this stream token exists
     const stream = await cacheService.get(`stream:${token}`);
 
     if (!stream) {
       console.log(`[STREAM] Invalid token: ${token}`);
-      return res.redirect(302, "https://rigzer.com");
+      return res.redirect(302, process.env.FRONTEND_URL);
     }
 
-    // Optional: verify session still active
     const session = await GameSession.findById(stream.sessionId)
       .select("status")
       .lean();
@@ -148,53 +162,72 @@ app.use(async (req, res, next) => {
       !session ||
       !["allocation_ready", "starting", "running"].includes(session.status)
     ) {
-      console.log(
-        `[STREAM] Invalid session for token ${token}`
-      );
+      console.log(`[STREAM] Invalid session for token ${token}`);
 
-      return res.redirect(302, "https://rigzer.com");
+      return res.redirect(302, process.env.FRONTEND_URL);
     }
 
-    // Valid stream → continue to proxy
     return streamProxyRouter(req, res, next);
 
   } catch (err) {
-    console.error(
-      "[STREAM] Validation error:",
-      err
-    );
+    console.error("[STREAM] Validation error:", err);
 
-    return res.redirect(302, "https://rigzer.com");
+    return res.redirect(302, process.env.FRONTEND_URL);
   }
 });
 
 // EXPRESS CORS
-const corsWhitelist = [
-  "http://localhost:5173",
-  "https://localhost:5173",
-  "https://www.rigzer.com",
-  "https://rigzer.com",
-  "https://gamesocial-git-feature-asg-wadkar-naveds-projects-6bc20af1.vercel.app",
-  "https://stream.rigzer.com",
-  /^https:\/\/.*\.stream\.rigzer\.com$/,
-  process.env.FRONTEND_URL
-];
+const isProduction = process.env.NODE_ENV === "production";
+
+const corsWhitelist = isProduction
+  ? [
+      "https://www.rigzer.com",
+      "https://rigzer.com",
+      "https://stream.rigzer.com",
+      /^https:\/\/.*\.stream\.rigzer\.com$/,
+      process.env.FRONTEND_URL,
+    ].filter(Boolean)
+  : [
+      "http://localhost:5173",
+      "https://localhost:5173",
+
+      // Your development frontend
+      process.env.FRONTEND_URL,
+
+      // Dev stream domain
+      "https://dev-stream.rigzer.com",
+      /^https:\/\/.*\.dev-stream\.rigzer\.com$/,
+
+    ].filter(Boolean);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      const allowed = corsWhitelist.some(entry =>
-        typeof entry === "string"
-          ? entry === origin
-          : entry.test(origin)
-      );
-      if (allowed || origin.endsWith(".devtunnels.ms")) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
+      // Allow requests without Origin, such as server-to-server requests,
+      // Postman, curl, health checks, etc.
+      if (!origin) {
+        return callback(null, true);
       }
+
+      const allowed = corsWhitelist.some((entry) => {
+        if (typeof entry === "string") {
+          return entry === origin;
+        }
+
+        return entry.test(origin);
+      });
+
+      if (allowed) {
+        return callback(null, true);
+      }
+
+      console.warn(
+        `[CORS] Blocked origin: ${origin} | Environment: ${process.env.NODE_ENV}`
+      );
+
+      return callback(new Error("Not allowed by CORS"));
     },
+
     credentials: true,
   })
 );
@@ -344,13 +377,19 @@ app.get("/stream-speed-test", (req, res) => {
 const server = http.createServer(app);
 
 server.on("upgrade", (req, socket, head) => {
-  const host = req.headers.host?.split(":")[0];
+  const host = req.headers.host
+    ?.split(":")[0]
+    .toLowerCase();
 
-  if (host?.endsWith(".stream.rigzer.com")) {
+  const streamDomain = process.env.STREAM_DOMAIN?.toLowerCase();
+
+  if (
+    streamDomain &&
+    host?.endsWith(`.${streamDomain}`)
+  ) {
     handleWsUpgrade(req, socket, head);
   }
 });
-
 // SOCKET.IO (Real-Time Chat) with Redis Adapter
 const io = new Server(server, {
   cors: {
