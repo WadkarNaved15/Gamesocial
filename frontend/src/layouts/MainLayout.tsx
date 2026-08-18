@@ -165,11 +165,11 @@ function MainLayout() {
                   <span>|</span> */}
                   <button
                     onClick={() => setIsFeedbackOpen(true)}
-                    className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 hover:underline transition-colors font-medium"
+                    className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline transition-colors"
                   >
                     Feedback
                   </button>
-                  <span className="w-full mt-1">© {new Date().getFullYear()} Rigzer</span>
+                  <span className=" mt-1">© {new Date().getFullYear()} Rigzer</span>
                 </div>
               </div>
             </div>
