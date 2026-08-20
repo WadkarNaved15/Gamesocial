@@ -147,7 +147,6 @@ router.use(async (req, res) => {
 ================================ */
 export async function handleWsUpgrade(req, socket, head) {
   const hostname = (req.headers.host || "").split(":")[0];
-
   const streamToken = getStreamToken(hostname);
 
   if (!streamToken) {
@@ -159,6 +158,30 @@ export async function handleWsUpgrade(req, socket, head) {
     return;
   }
 
+  console.log("[StreamProxy] Client requested WebSocket upgrade", {
+    streamToken,
+    url: req.url,
+    userAgent: req.headers["user-agent"],
+    remoteAddress: socket.remoteAddress,
+  });
+
+  // Detect if the CLIENT connection closes/errors.
+  socket.on("close", (hadError) => {
+    console.warn("[StreamProxy] Client WebSocket socket closed", {
+      streamToken,
+      hadError,
+      remoteAddress: socket.remoteAddress,
+    });
+  });
+
+  socket.on("error", (err) => {
+    console.error("[StreamProxy] Client WebSocket socket error", {
+      streamToken,
+      message: err.message,
+      code: err.code,
+    });
+  });
+
   try {
     const cached = await cacheService.get(`stream:${streamToken}`);
 
@@ -167,6 +190,12 @@ export async function handleWsUpgrade(req, socket, head) {
       socket.destroy();
       return;
     }
+
+    console.log("[StreamProxy] Proxying WebSocket", {
+      streamToken,
+      url: req.url,
+      target: `${cached.instanceIp}:8080`,
+    });
 
     proxy.ws(req, socket, head, {
       target: `http://${cached.instanceIp}:8080`,
@@ -177,30 +206,78 @@ export async function handleWsUpgrade(req, socket, head) {
     socket.destroy();
   }
 }
-
 /* ===============================
-   Proxy error handler
+   Proxy diagnostics + error handler
 ================================ */
-proxy.on("error", (err, req, res) => {
-  console.error("[StreamProxy] Proxy error:", err.message);
 
-  // HTTP request
+proxy.on("proxyReq", (proxyReq, req) => {
+  console.log("[StreamProxy] HTTP → upstream", {
+    host: req.headers.host,
+    method: req.method,
+    url: req.url,
+    userAgent: req.headers["user-agent"],
+  });
+});
+
+proxy.on("proxyReqWs", (proxyReq, req) => {
+  console.log("[StreamProxy] WS → upstream", {
+    host: req.headers.host,
+    url: req.url,
+    userAgent: req.headers["user-agent"],
+  });
+});
+
+proxy.on("proxyRes", (proxyRes, req) => {
+  console.log("[StreamProxy] Upstream response", {
+    host: req.headers.host,
+    method: req.method,
+    url: req.url,
+    statusCode: proxyRes.statusCode,
+  });
+});
+
+proxy.on("open", (proxySocket) => {
+  console.log("[StreamProxy] Upstream WebSocket opened");
+
+  proxySocket.on("close", (hadError) => {
+    console.warn("[StreamProxy] Upstream WebSocket closed", {
+      hadError,
+    });
+  });
+
+  proxySocket.on("error", (err) => {
+    console.error(
+      "[StreamProxy] Upstream WebSocket error:",
+      err.message
+    );
+  });
+});
+
+proxy.on("error", (err, req, res) => {
+  console.error("[StreamProxy] Proxy error", {
+    message: err.message,
+    code: err.code,
+    host: req?.headers?.host,
+    url: req?.url,
+  });
+
+  // HTTP response
   if (res && typeof res.writeHead === "function") {
     if (!res.headersSent) {
-      res.writeHead(502);
+      res.writeHead(502, {
+        "Content-Type": "text/plain",
+      });
     }
+
     res.end("Proxy error");
     return;
   }
 
-  // WebSocket request
+  // WebSocket socket
   if (res && typeof res.destroy === "function") {
     res.destroy();
   }
 });
 
-proxy.on("close", (res, socket, head) => {
-  console.log("[StreamProxy] Connection closed");
-});
 
 export default router;
