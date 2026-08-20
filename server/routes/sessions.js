@@ -510,7 +510,7 @@ router.get("/:sessionId/stream-token", verifyToken, async (req, res) => {
   }
 
   res.json({
-    streamUrl: `https://${streamToken}.stream.rigzer.com`,
+    streamUrl: `https://${streamToken}.${process.env.STREAM_DOMAIN}`,
   });
 });
 
