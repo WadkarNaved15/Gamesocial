@@ -50,7 +50,7 @@ async function releaseLock(lockId) {
     const current = await redisClient.get(LOCK_KEY);
     if (current === lockId) {
       await redisClient.del(LOCK_KEY);
-      console.log(`✅ Lock released: ${lockId}`);
+      // console.log(`✅ Lock released: ${lockId}`);
     }
   } catch (err) {
     console.error("❌ Error releasing lock:", err);
@@ -62,7 +62,7 @@ async function releaseLock(lockId) {
  */
 async function cleanupStaleSessions(lockId) {
   try {
-    console.log(`\n[Cleanup ${lockId.substring(0, 8)}...] Starting cleanup cycle...`);
+    // console.log(`\n[Cleanup ${lockId.substring(0, 8)}...] Starting cleanup cycle...`);
 
     const staleThreshold = new Date(Date.now() - 90_000); // 90 seconds ago
 
@@ -72,7 +72,7 @@ async function cleanupStaleSessions(lockId) {
     });
 
     if (staleSessions.length === 0) {
-      console.log(`[Cleanup ${lockId.substring(0, 8)}...] ✓ No stale sessions found`);
+      // console.log(`[Cleanup ${lockId.substring(0, 8)}...] ✓ No stale sessions found`);
       return;
     }
 

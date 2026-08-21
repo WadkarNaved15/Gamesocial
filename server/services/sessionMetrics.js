@@ -57,7 +57,7 @@ export class SessionMetrics extends EventEmitter {
 
   logMetrics() {
     const metrics = this.getMetrics();
-    console.log("[SessionMetrics]", JSON.stringify(metrics, null, 2));
+    // console.log("[SessionMetrics]", JSON.stringify(metrics, null, 2));
   }
 
   reset() {
