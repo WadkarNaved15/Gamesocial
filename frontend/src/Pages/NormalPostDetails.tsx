@@ -14,7 +14,7 @@ const NormalPostDetails: React.FC<NormalPostDetailsProps> = ({
   onClose,
 }) => {
   return (
-    <div className="w-full max-w-3xl mb-4 mx-auto bg-white dark:bg-[#191919] border border-gray-200 dark:border-gray-700 rounded-xl">
+    <div className="w-full mb-4 mx-auto bg-white dark:bg-[#191919] border border-gray-200 dark:border-gray-700 rounded-xl">
       {/* 🔙 Back */}
       <button
         onClick={onClose}
