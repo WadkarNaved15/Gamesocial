@@ -67,6 +67,28 @@ const PocketPost: React.FC<PocketPostProps> = ({
   const [fetchErr, setFetchErr] = useState<string | null>(null);
 
   useEffect(() => {
+    const handlePocketNavigation = (event: MessageEvent) => {
+      const data = event.data;
+      console.log("Received message from Pocket iframe:", data);
+
+      if (!data || data.type !== "RIGZER_NAVIGATE") return;
+
+      if (typeof data.path !== "string") return;
+
+      // Only allow internal routes
+      if (!data.path.startsWith("/")) return;
+
+      navigate(data.path);
+    };
+
+    window.addEventListener("message", handlePocketNavigation);
+
+    return () => {
+      window.removeEventListener("message", handlePocketNavigation);
+    };
+  }, [navigate]);
+
+  useEffect(() => {
     let cancelled = false;
     setSrcdoc(null);
     setFetchErr(null);
