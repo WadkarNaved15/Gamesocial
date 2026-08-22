@@ -217,7 +217,7 @@ router.get("/:chatId", async (req, res) => {
 
     const messages = await Message.find(query)
       .select(
-        "senderId receiverId text mediaUrl mediaKey mediaType messageType sharedPostId seen createdAt"
+        "senderId receiverId text mediaUrl mediaKey mediaType messageType sharedPostId replyTo seen createdAt"
       )
       .sort({
         createdAt: -1,

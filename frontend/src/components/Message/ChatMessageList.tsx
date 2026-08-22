@@ -15,6 +15,7 @@ interface ChatMessageListProps {
   openMenuId: string | null;
   onToggleMenu: (id: string) => void;
   onDeleteMessage: (messageId: string) => void;
+  onReply: (message: Message) => void;
   onMediaClick: (media: MediaViewerState) => void;
   activeChatStatus: string | null;
   requestedByCurrentUser: boolean;
@@ -51,6 +52,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   openMenuId,
   onToggleMenu,
   onDeleteMessage,
+  onReply,
   onMediaClick,
   activeChatStatus,
   requestedByCurrentUser,
@@ -221,6 +223,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
               }
               onToggleMenu={onToggleMenu}
               onDelete={onDeleteMessage}
+              onReply={onReply}
               onMediaClick={onMediaClick}
             />
           </div>

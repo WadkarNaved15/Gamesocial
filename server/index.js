@@ -561,6 +561,7 @@ io.on("connection", (socket) => {
         mediaUrl,
         mediaKey,
         mediaType,
+        replyTo,
         tempId,
       } = msg;
 
@@ -602,6 +603,48 @@ io.on("connection", (socket) => {
       }
 
       // ----------------------------------------
+      // Resolve and validate reply
+      // ----------------------------------------
+      let resolvedReplyTo = null;
+
+      if (replyTo?.messageId) {
+        // Validate ObjectId before querying MongoDB
+        if (!mongoose.isValidObjectId(replyTo.messageId)) {
+          console.warn("Invalid reply message ID:", replyTo.messageId);
+
+          return;
+        }
+
+        const repliedMessage = await Message.findOne({
+          _id: replyTo.messageId,
+          chatId: finalChatId,
+        })
+          .select(
+            "_id senderId text messageType mediaType mediaUrl"
+          )
+          .lean();
+
+        // The replied message must belong to the same chat.
+        if (!repliedMessage) {
+          console.warn(
+            "Reply target not found or does not belong to this chat:",
+            replyTo.messageId
+          );
+
+          return;
+        }
+
+        resolvedReplyTo = {
+          messageId: repliedMessage._id,
+          senderId: repliedMessage.senderId,
+          text: repliedMessage.text || null,
+          messageType: repliedMessage.messageType || "text",
+          mediaType: repliedMessage.mediaType || null,
+          mediaUrl: repliedMessage.mediaUrl || null,
+        };
+      }
+
+      // ----------------------------------------
       // Save message
       // ----------------------------------------
       const message = await Message.create({
@@ -613,6 +656,7 @@ io.on("connection", (socket) => {
         mediaKey,
         mediaType,
         messageType: mediaUrl ? "media" : "text",
+        replyTo: resolvedReplyTo,
       });
 
       // ----------------------------------------
@@ -629,6 +673,7 @@ io.on("connection", (socket) => {
         mediaKey,
         mediaType,
         messageType: mediaUrl ? "media" : "text",
+        replyTo: message.replyTo || null,
         createdAt: message.createdAt,
       };
       const cacheKey = `chat:messages:${finalChatId}`;
