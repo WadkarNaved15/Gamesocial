@@ -47,32 +47,8 @@ function Home() {
   // ── Fetch Main Feed ──────────────────────────────────────────────────────
   const fetchMainPosts = useCallback(
     async (reset = false) => {
-      console.log(
-        "%c[FEED CLIENT] fetchMainPosts() CALLED",
-        "color: #00ff88; font-weight: bold;",
-        {
-          reset,
-          loading,
-          hasMore,
-          currentCursor: nextCursor,
-          requestCursor: reset ? null : nextCursor,
-          currentPostCount: mainPosts.length,
-          timestamp: new Date().toISOString(),
-        }
-      );
 
       if (loading || (!hasMore && !reset)) {
-        console.log(
-          "%c[FEED CLIENT] REQUEST BLOCKED",
-          "color: #ff5555; font-weight: bold;",
-          {
-            loading,
-            hasMore,
-            reset,
-            nextCursor,
-          }
-        );
-
         return;
       }
 
@@ -80,17 +56,6 @@ function Home() {
 
       try {
         const requestCursor = reset ? null : nextCursor;
-
-        console.log(
-          "%c[FEED CLIENT] REQUESTING NEXT PAGE",
-          "color: #00bfff; font-weight: bold;",
-          {
-            cursor: requestCursor,
-            limit: 5,
-            existingPosts: mainPosts.length,
-          }
-        );
-
         const res = await api.get(
           "/api/posts/fetch_posts",
           {
@@ -103,23 +68,6 @@ function Home() {
 
         const newPosts = res.data.posts;
         const newCursor = res.data.nextCursor;
-
-        console.log(
-          "%c[FEED CLIENT] RESPONSE RECEIVED",
-          "color: #00ff88; font-weight: bold;",
-          {
-            requestedCursor: requestCursor,
-            receivedPosts: newPosts.length,
-            newCursor,
-            postIds: newPosts.map((p: PostProps) => p._id),
-            postDetails: newPosts.map((p: PostProps) => ({
-              id: p._id,
-              ownerId: p.user?._id ?? p.user,
-              type: p.type,
-              createdAt: p.createdAt,
-            })),
-          }
-        );
 
         addPosts(newPosts);
 
@@ -134,35 +82,12 @@ function Home() {
             ).values()
           );
 
-          console.log(
-            "%c[FEED CLIENT] POSTS STATE UPDATE",
-            "color: #ffaa00; font-weight: bold;",
-            {
-              previousCount: prev.length,
-              receivedCount: newPosts.length,
-              combinedCount: all.length,
-              uniqueCount: uniquePosts.length,
-              duplicatesRemoved: all.length - uniquePosts.length,
-              newPostIds: newPosts.map((p: PostProps) => p._id),
-              finalIds: uniquePosts.map((p) => p._id),
-            }
-          );
-
           return uniquePosts;
         });
 
         setNextCursor(newCursor);
 
         if (!newCursor || newPosts.length === 0) {
-          console.log(
-            "%c[FEED CLIENT] HAS MORE = FALSE",
-            "color: #ff5555; font-weight: bold;",
-            {
-              newCursor,
-              receivedPosts: newPosts.length,
-            }
-          );
-
           setHasMore(false);
         }
       } catch (err) {
@@ -281,31 +206,9 @@ function Home() {
           return;
         }
 
-        console.log(
-          "%c[FEED SCROLL] LOADER INTERSECTED",
-          "color: #ff00ff; font-weight: bold;",
-          {
-            timestamp: new Date().toISOString(),
-            isSearch,
-            loading,
-            hasMore,
-            currentCursor: nextCursor,
-            currentPostCount: mainPosts.length,
-            loaderHeight: loaderRef.current?.offsetHeight,
-            scrollY: window.scrollY,
-            viewportHeight: window.innerHeight,
-            documentHeight: document.documentElement.scrollHeight,
-          }
-        );
-
         if (isSearch) {
-          console.log("[FEED SCROLL] Loading search page");
           fetchFilteredPosts(query);
         } else {
-          console.log(
-            "%c[FEED SCROLL] Loading main feed page",
-            "color: #00bfff; font-weight: bold;"
-          );
 
           fetchRef.current();
         }
@@ -316,19 +219,6 @@ function Home() {
     );
 
     const loader = loaderRef.current;
-
-    console.log(
-      "%c[FEED SCROLL] OBSERVER SETUP",
-      "color: #ffaa00; font-weight: bold;",
-      {
-        loaderExists: !!loader,
-        isSearch,
-        hasMore,
-        searchHasMore,
-        currentCursor: nextCursor,
-        currentPostCount: mainPosts.length,
-      }
-    );
 
     if (loader) observer.observe(loader);
 

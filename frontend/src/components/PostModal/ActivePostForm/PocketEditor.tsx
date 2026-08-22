@@ -6,6 +6,7 @@ import {
   ImagePlus, Film, Trash2, Copy, Check, Loader2, Images, Upload,
 } from "lucide-react";
 import type { PocketEditorProps } from "../../../types/Post";
+import { useNavigate } from "react-router-dom";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface MediaFile {
@@ -23,14 +24,14 @@ interface UploadingFile {
   error?:   string;
 }
 
-const POCKET_HEIGHT = 480;
+const POCKET_HEIGHT = 550;
 const MAX_MEDIA     = 20;
 const ACCEPTED      = "image/jpeg,image/png,image/gif,image/webp,image/svg+xml,video/mp4,video/webm";
 
 // ─── Starter template ─────────────────────────────────────────────────────────
-const STARTER_CODE = `// NVIDIA Sponsored Pocket — Rigzer Cloud Gaming
+const STARTER_CODE = `
 // Pure inline styles — no Tailwind needed.
-// Fixed 480px canvas. Design within this space.
+// Fixed 550px canvas height. Design within this space.
 
 const PocketApp = () => {
   const [tab, setTab]           = React.useState("geforce");
@@ -91,7 +92,7 @@ const PocketApp = () => {
 
   const s = {
     root: {
-      width: "100%", height: "480px", background: BG, overflow: "hidden",
+      width: "100%", height: "550px", background: BG, overflow: "hidden",
       display: "flex", flexDirection: "column", position: "relative",
       fontFamily: "'Segoe UI', system-ui, -apple-system, sans-serif",
       boxSizing: "border-box",
@@ -119,13 +120,11 @@ const PocketApp = () => {
       padding: "3px 9px", borderRadius: 4,
     },
     partnerLabel: { color: "rgba(255,255,255,0.32)", fontSize: 11 },
-    headerRight: { display: "flex", alignItems: "center", gap: 7 },
     dot: (on) => ({
       width: 7, height: 7, borderRadius: "50%", transition: "all 0.7s",
       background: on ? GREEN : "rgba(118,185,0,0.22)",
       boxShadow: on ? ("0 0 10px " + GREEN) : "none",
     }),
-    sponsoredLabel: { color: "rgba(255,255,255,0.32)", fontSize: 9, letterSpacing: 2 },
     tabRow: {
       position: "relative", zIndex: 2,
       display: "flex", gap: 6, padding: "10px 18px 0",
@@ -194,10 +193,6 @@ const PocketApp = () => {
         <div style={s.headerLeft}>
           <span style={s.nvidiaTag}>NVIDIA</span>
           <span style={s.partnerLabel}>× Rigzer Cloud Gaming</span>
-        </div>
-        <div style={s.headerRight}>
-          <div style={s.dot(pulse)} />
-          <span style={s.sponsoredLabel}>SPONSORED</span>
         </div>
       </div>
       <div style={s.tabRow}>
@@ -371,6 +366,30 @@ const PocketEditor: React.FC<PocketEditorProps> = ({ onCancel: _onCancel }) => {
   const lastCursorPos = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
   const dragCounter   = useRef(0);
   const BACKEND_URL   = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+
+  const navigate = useNavigate();
+
+    useEffect(() => {
+      const handlePocketNavigation = (event: MessageEvent) => {
+        const data = event.data;
+        console.log("Received message from Pocket iframe:", data);
+  
+        if (!data || data.type !== "RIGZER_NAVIGATE") return;
+  
+        if (typeof data.path !== "string") return;
+  
+        // Only allow internal routes
+        if (!data.path.startsWith("/")) return;
+  
+        navigate(data.path);
+      };
+  
+      window.addEventListener("message", handlePocketNavigation);
+  
+      return () => {
+        window.removeEventListener("message", handlePocketNavigation);
+      };
+    }, [navigate]);
 
   // ── Mount ─────────────────────────────────────────────────────────────────
   useEffect(() => {

@@ -158,20 +158,6 @@ export default function ContentNotFound() {
 
         {/* Content */}
         <div className="relative z-10 flex flex-col items-center justify-center px-8 py-14" style={{ minHeight: '70vh' }}>
-
-          {/* Status pill */}
-          <div
-            className="fu inline-flex items-center gap-[7px] text-[10.5px] font-semibold tracking-[0.16em] uppercase text-[#4FA98B] px-3.5 py-[6px] rounded-full mb-10"
-            style={{
-              background: 'rgba(98,212,174,0.07)',
-              border: '1px solid rgba(98,212,174,0.18)',
-              animationDelay: '0.1s',
-            }}
-          >
-            <span className="w-[5px] h-[5px] rounded-full bg-[#62D4AE] gpulse" style={{ boxShadow: '0 0 6px #62D4AE' }} />
-            Content Unavailable
-          </div>
-
           {/* ── Glitching Logo Object ── */}
           <div 
             className="fu relative w-[140px] h-[140px] mb-11 premium-pulse backdrop-blur-xl ring-1 ring-white/5 rounded-[28px]" 
