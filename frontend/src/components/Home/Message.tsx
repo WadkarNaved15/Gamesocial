@@ -500,7 +500,7 @@ const MessagingComponent = () => {
   };
 
   const handleSendMessage = () => {
-    if (!socket || !currentUser || !currentChatId) return;
+    if (!socket || !currentUser) return;
     if (!canSendMessages) return;
     if (!message.trim() || !activeChat) return;
 
@@ -517,7 +517,7 @@ const MessagingComponent = () => {
       : null;
     const newMessage: Message = {
       tempId,
-      chatId: currentChatId,
+      chatId: currentChatId || null,
       senderId: currentUser,
       receiverId: activeChat,
       text: message,

@@ -21,7 +21,6 @@ router.post("/start", verifyToken, async (req, res) => {
     // Lookup using the indexed string
     const chat = await Chat.findOne({ chatKey }).lean();
     console.log("chat", chat);
-    console.log("Chat is found");
     res.json(chat || null);
   } catch (err) {
     console.error("Chat start error:", err);
