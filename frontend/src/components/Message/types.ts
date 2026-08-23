@@ -27,7 +27,7 @@ export interface Message {
   clientId?: string;
   tempId?: string | number;
 
-  chatId: string;
+  chatId: string | null;
 
   senderId: string;
   receiverId: string;
