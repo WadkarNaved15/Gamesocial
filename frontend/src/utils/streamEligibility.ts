@@ -37,15 +37,19 @@ const getDeviceReasons = () => {
     /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent);
 
   const finePointer = window.matchMedia("(pointer: fine)").matches;
-  const touchPoints = navigator.maxTouchPoints ?? 0;
   const connection = nav.connection;
 
   if (mobileHint) {
-    reasons.push("Mobile support is coming soon. Please use a laptop or desktop.");
+    reasons.push(
+      "Mobile support is coming soon. Please use a laptop or desktop."
+    );
   }
 
-  if (!finePointer || touchPoints > 1) {
-    reasons.push("Use a laptop or desktop with a mouse or trackpad.");
+  // Only block if there is no precise mouse/trackpad-style pointer.
+  if (!mobileHint && !finePointer) {
+    reasons.push(
+      "Use a laptop or desktop with a mouse or trackpad."
+    );
   }
 
   if (connection?.saveData) {
@@ -56,11 +60,14 @@ const getDeviceReasons = () => {
     connection?.effectiveType &&
     ["slow-2g", "2g", "3g"].includes(connection.effectiveType)
   ) {
-    reasons.push(`Connection type is too weak (${connection.effectiveType}).`);
+    reasons.push(
+      `Connection type is too weak (${connection.effectiveType}).`
+    );
   }
 
   return reasons;
 };
+
 
 const runCloudflareSpeedTest = async () => {
   return new Promise<{
