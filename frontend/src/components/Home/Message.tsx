@@ -26,6 +26,7 @@ const MessagingComponent = () => {
   const [isMaximized, setIsMaximized] = useState(false);
   const [message, setMessage] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [activeChat, setActiveChat] = useState<ChatId | null>(null);
   const [requestedUser, setRequestedUser] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -265,7 +266,7 @@ const MessagingComponent = () => {
       if (senderId === activeChat) {
         // 2. Tell the backend it was seen immediately
         if (currentChatId) {
-           markChatAsSeen(currentChatId, senderId);
+          markChatAsSeen(currentChatId, senderId);
         }
         // 3. Exit early so the unread count DOES NOT increment
         return;
@@ -371,8 +372,18 @@ const MessagingComponent = () => {
         isLoading: false,
         autoClose: 1200,
       });
-      const tempId = Date.now().toString();
-      const newMessage = {
+      const tempId = crypto.randomUUID();
+      const replyTo = replyingTo?._id
+        ? {
+          messageId: replyingTo._id,
+          senderId: replyingTo.senderId,
+          text: replyingTo.text || null,
+          messageType: replyingTo.messageType || "text",
+          mediaType: replyingTo.mediaType || null,
+        }
+        : null;
+
+      const newMessage: Message = {
         tempId,
         chatId: currentChatId,
         senderId: currentUser,
@@ -380,7 +391,9 @@ const MessagingComponent = () => {
         text: "",
         mediaUrl: fileUrl,
         mediaKey: key,
-        mediaType: file.type.startsWith("image") ? "image" : file.type.startsWith("video") ? "video" : "misc",
+        mediaType: file.type.startsWith("image") ? "image" : file.type.startsWith("video") ? "video" : null,
+        messageType: "media",
+        replyTo,
         createdAt: new Date(),
       };
 
@@ -390,6 +403,7 @@ const MessagingComponent = () => {
         ...prev,
         [activeChat]: [...(prev[activeChat] || []), newMessage],
       }));
+      setReplyingTo(null);
     } catch (err) {
       console.error(err);
 
@@ -489,13 +503,26 @@ const MessagingComponent = () => {
     if (!socket || !currentUser) return;
     if (!canSendMessages) return;
     if (!message.trim() || !activeChat) return;
-    const tempId = Date.now();
-    const newMessage = {
+
+    const tempId = crypto.randomUUID();
+
+    const replyTo = replyingTo?._id
+      ? {
+        messageId: replyingTo._id,
+        senderId: replyingTo.senderId,
+        text: replyingTo.text || null,
+        messageType: replyingTo.messageType || "text",
+        mediaType: replyingTo.mediaType || null,
+      }
+      : null;
+    const newMessage: Message = {
       tempId,
       chatId: currentChatId || null,
-      senderId: currentUser ? currentUser : null,
+      senderId: currentUser,
       receiverId: activeChat,
       text: message,
+      messageType: "text",
+      replyTo,
       createdAt: new Date(),
     };
 
@@ -507,6 +534,19 @@ const MessagingComponent = () => {
     }));
 
     setMessage("");
+    setReplyingTo(null);
+  };
+
+  const handleReply = (message: Message) => {
+    if (!message?._id && !message?.tempId) return;
+
+    if (!message._id) {
+      toast.info("Please wait for the message to be sent before replying.");
+      return;
+    }
+
+    setReplyingTo(message);
+    setShowEmojiPicker(false);
   };
 
   const handleDeleteMessage = (messageId: string) => {
@@ -677,6 +717,7 @@ const MessagingComponent = () => {
                       openMenuId={openMenuId}
                       onToggleMenu={(id) => setOpenMenuId(openMenuId === id ? null : id)}
                       onDeleteMessage={handleDeleteMessage}
+                      onReply={handleReply}
                       onMediaClick={setMediaViewer}
                       activeChatStatus={activeChatStatus}
                       requestedByCurrentUser={requestedUser?.requestedBy === currentUser}
@@ -700,6 +741,8 @@ const MessagingComponent = () => {
                       canSendMessages={canSendMessages}
                       activeUserName={activeUser?.name}
                       onFileButtonClick={() => fileInputRef.current?.click()}
+                      replyingTo={replyingTo}
+                      onCancelReply={() => setReplyingTo(null)}
                       showEmojiPicker={showEmojiPicker}
                       onToggleEmojiPicker={() => setShowEmojiPicker(!showEmojiPicker)}
                       onEmojiClick={onEmojiClick}

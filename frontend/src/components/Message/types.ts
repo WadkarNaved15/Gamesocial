@@ -8,9 +8,47 @@ export interface ChatUser {
   chatStatus?: string;
 }
 
-// Kept as `any` to match the original component's loose message typing.
-// Worth tightening once the backend message shape stabilizes.
-export type Message = any;
+export type MessageType = "text" | "media" | "post";
+
+export type MediaType = "image" | "video" | null;
+
+export interface ReplyTo {
+  messageId: string;
+  senderId: string;
+  text: string | null;
+  messageType: MessageType;
+  mediaType: MediaType;
+  mediaUrl?: string | null;
+}
+
+export interface Message {
+  _id?: string;
+  id?: string;
+  clientId?: string;
+  tempId?: string | number;
+
+  chatId: string | null;
+
+  senderId: string;
+  receiverId: string;
+
+  text: string;
+
+  mediaUrl?: string | null;
+  mediaKey?: string | null;
+  mediaType?: MediaType;
+
+  messageType: MessageType;
+
+  sharedPostId?: string | null;
+
+  replyTo?: ReplyTo | null;
+
+  seen?: boolean;
+  seenAt?: string | null;
+
+  createdAt: string | Date;
+}
 
 export type ChatId = string;
 

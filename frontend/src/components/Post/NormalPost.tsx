@@ -14,12 +14,11 @@ import { useAudio } from "../../context/AudioContext";
 import { Play, Loader2, AlertCircle, VolumeX, Volume2 } from "lucide-react";
 import { trackEvent } from "../../utils/analytics";
 
-
 const renderTextWithLinks = (text: string) => {
   if (!text) return null;
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
-  
+
   return parts.map((part, i) => {
     if (part.match(urlRegex)) {
       return (
@@ -28,7 +27,7 @@ const renderTextWithLinks = (text: string) => {
           href={part}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()} // Prevents the post from opening when clicking the link
+          onClick={(e) => e.stopPropagation()}
           className="text-[rgb(98,212,174)] hover:text-[rgb(78,192,154)] hover:underline break-words"
         >
           {part}
@@ -38,6 +37,80 @@ const renderTextWithLinks = (text: string) => {
     return <React.Fragment key={i}>{part}</React.Fragment>;
   });
 };
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * ASPECT RATIO DETECTION HELPER
+ * Small, reusable piece of logic that maps a media asset's natural
+ * dimensions onto a fixed set of "social feed" aspect-ratio buckets, so
+ * single-media posts get an adaptive but predictable box shape instead of
+ * a hard-coded 320px height.
+ * ────────────────────────────────────────────────────────────────────── */
+
+type AspectBucket = "21:9" | "16:9" | "4:3" | "1:1" | "4:5" | "9:16";
+
+const ASPECT_CLASS_MAP: Record<AspectBucket, string> = {
+  "21:9": "aspect-[21/9]",
+  "16:9": "aspect-video", // Tailwind's built-in 16/9 alias
+  "4:3": "aspect-[4/3]",
+  "1:1": "aspect-square",
+  "4:5": "aspect-[4/5]",
+  "9:16": "aspect-[9/16]",
+};
+
+// Fallback bucket used while real dimensions are still loading.
+// 4:5 (portrait-ish) tends to minimize visible layout jump either way.
+const FALLBACK_ASPECT_CLASS = ASPECT_CLASS_MAP["4:5"];
+
+const getAspectBucket = (ratio: number): AspectBucket => {
+  if (ratio >= 1.9) return "21:9";   // ultra-wide
+  if (ratio >= 1.5) return "16:9";   // standard landscape
+  if (ratio >= 1.15) return "4:3";   // classic landscape
+  if (ratio >= 0.9) return "1:1";    // square
+  if (ratio <= 0.65) return "9:16";  // tall portrait / vertical video
+  return "4:5";                      // portrait
+};
+
+interface AspectSourceAsset {
+  type: string;
+  url: string;
+}
+
+/**
+ * Detects the natural aspect ratio of a single image/video asset (off-DOM,
+ * so it doesn't interfere with the actually-rendered <img>/<video> element)
+ * and returns the matching Tailwind aspect-ratio class for its container.
+ */
+function useSingleAssetAspectClass(asset?: AspectSourceAsset): string {
+  const [aspectClass, setAspectClass] = useState<string>(FALLBACK_ASPECT_CLASS);
+
+  useEffect(() => {
+    if (!asset?.url) return;
+    let cancelled = false;
+
+    const applyDimensions = (width: number, height: number) => {
+      if (cancelled || !width || !height) return;
+      setAspectClass(ASPECT_CLASS_MAP[getAspectBucket(width / height)]);
+    };
+
+    if (asset.type === "video") {
+      const video = document.createElement("video");
+      video.preload = "metadata";
+      video.src = asset.url;
+      video.onloadedmetadata = () => applyDimensions(video.videoWidth, video.videoHeight);
+    } else {
+      const img = new window.Image();
+      img.src = asset.url;
+      img.onload = () => applyDimensions(img.naturalWidth, img.naturalHeight);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+    // Re-run only when the asset itself changes.
+  }, [asset?.url, asset?.type]);
+
+  return aspectClass;
+}
 
 const NormalPost: React.FC<NormalPostProps> = ({
   _id,
@@ -83,14 +156,18 @@ const NormalPost: React.FC<NormalPostProps> = ({
       const isVideo = asset.type === "video";
       const isCompleted = isVideo && asset.processingStatus === "completed";
       const displayUrl = (isCompleted && asset.optimizedUrl) ? asset.optimizedUrl : asset.url;
-      
+
       return {
         ...asset,
-        url: displayUrl, 
+        url: displayUrl,
       };
     });
   }, [rawAssets]);
   // ─────────────────────────────────────────────────────────────────────────────
+
+  const isSingleMedia = displayAssets.length === 1;
+  const singleAsset = isSingleMedia ? displayAssets[0] : undefined;
+  const singleAssetAspectClass = useSingleAssetAspectClass(singleAsset);
 
   const primaryVideoIndex = useMemo(() => {
     return displayAssets.findIndex(a => a.type === "video");
@@ -179,9 +256,8 @@ const NormalPost: React.FC<NormalPostProps> = ({
     });
   }, [viewerOpen]);
 
-  /* -------------------- GRID LOGIC -------------------- */
+  /* -------------------- GRID LOGIC (multi-media only) -------------------- */
   const getGridClass = (count: number) => {
-    if (count === 1) return "grid-cols-1";
     if (count === 2) return "grid-cols-2";
     return "grid-cols-2 grid-rows-2";
   };
@@ -284,8 +360,74 @@ const NormalPost: React.FC<NormalPostProps> = ({
   </div>
 )}
 
-          {/* -------------------- MEDIA GRID -------------------- */}
-          {displayAssets.length > 0 && (
+          {/* -------------------- SINGLE MEDIA (adaptive) -------------------- */}
+          {isSingleMedia && singleAsset && (() => {
+            const asset = singleAsset;
+            const isProcessing = asset.type === "video" && (asset.processingStatus === "pending" || asset.processingStatus === "processing");
+            const isFailed = asset.type === "video" && asset.processingStatus === "failed";
+
+            return (
+              <div
+                className="mt-3 w-full flex justify-center"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setViewerIndex(0);
+                  setViewerOpen(true);
+                }}
+              >
+                <div
+                  className={`
+                    relative w-full
+                    ${singleAssetAspectClass}
+                    max-h-[450px]
+                    rounded-2xl
+                    overflow-hidden
+                    border border-white/[0.08]
+                    bg-black/20
+                  `}
+                >
+                  {asset.type === "video" ? (
+                    <div className="w-full h-full overflow-hidden relative group">
+                      <video
+                        ref={(el) => {
+                          if (el) {
+                            videoRefs.current[0] = el;
+                          }
+                        }}
+                        muted={!isAudioActive || isMuted}
+                        playsInline
+                        loop
+                        preload="metadata"
+                        poster={asset.thumbnailUrl}
+                        className="w-full h-full object-contain"
+                        src={asset.url}
+                      />
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleMute();
+                        }}
+                        className="absolute bottom-3 right-3 z-50 p-2 rounded-full bg-black/40 backdrop-blur-md text-white border border-white/20 transition-opacity opacity-0 group-hover:opacity-100 sm:opacity-100"
+                      >
+                        {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                      </button>
+                    </div>
+                  ) : (
+                    <img
+                      src={asset.url}
+                      alt={asset.name}
+                      loading="lazy"
+                      className="w-full h-full object-contain"
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* -------------------- MULTI MEDIA GRID (unchanged behavior) -------------------- */}
+          {displayAssets.length > 1 && (
             <div
               className={`
                 group relative
