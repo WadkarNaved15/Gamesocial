@@ -42,22 +42,42 @@ router.get("/my-chats", verifyToken, async (req, res) => {
       .lean();
 
     // 🔥 Format response → return ONLY other user
-    const formatted = chats.map(chat => {
-      const otherUser = chat.participants.find(
-        (p) => p._id.toString() !== userId.toString()
-      );
+    const formatted = chats
+      .map((chat) => {
+        const participants = Array.isArray(chat.participants)
+          ? chat.participants.filter(Boolean)
+          : [];
 
-      return {
-        chatId: chat._id,
-        status: chat.status,
-        requestedBy: chat.requestedBy,
-        user: {
-          id: otherUser._id,
-          name: otherUser.username,
-          avatar: otherUser.avatar
+        // Find the participant who isn't the current user.
+        const otherUser = participants.find(
+          (participant) =>
+            participant?._id &&
+            participant._id.toString() !== userId.toString()
+        );
+        
+        if (!otherUser) {
+          console.warn("[CHAT] Skipping invalid chat:", {
+            chatId: chat._id?.toString(),
+            currentUserId: userId.toString(),
+            participants: chat.participants,
+            reason: "Other participant does not exist",
+          });
+
+          return null;
         }
-      };
-    });
+
+        return {
+          chatId: chat._id,
+          status: chat.status,
+          requestedBy: chat.requestedBy,
+          user: {
+            id: otherUser._id,
+            name: otherUser.username,
+            avatar: otherUser.avatar || "",
+          },
+        };
+      })
+      .filter(Boolean);
 
     res.json(formatted);
 
