@@ -55,6 +55,25 @@ const MessagingComponent = () => {
   const chatRequestIdRef = useRef(0);
   const isFetchingOlderRef = useRef<Record<string, boolean>>({});
   const lastFetchedCursorRef = useRef<Record<string, string | null>>({});
+  const pendingJumpMessageRef = useRef<Record<string, string | null>>({});
+  const replyJumpInProgressRef = useRef<Record<string, boolean>>({});
+  const CHAT_PAGE_SIZE = 30;
+
+  // Maximum amount of history that an automatic reply-preview jump
+  // is allowed to load.
+  const MAX_REPLY_JUMP_MESSAGES = 300;
+  const MAX_REPLY_JUMP_PAGES = Math.ceil(
+    MAX_REPLY_JUMP_MESSAGES / CHAT_PAGE_SIZE
+  );
+  const paginationRef = useRef<
+    Record<
+      string,
+      {
+        cursor: string | null;
+        hasMore: boolean;
+      }
+    >
+  >({});
 
   // NEW: Delays the unmounting of the chat window so the close animation can play
   useEffect(() => {
@@ -140,56 +159,336 @@ const MessagingComponent = () => {
     });
   };
 
-  const loadOlderMessages = async () => {
-    if (!activeChat || !currentChatId) return;
-    if (!chatHasMore[activeChat]) return;
+  const fetchOlderMessagesPage = async (
+    userId: string,
+    chatId: string,
+    cursor: string
+  ): Promise<{
+    messages: Message[];
+    hasMore: boolean;
+    nextCursor: string | null;
+  } | null> => {
+    if (isFetchingOlderRef.current[userId]) {
+      return null;
+    }
 
-    // Synchronous ref check+set — no async/state gap for a duplicate call to slip through
-    if (isFetchingOlderRef.current[activeChat]) return;
+    isFetchingOlderRef.current[userId] = true;
 
-    const cursor = chatCursors[activeChat];
-    if (!cursor) return;
-
-    // Refuse to re-fetch the exact same page twice (covers the case where the
-    // lock above already released but a duplicate call was queued with a stale cursor)
-    if (lastFetchedCursorRef.current[activeChat] === cursor) return;
-
-    isFetchingOlderRef.current[activeChat] = true;
-    lastFetchedCursorRef.current[activeChat] = cursor;
-    setLoadingOlderMessages((prev) => ({ ...prev, [activeChat]: true }));
+    setLoadingOlderMessages((prev) => ({
+      ...prev,
+      [userId]: true,
+    }));
 
     try {
-      const { data } = await axios.get(`${BACKEND_URL}/api/messages/${currentChatId}`, {
-        params: { before: cursor, limit: 30 },
-        withCredentials: true,
-      });
+      const { data } = await axios.get(
+        `${BACKEND_URL}/api/messages/${chatId}`,
+        {
+          params: {
+            before: cursor,
+            limit: CHAT_PAGE_SIZE,
+          },
+          withCredentials: true,
+        }
+      );
+
+      const olderMessages: Message[] = data.messages || [];
 
       setConversations((prev) => {
-        const existing = prev[activeChat] || [];
-        const existingIds = new Set(existing.map((m) => m._id));
-        // Belt-and-suspenders: even if a dupe page slipped through, never let
-        // duplicate _ids reach the DOM and corrupt React's key reconciliation.
-        const deduped = data.messages.filter((m: Message) => !existingIds.has(m._id));
-        return { ...prev, [activeChat]: [...deduped, ...existing] };
+        const existing = prev[userId] || [];
+
+        const existingIds = new Set(
+          existing
+            .map((message) => message._id)
+            .filter(Boolean)
+        );
+
+        const deduped = olderMessages.filter(
+          (message) =>
+            message._id &&
+            !existingIds.has(message._id)
+        );
+
+        return {
+          ...prev,
+          [userId]: [...deduped, ...existing],
+        };
       });
 
-      setChatHasMore((prev) => ({ ...prev, [activeChat]: data.hasMore }));
-      setChatCursors((prev) => ({ ...prev, [activeChat]: data.nextCursor }));
-    } catch (err) {
-      console.error(err);
-      // Allow retry on failure by rolling back the cursor guard
-      lastFetchedCursorRef.current[activeChat] = null;
+      const hasMore = Boolean(data.hasMore);
+      const nextCursor = data.nextCursor ?? null;
+
+      // IMPORTANT:
+      // Keep pagination state synchronously available through the ref.
+      paginationRef.current[userId] = {
+        cursor: nextCursor,
+        hasMore,
+      };
+
+      setChatHasMore((prev) => ({
+        ...prev,
+        [userId]: hasMore,
+      }));
+
+      setChatCursors((prev) => ({
+        ...prev,
+        [userId]: nextCursor,
+      }));
+
+      lastFetchedCursorRef.current[userId] = cursor;
+
+      return {
+        messages: olderMessages,
+        hasMore,
+        nextCursor,
+      };
+    } catch (error) {
+      console.error(
+        "Failed to fetch older messages:",
+        error
+      );
+
+      return null;
     } finally {
-      isFetchingOlderRef.current[activeChat] = false;
-      setLoadingOlderMessages((prev) => ({ ...prev, [activeChat]: false }));
+      isFetchingOlderRef.current[userId] = false;
+
+      setLoadingOlderMessages((prev) => ({
+        ...prev,
+        [userId]: false,
+      }));
+    }
+  };
+
+  const loadOlderMessages = async () => {
+    if (!activeChat || !currentChatId) return;
+
+    const userId = activeChat;
+
+    if (isFetchingOlderRef.current[userId]) {
+      return;
+    }
+
+    const pagination = paginationRef.current[userId];
+
+    const cursor =
+      pagination?.cursor ??
+      chatCursors[userId];
+
+    const hasMore =
+      pagination?.hasMore ??
+      chatHasMore[userId];
+
+    if (!hasMore || !cursor) {
+      return;
+    }
+
+    const result = await fetchOlderMessagesPage(
+      userId,
+      currentChatId,
+      cursor
+    );
+
+    if (!result) {
+      return;
+    }
+  };
+
+  const handleReplyPreviewClick = async (messageId: string) => {
+    if (!messageId || !activeChat) return;
+
+    // If the message is already loaded, ChatMessageList can
+    // scroll to it immediately.
+    const loaded = (conversations[activeChat] || []).some(
+      (message) => message._id === messageId
+    );
+
+    if (loaded) {
+      return;
+    }
+
+    await loadOlderMessagesUntilFound(messageId);
+  };
+
+  const loadOlderMessagesUntilFound = async (
+    targetMessageId: string
+  ): Promise<boolean> => {
+    if (!activeChat || !currentChatId) {
+      return false;
+    }
+
+    const userId = activeChat;
+    const chatId = currentChatId;
+
+    if (replyJumpInProgressRef.current[userId]) {
+      return false;
+    }
+    replyJumpInProgressRef.current[userId] = true;
+
+    pendingJumpMessageRef.current[userId] = targetMessageId;
+
+    let pagesFetched = 0;
+    let messagesFetched = 0;
+
+    try {
+      // ------------------------------------------------------------
+      // 1. Check if target is already loaded.
+      // ------------------------------------------------------------
+
+      const existingMessages =
+        conversations[userId] || [];
+
+      if (
+        existingMessages.some(
+          (message) => message._id === targetMessageId
+        )
+      ) {
+        return true;
+      }
+
+      // ------------------------------------------------------------
+      // 2. Get current pagination state.
+      // ------------------------------------------------------------
+
+      let pagination =
+        paginationRef.current[userId];
+
+      let cursor =
+        pagination?.cursor ??
+        chatCursors[userId] ??
+        null;
+
+      let hasMore =
+        pagination?.hasMore ??
+        chatHasMore[userId] ??
+        false;
+
+      // ------------------------------------------------------------
+      // 3. Automatically fetch older pages.
+      //
+      // IMPORTANT:
+      // This loop has a hard maximum.
+      // ------------------------------------------------------------
+
+      while (hasMore && cursor) {
+
+        // ----------------------------------------------------------
+        // HARD SAFETY LIMIT
+        // ----------------------------------------------------------
+
+        if (pagesFetched >= MAX_REPLY_JUMP_PAGES) {
+          toast.info(
+            `This message is too far back to jump to automatically. ` +
+            `Scroll up manually to load older messages.`
+          );
+
+          return false;
+        }
+
+        // ----------------------------------------------------------
+        // Make sure the user hasn't switched chats.
+        // ----------------------------------------------------------
+
+        if (
+          activeChat !== userId ||
+          currentChatId !== chatId
+        ) {
+          return false;
+        }
+
+        // ----------------------------------------------------------
+        // Prevent concurrent pagination requests.
+        // ----------------------------------------------------------
+
+        if (isFetchingOlderRef.current[userId]) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, 25)
+          );
+
+          pagination =
+            paginationRef.current[userId];
+
+          cursor =
+            pagination?.cursor ?? null;
+
+          hasMore =
+            pagination?.hasMore ?? false;
+
+          continue;
+        }
+
+        // ----------------------------------------------------------
+        // Fetch EXACTLY ONE page.
+        // ----------------------------------------------------------
+
+        const result =
+          await fetchOlderMessagesPage(
+            userId,
+            chatId,
+            cursor
+          );
+
+        if (!result) {
+          return false;
+        }
+
+        pagesFetched += 1;
+
+        messagesFetched += result.messages.length;
+
+        // ----------------------------------------------------------
+        // Check whether target exists in this page.
+        // ----------------------------------------------------------
+
+        const foundInPage =
+          result.messages.some(
+            (message) =>
+              message._id === targetMessageId
+          );
+
+        if (foundInPage) {
+          return true;
+        }
+
+        // ----------------------------------------------------------
+        // Move to next cursor.
+        // ----------------------------------------------------------
+
+        cursor = result.nextCursor;
+        hasMore = result.hasMore;
+
+        // ----------------------------------------------------------
+        // Stop if backend says there are no more messages.
+        // ----------------------------------------------------------
+
+        if (!hasMore || !cursor) {
+          return false;
+        }
+
+        if (messagesFetched >= MAX_REPLY_JUMP_MESSAGES) {
+          toast.info(
+            `This message is too far back to jump to automatically. ` +
+            `Scroll up manually to load older messages.`
+          );
+
+          return false;
+        }
+      }
+
+      return false;
+
+    } finally {
+      replyJumpInProgressRef.current[userId] = false;
+      if (
+        pendingJumpMessageRef.current[userId] ===
+        targetMessageId
+      ) {
+        pendingJumpMessageRef.current[userId] = null;
+      }
     }
   };
 
   const onEmojiClick = (emojiData: { emoji: string }) => {
     setMessage((prev) => prev + emojiData.emoji);
   };
-
-
 
   useEffect(() => {
     if (!currentUser) return;
@@ -457,7 +756,7 @@ const MessagingComponent = () => {
         socket.emit("join_chat", data._id);
         const { data: messagesData } = await axios.get(
           `${BACKEND_URL}/api/messages/${data._id}`,
-          { params: { limit: 30 }, withCredentials: true }
+          { params: { limit: CHAT_PAGE_SIZE }, withCredentials: true }
         );
 
         if (chatRequestIdRef.current !== requestId) return; // check again after the 2nd await
@@ -465,12 +764,26 @@ const MessagingComponent = () => {
         setConversations((prev) => ({ ...prev, [receiverId]: messagesData.messages }));
         setChatHasMore((prev) => ({ ...prev, [receiverId]: messagesData.hasMore }));
         setChatCursors((prev) => ({ ...prev, [receiverId]: messagesData.nextCursor }));
+        paginationRef.current[receiverId] = {
+          cursor: messagesData.nextCursor ?? null,
+          hasMore: Boolean(messagesData.hasMore),
+        };
+
+        lastFetchedCursorRef.current[receiverId] = null;
+        isFetchingOlderRef.current[receiverId] = false;
 
         markChatAsSeen(data._id, receiverId);
       } else {
         setCurrentChatId(null);
         setRequestedUser(null);
         setActiveChatStatus(null);
+        paginationRef.current[receiverId] = {
+          cursor: null,
+          hasMore: false,
+        };
+
+        isFetchingOlderRef.current[receiverId] = false;
+        lastFetchedCursorRef.current[receiverId] = null;
         setConversations((prev) => ({
           ...prev,
           [receiverId]: [],
@@ -719,6 +1032,7 @@ const MessagingComponent = () => {
                       onDeleteMessage={handleDeleteMessage}
                       onReply={handleReply}
                       onMediaClick={setMediaViewer}
+                      onReplyPreviewClick={handleReplyPreviewClick}
                       activeChatStatus={activeChatStatus}
                       requestedByCurrentUser={requestedUser?.requestedBy === currentUser}
                       activeUserName={activeUser?.name}
