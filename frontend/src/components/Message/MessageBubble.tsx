@@ -9,6 +9,7 @@ interface MessageBubbleProps {
   onToggleMenu: (id: string) => void;
   onDelete: (messageId: string) => void;
   onReply: (message: Message) => void;
+  onReplyPreviewClick: (messageId: string) => void;
   onMediaClick: (media: MediaViewerState) => void;
 }
 
@@ -19,6 +20,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
   onToggleMenu,
   onDelete,
   onReply,
+  onReplyPreviewClick,
   onMediaClick,
 }) => {
   const isOwnMessage = msg.senderId === currentUser;
@@ -130,12 +132,34 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
             }`}
         >
           {msg.replyTo && (
-            <div
+            <button
+              type="button"
+              onClick={() => {
+                if (!msg.replyTo?.messageId) return;
+
+                onReplyPreviewClick(msg.replyTo.messageId);
+              }}
               className="
-                mb-2 rounded-lg border-l-2
-                border-white/40 bg-black/10 dark:bg-black/20
-                px-3 py-2 overflow-hidden
+                w-full
+                mb-2
+                text-left
+                rounded-lg
+                border-l-2
+                border-white/40
+                bg-black/10
+                dark:bg-black/20
+                px-3
+                py-2
+                overflow-hidden
+                cursor-pointer
+                hover:bg-black/20
+                dark:hover:bg-black/30
+                transition-colors
+                focus:outline-none
+                focus-visible:ring-2
+                focus-visible:ring-white/30
               "
+              aria-label="Jump to replied message"
             >
               <p className="text-[11px] font-semibold text-white/70 mb-0.5">
                 {msg.replyTo.senderId === currentUser ? "You" : "Reply"}
@@ -211,7 +235,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
                 msg.replyTo.messageType !== "post" && (
                   <p className="text-xs text-gray-400 italic">Message</p>
                 )}
-            </div>
+            </button>
           )}
 
           {msg.mediaType === "image" && (
