@@ -43,15 +43,16 @@ function Home() {
   const [searchCursor, setSearchCursor] = useState<string | null>(null);
   const location = useLocation();
   const [searchHasMore, setSearchHasMore] = useState(true);
+  const isFetchingRef = useRef(false);
 
   // ── Fetch Main Feed ──────────────────────────────────────────────────────
   const fetchMainPosts = useCallback(
     async (reset = false) => {
-
-      if (loading || (!hasMore && !reset)) {
+      if (isFetchingRef.current || loading || (!hasMore && !reset)) {
         return;
       }
 
+      isFetchingRef.current = true;
       setLoading(true);
 
       try {
@@ -95,6 +96,7 @@ function Home() {
         setHasMore(false);
       } finally {
         setLoading(false);
+        isFetchingRef.current = false;
       }
     },
     [
@@ -202,7 +204,7 @@ function Home() {
       (entries) => {
         const entry = entries[0];
 
-        if (!entry.isIntersecting) {
+        if (!entry.isIntersecting || loading || isFetchingRef.current) {
           return;
         }
 
@@ -223,7 +225,7 @@ function Home() {
     if (loader) observer.observe(loader);
 
     return () => observer.disconnect();
-  }, [hasMore, searchHasMore, isSearch, query, fetchFilteredPosts]);
+  }, [hasMore, searchHasMore, isSearch, query, fetchFilteredPosts, loading]);
 
   useEffect(() => {
     if (isSearch) return;
@@ -353,10 +355,10 @@ function Home() {
               </div>
             )}
 
-            {loading && mainPosts.length === 0 && (
-              <div className="w-full mt-4 flex flex-col">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <PostSkeleton key={i} />
+            {loading && (
+              <div className="w-full flex flex-col">
+                {Array.from({ length: mainPosts.length === 0 ? 5 : 2 }).map((_, i) => (
+                  <PostSkeleton key={`feed-skeleton-${i}`} />
                 ))}
               </div>
             )}

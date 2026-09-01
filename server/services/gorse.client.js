@@ -18,9 +18,6 @@ async function gorseRequest(method, path, body) {
     console.log("================================");
     console.log("GORSE REQUEST");
     console.log("URL:", url);
-    console.log("Method:", method);
-    console.log("Headers:", headers);
-    console.log("Body:", body);
 
     try {
         const res = await fetch(url, {
