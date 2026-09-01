@@ -9,6 +9,7 @@ import cacheService from "../services/cacheService.js";
 import crypto from "crypto";
 import { callController } from "../services/controllerService.js";
 import {reconcileCapacity} from "../services/capacityReconciler.js";
+import { ALLOCATION_GRACE_MS } from "../helper/session.js";
 
 const router = express.Router();
 
@@ -92,33 +93,53 @@ router.post("/instance-ready", verifyInternalKey, async (req, res) => {
 
     const wasQueued = session.queueType === "queued";
 
-    const updates = {
-      instanceId: lease.workerId,
-      instanceIp: lease.instanceIp,
-      leaseToken: lease.leaseToken,
-      leaseExpiresAt: new Date(
-        lease.leaseExpiresAt * 1000
-      ),
-      expiresAt: new Date(
-        Date.now() +
-          session.maxDurationSeconds * 1000
-      ),
-      leasing: false,
+const now = new Date();
 
-      ...(wasQueued
-        ? {
-            status: "allocation_ready",
-            phase: "countdown",
-            countdownStartsAt: new Date(
-              Date.now() + 5000
-            ),
-            countdownSeconds: 30,
-          }
-        : {
-            status: "starting",
-            phase: "downloading",
-          }),
-    };
+const countdownSeconds = 30;
+
+// Give the frontend 5 seconds to receive/display the
+// allocation_ready event, then start the 30-second window.
+const countdownStartsAt = new Date(
+  now.getTime() + 5000
+);
+
+const allocationExpiresAt = new Date(
+  countdownStartsAt.getTime() +
+    countdownSeconds * 1000
+);
+
+const updates = {
+  instanceId: lease.workerId,
+  instanceIp: lease.instanceIp,
+  leaseToken: lease.leaseToken,
+
+  leaseExpiresAt: new Date(
+    lease.leaseExpiresAt * 1000
+  ),
+
+  expiresAt: new Date(
+    now.getTime() +
+      session.maxDurationSeconds * 1000
+  ),
+
+  leasing: false,
+
+  ...(wasQueued
+    ? {
+        status: "allocation_ready",
+        phase: "countdown",
+
+        countdownStartsAt,
+
+        countdownSeconds,
+
+        allocationExpiresAt,
+      }
+    : {
+        status: "starting",
+        phase: "downloading",
+      }),
+};
 
     const updatedSession =
       await GameSession.findByIdAndUpdate(
@@ -133,14 +154,17 @@ router.post("/instance-ready", verifyInternalKey, async (req, res) => {
 
     if (send) {
       send(
-        wasQueued
-          ? {
-              status: "allocation_ready",
-              phase: "countdown",
-              countdownStartsAt:
-                updates.countdownStartsAt,
-              countdownSeconds: 30,
-            }
+wasQueued
+  ? {
+      status: "allocation_ready",
+      phase: "countdown",
+      countdownStartsAt:
+        updates.countdownStartsAt,
+      countdownSeconds:
+        updates.countdownSeconds,
+      allocationExpiresAt:
+        updates.allocationExpiresAt,
+    }
           : {
               status: "starting",
               phase: "downloading",
@@ -242,7 +266,9 @@ const { status, error } = req.body;
         updates.error = error || "Session failed";
         updates.endedAt = new Date();
         updates.phase = null;
-        updates.exitReason = "error";
+        if (!session.exitReason) {
+          updates.exitReason = "error";
+        }
 
         if (session.instanceId && session.leaseToken) {
           try {
@@ -262,12 +288,16 @@ const { status, error } = req.body;
         }
         break;
 
-      case "ended":
-      case "ended_and_ready":
-        updates.status = "ended";
-        updates.endedAt = new Date();
-        updates.phase = null;
-        updates.exitReason = "user_exit";        
+        case "ended":
+        case "ended_and_ready":
+          updates.status = "ended";
+          updates.endedAt = new Date();
+          updates.phase = null;
+
+          // Only assign user_exit if no reason has already been recorded.
+          if (!session.exitReason) {
+            updates.exitReason = "user_exit";
+          }   
 
         if (session.instanceId && session.leaseToken) {
           try {
@@ -323,42 +353,117 @@ const { status, error } = req.body;
   }
 });
 
+
 /**
  * POST /api/internal/session/launch
- * Called by FRONTEND when user clicks LAUNCH in countdown modal
- * ✅ Transition from countdown → starting
+ * Called by FRONTEND when user clicks LAUNCH
+ *
+ * Atomically transitions:
+ *
+ * allocation_ready -> starting
+ *
+ * ONLY if allocation has not expired.
  */
 router.post("/session/launch", async (req, res) => {
   try {
     const { sessionId } = req.body;
 
     if (!sessionId) {
-      return res.status(400).json({ error: "sessionId required" });
-    }
-
-    const session = await GameSession.findById(sessionId);
-    if (!session) {
-      return res.status(404).json({ error: "Session not found" });
-    }
-
-    if (session.status !== "allocation_ready") {
       return res.status(400).json({
-        error: `Cannot launch from status ${session.status}`,
+        error: "sessionId required",
       });
     }
 
-    const updates = {
-      status: "starting",
-      phase: "downloading",
-    };
+    /*
+     * IMPORTANT:
+     *
+     * This is intentionally one atomic MongoDB operation.
+     *
+     * If the cleanup worker has already expired the allocation,
+     * this query will not match.
+     *
+     * If this query succeeds, the launch wins the race.
+     */
+const now = new Date();
 
-    const updatedSession = await GameSession.findByIdAndUpdate(
-      sessionId,
-      updates,
-      { new: true }
+// Allow 3 seconds of grace for network/server latency.
+// This is important when the user clicks Launch near the
+// end of the countdown.
+
+const launchCutoff = new Date(
+  now.getTime() - ALLOCATION_GRACE_MS
+);
+
+const updatedSession =
+  await GameSession.findOneAndUpdate(
+    {
+      _id: sessionId,
+      status: "allocation_ready",
+      allocationExpiresAt: {
+        $gt: launchCutoff,
+      },
+    },
+        {
+          $set: {
+            status: "starting",
+            phase: "downloading",
+          },
+
+          $unset: {
+            allocationExpiresAt: "",
+            countdownStartsAt: "",
+            countdownSeconds: "",
+          },
+        },
+        {
+          new: true,
+        }
+      );
+
+    /*
+     * No match means one of:
+     *
+     * - session doesn't exist
+     * - user already launched
+     * - user cancelled
+     * - allocation expired
+     * - cleanup worker already claimed it
+     */
+    if (!updatedSession) {
+      const existingSession =
+        await GameSession.findById(sessionId)
+          .select("status allocationExpiresAt")
+          .lean();
+
+      if (!existingSession) {
+        return res.status(404).json({
+          error: "Session not found",
+        });
+      }
+
+      if (
+        existingSession.status ===
+        "allocation_ready"
+      ) {
+        return res.status(410).json({
+          error: "allocation_expired",
+          message:
+            "The launch window has expired.",
+        });
+      }
+
+      return res.status(409).json({
+        error: `Cannot launch from status ${existingSession.status}`,
+      });
+    }
+
+    /*
+     * Notify connected frontend immediately.
+     */
+    const send = sessionStreams.get(
+      sessionId.toString()
     );
 
-    const send = sessionStreams.get(sessionId.toString());
     if (send) {
       send({
         status: "starting",
@@ -366,17 +471,48 @@ router.post("/session/launch", async (req, res) => {
       });
     }
 
+    /*
+     * Start the instance.
+     */
     await callController(updatedSession, {
-      id: session.instanceId,
-      ip: session.instanceIp,
-      leaseToken: session.leaseToken,
+      id: updatedSession.instanceId,
+      ip: updatedSession.instanceIp,
+      leaseToken: updatedSession.leaseToken,
     });
 
-    log(`[Session Launch] Started session ${sessionId} after countdown`);
-    return res.json({ ok: true, status: "starting" });
+    /*
+     * Publish event for other backend processes.
+     */
+    try {
+      await publishSessionEvent(sessionId, {
+        status: "starting",
+        phase: "downloading",
+      });
+    } catch (err) {
+      console.warn(
+        "[Session Launch] PubSub publish failed:",
+        err.message
+      );
+    }
+
+    log(
+      `[Session Launch] Started session ${sessionId} after countdown`
+    );
+
+    return res.json({
+      ok: true,
+      status: "starting",
+    });
+
   } catch (err) {
-    console.error("[Session Launch] Error:", err);
-    return res.status(500).json({ error: "Internal error" });
+    console.error(
+      "[Session Launch] Error:",
+      err
+    );
+
+    return res.status(500).json({
+      error: "Internal error",
+    });
   }
 });
 

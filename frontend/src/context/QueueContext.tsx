@@ -30,6 +30,7 @@ export interface QueueState {
   // Ready Modal (ONLY for queued users)
   countdownStartsAt: Date | null;
   countdownSecondsRemaining: number | null;
+  allocationExpiresAt: Date | null;
   isDirectPlay: boolean;
 
   // Error
@@ -63,6 +64,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     estimatedWaitMinutes: null,
     countdownStartsAt: null,
     countdownSecondsRemaining: null,
+    allocationExpiresAt: null,
     isDirectPlay: false,
     errorMessage: null,
   });
@@ -171,6 +173,8 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         queuePosition: queue.queuePosition,
         totalQueued: queue.totalQueued,
         estimatedWaitMinutes: queue.estimatedWaitMinutes,
+        countdownStartsAt: queue.countdownStartsAt,
+        allocationExpiresAt: queue.allocationExpiresAt,
         isDirectPlay: queue.isDirectPlay,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
@@ -197,6 +201,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       estimatedWaitMinutes: null,
       countdownStartsAt: null,
       countdownSecondsRemaining: null,
+      allocationExpiresAt: null,
       isDirectPlay: false,
       errorMessage: null,
     });
@@ -248,57 +253,47 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           newState.estimatedWaitMinutes = data.estimatedWaitMinutes;
 
         // 🟡 QUEUED USER → show countdown modal
-        // 🟡 QUEUED USER → show countdown modal
-        if (data.status === "allocation_ready") {
+if (data.status === "allocation_ready") {
+  newState.isDirectPlay = false;
 
-          newState.isDirectPlay = false;
+  const expiresAt = data.allocationExpiresAt
+    ? new Date(data.allocationExpiresAt)
+    : null;
 
-          // ONLY initialize the countdown once
-          if (!prev.countdownStartsAt) {
+  newState.allocationExpiresAt = expiresAt;
 
-            const seconds = data.countdownSeconds || 30;
-
-            newState.countdownStartsAt = data.countdownStartsAt
-              ? new Date(data.countdownStartsAt)
-              : new Date();
-
-            newState.countdownSecondsRemaining = seconds;
-
-            if (countdownIntervalRef.current) {
-              clearInterval(countdownIntervalRef.current);
-              countdownIntervalRef.current = null;
-            }
-
-            countdownIntervalRef.current = setInterval(() => {
-              setQueue(prev => {
-                if (prev.countdownSecondsRemaining == null) {
-                  return prev;
-                }
-
-                const next = prev.countdownSecondsRemaining - 1;
-
-                if (next <= 0) {
-                  if (countdownIntervalRef.current) {
-                    clearInterval(countdownIntervalRef.current);
-                    countdownIntervalRef.current = null;
-                  }
-
-                  cancelSession();
-
-                  return {
-                    ...prev,
-                    countdownSecondsRemaining: 0,
-                  };
-                }
-
-                return {
-                  ...prev,
-                  countdownSecondsRemaining: next,
-                };
-              });
-            }, 1000);
-          }
+  if (expiresAt) {
+    const updateCountdown = () => {
+      setQueue(prev => {
+        if (!prev.allocationExpiresAt) {
+          return prev;
         }
+
+        const remaining = Math.max(
+          0,
+          Math.ceil(
+            (new Date(prev.allocationExpiresAt).getTime() - Date.now()) / 1000
+          )
+        );
+
+        return {
+          ...prev,
+          countdownSecondsRemaining: remaining,
+        };
+      });
+    };
+
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
+
+    updateCountdown();
+    countdownIntervalRef.current = setInterval(
+      updateCountdown,
+      1000
+    );
+  }
+}
 
         // 🟢 DIRECT USER → skip countdown, show ads
         if (data.status === "starting") {

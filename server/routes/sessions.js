@@ -303,7 +303,7 @@ router.get("/:sessionId/status", verifyToken, async (req, res) => {
 
     const session = await GameSession.findById(sessionId)
       .select(
-        "user status phase countdownStartsAt countdownSeconds startedAt expiresAt maxDurationSeconds"
+        "user status phase countdownStartsAt countdownSeconds allocationExpiresAt startedAt expiresAt maxDurationSeconds"
       )
       .lean();
 
@@ -326,6 +326,7 @@ router.get("/:sessionId/status", verifyToken, async (req, res) => {
       phase: session.phase,
       countdownStartsAt: session.countdownStartsAt,
       countdownSeconds: session.countdownSeconds,
+      allocationExpiresAt: session.allocationExpiresAt,
       remainingSeconds,
       startedAt: session.startedAt,
       expiresAt: session.expiresAt,
@@ -463,12 +464,14 @@ router.get("/:sessionId/events", verifyToken, async (req, res) => {
       queueData = await getQueueData(fresh);
     }
 
-    send({
-      status: fresh.status,
-      phase: fresh.phase,
-      countdownStartsAt: fresh.countdownStartsAt,
-      ...queueData,
-    });
+send({
+  status: fresh.status,
+  phase: fresh.phase,
+  countdownStartsAt: fresh.countdownStartsAt,
+  countdownSeconds: fresh.countdownSeconds,
+  allocationExpiresAt: fresh.allocationExpiresAt,
+  ...queueData,
+});
   };
 
   await sendCurrentState();
@@ -520,10 +523,16 @@ router.get("/:sessionId/stream-token", verifyToken, async (req, res) => {
  */
 router.post("/:sessionId/heartbeat", verifyToken, async (req, res) => {
   try {
-    await GameSession.findOneAndUpdate(
-      { _id: req.params.sessionId, user: req.user.id },
-      { lastHeartbeat: new Date() }
-    );
+await GameSession.findOneAndUpdate(
+  {
+    _id: req.params.sessionId,
+    user: req.user.id,
+    status: { $in: ["waiting", "starting", "running"] },
+  },
+  {
+    lastHeartbeat: new Date(),
+  }
+);
     res.sendStatus(200);
   } catch (err) {
     console.error("Heartbeat error:", err);
@@ -906,7 +915,7 @@ router.post("/complete", async (req, res) => {
 
       await finalizeSession(
         session,
-        exit_reason || "user_exit"
+        exit_reason || session.exitReason || "user_exit"
       );
 
       // Release instance
@@ -991,11 +1000,9 @@ router.post("/violation", async (req, res) => {
       `[Session Violation] Session ${session_id} violation: ${violation}`
     );
 
+    const exitReason = violation || "error";
 
-    await finalizeSession(
-      session,
-      violation || "violation"
-    );
+    await finalizeSession(session, exitReason);
 
     // Release instance
     if (session.instanceId && session.leaseToken) {

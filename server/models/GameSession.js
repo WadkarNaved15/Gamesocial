@@ -127,6 +127,12 @@ const GameSessionSchema = new mongoose.Schema(
       // How many seconds until instance auto-releases
     },
 
+    allocationExpiresAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+
     // ✅ REGION (optional)
     instanceRegion: {
       type: String,
@@ -147,6 +153,7 @@ const GameSessionSchema = new mongoose.Schema(
         "user_cancelled",       // User clicked cancel in modal
         "stale_abandoned",      // Cleanup job found abandoned session
         "credits_exhausted",    // Session ended due to credit exhaustion
+        "allocation_timeout"
       ],
     },
 
@@ -220,20 +227,32 @@ const GameSessionSchema = new mongoose.Schema(
   }
 );
 
-// ✅ COMPOUND INDEXES FOR PERFORMANCE
-GameSessionSchema.index({ user: 1, status: 1 });
-GameSessionSchema.index({ status: 1, expiresAt: 1 });
-GameSessionSchema.index({ status: 1, lastHeartbeat: 1 });
-GameSessionSchema.index({ status: 1, createdAt: 1 });
-GameSessionSchema.index({ gamePost: 1, user: 1, status: 1 });
+// ==================== CORE / OPERATIONAL ====================
 
 GameSessionSchema.index({
   status: 1,
-  "billing.processing": 1,
-  "billing.lastBillingAt": 1,
+  lastHeartbeat: 1,
 });
 
-// Admin Dashboard
+GameSessionSchema.index({
+  status: 1,
+  expiresAt: 1,
+});
+
+GameSessionSchema.index({
+  status: 1,
+  allocationExpiresAt: 1,
+});
+
+GameSessionSchema.index({
+  status: 1,
+  leasing: 1,
+  createdAt: 1,
+});
+
+
+// ==================== ADMIN / ANALYTICS ====================
+
 GameSessionSchema.index({
   user: 1,
   createdAt: -1,
@@ -246,6 +265,11 @@ GameSessionSchema.index({
 });
 
 GameSessionSchema.index({
+  status: 1,
+  startedAt: -1,
+});
+
+GameSessionSchema.index({
   exitReason: 1,
   endedAt: -1,
 });
@@ -255,30 +279,15 @@ GameSessionSchema.index({
   status: 1,
 });
 
-GameSessionSchema.index({
-  queueType: 1,
-  status: 1,
-});
 
-GameSessionSchema.index({
-  endedAt: -1,
-  status: 1,
-});
+// ==================== BILLING ====================
 
 GameSessionSchema.index({
   status: 1,
-  startedAt: -1,
+  "billing.processing": 1,
+  "billing.lastBillingAt": 1,
 });
 
-GameSessionSchema.index({
-  createdAt: -1,
-  status: 1,
-});
-
-GameSessionSchema.index({
-  createdAt: -1,
-  gamePost: 1,
-});
 
 // ✅ STATICS - Helper methods
 GameSessionSchema.statics.findExpiredSessions = function () {
@@ -292,16 +301,23 @@ GameSessionSchema.statics.findExpiredSessions = function () {
 GameSessionSchema.statics.findExpiredCountdowns = function () {
   return this.find({
     status: "allocation_ready",
-    countdownStartsAt: { $lte: new Date(Date.now() - 35000) }, 
+    allocationExpiresAt: {
+      $lte: new Date(),
+    },
   });
 };
 
 // ✅ NEW: Find abandoned sessions (no heartbeat for 60s)
 GameSessionSchema.statics.findAbandonedSessions = function () {
-  const cutoff = new Date(Date.now() - 60000); // 60 seconds ago
+  const cutoff = new Date(Date.now() - 60000);
+
   return this.find({
-    status: { $in: ["waiting", "allocation_ready", "starting"] },
-    lastHeartbeat: { $lt: cutoff },
+    status: {
+      $in: ["waiting", "starting"]
+    },
+    lastHeartbeat: {
+      $lt: cutoff
+    },
   });
 };
 

@@ -20,6 +20,8 @@ const DEMO_CONFIG = {
   HEARTBEAT_GRACE_SECONDS: 25, // allow short disconnect gaps
 };
 
+export const ALLOCATION_GRACE_MS = 3000;
+
 export async function getQueueData(
   session
 ) {
@@ -148,10 +150,9 @@ export async function finalizeSession(
 
   // --- CREDIT RECONCILIATION ---
   if (!isTestUpload) {
-    const expectedCredits = Math.max(
-      1,
-      Math.round(playTimeMs / 60000)
-    );
+const expectedCredits = Math.round(
+  playTimeMs / 60000
+);
 
     const creditAdjustment =
       expectedCredits -
