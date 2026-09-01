@@ -6,12 +6,12 @@
 //   Gorse timeout   → graceful fallback to chronological
 //
 // Cursor format:
-//   "a:<objectId>"  — chronological allpost cursor
-//   "p:<isoDate>"   — pocket cursor
-//   "g:<offset>"    — Gorse offset cursor
-
+//   "a:<objectId>"       — chronological AllPost cursor
+//   "g:<offset>:<pos>"    — Gorse snapshot cursor
+//
+import crypto from "node:crypto";
+import pino from "pino"; // npm i pino
 import AllPost from "../models/Allposts.js";
-import PocketFeedEntry from "../models/PocketFeedEntry.js";
 import Like from "../models/Like.js";
 import Wishlist from "../models/Wishlist.js";
 import User from "../models/User.js";
@@ -20,25 +20,301 @@ import {
   recordServed,
   fireAndForget,
 } from "./gorse.client.js";
-import DemoConsumption from "../models/DemoConsumption.js";
 import { enrichDemoConsumed } from "../utils/enrichDemoConsumed.js";
 import { enrichSessionRequests } from "../utils/enrichSessionRequests.js";
 import redisClient from "../config/redis.js";
 
-// Drop this low — if Gorse can't respond in 400ms, chronological is fine.
-// A 2000ms timeout holds 200 VUs hostage for 2 full seconds each.
-const GORSE_TIMEOUT_MS = 400;
+// ── Logger ──────────────────────────────────────────────────────────────────
+// LOG_LEVEL=debug locally, LOG_LEVEL=info (or warn) in prod. Verbose per-request
+// dumps go through logger.debug so they're OFF by default in production and can
+// be flipped on live via env var without a redeploy.
+const logger = pino({
+  level: process.env.LOG_LEVEL || "info",
+  transport:
+    process.env.NODE_ENV !== "production"
+      ? { target: "pino-pretty" }
+      : undefined,
+});
 
-// ── Gorse fetch with timeout ──────────────────────────────────────────────────
+// ── Tunables (env-overridable so you can adjust live during an incident) ────
+const GORSE_TIMEOUT_MS = Number(process.env.GORSE_TIMEOUT_MS) || 600;
+const GORSE_POOL_SIZE = Number(process.env.GORSE_POOL_SIZE) || 30;
+const FEED_SNAPSHOT_TTL_SECONDS =
+  Number(process.env.FEED_SNAPSHOT_TTL_SECONDS) || 15 * 60;
+const FEED_SNAPSHOT_PREFIX = "feed:snapshot";
+const FEED_LOCK_TTL_MS = 3000; // max time a request may hold the per-user lock
+const MAX_LIMIT = 30;
+const DEFAULT_LIMIT = 10;
 
-async function getGorsePostIds(userId, limit, offset) {
-  const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("Gorse timeout")), GORSE_TIMEOUT_MS)
-  );
-  return Promise.race([getRecommendations({ userId, limit, offset }), timeout]);
+const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
+
+function getFeedSnapshotKey(userId) {
+  return `${FEED_SNAPSHOT_PREFIX}:${userId}`;
 }
 
-// ── Shared projection — one place to update if schema changes ─────────────────
+function getFeedLockKey(userId) {
+  return `feed:lock:${userId}`;
+}
+
+// ── FIX #3: input validation helpers ─────────────────────────────────────────
+
+function clampLimit(limit) {
+  const n = Number.parseInt(limit, 10);
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_LIMIT;
+  return Math.min(n, MAX_LIMIT);
+}
+
+function isValidObjectId(value) {
+  return typeof value === "string" && OBJECT_ID_RE.test(value);
+}
+
+// ── FIX #1: per-user distributed lock around snapshot read-modify-write ─────
+//
+// Without this, two concurrent requests for the same user can both read
+// position N, both compute position N+limit, and both write — one page of
+// posts gets served twice, another gets silently skipped. This wraps the
+// read-modify-write in a short-lived Redis lock so only one request at a
+// time can touch a given user's snapshot.
+
+class FeedLockBusyError extends Error {
+  constructor() {
+    super("FEED_LOCK_BUSY");
+    this.name = "FeedLockBusyError";
+  }
+}
+
+async function withUserFeedLock(userId, fn) {
+  const lockKey = getFeedLockKey(userId);
+  const lockValue = crypto.randomUUID();
+
+  const acquired = await redisClient.set(lockKey, lockValue, {
+    NX: true,
+    PX: FEED_LOCK_TTL_MS,
+  });
+
+  if (!acquired) {
+    // Another request for this user is mid-consume right now. Rather than
+    // silently reading a stale snapshot, surface this so the caller can
+    // fall back safely (see getFeedPage catch block).
+    throw new FeedLockBusyError();
+  }
+
+  try {
+    return await fn();
+  } finally {
+    // Only release the lock if we still own it — guards against releasing
+    // someone else's lock if ours expired and was re-acquired in the meantime.
+    const releaseScript = `
+      if redis.call("get", KEYS[1]) == ARGV[1] then
+        return redis.call("del", KEYS[1])
+      else
+        return 0
+      end
+    `;
+    try {
+      await redisClient.eval(releaseScript, {
+        keys: [lockKey],
+        arguments: [lockValue],
+      });
+    } catch (err) {
+      logger.warn({ err, userId }, "[FEED LOCK] release failed (will self-expire via TTL)");
+    }
+  }
+}
+
+// ── FIX #8: snapshot save no longer throws ───────────────────────────────────
+
+async function saveFeedSnapshot({ userId, posts, gorseOffset }) {
+  if (!userId || !posts?.length) return;
+
+  const snapshotKey = getFeedSnapshotKey(userId);
+  const snapshot = {
+    version: 1,
+    ids: posts.map((post) => post._id.toString()),
+    position: 0,
+    gorseOffset,
+    createdAt: Date.now(),
+  };
+
+  try {
+    await redisClient.setEx(
+      snapshotKey,
+      FEED_SNAPSHOT_TTL_SECONDS,
+      JSON.stringify(snapshot)
+    );
+    logger.debug(
+      { userId, postCount: snapshot.ids.length, gorseOffset },
+      "[FEED SNAPSHOT] created"
+    );
+  } catch (err) {
+    // A failed cache write should degrade gracefully, not fail the request.
+    // Worst case: the next request just re-fetches a fresh pool from Gorse.
+    logger.warn({ err, userId }, "[FEED SNAPSHOT] write failed, continuing without cache");
+  }
+}
+
+async function getFeedSnapshot(userId) {
+  if (!userId) return null;
+
+  const snapshotKey = getFeedSnapshotKey(userId);
+
+  try {
+    const raw = await redisClient.get(snapshotKey);
+    if (!raw) return null;
+
+    const snapshot = JSON.parse(raw);
+    if (
+      !snapshot ||
+      !Array.isArray(snapshot.ids) ||
+      typeof snapshot.position !== "number"
+    ) {
+      logger.warn({ snapshotKey }, "[FEED SNAPSHOT] invalid snapshot, discarding");
+      await redisClient.del(snapshotKey).catch(() => {});
+      return null;
+    }
+
+    return snapshot;
+  } catch (err) {
+    logger.warn({ err, snapshotKey }, "[FEED SNAPSHOT] read failed");
+    return null;
+  }
+}
+
+async function consumeFeedSnapshotUnlocked({
+  userId,
+  limit,
+  isAdmin,
+  canViewTestUploads,
+  expectedOffset = null,
+  expectedPosition = null,
+}) {
+  const snapshot = await getFeedSnapshot(userId);
+  if (!snapshot) return null;
+
+  if (expectedOffset !== null && snapshot.gorseOffset !== expectedOffset) {
+    logger.debug({ userId, expectedOffset, actualOffset: snapshot.gorseOffset }, "[FEED SNAPSHOT] offset mismatch");
+    return {
+      stale: true,
+      posts: [],
+      gorseOffset: snapshot.gorseOffset,
+      position: snapshot.position,
+      exhausted: false,
+    };
+  }
+
+  if (expectedPosition !== null && snapshot.position !== expectedPosition) {
+    logger.debug({ userId, expectedPosition, actualPosition: snapshot.position }, "[FEED SNAPSHOT] position mismatch");
+    return {
+      stale: true,
+      posts: [],
+      gorseOffset: snapshot.gorseOffset,
+      position: snapshot.position,
+      exhausted: false,
+    };
+  }
+
+  const remainingIds = snapshot.ids.slice(snapshot.position);
+
+  if (remainingIds.length === 0) {
+    await redisClient.del(getFeedSnapshotKey(userId)).catch(() => {});
+    logger.debug({ userId }, "[FEED SNAPSHOT] exhausted");
+    return {
+      posts: [],
+      gorseOffset: snapshot.gorseOffset,
+      position: snapshot.position,
+      exhausted: true,
+    };
+  }
+
+  const previousPosition = snapshot.position;
+  const pageIds = remainingIds.slice(0, limit);
+
+  const docs = await fetchPostsByIds(pageIds, isAdmin, canViewTestUploads);
+  const postMap = new Map(docs.map((post) => [post._id.toString(), post]));
+  const posts = pageIds.map((id) => postMap.get(id)).filter(Boolean);
+
+  // Advance by IDs consumed from the Gorse sequence, not by Mongo hits —
+  // a post deleted from Mongo is still "consumed" from the ranking.
+  const newPosition = previousPosition + pageIds.length;
+  const exhausted = newPosition >= snapshot.ids.length;
+
+  if (exhausted) {
+    await redisClient.del(getFeedSnapshotKey(userId)).catch(() => {});
+  } else {
+    const updatedSnapshot = { ...snapshot, position: newPosition };
+    await redisClient.setEx(
+      getFeedSnapshotKey(userId),
+      FEED_SNAPSHOT_TTL_SECONDS,
+      JSON.stringify(updatedSnapshot)
+    );
+  }
+
+  logger.debug(
+    {
+      userId,
+      requestedLimit: limit,
+      returnedCount: posts.length,
+      previousPosition,
+      newPosition,
+      exhausted,
+    },
+    "[FEED SNAPSHOT] consumed"
+  );
+
+  return { posts, gorseOffset: snapshot.gorseOffset, position: newPosition, exhausted };
+}
+
+// Public wrapper — always goes through the per-user lock.
+async function consumeFeedSnapshot(args) {
+  return withUserFeedLock(args.userId, () => consumeFeedSnapshotUnlocked(args));
+}
+
+// ── FIX #6: Gorse fetch clears its timeout timer ─────────────────────────────
+
+async function getGorsePostIds(userId, limit, offset) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Gorse timeout")), GORSE_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([getRecommendations({ userId, limit, offset }), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ── FIX #7: lightweight circuit breaker for Gorse ────────────────────────────
+// In-memory per-process. On a multi-instance deployment each instance trips
+// independently — good enough to stop cascading latency during a Gorse
+// incident, but if you want it shared across instances, back this with a
+// Redis counter instead (or swap in `opossum`).
+
+const CIRCUIT_FAILURE_THRESHOLD = 5;
+const CIRCUIT_COOLDOWN_MS = 30_000;
+const gorseCircuit = { consecutiveFailures: 0, openUntil: 0 };
+
+function isGorseCircuitOpen() {
+  return Date.now() < gorseCircuit.openUntil;
+}
+
+function recordGorseSuccess() {
+  gorseCircuit.consecutiveFailures = 0;
+  gorseCircuit.openUntil = 0;
+}
+
+function recordGorseFailure() {
+  gorseCircuit.consecutiveFailures += 1;
+  if (gorseCircuit.consecutiveFailures >= CIRCUIT_FAILURE_THRESHOLD) {
+    gorseCircuit.openUntil = Date.now() + CIRCUIT_COOLDOWN_MS;
+    logger.warn(
+      { cooldownMs: CIRCUIT_COOLDOWN_MS },
+      "[Gorse] circuit opened — skipping Gorse calls temporarily"
+    );
+  }
+}
+
+// ── Shared projection ─────────────────────────────────────────────────────
 
 const POST_PROJECTION = {
   _id: 1,
@@ -52,35 +328,27 @@ const POST_PROJECTION = {
   createdAt: 1,
   mentions: 1,
   hasInteractMention: 1,
-
   "modelPost.price": 1,
   "modelPost.assets.originalUrl": 1,
   "modelPost.assets.optimizedUrl": 1,
   "modelPost.assets.fieldOfView": 1,
-  // MODEL BACKGROUND
   "modelPost.assets.background.type": 1,
   "modelPost.assets.background.color": 1,
   "modelPost.assets.background.color1": 1,
   "modelPost.assets.background.color2": 1,
-
-  // GAME POST
   "gamePost.gameName": 1,
   "gamePost.price": 1,
   "gamePost.version": 1,
   "gamePost.videoDemo": 1,
   "gamePost.maxSessionDurationMinutes": 1,
-
   "gamePost.creditBudget.usedCredits": 1,
   "gamePost.creditBudget.remainingCredits": 1,
-
   "gamePost.gameMetrics.totalSessions": 1,
   "gamePost.gameMetrics.uniquePlayers": 1,
   "gamePost.gameMetrics.totalSessionTimeMs": 1,
   "gamePost.gameMetrics.sessionRequests": 1,
   "gamePost.isTestUpload": 1,
-
   "normalPost.assets": 1,
-
   "adModelPost.brandName": 1,
   "adModelPost.logoUrl": 1,
   "adModelPost.bgMode": 1,
@@ -98,50 +366,68 @@ const POST_PROJECTION = {
   "adModelPost.asset.fieldOfView": 1,
 };
 
-// ── Chronological fetch (guest fallback + Gorse fallback) ─────────────────────
-
 async function fetchPostsByIds(ids, isAdmin = false, canViewTestUploads = false) {
-  // Used by Gorse path & Cache hit path: fetch exact IDs, no sort (JS preserves rank)
   const filter = {
     _id: { $in: ids },
-    type: { $ne: "canvas_article" },
+    type: isAdmin ? { $ne: "canvas_article" } : { $nin: ["canvas_article"] },
   };
 
   if (!canViewTestUploads) {
     filter["gamePost.isTestUpload"] = { $ne: true };
   }
 
-  if (!isAdmin) {
-    filter.type = {
-      $nin: ["canvas_article"],
-    };
-  }
-
-
-  const docs = await AllPost.find(filter)
+  return AllPost.find(filter)
     .select(POST_PROJECTION)
     .populate("user", "username avatar displayName isRigzer")
     .populate("mentions.user", "username displayName avatar")
     .lean();
+}
 
-  return docs;
+async function getValidatedGorsePool({ userId, poolSize, offset, isAdmin, canViewTestUploads }) {
+  const gorseStartTime = Date.now();
+  const gorseIds = await getGorsePostIds(userId, poolSize, offset);
+
+  const safeIds = [...new Set(gorseIds ?? [])].filter(
+    (id) => typeof id === "string" && id.length === 24
+  );
+
+  logger.debug(
+    {
+      userId,
+      durationMs: Date.now() - gorseStartTime,
+      requestedPoolSize: poolSize,
+      returnedFromGorse: gorseIds?.length ?? 0,
+      safeIdsCount: safeIds.length,
+    },
+    "[FEED POOL] gorse candidates"
+  );
+
+  if (safeIds.length === 0) {
+    return { candidateIds: [], posts: [], gorseReturnedCount: 0, gorseConsumedCount: 0 };
+  }
+
+  const docs = await fetchPostsByIds(safeIds, isAdmin, canViewTestUploads);
+  const postMap = new Map(docs.map((post) => [post._id.toString(), post]));
+
+  // Reconstruct Gorse's exact ranking order — Mongo's $in gives no order guarantee.
+  const validPosts = safeIds.map((id) => postMap.get(id)).filter(Boolean);
+  const validIds = validPosts.map((post) => post._id.toString());
+
+  return {
+    candidateIds: validIds,
+    posts: validPosts,
+    gorseReturnedCount: safeIds.length,
+    gorseConsumedCount: gorseIds?.length ?? 0,
+  };
 }
 
 async function fetchChronological(filter, limit, isAdmin = false, canViewTestUploads = false) {
-  // Used by guest/fallback path: sort by _id desc
   if (!canViewTestUploads) {
     filter["gamePost.isTestUpload"] = { $ne: true };
   }
-  const query = {
-    ...filter,
-  };
 
-  query.type = !isAdmin
-    ? { $nin: ["canvas_article"] }
-    : { $ne: "canvas_article" };
-
-
-
+  const query = { ...filter };
+  query.type = !isAdmin ? { $nin: ["canvas_article"] } : { $ne: "canvas_article" };
 
   return AllPost.find(query)
     .select(POST_PROJECTION)
@@ -152,357 +438,230 @@ async function fetchChronological(filter, limit, isAdmin = false, canViewTestUpl
     .lean();
 }
 
-// ── Main export ───────────────────────────────────────────────────────────────
+// ── FIX #8b: cache the user role/perms lookup so we're not hitting Mongo on
+// every single feed request for data that rarely changes ───────────────────
+
+async function getUserFeedPerms(userId) {
+  const cacheKey = `feed:perms:${userId}`;
+
+  try {
+    const cached = await redisClient.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+  } catch (err) {
+    logger.warn({ err, userId }, "[FEED PERMS] cache read failed");
+  }
+
+  const user = await User.findById(userId).select("role isGameTester").lean();
+  const perms = {
+    isAdmin: user?.role === "admin",
+    canViewTestUploads: user?.role === "admin" || user?.isGameTester === true,
+  };
+
+  redisClient
+    .setEx(cacheKey, 300, JSON.stringify(perms)) // 5 min TTL — short enough that a role change propagates quickly
+    .catch((err) => logger.warn({ err, userId }, "[FEED PERMS] cache write failed"));
+
+  return perms;
+}
+
+// ── Main export ───────────────────────────────────────────────────────────
 
 /**
  * @param {{ cursor?: string, limit?: number, userId?: string|null }} opts
  */
-export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
+export async function getFeedPage({ cursor, limit = DEFAULT_LIMIT, userId } = {}) {
+  const fetchLimit = clampLimit(limit);
 
-  console.log(
-    "\n%c================================================",
-    "color: #ff9900; font-weight: bold;"
-  );
+  try {
+    return await getFeedPageInner({ cursor, fetchLimit, userId });
+  } catch (err) {
+    if (err instanceof FeedLockBusyError) {
+      // Another request for this user is already consuming the snapshot.
+      // Tell the client this is transient and safe to retry rather than
+      // silently double- or under-serving posts.
+      logger.debug({ userId }, "[FEED SERVICE] lock busy, asking client to retry");
+      return { posts: [], nextCursor: cursor ?? null, retry: true };
+    }
 
-  console.log(
-    "%c[FEED SERVICE] getFeedPage()",
-    "color: #ff9900; font-weight: bold;"
-  );
+    // FIX #2: anything else unexpected — log it and degrade to a plain
+    // chronological page instead of 500ing the request.
+    logger.error({ err, userId, cursor }, "[FEED SERVICE] unexpected error, falling back to chronological");
 
-  console.log("[FEED SERVICE] timestamp:", new Date().toISOString());
-  console.log("[FEED SERVICE] cursor:", cursor ?? null);
-  console.log("[FEED SERVICE] limit:", limit);
-  console.log("[FEED SERVICE] userId:", userId ?? null);
+    try {
+      const fallbackCursor =
+        cursor && isValidObjectId(cursor.split(/:(.+)/)[1]) ? cursor.split(/:(.+)/)[1] : null;
+      const filter = fallbackCursor ? { _id: { $lt: fallbackCursor } } : {};
+      const posts = await fetchChronological(filter, fetchLimit, false, false);
+      const nextCursor = posts.length ? `a:${posts[posts.length - 1]._id.toString()}` : null;
+      return { posts, nextCursor };
+    } catch (fallbackErr) {
+      logger.error({ err: fallbackErr, userId }, "[FEED SERVICE] fallback also failed");
+      return { posts: [], nextCursor: null, error: true };
+    }
+  }
+}
 
+async function getFeedPageInner({ cursor, fetchLimit, userId }) {
   let isAdmin = false;
   let canViewTestUploads = false;
 
   if (userId) {
-    const user = await User.findById(userId)
-      .select("role isGameTester")
-      .lean();
-
-    canViewTestUploads =
-      user?.role === "admin" ||
-      user?.isGameTester === true;
-    isAdmin = user?.role === "admin";
-  }
-
-  const fetchLimit = limit;
-  const isFirstPage = !cursor;
-
-  console.log(
-    "%c[FEED SERVICE] PAGINATION",
-    "color: #00bfff; font-weight: bold;",
-    {
-      requestedLimit: limit,
-      fetchLimit,
-      cursor: cursor ?? null,
-      isFirstPage,
-    }
-  );
-
-  // ── Cache configuration ───────────────────────────────────────────────────────
-  const cacheUserKey = userId ?? "guest";
-  const cacheKey = isFirstPage ? `feed:${cacheUserKey}:first` : null;
-  let cachedData = null;
-
-
-  // ── Cache Lookup & Stampede Protection ────────────────────────────────────────
-  if (cacheKey) {
-    try {
-      const cached = await redisClient.get(cacheKey);
-      if (cached) {
-        cachedData = JSON.parse(cached);
-      } else {
-        const lockKey = `lock:${cacheKey}`;
-        const lockAcquired = await redisClient.set(lockKey, "1", {
-          NX: true,
-          EX: 10,
-        });
-        await redisClient.del(lockKey);
-
-        if (!lockAcquired) {
-          // Another request is building the cache — poll briefly
-          await new Promise((r) => setTimeout(r, 150));
-          const cached2 = await redisClient.get(cacheKey);
-          if (cached2) {
-            cachedData = JSON.parse(cached2);
-          }
-        }
-      }
-    } catch (err) {
-      console.error("[Feed] Redis cache error:", err);
-      cachedData = null; // Fall through to standard logic if Redis fails
-    }
+    ({ isAdmin, canViewTestUploads } = await getUserFeedPerms(userId));
   }
 
   let merged = [];
   let nextCursor = null;
+  let allPostFilter = {};
+  let gorseOffset = 0;
+  let snapshotPosition = null;
 
-  if (cachedData) {
-    // ========================================================================
-    // CACHE HIT PATH
-    // ========================================================================
-    const { ids, nextCursor: cachedNextCursor } = cachedData;
-    nextCursor = cachedNextCursor;
+  // ── FIX #3: validate cursor before trusting it ──────────────────────────
+  if (cursor) {
+    const [type, value] = cursor.split(/:(.+)/);
 
-    if (ids && ids.length > 0) {
-      // Fetch fresh posts directly from Mongo using cached IDs
-      const docs = await fetchPostsByIds(ids, isAdmin, canViewTestUploads);
-
-      // Preserve Gorse's original ranked order (or chronological if guest)
-      const postMap = new Map(docs.map((p) => [p._id.toString(), p]));
-      merged = ids.map((id) => postMap.get(id)).filter(Boolean);
-
-      // Fire-and-forget impression recording for logged-in users
-      if (userId) {
-        fireAndForget(() => recordServed(userId, ids));
-      }
-    }
-  } else {
-    // ========================================================================
-    // CACHE MISS PATH (Execute Recommendations / Chronological logic)
-    // ========================================================================
-    let allPostFilter = {};
-    let gorseOffset = 0;
-
-    if (cursor) {
-      const [type, value] = cursor.split(/:(.+)/);
-
-      console.log(
-        "%c[FEED SERVICE] CURSOR PARSED",
-        "color: #ff00ff; font-weight: bold;",
-        {
-          rawCursor: cursor,
-          cursorType: type,
-          cursorValue: value,
-        }
-      );
-
-      if (type === "a") {
-        allPostFilter = { _id: { $lt: value } };
-
-        console.log("[FEED SERVICE] Chronological cursor:", value);
-
-      } else if (type === "g") {
-        gorseOffset = parseInt(value, 10) || 0;
-
-        console.log(
-          "%c[FEED SERVICE] GORSE OFFSET:",
-          "color: #ff00ff; font-weight: bold;",
-          gorseOffset
-        );
-
+    if (type === "a") {
+      if (!isValidObjectId(value)) {
+        logger.warn({ cursor }, "[FEED SERVICE] invalid chronological cursor, treating as page 1");
       } else {
-        allPostFilter = { _id: { $lt: cursor } };
-
-        console.log("[FEED SERVICE] Unknown cursor type:", type);
+        allPostFilter = { _id: { $lt: value } };
       }
+    } else if (type === "g") {
+      const parts = value.split(":");
+      const parsedOffset = Number.parseInt(parts[0], 10);
+      const parsedPosition = parts.length > 1 ? Number.parseInt(parts[1], 10) : null;
+
+      if (!Number.isFinite(parsedOffset) || (parsedPosition !== null && !Number.isFinite(parsedPosition))) {
+        logger.warn({ cursor }, "[FEED SERVICE] invalid gorse cursor, treating as page 1");
+      } else {
+        gorseOffset = parsedOffset;
+        snapshotPosition = parsedPosition;
+      }
+    } else if (isValidObjectId(cursor)) {
+      allPostFilter = { _id: { $lt: cursor } };
     } else {
-      console.log(
-        "%c[FEED SERVICE] FIRST PAGE - NO CURSOR",
-        "color: #00ff88; font-weight: bold;"
-      );
-    }
-
-    let allPosts = [];
-    let usedGorse = false;
-    let gorseIds = [];
-    if (userId) {
-      // ── Logged-in: Gorse path ──────────────────────────────
-      try {
-        console.log(
-          "%c[FEED SERVICE] CALLING GORSE",
-          "color: #ff9900; font-weight: bold;",
-          {
-            userId,
-            limit: fetchLimit,
-            offset: gorseOffset,
-            incomingCursor: cursor ?? null,
-          }
-        );
-
-        const gorseStartTime = Date.now();
-
-        const ids = await getGorsePostIds(
-          userId,
-          fetchLimit,
-          gorseOffset
-        );
-
-        gorseIds = ids ?? [];
-
-        console.log(
-          "%c[FEED SERVICE] GORSE RESPONSE",
-          "color: #00ff88; font-weight: bold;",
-          {
-            durationMs: Date.now() - gorseStartTime,
-            requestedOffset: gorseOffset,
-            requestedLimit: fetchLimit,
-            returnedCount: gorseIds.length,
-            returnedIds: gorseIds,
-            nextGorseOffset: gorseOffset + gorseIds.length,
-          }
-        );
-      } catch (err) {
-        console.warn("[Feed] Gorse unavailable, falling back:", err.message);
-      }
-
-      console.log("[Feed] User:", userId);
-      console.log("[Feed] Gorse IDs:", gorseIds);
-
-      if (gorseIds.length > 0) {
-        const safeIds = [...new Set(gorseIds)].filter((id) => id?.length === 24);
-        if (safeIds.length > 0) {
-          const docs = await fetchPostsByIds(safeIds, isAdmin, canViewTestUploads);
-          console.log(
-            "%c[FEED SERVICE] MONGO FETCH",
-            "color: #00bfff; font-weight: bold;",
-            {
-              gorseIdsCount: safeIds.length,
-              mongoDocsCount: docs.length,
-
-              gorseIds: safeIds,
-
-              mongoIds: docs.map((p) => p._id.toString()),
-
-              missingFromMongo: safeIds.filter(
-                (id) =>
-                  !docs.some(
-                    (p) => p._id.toString() === id
-                  )
-              ),
-            }
-          );
-          const postMap = new Map(docs.map((p) => [p._id.toString(), p]));
-          allPosts = safeIds.map((id) => postMap.get(id)).filter(Boolean);
-          usedGorse = true;
-
-          const servedIds = allPosts.map((p) => p._id.toString());
-          fireAndForget(() => recordServed(userId, servedIds));
-        }
-      }
-
-      if (!usedGorse) {
-        allPosts = await fetchChronological(allPostFilter, fetchLimit, isAdmin, canViewTestUploads);
-      }
-    } else {
-      // ── Guest: Chronological path ──────────────────────────
-      [allPosts] = await Promise.all([
-        fetchChronological(allPostFilter, fetchLimit, isAdmin, canViewTestUploads),
-      ]);
-    }
-
-    console.log(
-      "%c[FEED SERVICE] ALL POSTS BEFORE NORMALISATION",
-      "color: #00bfff; font-weight: bold;",
-      {
-        count: allPosts.length,
-        ids: allPosts.map((p) => p._id.toString()),
-      }
-    );
-
-    // ── Normalise to common shape for sorting ───────────────
-    const gorseNextOffset = gorseOffset + gorseIds.length;
-
-    const normalisedAllPosts = allPosts.map((p) => ({
-      ...p,
-      _sortKey: usedGorse
-        ? 0
-        : p._id.getTimestamp().getTime(),
-    }));
-
-    // ── Sort and slice ──────────────────────────────────────
-    merged = usedGorse
-      ? normalisedAllPosts.slice(0, limit)
-      : [...normalisedAllPosts]
-        .sort((a, b) => b._sortKey - a._sortKey)
-        .slice(0, limit);
-
-    console.log(
-      "%c[FEED SERVICE] AFTER SORT + SLICE",
-      "color: #ff00ff; font-weight: bold;",
-      {
-        beforeSliceCount: normalisedAllPosts.length,
-        requestedLimit: limit,
-        returnedCount: merged.length,
-
-        beforeSliceIds: normalisedAllPosts.map(
-          (p) => p._id.toString()
-        ),
-
-        returnedIds: merged.map(
-          (p) => p._id.toString()
-        ),
-      }
-    );
-
-    if (merged.length > 0) {
-      const last = merged[merged.length - 1];
-
-      nextCursor = usedGorse
-        ? `g:${gorseNextOffset}`
-        : `a:${last._id.toString()}`;
-
-      console.log(
-        "%c[FEED SERVICE] NEXT CURSOR CREATED",
-        "color: #00ff88; font-weight: bold;",
-        {
-          lastReturnedPost: last._id.toString(),
-          cursorType: last._cursorType,
-          cursorValue: last._cursorVal,
-          nextCursor,
-
-          returnedCount: merged.length,
-          returnedIds: merged.map(
-            (p) => p._id.toString()
-          ),
-        }
-      );
-
-      // ── Write Cache Result (Only ordered IDs + Cursor) ───
-      if (cacheKey) {
-        const idsToCache = merged.map((p) => p._id.toString());
-        const cachePayload = { ids: idsToCache, nextCursor };
-        const ttl = 180; // 3 minutes
-
-        redisClient.setEx(cacheKey, ttl, JSON.stringify(cachePayload)).catch((err) => {
-          console.error("[Feed] Redis cache write failed:", err);
-        });
-      }
+      logger.warn({ cursor }, "[FEED SERVICE] unrecognized cursor, treating as page 1");
     }
   }
 
-  // ========================================================================
-  // COMMON POST-PROCESSING & ENRICHMENTS (Runs on BOTH Hits & Misses)
-  // ========================================================================
+  // ── Logged-in user ────────────────────────────────────────────────────
+  if (userId) {
+    if (cursor?.startsWith("a:")) {
+      merged = await fetchChronological(allPostFilter, fetchLimit, isAdmin, canViewTestUploads);
+      if (merged.length > 0) {
+        nextCursor = `a:${merged[merged.length - 1]._id.toString()}`;
+      }
+    } else {
+      if (!cursor) {
+        await redisClient.del(getFeedSnapshotKey(userId)).catch(() => {});
+      }
+
+      const snapshotPage = await consumeFeedSnapshot({
+        userId,
+        limit: fetchLimit,
+        isAdmin,
+        canViewTestUploads,
+        expectedOffset: cursor?.startsWith("g:") ? gorseOffset : null,
+        expectedPosition: cursor?.startsWith("g:") ? snapshotPosition : null,
+      });
+
+      if (snapshotPage) {
+        merged = snapshotPage.posts;
+        nextCursor = `g:${snapshotPage.gorseOffset}:${snapshotPage.position}`;
+
+        if (merged.length > 0) {
+          fireAndForget(() => recordServed(userId, merged.map((p) => p._id.toString())));
+        }
+      } else {
+        let allPosts = [];
+        let gorseIds = [];
+        let gorseConsumedCount = 0;
+        let gorseFailed = false;
+
+        if (isGorseCircuitOpen()) {
+          gorseFailed = true;
+          logger.debug({ userId }, "[FEED SERVICE] gorse circuit open, skipping straight to chronological");
+        } else {
+          try {
+            const pool = await getValidatedGorsePool({
+              userId,
+              poolSize: GORSE_POOL_SIZE,
+              offset: gorseOffset,
+              isAdmin,
+              canViewTestUploads,
+            });
+
+            gorseIds = pool.candidateIds;
+            allPosts = pool.posts;
+            gorseConsumedCount = pool.gorseConsumedCount;
+            recordGorseSuccess();
+          } catch (err) {
+            gorseFailed = true;
+            recordGorseFailure();
+            logger.warn({ err: err.message, userId }, "[FEED SERVICE] gorse unavailable, falling back");
+          }
+        }
+
+        if (gorseFailed) {
+          merged = await fetchChronological(allPostFilter, fetchLimit, isAdmin, canViewTestUploads);
+          if (merged.length > 0) {
+            nextCursor = `a:${merged[merged.length - 1]._id.toString()}`;
+          }
+        } else if (allPosts.length === 0) {
+          logger.debug({ userId }, "[FEED SERVICE] gorse exhausted, no more posts");
+          return { posts: [], nextCursor: null };
+        } else {
+          const gorseNextOffset = gorseOffset + gorseConsumedCount;
+
+          await saveFeedSnapshot({ userId, posts: allPosts, gorseOffset: gorseNextOffset });
+
+          const freshPage = await consumeFeedSnapshot({
+            userId,
+            limit: fetchLimit,
+            isAdmin,
+            canViewTestUploads,
+            expectedOffset: gorseNextOffset,
+            expectedPosition: 0,
+          });
+
+          if (freshPage) {
+            merged = freshPage.posts;
+            nextCursor = `g:${freshPage.gorseOffset}:${freshPage.position}`;
+            if (merged.length > 0) {
+              fireAndForget(() => recordServed(userId, merged.map((p) => p._id.toString())));
+            }
+          } else {
+            logger.warn({ userId }, "[FEED SERVICE] snapshot unavailable right after creation");
+            merged = allPosts.slice(0, fetchLimit);
+            nextCursor = `g:${gorseNextOffset}`;
+          }
+        }
+      }
+    }
+  } else {
+    // ── Guest user → chronological ──────────────────────────────────────
+    merged = await fetchChronological(allPostFilter, fetchLimit, false, false);
+    if (merged.length > 0) {
+      nextCursor = `a:${merged[merged.length - 1]._id.toString()}`;
+    }
+  }
 
   if (merged.length === 0) {
     return { posts: [], nextCursor: null };
   }
 
-  // Trim model assets to first only
   for (const post of merged) {
     if (post.modelPost?.assets?.length > 1) {
       post.modelPost.assets = [post.modelPost.assets[0]];
     }
   }
 
-  // Enrich isLiked / isWishlisted (logged-in only)
   if (userId) {
-    const allPostIds = merged
-      .filter((p) => p.type !== "pocket_update")
-      .map((p) => p._id);
+    const allPostIds = merged.filter((p) => p.type !== "pocket_update").map((p) => p._id);
 
     if (allPostIds.length) {
       const [userLikes, userWishlists] = await Promise.all([
-        Like.find({ user: userId, post: { $in: allPostIds } })
-          .select("post")
-          .lean(),
-        Wishlist.find({ user: userId, post: { $in: allPostIds } })
-          .select("post")
-          .lean(),
+        Like.find({ user: userId, post: { $in: allPostIds } }).select("post").lean(),
+        Wishlist.find({ user: userId, post: { $in: allPostIds } }).select("post").lean(),
       ]);
 
       const likedSet = new Set(userLikes.map((l) => l.post.toString()));
@@ -517,46 +676,14 @@ export async function getFeedPage({ cursor, limit = 10, userId } = {}) {
     }
   }
 
-  await Promise.all([
-    enrichDemoConsumed(merged, userId),
-    enrichSessionRequests(merged, userId),
-  ]);
+  await Promise.all([enrichDemoConsumed(merged, userId), enrichSessionRequests(merged, userId)]);
 
-  // Strip temporary properties (if they exist from the miss path) before returning
   const posts = merged.map(({ _sortKey, _cursorType, _cursorVal, ...rest }) => rest);
 
-  console.log(
-    "%c[FEED SERVICE] FINAL PAGE",
-    "color: #00ff88; font-weight: bold;",
-    {
-      incomingCursor: cursor ?? null,
-
-      returnedCount: posts.length,
-
-      returnedIds: posts.map(
-        (p) => p._id.toString()
-      ),
-
-      nextCursor,
-
-      posts: posts.map((p) => ({
-        id: p._id.toString(),
-        ownerId:
-          p.user?._id?.toString?.() ??
-          p.user?.toString?.(),
-        type: p.type,
-        createdAt: p.createdAt,
-        gameName: p.gamePost?.gameName,
-      })),
-    }
+  logger.debug(
+    { incomingCursor: cursor ?? null, returnedCount: posts.length, nextCursor },
+    "[FEED SERVICE] final page"
   );
-
-  console.log(
-    "%c================================================\n",
-    "color: #ff9900; font-weight: bold;"
-  );
-
-  return { posts, nextCursor };
 
   return { posts, nextCursor };
 }
