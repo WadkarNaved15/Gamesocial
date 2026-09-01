@@ -351,6 +351,65 @@ router.get("/active", verifyToken, async (req, res) => {
   }
 });
 
+
+/**
+ * GET /api/sessions/feedback/pending
+ *
+ * Backend is the source of truth for pending feedback.
+ * No frontend/localStorage session ID is required.
+ */
+router.get("/feedback/pending", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const session = await GameSession.findOne({
+      user: userId,
+      status: "ended",
+      "feedback.submitted": { $ne: true },
+    })
+      .sort({ updatedAt: -1 })
+      .populate({
+        path: "gamePost",
+        select: "gamePost.gameName gamePost.steamUrl",
+      })
+      .select(
+        "_id status gamePost metrics.totalPlayTime feedback"
+      )
+      .lean();
+
+    if (!session) {
+      return res.json({
+        eligible: false,
+      });
+    }
+
+    const playTimeMs = session.metrics?.totalPlayTime || 0;
+
+    // Must have played for at least 120 seconds.
+    if (playTimeMs < 120000) {
+      return res.json({
+        eligible: false,
+      });
+    }
+
+    return res.json({
+      eligible: true,
+      sessionId: session._id,
+      gameId: session.gamePost?._id,
+      gameName: session.gamePost?.gamePost?.gameName || null,
+      steamUrl: session.gamePost?.gamePost?.steamUrl || null,
+      playTimeMs,
+    });
+  } catch (err) {
+    console.error("[Feedback] Pending feedback lookup error:", err);
+
+    return res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+});
+
+
 /**
  * GET /api/sessions/status/:sessionId
  * ✅ Returns current session status including queue info

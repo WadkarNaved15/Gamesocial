@@ -9,11 +9,6 @@ interface FeedbackState {
   steamUrl: string | null;
   playTimeMs: number | null;
 }
-interface FeedbackStorage {
-  sessionId: string;
-  gameId: string;
-  createdAt: number;
-}
 export interface QueueState {
   // Session
   sessionId: string | null;
@@ -52,7 +47,6 @@ const QueueContext = createContext<QueueContextType | undefined>(undefined);
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const STORAGE_KEY = 'rigzer_queue_session';
-const FEEDBACK_STORAGE_KEY = "rigzer_feedback_session";
 
 export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [queue, setQueue] = useState<QueueState>({
@@ -84,179 +78,62 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const [isHydrated, setIsHydrated] = useState(false);
 
-
-useEffect(() => {
-  let mounted = true;
-
-  const restoreSession = async () => {
-    try {
-      // Backend is the source of truth
-      const res = await fetch(
-        `${BACKEND_URL}/api/sessions/active`,
-        {
-          credentials: "include",
-        }
-      );
-
-      if (!mounted) return;
-
-      if (!res.ok) {
-        console.error("[Queue] Failed to restore active session");
-        setIsHydrated(true);
-        return;
-      }
-
-      const data = await res.json();
-
-      if (!mounted) return;
-
-      if (!data.active) {
-        // Backend says there is no active session.
-        localStorage.removeItem(STORAGE_KEY);
-
-        setQueue((prev) => ({
-          ...prev,
-          sessionId: null,
-          status: "ended",
-          phase: null,
-          queuePosition: null,
-          totalQueued: null,
-          estimatedWaitMinutes: null,
-          countdownStartsAt: null,
-          countdownSecondsRemaining: null,
-          allocationExpiresAt: null,
-          isDirectPlay: false,
-        }));
-
-        setIsHydrated(true);
-        return;
-      }
-
-      // Backend session exists → restore from backend
-      const expiresAt = data.allocationExpiresAt
-        ? new Date(data.allocationExpiresAt)
-        : null;
-
-      let countdownSecondsRemaining = null;
-
-      if (expiresAt) {
-        countdownSecondsRemaining = Math.max(
-          0,
-          Math.ceil(
-            (expiresAt.getTime() - Date.now()) / 1000
-          )
-        );
-      }
-
-      setQueue((prev) => ({
-        ...prev,
-        sessionId: data.sessionId,
-        status: data.status,
-        phase: data.phase || null,
-        queuePosition: data.queuePosition ?? null,
-        totalQueued: data.totalQueued ?? null,
-        estimatedWaitMinutes:
-          data.estimatedWaitMinutes ?? null,
-        countdownStartsAt: data.countdownStartsAt
-          ? new Date(data.countdownStartsAt)
-          : null,
-        allocationExpiresAt: expiresAt,
-        countdownSecondsRemaining,
-        isDirectPlay:
-          data.status === "starting" &&
-          data.queueType !== "queued",
-      }));
-
-      // Reconnect SSE using backend session ID
-      setupSSE(data.sessionId);
-
-      // Keep localStorage synchronized as a cache
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          sessionId: data.sessionId,
-          status: data.status,
-          queuePosition: data.queuePosition,
-          totalQueued: data.totalQueued,
-          estimatedWaitMinutes: data.estimatedWaitMinutes,
-          countdownStartsAt: data.countdownStartsAt,
-          allocationExpiresAt: data.allocationExpiresAt,
-          isDirectPlay:
-            data.status === "starting" &&
-            data.queueType !== "queued",
-        })
-      );
-    } catch (err) {
-      console.error(
-        "[Queue] Failed to restore session:",
-        err
-      );
-    } finally {
-      if (mounted) {
-        setIsHydrated(true);
-      }
-    }
-  };
-
-  restoreSession();
-
-  return () => {
-    mounted = false;
-  };
+  const clearFeedback = useCallback(() => {
+  setFeedback({
+    open: false,
+    sessionId: null,
+    gameId: null,
+    gameName: null,
+    steamUrl: null,
+    playTimeMs: null,
+  });
 }, []);
-  // Check if feedback is eligible
-  const checkFeedbackEligibility = async (sessionId: string) => {
-    try {
-      const res = await fetch(
-        `${BACKEND_URL}/api/sessions/check/${sessionId}`,
-        {
-          credentials: "include",
-        }
-      );
-      if (!res.ok) {
-        localStorage.removeItem(FEEDBACK_STORAGE_KEY);
-        clearSession();
-        return;
-      }
-      const data = await res.json();
-      if (data.eligible) {
-        setFeedback({
-          open: true,
-          sessionId: data.sessionId,
-          gameId: data.gameId,
-          gameName: data.gameName,
-          steamUrl: data.steamUrl,
-          playTimeMs: data.playTimeMs,
-        });
-        // DON'T clear session yet.
-        return;
-      }
-      localStorage.removeItem(FEEDBACK_STORAGE_KEY);
-      clearSession();
-    } catch (err) {
-      localStorage.removeItem(FEEDBACK_STORAGE_KEY);
-      console.error(err);
-      clearSession();
-    }
-  };
 
-  // Check feedback token on mount
-  useEffect(() => {
-    const raw = localStorage.getItem(FEEDBACK_STORAGE_KEY);
-    if (!raw) return;
-    try {
-      const saved: FeedbackStorage = JSON.parse(raw);
-      // Ignore stale sessions (optional)
-      const THIRTY_MINUTES = 30 * 60 * 1000;
-      if (Date.now() - saved.createdAt > THIRTY_MINUTES) {
-        localStorage.removeItem(FEEDBACK_STORAGE_KEY);
-        return;
+const restorePendingFeedback = useCallback(async () => {
+  try {
+    const res = await fetch(
+      `${BACKEND_URL}/api/sessions/feedback/pending`,
+      {
+        credentials: "include",
       }
-      checkFeedbackEligibility(saved.sessionId);
-    } catch {
-      localStorage.removeItem(FEEDBACK_STORAGE_KEY);
+    );
+
+    if (!res.ok) {
+      console.error(
+        "[Feedback] Failed to restore feedback:",
+        res.status
+      );
+      return;
     }
-  }, []);
+
+    const data = await res.json();
+
+    if (!data.eligible) {
+      clearFeedback();
+      return;
+    }
+
+    setFeedback({
+      open: true,
+      sessionId: data.sessionId,
+      gameId: data.gameId,
+      gameName: data.gameName,
+      steamUrl: data.steamUrl,
+      playTimeMs: data.playTimeMs,
+    });
+  } catch (err) {
+    // IMPORTANT:
+    // Never clear queue/session state because feedback lookup failed.
+    console.error(
+      "[Feedback] Failed to restore pending feedback:",
+      err
+    );
+  }
+}, [clearFeedback]);
+
+
+
+
 
   // ✅ Save session to localStorage whenever it changes
 useEffect(() => {
@@ -331,12 +208,35 @@ useEffect(() => {
         clearSession();
         return;
       }
+if (data.status === "ended") {
+  adPreloadedRef.current = false;
+  clearAds();
 
-      if (data.status === "ended") {
-        adPreloadedRef.current = false;
-        clearAds();
-        return;
-      }
+  if (countdownIntervalRef.current) {
+    clearInterval(countdownIntervalRef.current);
+    countdownIntervalRef.current = null;
+  }
+
+  setQueue((prev) => ({
+    ...prev,
+    sessionId: null,
+    status: "ended",
+    phase: null,
+    queuePosition: null,
+    totalQueued: null,
+    estimatedWaitMinutes: null,
+    countdownStartsAt: null,
+    countdownSecondsRemaining: null,
+    allocationExpiresAt: null,
+    isDirectPlay: false,
+  }));
+
+  localStorage.removeItem(STORAGE_KEY);
+
+  restorePendingFeedback();
+
+  return;
+}
 
       setQueue((prev) => {
         const newState = { ...prev };
@@ -366,25 +266,37 @@ if (data.status === "allocation_ready") {
   newState.allocationExpiresAt = expiresAt;
 
   if (expiresAt) {
-    const updateCountdown = () => {
-      setQueue(prev => {
-        if (!prev.allocationExpiresAt) {
-          return prev;
-        }
+const updateCountdown = () => {
+  setQueue((prev) => {
+    if (!prev.allocationExpiresAt) {
+      return prev;
+    }
 
-        const remaining = Math.max(
-          0,
-          Math.ceil(
-            (new Date(prev.allocationExpiresAt).getTime() - Date.now()) / 1000
-          )
-        );
+    const remaining = Math.max(
+      0,
+      Math.ceil(
+        (new Date(prev.allocationExpiresAt).getTime() - Date.now()) / 1000
+      )
+    );
 
-        return {
-          ...prev,
-          countdownSecondsRemaining: remaining,
-        };
-      });
+    if (remaining <= 0) {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+
+      return {
+        ...prev,
+        countdownSecondsRemaining: 0,
+      };
+    }
+
+    return {
+      ...prev,
+      countdownSecondsRemaining: remaining,
     };
+  });
+};
 
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
@@ -428,7 +340,131 @@ if (data.status === "allocation_ready") {
     };
 
     setEventSource(es);
-  }, [eventSource, clearSession]);
+  }, [eventSource, clearSession, restorePendingFeedback]);
+
+
+  useEffect(() => {
+  let mounted = true;
+
+  const restoreSession = async () => {
+    try {
+      const res = await fetch(
+        `${BACKEND_URL}/api/sessions/active`,
+        {
+          credentials: "include",
+        }
+      );
+
+      if (!mounted) return;
+
+      if (!res.ok) {
+        console.error("[Queue] Failed to restore active session");
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!mounted) return;
+
+      if (!data.active) {
+        localStorage.removeItem(STORAGE_KEY);
+
+        setQueue((prev) => ({
+          ...prev,
+          sessionId: null,
+          status: "ended",
+          phase: null,
+          queuePosition: null,
+          totalQueued: null,
+          estimatedWaitMinutes: null,
+          countdownStartsAt: null,
+          countdownSecondsRemaining: null,
+          allocationExpiresAt: null,
+          isDirectPlay: false,
+        }));
+
+        return;
+      }
+
+      const expiresAt = data.allocationExpiresAt
+        ? new Date(data.allocationExpiresAt)
+        : null;
+
+      const countdownSecondsRemaining = expiresAt
+        ? Math.max(
+            0,
+            Math.ceil(
+              (expiresAt.getTime() - Date.now()) / 1000
+            )
+          )
+        : null;
+
+      setQueue((prev) => ({
+        ...prev,
+        sessionId: data.sessionId,
+        status: data.status,
+        phase: data.phase || null,
+        queuePosition: data.queuePosition ?? null,
+        totalQueued: data.totalQueued ?? null,
+        estimatedWaitMinutes:
+          data.estimatedWaitMinutes ?? null,
+        countdownStartsAt: data.countdownStartsAt
+          ? new Date(data.countdownStartsAt)
+          : null,
+        allocationExpiresAt: expiresAt,
+        countdownSecondsRemaining,
+        isDirectPlay:
+          data.status === "starting" &&
+          data.queueType !== "queued",
+      }));
+
+      setupSSE(data.sessionId);
+
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          sessionId: data.sessionId,
+          status: data.status,
+          queuePosition: data.queuePosition,
+          totalQueued: data.totalQueued,
+          estimatedWaitMinutes:
+            data.estimatedWaitMinutes,
+          countdownStartsAt:
+            data.countdownStartsAt,
+          allocationExpiresAt:
+            data.allocationExpiresAt,
+          isDirectPlay:
+            data.status === "starting" &&
+            data.queueType !== "queued",
+        })
+      );
+    } catch (err) {
+      console.error(
+        "[Queue] Failed to restore session:",
+        err
+      );
+    }
+  };
+
+  const initialize = async () => {
+    await restoreSession();
+
+    if (!mounted) return;
+
+    await restorePendingFeedback();
+
+    if (!mounted) return;
+
+    setIsHydrated(true);
+  };
+
+  initialize();
+
+  return () => {
+    mounted = false;
+  };
+}, [restorePendingFeedback]);
+  // Check if feedback is eligible
 
   // 🎮 Start Session
   const startSession = useCallback(
@@ -459,16 +495,6 @@ if (data.status === "allocation_ready") {
   
         if (res.ok || res.status === 202) {
           const sessionId = data.sessionId;
-          const feedbackStorage: FeedbackStorage = {
-            sessionId,
-            gameId: gamePostId,
-            createdAt: Date.now(),
-          };
-
-          localStorage.setItem(
-            FEEDBACK_STORAGE_KEY,
-            JSON.stringify(feedbackStorage)
-          );
           // ✅ Update queue state with all data from 202 response
           setQueue((prev) => ({
             ...prev,
