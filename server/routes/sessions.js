@@ -291,6 +291,65 @@ router.get("/status-by-token/:token", async (req, res) => {
   }
 });
 
+router.get("/active", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const session = await GameSession.findOne({
+      user: userId,
+      status: {
+        $in: [
+          "waiting",
+          "allocation_ready",
+          "starting",
+          "running",
+          "ending",
+        ],
+      },
+    })
+      .sort({ createdAt: -1 })
+      .select(
+        "_id status phase queueType countdownStartsAt countdownSeconds allocationExpiresAt startedAt expiresAt maxDurationSeconds"
+      )
+      .lean();
+
+    if (!session) {
+      return res.json({
+        active: false,
+      });
+    }
+
+    let queueData = {};
+
+    if (
+      session.status === "waiting" &&
+      session.queueType === "queued"
+    ) {
+      queueData = await getQueueData(session);
+    }
+
+    return res.json({
+      active: true,
+      sessionId: session._id,
+      status: session.status,
+      phase: session.phase,
+      queueType: session.queueType,
+      countdownStartsAt: session.countdownStartsAt,
+      countdownSeconds: session.countdownSeconds,
+      allocationExpiresAt: session.allocationExpiresAt,
+      startedAt: session.startedAt,
+      expiresAt: session.expiresAt,
+      maxDurationSeconds: session.maxDurationSeconds,
+      ...queueData,
+    });
+  } catch (err) {
+    console.error("Active session lookup error:", err);
+
+    return res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+});
 
 /**
  * GET /api/sessions/status/:sessionId

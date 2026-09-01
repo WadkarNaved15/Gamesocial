@@ -82,34 +82,128 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const { preloadAds, clearAds } = useAds();
   const adPreloadedRef = useRef(false);
 
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  // ✅ Load session from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
 
-        // ✅ Restore queue state
+useEffect(() => {
+  let mounted = true;
+
+  const restoreSession = async () => {
+    try {
+      // Backend is the source of truth
+      const res = await fetch(
+        `${BACKEND_URL}/api/sessions/active`,
+        {
+          credentials: "include",
+        }
+      );
+
+      if (!mounted) return;
+
+      if (!res.ok) {
+        console.error("[Queue] Failed to restore active session");
+        setIsHydrated(true);
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!mounted) return;
+
+      if (!data.active) {
+        // Backend says there is no active session.
+        localStorage.removeItem(STORAGE_KEY);
+
         setQueue((prev) => ({
           ...prev,
+          sessionId: null,
+          status: "ended",
+          phase: null,
+          queuePosition: null,
+          totalQueued: null,
+          estimatedWaitMinutes: null,
+          countdownStartsAt: null,
+          countdownSecondsRemaining: null,
+          allocationExpiresAt: null,
+          isDirectPlay: false,
+        }));
+
+        setIsHydrated(true);
+        return;
+      }
+
+      // Backend session exists → restore from backend
+      const expiresAt = data.allocationExpiresAt
+        ? new Date(data.allocationExpiresAt)
+        : null;
+
+      let countdownSecondsRemaining = null;
+
+      if (expiresAt) {
+        countdownSecondsRemaining = Math.max(
+          0,
+          Math.ceil(
+            (expiresAt.getTime() - Date.now()) / 1000
+          )
+        );
+      }
+
+      setQueue((prev) => ({
+        ...prev,
+        sessionId: data.sessionId,
+        status: data.status,
+        phase: data.phase || null,
+        queuePosition: data.queuePosition ?? null,
+        totalQueued: data.totalQueued ?? null,
+        estimatedWaitMinutes:
+          data.estimatedWaitMinutes ?? null,
+        countdownStartsAt: data.countdownStartsAt
+          ? new Date(data.countdownStartsAt)
+          : null,
+        allocationExpiresAt: expiresAt,
+        countdownSecondsRemaining,
+        isDirectPlay:
+          data.status === "starting" &&
+          data.queueType !== "queued",
+      }));
+
+      // Reconnect SSE using backend session ID
+      setupSSE(data.sessionId);
+
+      // Keep localStorage synchronized as a cache
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
           sessionId: data.sessionId,
           status: data.status,
           queuePosition: data.queuePosition,
           totalQueued: data.totalQueued,
           estimatedWaitMinutes: data.estimatedWaitMinutes,
-        }));
-
-        // ✅ If session exists, reconnect to SSE
-        if (data.sessionId && ['waiting', 'allocation_ready', 'starting'].includes(data.status)) {
-          setTimeout(() => setupSSE(data.sessionId), 500);
-        }
-      } catch (err) {
-        console.error('[Queue] Failed to restore session:', err);
-        localStorage.removeItem(STORAGE_KEY);
+          countdownStartsAt: data.countdownStartsAt,
+          allocationExpiresAt: data.allocationExpiresAt,
+          isDirectPlay:
+            data.status === "starting" &&
+            data.queueType !== "queued",
+        })
+      );
+    } catch (err) {
+      console.error(
+        "[Queue] Failed to restore session:",
+        err
+      );
+    } finally {
+      if (mounted) {
+        setIsHydrated(true);
       }
     }
-  }, []);
+  };
+
+  restoreSession();
+
+  return () => {
+    mounted = false;
+  };
+}, []);
   // Check if feedback is eligible
   const checkFeedbackEligibility = async (sessionId: string) => {
     try {
@@ -165,23 +259,32 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   // ✅ Save session to localStorage whenever it changes
-  useEffect(() => {
-    if (queue.sessionId && queue.status !== 'ended' && queue.status !== 'failed') {
-      const toSave = {
-        sessionId: queue.sessionId,
-        status: queue.status,
-        queuePosition: queue.queuePosition,
-        totalQueued: queue.totalQueued,
-        estimatedWaitMinutes: queue.estimatedWaitMinutes,
-        countdownStartsAt: queue.countdownStartsAt,
-        allocationExpiresAt: queue.allocationExpiresAt,
-        isDirectPlay: queue.isDirectPlay,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-    } else if (queue.status === 'ended' || queue.status === 'failed') {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  }, [queue]);
+useEffect(() => {
+  if (!isHydrated) return;
+
+  if (
+    queue.sessionId &&
+    queue.status !== 'ended' &&
+    queue.status !== 'failed'
+  ) {
+    const toSave = {
+      sessionId: queue.sessionId,
+      status: queue.status,
+      queuePosition: queue.queuePosition,
+      totalQueued: queue.totalQueued,
+      estimatedWaitMinutes: queue.estimatedWaitMinutes,
+      countdownStartsAt: queue.countdownStartsAt,
+      allocationExpiresAt: queue.allocationExpiresAt,
+      isDirectPlay: queue.isDirectPlay,
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  }
+
+  if (queue.status === 'ended' || queue.status === 'failed') {
+    localStorage.removeItem(STORAGE_KEY);
+  }
+}, [queue, isHydrated]);
 
   // 🧹 Clear Session
   const clearSession = useCallback(() => {
