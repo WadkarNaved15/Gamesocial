@@ -475,23 +475,6 @@ if (data.status === "allocation_ready") {
     return () => clearInterval(interval);
   }, [queue.sessionId]);
 
-  // 🏃 Abandon Beacon on unload
-  useEffect(() => {
-    if (!queue.sessionId) return;
-
-    const handleUnload = () => {
-      navigator.sendBeacon(
-        `${BACKEND_URL}/api/sessions/${queue.sessionId}/abandon/${import.meta.env.VITE_ABANDON_SECRET}`,
-        new Blob([JSON.stringify({})], { type: 'application/json' })
-      );
-    };
-
-    window.addEventListener('beforeunload', handleUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleUnload);
-    };
-  }, [queue.sessionId]);
 
   const value: QueueContextType = {
     queue,
