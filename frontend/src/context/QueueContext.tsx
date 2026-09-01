@@ -14,7 +14,7 @@ export interface QueueState {
   sessionId: string | null;
 
   // Status
-  status: 'waiting' | 'allocation_ready' | 'starting' | 'running' | 'ended' | 'failed';
+  status: 'waiting' | 'allocation_ready' | 'starting' | 'running' | 'ending' | 'ended' | 'failed';
   phase: 'countdown' | 'downloading' | 'launching' | null;
 
   // Queue Info
@@ -89,10 +89,10 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
 }, []);
 
-const restorePendingFeedback = useCallback(async () => {
+const restorePendingFeedback = useCallback(async (sessionId: string) => {
   try {
     const res = await fetch(
-      `${BACKEND_URL}/api/sessions/feedback/pending`,
+      `${BACKEND_URL}/api/sessions/check/${sessionId}`,
       {
         credentials: "include",
       }
@@ -122,18 +122,12 @@ const restorePendingFeedback = useCallback(async () => {
       playTimeMs: data.playTimeMs,
     });
   } catch (err) {
-    // IMPORTANT:
-    // Never clear queue/session state because feedback lookup failed.
     console.error(
-      "[Feedback] Failed to restore pending feedback:",
+      "[Feedback] Failed to restore feedback:",
       err
     );
   }
 }, [clearFeedback]);
-
-
-
-
 
   // ✅ Save session to localStorage whenever it changes
 useEffect(() => {
@@ -233,7 +227,7 @@ if (data.status === "ended") {
 
   localStorage.removeItem(STORAGE_KEY);
 
-  restorePendingFeedback();
+restorePendingFeedback(sessionId);
 
   return;
 }
@@ -448,10 +442,6 @@ const updateCountdown = () => {
 
   const initialize = async () => {
     await restoreSession();
-
-    if (!mounted) return;
-
-    await restorePendingFeedback();
 
     if (!mounted) return;
 

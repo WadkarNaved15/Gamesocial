@@ -7,7 +7,7 @@ interface InstanceStartingNotificationProps {
   isMinimized: boolean;
   onMinimize: (val: boolean) => void;
   onCancel: () => Promise<void>;
-  status: "waiting" | "allocation_ready" | "starting" | "running" | "ended" | "failed";
+  status: "waiting" | "allocation_ready" | "starting" | "running" | "ending" | "ended" | "failed";
   phase: "countdown" | "downloading" | "launching" | null;
 }
 

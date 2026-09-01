@@ -507,7 +507,7 @@ router.get(
         });
       }
 
-      // Played less than 5 minutes
+      // Played less than 2 minutes
       if (
         (session.metrics?.totalPlayTime || 0) < 120000
       ) {
