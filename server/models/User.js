@@ -16,7 +16,6 @@ export const RESERVED_USERNAMES = [
   "root",
   "support",
   "help",
-  "rigzer",
   "moderator",
   "mod",
   "system",
