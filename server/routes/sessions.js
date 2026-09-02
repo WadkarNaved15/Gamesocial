@@ -821,10 +821,7 @@ router.post("/:sessionId/cancel", verifyToken, async (req, res) => {
       }
     }
 
-    const reason =
-      session.status === "allocation_ready"
-        ? "user_cancelled"
-        : "user_abandoned";
+const reason = "user_cancelled";
 
     console.log(
       `[Session Cancel] User cancelled session ${sessionId} with reason ${reason}`
@@ -876,8 +873,9 @@ router.post("/cancel-by-token/:token", async (req, res) => {
       }
     }
 
+    const reason = "user_exit";
     // Mark session as ended cleanly
-    await finalizeSession(session, "user_cancelled");
+    await finalizeSession(session, reason);
 
     reconcileCapacity(
         session.instanceRegion
@@ -889,7 +887,7 @@ router.post("/cancel-by-token/:token", async (req, res) => {
 
     // Notify SSE clients
     const send = sessionStreams.get(session._id.toString());
-    if (send) send({ status: "ended", reason: "user_cancelled" });
+    if (send) send({ status: "ended", reason });
 
     return res.json({ message: "Session successfully cancelled" });
   } catch (err) {

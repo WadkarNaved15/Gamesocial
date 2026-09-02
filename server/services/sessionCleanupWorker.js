@@ -21,7 +21,7 @@ import { ALLOCATION_GRACE_MS } from "../helper/session.js";
 dotenv.config();
 
 const LOCK_KEY = "cleanup:lock";
-const LOCK_TTL = 30; // seconds
+const LOCK_TTL = 120; // seconds
 const CLEANUP_INTERVAL = 60_000; // 60 seconds
 
 // Allow Launch requests a small amount of time
@@ -77,20 +77,29 @@ async function cleanupStaleSessions(lockId) {
 
     // Find candidates only.
     // We CLAIM each session atomically below before doing any cleanup.
-    const staleSessions = await GameSession.find({
-      $or: [
-        {
-          status: { $in: ["waiting", "starting", "running"] },
-          lastHeartbeat: { $lt: staleThreshold },
-        },
-        {
-          status: "allocation_ready",
-          allocationExpiresAt: {
-            $lte: allocationCleanupCutoff,
-          },
-        },
-      ],
-    });
+const staleSessions = await GameSession.find({
+  $or: [
+    // 1. Explicit browser/tab disconnect that was not recovered
+    {
+      status: { $in: ["waiting", "starting", "running"] },
+      disconnectDeadline: { $lte: now },
+    },
+
+    // 2. Fallback for sessions whose heartbeat stopped
+    {
+      status: { $in: ["waiting", "starting", "running"] },
+      lastHeartbeat: { $lt: staleThreshold },
+    },
+
+    // 3. Allocation countdown expired
+    {
+      status: "allocation_ready",
+      allocationExpiresAt: {
+        $lte: allocationCleanupCutoff,
+      },
+    },
+  ],
+});
 
     if (staleSessions.length === 0) {
       return;
@@ -121,36 +130,56 @@ async function cleanupStaleSessions(lockId) {
           candidate.allocationExpiresAt &&
           candidate.allocationExpiresAt <= allocationCleanupCutoff;
 
-        const cleanupReason = allocationExpired
-          ? "countdown_expired"
-          : "stale_abandoned";
+const cleanupReason = allocationExpired
+  ? "countdown_expired"
+  : "user_abandoned";
 
-        const claimFilter = allocationExpired
-          ? {
-              _id: candidate._id,
-              status: "allocation_ready",
-              allocationExpiresAt: {
-                $lte: allocationCleanupCutoff,
-              },
-            }
-          : {
-              _id: candidate._id,
-              status: candidate.status,
-              lastHeartbeat: { $lt: staleThreshold },
-            };
+let claimFilter;
 
-        const claimedSession = await GameSession.findOneAndUpdate(
-          claimFilter,
-          {
-            $set: {
-              status: "ending",
-              exitReason: cleanupReason,
-            },
-          },
-          {
-            new: true,
-          }
-        );
+if (allocationExpired) {
+  claimFilter = {
+    _id: candidate._id,
+    status: "allocation_ready",
+    allocationExpiresAt: {
+      $lte: allocationCleanupCutoff,
+    },
+  };
+} else if (
+  candidate.disconnectDeadline &&
+  candidate.disconnectDeadline <= now
+) {
+  claimFilter = {
+    _id: candidate._id,
+    status: candidate.status,
+    disconnectDeadline: {
+      $lte: now,
+    },
+  };
+} else {
+  claimFilter = {
+    _id: candidate._id,
+    status: candidate.status,
+    lastHeartbeat: {
+      $lt: staleThreshold,
+    },
+  };
+}
+
+const claimedSession = await GameSession.findOneAndUpdate(
+  claimFilter,
+  {
+    $set: {
+      status: "ending",
+      exitReason: cleanupReason,
+    },
+    $unset: {
+      disconnectDeadline: "",
+    },
+  },
+  {
+    new: true,
+  }
+);
 
         /*
          * Someone else changed the session first.
