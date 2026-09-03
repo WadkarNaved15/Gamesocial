@@ -9,6 +9,8 @@
 //   "a:<objectId>"       — chronological AllPost cursor
 //   "g:<offset>:<pos>"    — Gorse snapshot cursor
 //
+
+
 import crypto from "node:crypto";
 import pino from "pino"; // npm i pino
 import AllPost from "../models/Allposts.js";
@@ -124,14 +126,17 @@ async function withUserFeedLock(userId, fn) {
 
 // ── FIX #8: snapshot save no longer throws ───────────────────────────────────
 
-async function saveFeedSnapshot({ userId, posts, gorseOffset }) {
+async function saveFeedSnapshot({ userId, posts, gorseOffset, position = 0 }) {
   if (!userId || !posts?.length) return;
 
   const snapshotKey = getFeedSnapshotKey(userId);
   const snapshot = {
     version: 1,
     ids: posts.map((post) => post._id.toString()),
-    position: 0,
+    // Allow pre-advancing position so a snapshot can be saved *already past*
+    // the page we're serving right now — avoids a second read-modify-write
+    // round trip immediately after this write (see PERF FIX #2 below).
+    position,
     gorseOffset,
     createdAt: Date.now(),
   };
@@ -169,7 +174,7 @@ async function getFeedSnapshot(userId) {
       typeof snapshot.position !== "number"
     ) {
       logger.warn({ snapshotKey }, "[FEED SNAPSHOT] invalid snapshot, discarding");
-      await redisClient.del(snapshotKey).catch(() => {});
+      await redisClient.del(snapshotKey).catch(() => { });
       return null;
     }
 
@@ -216,7 +221,7 @@ async function consumeFeedSnapshotUnlocked({
   const remainingIds = snapshot.ids.slice(snapshot.position);
 
   if (remainingIds.length === 0) {
-    await redisClient.del(getFeedSnapshotKey(userId)).catch(() => {});
+    await redisClient.del(getFeedSnapshotKey(userId)).catch(() => { });
     logger.debug({ userId }, "[FEED SNAPSHOT] exhausted");
     return {
       posts: [],
@@ -239,7 +244,7 @@ async function consumeFeedSnapshotUnlocked({
   const exhausted = newPosition >= snapshot.ids.length;
 
   if (exhausted) {
-    await redisClient.del(getFeedSnapshotKey(userId)).catch(() => {});
+    await redisClient.del(getFeedSnapshotKey(userId)).catch(() => { });
   } else {
     const updatedSnapshot = { ...snapshot, position: newPosition };
     await redisClient.setEx(
@@ -273,12 +278,26 @@ async function consumeFeedSnapshot(args) {
 
 async function getGorsePostIds(userId, limit, offset) {
   let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error("Gorse timeout")), GORSE_TIMEOUT_MS);
+
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      resolve({
+        ok: false,
+        ids: [],
+        error: new Error("Gorse timeout"),
+      });
+    }, GORSE_TIMEOUT_MS);
   });
 
   try {
-    return await Promise.race([getRecommendations({ userId, limit, offset }), timeout]);
+    return await Promise.race([
+      getRecommendations({
+        userId,
+        limit,
+        offset,
+      }),
+      timeout,
+    ]);
   } finally {
     clearTimeout(timer);
   }
@@ -383,9 +402,20 @@ async function fetchPostsByIds(ids, isAdmin = false, canViewTestUploads = false)
     .lean();
 }
 
-async function getValidatedGorsePool({ userId, poolSize, offset, isAdmin, canViewTestUploads }) {
+async function getValidatedGorsePool({ userId, poolSize, offset, permsPromise }) {
   const gorseStartTime = Date.now();
-  const gorseIds = await getGorsePostIds(userId, poolSize, offset);
+  
+  const [gorseResult, { isAdmin, canViewTestUploads }] =
+    await Promise.all([
+      getGorsePostIds(userId, poolSize, offset),
+      permsPromise,
+    ]);
+
+  if (!gorseResult.ok) {
+    throw gorseResult.error || new Error("Gorse unavailable");
+  }
+
+  const gorseIds = gorseResult.ids;
 
   const safeIds = [...new Set(gorseIds ?? [])].filter(
     (id) => typeof id === "string" && id.length === 24
@@ -502,12 +532,12 @@ export async function getFeedPage({ cursor, limit = DEFAULT_LIMIT, userId } = {}
 }
 
 async function getFeedPageInner({ cursor, fetchLimit, userId }) {
-  let isAdmin = false;
-  let canViewTestUploads = false;
-
-  if (userId) {
-    ({ isAdmin, canViewTestUploads } = await getUserFeedPerms(userId));
-  }
+  // PERF FIX #1: kick perms off immediately but don't block on it — it's only
+  // actually needed once we're about to hit Mongo, and by then it'll usually
+  // have resolved for free alongside the Gorse call or the snapshot check.
+  const permsPromise = userId
+    ? getUserFeedPerms(userId)
+    : Promise.resolve({ isAdmin: false, canViewTestUploads: false });
 
   let merged = [];
   let nextCursor = null;
@@ -546,23 +576,35 @@ async function getFeedPageInner({ cursor, fetchLimit, userId }) {
   // ── Logged-in user ────────────────────────────────────────────────────
   if (userId) {
     if (cursor?.startsWith("a:")) {
+      const { isAdmin, canViewTestUploads } = await permsPromise;
       merged = await fetchChronological(allPostFilter, fetchLimit, isAdmin, canViewTestUploads);
       if (merged.length > 0) {
         nextCursor = `a:${merged[merged.length - 1]._id.toString()}`;
       }
     } else {
-      if (!cursor) {
-        await redisClient.del(getFeedSnapshotKey(userId)).catch(() => {});
+      // PERF FIX #2: on a fresh page-1 request we just deleted the snapshot
+      // ourselves, so we already know for a fact it's gone. The old code
+      // still called consumeFeedSnapshot here anyway — a guaranteed-miss
+      // lock-acquire + Redis-get + lock-release for nothing. Skip straight
+      // to Gorse instead.
+      const isFreshRequest = !cursor;
+
+      if (isFreshRequest) {
+        await redisClient.del(getFeedSnapshotKey(userId)).catch(() => { });
       }
 
-      const snapshotPage = await consumeFeedSnapshot({
-        userId,
-        limit: fetchLimit,
-        isAdmin,
-        canViewTestUploads,
-        expectedOffset: cursor?.startsWith("g:") ? gorseOffset : null,
-        expectedPosition: cursor?.startsWith("g:") ? snapshotPosition : null,
-      });
+      let snapshotPage = null;
+      if (!isFreshRequest) {
+        const { isAdmin, canViewTestUploads } = await permsPromise;
+        snapshotPage = await consumeFeedSnapshot({
+          userId,
+          limit: fetchLimit,
+          isAdmin,
+          canViewTestUploads,
+          expectedOffset: cursor?.startsWith("g:") ? gorseOffset : null,
+          expectedPosition: cursor?.startsWith("g:") ? snapshotPosition : null,
+        });
+      }
 
       if (snapshotPage) {
         merged = snapshotPage.posts;
@@ -573,7 +615,6 @@ async function getFeedPageInner({ cursor, fetchLimit, userId }) {
         }
       } else {
         let allPosts = [];
-        let gorseIds = [];
         let gorseConsumedCount = 0;
         let gorseFailed = false;
 
@@ -586,11 +627,9 @@ async function getFeedPageInner({ cursor, fetchLimit, userId }) {
               userId,
               poolSize: GORSE_POOL_SIZE,
               offset: gorseOffset,
-              isAdmin,
-              canViewTestUploads,
+              permsPromise,
             });
 
-            gorseIds = pool.candidateIds;
             allPosts = pool.posts;
             gorseConsumedCount = pool.gorseConsumedCount;
             recordGorseSuccess();
@@ -602,6 +641,7 @@ async function getFeedPageInner({ cursor, fetchLimit, userId }) {
         }
 
         if (gorseFailed) {
+          const { isAdmin, canViewTestUploads } = await permsPromise;
           merged = await fetchChronological(allPostFilter, fetchLimit, isAdmin, canViewTestUploads);
           if (merged.length > 0) {
             nextCursor = `a:${merged[merged.length - 1]._id.toString()}`;
@@ -610,35 +650,44 @@ async function getFeedPageInner({ cursor, fetchLimit, userId }) {
           logger.debug({ userId }, "[FEED SERVICE] gorse exhausted, no more posts");
           return { posts: [], nextCursor: null };
         } else {
+          // PERF FIX #2 (cont.): we already have the full ranked pool of posts
+          // in memory (allPosts, fetched once in getValidatedGorsePool). Slice
+          // the first page straight out of it instead of writing the snapshot
+          // and then immediately reading + re-fetching-from-Mongo the same
+          // page back through consumeFeedSnapshot. Saves 3 Redis round trips
+          // (lock acquire, get, lock release) and a duplicate Mongo query on
+          // every cold load.
           const gorseNextOffset = gorseOffset + gorseConsumedCount;
+          const pageLimit = Math.min(fetchLimit, allPosts.length);
+          const fullyServedFromThisPool = pageLimit >= allPosts.length;
 
-          await saveFeedSnapshot({ userId, posts: allPosts, gorseOffset: gorseNextOffset });
+          merged = allPosts.slice(0, pageLimit);
 
-          const freshPage = await consumeFeedSnapshot({
-            userId,
-            limit: fetchLimit,
-            isAdmin,
-            canViewTestUploads,
-            expectedOffset: gorseNextOffset,
-            expectedPosition: 0,
-          });
-
-          if (freshPage) {
-            merged = freshPage.posts;
-            nextCursor = `g:${freshPage.gorseOffset}:${freshPage.position}`;
-            if (merged.length > 0) {
-              fireAndForget(() => recordServed(userId, merged.map((p) => p._id.toString())));
-            }
+          if (fullyServedFromThisPool) {
+            // Nothing left over worth caching — next request just pulls a
+            // fresh pool starting at gorseNextOffset.
+            nextCursor = `g:${gorseNextOffset}:0`;
           } else {
-            logger.warn({ userId }, "[FEED SERVICE] snapshot unavailable right after creation");
-            merged = allPosts.slice(0, fetchLimit);
-            nextCursor = `g:${gorseNextOffset}`;
+            // Cache the remainder, pre-advanced past what we're serving now,
+            // so the *next* request reads it directly with no extra work.
+            await saveFeedSnapshot({
+              userId,
+              posts: allPosts,
+              gorseOffset: gorseNextOffset,
+              position: pageLimit,
+            });
+            nextCursor = `g:${gorseNextOffset}:${pageLimit}`;
+          }
+
+          if (merged.length > 0) {
+            fireAndForget(() => recordServed(userId, merged.map((p) => p._id.toString())));
           }
         }
       }
     }
   } else {
     // ── Guest user → chronological ──────────────────────────────────────
+    // Guests are never admins/testers, so there's no perms lookup to await here.
     merged = await fetchChronological(allPostFilter, fetchLimit, false, false);
     if (merged.length > 0) {
       nextCursor = `a:${merged[merged.length - 1]._id.toString()}`;

@@ -13,35 +13,35 @@ const headers = {
 // ── Internal fetch wrapper ────────────────────────────────────────────────────
 
 async function gorseRequest(method, path, body) {
-    const url = `${GORSE_URL}${path}`;
+  const url = `${GORSE_URL}${path}`;
 
-    console.log("================================");
-    console.log("GORSE REQUEST");
-    console.log("URL:", url);
+  console.log("================================");
+  console.log("GORSE REQUEST");
+  console.log("URL:", url);
 
-    try {
-        const res = await fetch(url, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : undefined,
-        });
+  try {
+    const res = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
 
-        console.log("Status:", res.status);
+    console.log("Status:", res.status);
 
-        if (!res.ok) {
-            const text = await res.text();
-            console.log(text);
-            throw new Error(
-                `Gorse ${method} ${path} -> ${res.status}`
-            );
-        }
-
-        return res.json().catch(() => null);
-    } catch (err) {
-        console.error("FETCH ERROR");
-        console.error(err);
-        throw err;
+    if (!res.ok) {
+      const text = await res.text();
+      console.log(text);
+      throw new Error(
+        `Gorse ${method} ${path} -> ${res.status}`
+      );
     }
+
+    return res.json().catch(() => null);
+  } catch (err) {
+    console.error("FETCH ERROR");
+    console.error(err);
+    throw err;
+  }
 }
 
 // ── Users ────────────────────────────────────────────────────────────────────
@@ -148,20 +148,50 @@ export async function recordServed(userId, postIds) {
  * @param {{ userId: string, limit?: number, offset?: number }} opts
  * @returns {Promise<string[]>}
  */
-export async function getRecommendations({ userId, limit = 20, offset = 0 }) {
+export async function getRecommendations({
+  userId,
+  limit = 20,
+  offset = 0,
+}) {
   try {
     const data = await gorseRequest(
       "GET",
       `/api/recommend/${userId}?n=${limit}&offset=${offset}`
     );
-    // Gorse returns [{ Id, Score }] or just string[]
-    if (!Array.isArray(data)) return [];
-    return data
-      .map((d) => (typeof d === "string" ? d : d.Id))
-      .filter((id) => typeof id === "string" && id.trim() !== "");
+
+    // A successful Gorse response must be an array.
+    if (!Array.isArray(data)) {
+      return {
+        ok: false,
+        ids: [],
+        error: new Error("Invalid Gorse recommendation response"),
+      };
+    }
+
+    const ids = data
+      .map((d) => (typeof d === "string" ? d : d?.Id))
+      .filter(
+        (id) =>
+          typeof id === "string" &&
+          id.trim() !== ""
+      );
+
+    return {
+      ok: true,
+      ids,
+      error: null,
+    };
   } catch (err) {
-    console.error("[Gorse] getRecommendations error:", err.message);
-    return [];
+    console.error(
+      "[Gorse] getRecommendations error:",
+      err.message
+    );
+
+    return {
+      ok: false,
+      ids: [],
+      error: err,
+    };
   }
 }
 
