@@ -20,6 +20,8 @@ const DEMO_CONFIG = {
   HEARTBEAT_GRACE_SECONDS: 25, // allow short disconnect gaps
 };
 
+export const ALLOCATION_GRACE_MS = 3000;
+
 export async function getQueueData(
   session
 ) {
@@ -148,10 +150,9 @@ export async function finalizeSession(
 
   // --- CREDIT RECONCILIATION ---
   if (!isTestUpload) {
-    const expectedCredits = Math.max(
-      1,
-      Math.round(playTimeMs / 60000)
-    );
+const expectedCredits = Math.round(
+  playTimeMs / 60000
+);
 
     const creditAdjustment =
       expectedCredits -
@@ -492,7 +493,11 @@ export async function finalizeDemoConsumption(session, reason = "user_exit", exi
     // FIX: Write analytics — was broken before due to undefined variables
     await recordDemoConsumptionAnalytics(session.gamePost);
   } else {
-    demo.status = reason === "user_cancelled" ? "cancelled" : "expired";
+    demo.status =
+  reason === "user_cancelled" ||
+  reason === "user_abandoned"
+    ? "cancelled"
+    : "expired";
     demo.consumedReason = "user_exit_before_threshold";
   }
   

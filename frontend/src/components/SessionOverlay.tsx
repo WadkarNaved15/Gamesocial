@@ -10,6 +10,7 @@ export default function SessionOverlay() {
   const { queue, cancelSession, launchSession } = useQueue();
   const [isQueueMinimized, setIsQueueMinimized] = useState(false);
 
+  // Nothing to display once the backend says the session is gone.
   if (!queue.sessionId) return null;
 
   const isQueued = queue.queuePosition !== null;
@@ -19,29 +20,32 @@ export default function SessionOverlay() {
     queue.status === "waiting" && isQueued;
 
   // INSTANCE ASSIGNED BUT STARTING
-const showInstanceStarting =
-  (
-    // direct scaling users
-    queue.status === "waiting" &&
-    !isQueued
-  ) ||
-  (
-    // after launch click
-    queue.status === "starting"
-  );
-
+  const showInstanceStarting =
+    (
+      // Direct/scaling users
+      queue.status === "waiting" &&
+      !isQueued
+    ) ||
+    (
+      // After launch click
+      queue.status === "starting"
+    );
 
   // QUEUED USER GOT INSTANCE
+  // Only show the ready modal while the backend state
+  // is still allocation_ready.
   const showInstanceReady =
-    queue.status === "allocation_ready";
+    queue.status === "allocation_ready" &&
+    queue.countdownSecondsRemaining !== null &&
+    queue.countdownSecondsRemaining > 0;
 
   // DIRECT USER OR AFTER LAUNCH
-const showAds =
-  queue.sessionId &&
-  (
-    queue.phase === "launching" ||
-    queue.status === "running"
-  );
+  const showAds =
+    Boolean(queue.sessionId) &&
+    (
+      queue.phase === "launching" ||
+      queue.status === "running"
+    );
 
   return createPortal(
     <>
@@ -73,7 +77,7 @@ const showAds =
       {showInstanceReady && (
         <InstanceReadyModal
           sessionId={queue.sessionId}
-          countdown={queue.countdownSecondsRemaining || 30}
+          countdown={queue.countdownSecondsRemaining ?? 0}
           onLaunch={launchSession}
           onCancel={cancelSession}
           isVisible={true}
@@ -87,3 +91,4 @@ const showAds =
     document.body
   );
 }
+

@@ -97,12 +97,33 @@ export async function callController(session, lease) {
           lastErr
         );
 
-        await GameSession.findByIdAndUpdate(session._id, {
-          status: "failed",
-          exitReason: "controller_error",
-          error: lastErr ? lastErr.message : "Controller did not return 200 OK",
-          endedAt: new Date()
-        });
+await GameSession.findByIdAndUpdate(
+  session._id,
+  [
+    {
+      $set: {
+        status: "failed",
+        error: lastErr
+          ? lastErr.message
+          : "Controller did not return 200 OK",
+        endedAt: new Date(),
+
+        exitReason: {
+          $cond: [
+            {
+              $or: [
+                { $eq: ["$exitReason", null] },
+                { $eq: ["$exitReason", ""] },
+              ],
+            },
+            "controller_error",
+            "$exitReason",
+          ],
+        },
+      },
+    },
+  ]
+);
 
         if (session.instanceId && session.leaseToken) {
           try {

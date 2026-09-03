@@ -291,6 +291,156 @@ router.get("/status-by-token/:token", async (req, res) => {
   }
 });
 
+router.get("/active", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const session = await GameSession.findOne({
+      user: userId,
+      status: {
+        $in: [
+          "waiting",
+          "allocation_ready",
+          "starting",
+          "running",
+          "ending",
+        ],
+      },
+    })
+      .sort({ createdAt: -1 })
+      .select(
+        "_id status phase queueType countdownStartsAt countdownSeconds allocationExpiresAt startedAt expiresAt maxDurationSeconds"
+      )
+      .lean();
+
+    if (!session) {
+      return res.json({
+        active: false,
+      });
+    }
+
+    let queueData = {};
+
+    if (
+      session.status === "waiting" &&
+      session.queueType === "queued"
+    ) {
+      queueData = await getQueueData(session);
+    }
+
+    return res.json({
+      active: true,
+      sessionId: session._id,
+      status: session.status,
+      phase: session.phase,
+      queueType: session.queueType,
+      countdownStartsAt: session.countdownStartsAt,
+      countdownSeconds: session.countdownSeconds,
+      allocationExpiresAt: session.allocationExpiresAt,
+      startedAt: session.startedAt,
+      expiresAt: session.expiresAt,
+      maxDurationSeconds: session.maxDurationSeconds,
+      ...queueData,
+    });
+  } catch (err) {
+    console.error("Active session lookup error:", err);
+
+    return res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+});
+
+
+/**
+ * GET /api/sessions/feedback/pending
+ *
+ * Backend is the source of truth for pending feedback.
+ * No frontend/localStorage session ID is required.
+ */
+router.get("/feedback/pending", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const session = await GameSession.findOne({
+      user: userId,
+      status: "ended",
+
+      // User hasn't submitted feedback.
+      "feedback.submitted": { $ne: true },
+
+      // Feedback has never been prompted for this session.
+      "feedback.feedbackPromptedAt": null,
+    })
+      .sort({ endedAt: -1 })
+      .populate({
+        path: "gamePost",
+        select: "gamePost.gameName gamePost.steamUrl",
+      })
+      .select("_id status gamePost metrics.totalPlayTime feedback endedAt")
+      .lean();
+
+    if (!session) {
+      return res.json({
+        eligible: false,
+      });
+    }
+
+    const playTimeMs = session.metrics?.totalPlayTime || 0;
+
+    // Must have played for at least 120 seconds.
+    if (playTimeMs < 120000) {
+      return res.json({
+        eligible: false,
+      });
+    }
+
+    // Atomically claim this feedback prompt.
+    //
+    // This prevents multiple tabs/requests from prompting
+    // the same session more than once.
+    const promptedAt = new Date();
+
+    const promptedSession = await GameSession.findOneAndUpdate(
+      {
+        _id: session._id,
+        user: userId,
+        status: "ended",
+        "feedback.submitted": { $ne: true },
+        "feedback.feedbackPromptedAt": null,
+      },
+      {
+        $set: {
+          "feedback.feedbackPromptedAt": promptedAt,
+        },
+      },
+      {
+        new: true,
+      }
+    );
+
+    if (!promptedSession) {
+      return res.json({
+        eligible: false,
+      });
+    }
+
+    return res.json({
+      eligible: true,
+      sessionId: session._id,
+      gameId: session.gamePost?._id,
+      gameName: session.gamePost?.gamePost?.gameName || null,
+      steamUrl: session.gamePost?.gamePost?.steamUrl || null,
+      playTimeMs,
+    });
+  } catch (err) {
+    console.error("[Feedback] Pending feedback lookup error:", err);
+
+    return res.status(500).json({
+      error: "Internal server error",
+    });
+  }
+});
 
 /**
  * GET /api/sessions/status/:sessionId
@@ -303,7 +453,7 @@ router.get("/:sessionId/status", verifyToken, async (req, res) => {
 
     const session = await GameSession.findById(sessionId)
       .select(
-        "user status phase countdownStartsAt countdownSeconds startedAt expiresAt maxDurationSeconds"
+        "user status phase countdownStartsAt countdownSeconds allocationExpiresAt startedAt expiresAt maxDurationSeconds"
       )
       .lean();
 
@@ -326,6 +476,7 @@ router.get("/:sessionId/status", verifyToken, async (req, res) => {
       phase: session.phase,
       countdownStartsAt: session.countdownStartsAt,
       countdownSeconds: session.countdownSeconds,
+      allocationExpiresAt: session.allocationExpiresAt,
       remainingSeconds,
       startedAt: session.startedAt,
       expiresAt: session.expiresAt,
@@ -348,8 +499,6 @@ router.get(
   ],
   async (req, res) => {
     try {
-      // Validation
-      console.log("Hitting check endpoint");
       const errors = validationResult(req);
 
       if (!errors.isEmpty()) {
@@ -360,45 +509,74 @@ router.get(
       }
 
       const { sessionId } = req.params;
-      console.log("Session ID in checking endpoint:", sessionId);
       const userId = req.user.id;
 
-      // Find session
       const session = await GameSession.findOne({
         _id: sessionId,
         user: userId,
       })
         .populate({
           path: "gamePost",
-           select: "gamePost.gameName gamePost.steamUrl",
+          select: "gamePost.gameName gamePost.steamUrl",
         })
-        .select("status gamePost metrics.totalPlayTime")
+        .select(
+          "_id status gamePost metrics.totalPlayTime feedback"
+        )
         .lean();
-      console.log("Session found:", session);
+
       if (!session) {
         return res.status(404).json({
           error: "Session not found",
         });
       }
-      const playTimeMs = session.metrics?.totalPlayTime || 0;
-      // Session must be completed
+
+      // Session must be completed.
       if (session.status !== "ended") {
         return res.json({
           eligible: false,
         });
       }
 
-      // Played less than 5 minutes
-      if (
-        (session.metrics?.totalPlayTime || 0) < 120000
-      ) {
+      const playTimeMs = session.metrics?.totalPlayTime || 0;
+
+      // Must have played for at least 2 minutes.
+      if (playTimeMs < 120000) {
         return res.json({
           eligible: false,
         });
       }
 
-      // Prevent duplicate feedback
+      // Already submitted.
       if (session.feedback?.submitted) {
+        return res.json({
+          eligible: false,
+        });
+      }
+
+      // IMPORTANT:
+      // Atomically claim the feedback prompt.
+      //
+      // Only ONE request can successfully change
+      // feedbackPromptedAt from null -> Date.
+      const promptedSession = await GameSession.findOneAndUpdate(
+        {
+          _id: sessionId,
+          user: userId,
+          status: "ended",
+          "feedback.submitted": { $ne: true },
+          "feedback.feedbackPromptedAt": null,
+        },
+        {
+          $set: {
+            "feedback.feedbackPromptedAt": new Date(),
+          },
+        },
+        {
+          new: true,
+        }
+      );
+
+      if (!promptedSession) {
         return res.json({
           eligible: false,
         });
@@ -406,14 +584,16 @@ router.get(
 
       return res.json({
         eligible: true,
-        sessionId: session._id,
-        gameId: session.gamePost._id,
-        gameName: session.gamePost.gamePost.gameName,
-        steamUrl: session.gamePost.gamePost.steamUrl || null,
+        sessionId: promptedSession._id,
+        gameId: session.gamePost?._id,
+        gameName:
+          session.gamePost?.gamePost?.gameName || null,
+        steamUrl:
+          session.gamePost?.gamePost?.steamUrl || null,
         playTimeMs,
       });
     } catch (err) {
-      console.error("Feedback eligibility error:", err);
+      console.error("[Feedback] Eligibility check error:", err);
 
       return res.status(500).json({
         error: "Internal server error",
@@ -463,12 +643,14 @@ router.get("/:sessionId/events", verifyToken, async (req, res) => {
       queueData = await getQueueData(fresh);
     }
 
-    send({
-      status: fresh.status,
-      phase: fresh.phase,
-      countdownStartsAt: fresh.countdownStartsAt,
-      ...queueData,
-    });
+send({
+  status: fresh.status,
+  phase: fresh.phase,
+  countdownStartsAt: fresh.countdownStartsAt,
+  countdownSeconds: fresh.countdownSeconds,
+  allocationExpiresAt: fresh.allocationExpiresAt,
+  ...queueData,
+});
   };
 
   await sendCurrentState();
@@ -520,10 +702,16 @@ router.get("/:sessionId/stream-token", verifyToken, async (req, res) => {
  */
 router.post("/:sessionId/heartbeat", verifyToken, async (req, res) => {
   try {
-    await GameSession.findOneAndUpdate(
-      { _id: req.params.sessionId, user: req.user.id },
-      { lastHeartbeat: new Date() }
-    );
+await GameSession.findOneAndUpdate(
+  {
+    _id: req.params.sessionId,
+    user: req.user.id,
+    status: { $in: ["waiting", "starting", "running"] },
+  },
+  {
+    lastHeartbeat: new Date(),
+  }
+);
     res.sendStatus(200);
   } catch (err) {
     console.error("Heartbeat error:", err);
@@ -694,10 +882,7 @@ router.post("/:sessionId/cancel", verifyToken, async (req, res) => {
       }
     }
 
-    const reason =
-      session.status === "allocation_ready"
-        ? "user_cancelled"
-        : "user_abandoned";
+const reason = "user_cancelled";
 
     console.log(
       `[Session Cancel] User cancelled session ${sessionId} with reason ${reason}`
@@ -749,8 +934,9 @@ router.post("/cancel-by-token/:token", async (req, res) => {
       }
     }
 
+    const reason = "user_exit";
     // Mark session as ended cleanly
-    await finalizeSession(session, "user_cancelled");
+    await finalizeSession(session, reason);
 
     reconcileCapacity(
         session.instanceRegion
@@ -762,7 +948,7 @@ router.post("/cancel-by-token/:token", async (req, res) => {
 
     // Notify SSE clients
     const send = sessionStreams.get(session._id.toString());
-    if (send) send({ status: "ended", reason: "user_cancelled" });
+    if (send) send({ status: "ended", reason });
 
     return res.json({ message: "Session successfully cancelled" });
   } catch (err) {
@@ -903,11 +1089,10 @@ router.post("/complete", async (req, res) => {
         session?.billing?.billedPlayTimeMs || 0;
       console.log(`[Session Complete] Ending session ${session_id} with reason ${exit_reason}`);
 
+      const finalReason =
+  exit_reason || session.exitReason || "user_exit";
 
-      await finalizeSession(
-        session,
-        exit_reason || "user_exit"
-      );
+await finalizeSession(session, finalReason);
 
       // Release instance
       if (session.instanceId && session.leaseToken) {
@@ -930,7 +1115,7 @@ router.post("/complete", async (req, res) => {
 
       // Notify SSE
       const send = sessionStreams.get(session_id.toString());
-      if (send) send({ status: "ended", reason: exit_reason });
+      if (send) send({ status: "ended", reason: finalReason });
 
       // ✨ NEW: Trigger controller to prepare for next stream (web server restart)
       if (session.instanceIp) {
@@ -991,11 +1176,9 @@ router.post("/violation", async (req, res) => {
       `[Session Violation] Session ${session_id} violation: ${violation}`
     );
 
+    const exitReason = violation || "error";
 
-    await finalizeSession(
-      session,
-      violation || "violation"
-    );
+    await finalizeSession(session, exitReason);
 
     // Release instance
     if (session.instanceId && session.leaseToken) {

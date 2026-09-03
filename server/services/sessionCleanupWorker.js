@@ -16,12 +16,17 @@ import GameSession from "../models/GameSession.js";
 import { releaseInstance } from "./instanceAllocator.js";
 import { finalizeSession } from "../helper/session.js"; 
 import { reconcileCapacity } from "./capacityReconciler.js";
+import { ALLOCATION_GRACE_MS } from "../helper/session.js";
 
 dotenv.config();
 
 const LOCK_KEY = "cleanup:lock";
-const LOCK_TTL = 30; // seconds
+const LOCK_TTL = 120; // seconds
 const CLEANUP_INTERVAL = 60_000; // 60 seconds
+
+// Allow Launch requests a small amount of time
+// to reach the backend after the allocation expires.
+
 
 /**
  * Attempt to acquire a distributed lock in Redis
@@ -62,90 +67,240 @@ async function releaseLock(lockId) {
  */
 async function cleanupStaleSessions(lockId) {
   try {
-    // console.log(`\n[Cleanup ${lockId.substring(0, 8)}...] Starting cleanup cycle...`);
+    const now = new Date();
+    const staleThreshold = new Date(Date.now() - 90_000);
 
-    const staleThreshold = new Date(Date.now() - 90_000); // 90 seconds ago
+    // Cleanup only after the launch grace period has also expired.
+    const allocationCleanupCutoff = new Date(
+      now.getTime() - ALLOCATION_GRACE_MS
+    );
 
-    const staleSessions = await GameSession.find({
+    // Find candidates only.
+    // We CLAIM each session atomically below before doing any cleanup.
+const staleSessions = await GameSession.find({
+  $or: [
+    // 1. Explicit browser/tab disconnect that was not recovered
+    {
+      status: { $in: ["waiting", "starting", "running"] },
+      disconnectDeadline: { $lte: now },
+    },
+
+    // 2. Fallback for sessions whose heartbeat stopped
+    {
       status: { $in: ["waiting", "starting", "running"] },
       lastHeartbeat: { $lt: staleThreshold },
-    });
+    },
+
+    // 3. Allocation countdown expired
+    {
+      status: "allocation_ready",
+      allocationExpiresAt: {
+        $lte: allocationCleanupCutoff,
+      },
+    },
+  ],
+});
 
     if (staleSessions.length === 0) {
-      // console.log(`[Cleanup ${lockId.substring(0, 8)}...] ✓ No stale sessions found`);
       return;
     }
 
-    console.log(`[Cleanup ${lockId.substring(0, 8)}...] Found ${staleSessions.length} stale session(s)`);
+    console.log(
+      `[Cleanup ${lockId.substring(0, 8)}...] Found ${staleSessions.length} stale session(s)`
+    );
 
     let cleanedCount = 0;
+    let skippedCount = 0;
     let errorCount = 0;
 
-    for (const session of staleSessions) {
+    for (const candidate of staleSessions) {
       try {
-        console.log(`[Cleanup] Processing session: ${session._id}`);
+        /*
+         * IMPORTANT:
+         * Atomically claim the session before doing anything.
+         *
+         * This prevents a race with:
+         * - user Launch
+         * - user Cancel
+         * - instance controller
+         * - another cleanup worker
+         */
+        const allocationExpired =
+          candidate.status === "allocation_ready" &&
+          candidate.allocationExpiresAt &&
+          candidate.allocationExpiresAt <= allocationCleanupCutoff;
 
-        // Stop the game instance if it exists
-        if (session.instanceIp) {
+const cleanupReason = allocationExpired
+  ? "countdown_expired"
+  : "user_abandoned";
+
+let claimFilter;
+
+if (allocationExpired) {
+  claimFilter = {
+    _id: candidate._id,
+    status: "allocation_ready",
+    allocationExpiresAt: {
+      $lte: allocationCleanupCutoff,
+    },
+  };
+} else if (
+  candidate.disconnectDeadline &&
+  candidate.disconnectDeadline <= now
+) {
+  claimFilter = {
+    _id: candidate._id,
+    status: candidate.status,
+    disconnectDeadline: {
+      $lte: now,
+    },
+  };
+} else {
+  claimFilter = {
+    _id: candidate._id,
+    status: candidate.status,
+    lastHeartbeat: {
+      $lt: staleThreshold,
+    },
+  };
+}
+
+const claimedSession = await GameSession.findOneAndUpdate(
+  claimFilter,
+  {
+    $set: {
+      status: "ending",
+      exitReason: cleanupReason,
+    },
+    $unset: {
+      disconnectDeadline: "",
+    },
+  },
+  {
+    new: true,
+  }
+);
+
+        /*
+         * Someone else changed the session first.
+         * DO NOT touch the instance or finalize it.
+         */
+        if (!claimedSession) {
+          console.log(
+            `[Cleanup] Skipping ${candidate._id} - session already handled`
+          );
+          skippedCount++;
+          continue;
+        }
+
+        console.log(
+          `[Cleanup] Claimed session ${claimedSession._id} as ${cleanupReason}`
+        );
+
+        /*
+         * Stop the game instance if it exists.
+         */
+        if (claimedSession.instanceIp) {
           try {
-            await fetch(`http://${session.instanceIp}:4443/stop-session`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ session_id: session._id.toString() }),
-              timeout: 5000,
-            });
-            console.log(`[Cleanup] ✓ Stopped instance: ${session.instanceIp}`);
+            await fetch(
+              `http://${claimedSession.instanceIp}:4443/stop-session`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  session_id: claimedSession._id.toString(),
+                }),
+                timeout: 5000,
+              }
+            );
+
+            console.log(
+              `[Cleanup] ✓ Stopped instance: ${claimedSession.instanceIp}`
+            );
           } catch (err) {
-            console.warn(`[Cleanup] ⚠ Failed to stop instance for session ${session._id}:`, err.message);
+            console.warn(
+              `[Cleanup] ⚠ Failed to stop instance for session ${claimedSession._id}:`,
+              err.message
+            );
           }
         }
 
+        /*
+         * Finalize using the reason that was atomically recorded.
+         */
+        await finalizeSession(
+          claimedSession,
+          cleanupReason
+        );
 
-        await finalizeSession(session, "stale_abandoned");
+        /*
+         * Release instance lease.
+         */
+        if (
+          claimedSession.instanceId &&
+          claimedSession.leaseToken
+        ) {
+          try {
+            await releaseInstance(
+              claimedSession.instanceId,
+              claimedSession.leaseToken,
+              claimedSession.instanceRegion
+            );
 
-        // Release the instance lease
-if (session.instanceId && session.leaseToken) {
-  try {
-    await releaseInstance(
-      session.instanceId,
-      session.leaseToken,
-      session.instanceRegion
-    );
+            console.log(
+              `[Cleanup] ✓ Released instance: ${claimedSession.instanceId}`
+            );
 
-    console.log(`[Cleanup] ✓ Released instance: ${session.instanceId}`);
+            try {
+              await reconcileCapacity(
+                claimedSession.instanceRegion
+              );
 
-    // Reconcile ASG capacity after releasing the lease
-try {
-  await reconcileCapacity(session.instanceRegion);
-  console.log(
-    `[Cleanup] ✓ Reconciled capacity for ${session.instanceRegion}`
-  );
-} catch (err) {
-  console.error(
-    `[Cleanup] Failed to reconcile capacity for ${session.instanceRegion}:`,
-    err
-  );
-}
+              console.log(
+                `[Cleanup] ✓ Reconciled capacity for ${claimedSession.instanceRegion}`
+              );
+            } catch (err) {
+              console.error(
+                `[Cleanup] Failed to reconcile capacity for ${claimedSession.instanceRegion}:`,
+                err
+              );
+            }
+          } catch (err) {
+            console.warn(
+              `[Cleanup] ⚠ Failed to release instance ${claimedSession.instanceId}:`,
+              err.message
+            );
+          }
+        }
 
-  } catch (err) {
-    console.warn(
-      `[Cleanup] ⚠ Failed to release instance ${session.instanceId}:`,
-      err.message
-    );
-  }
-}
+        console.log(
+          `[Cleanup] ✅ Session ${claimedSession._id} cleaned up as ${cleanupReason}`
+        );
 
-        console.log(`[Cleanup] ✅ Session ${session._id} cleaned up`);
         cleanedCount++;
       } catch (err) {
-        console.error(`[Cleanup] ❌ Error cleaning session ${session._id}:`, err.message);
+        console.error(
+          `[Cleanup] ❌ Error cleaning session ${candidate._id}:`,
+          err.message
+        );
+
         errorCount++;
       }
     }
 
-    console.log(`[Cleanup ${lockId.substring(0, 8)}...] Cleanup complete: ${cleanedCount} cleaned, ${errorCount} errors`);
+    console.log(
+      `[Cleanup ${lockId.substring(0, 8)}...] Cleanup complete: ` +
+      `${cleanedCount} cleaned, ` +
+      `${skippedCount} skipped, ` +
+      `${errorCount} errors`
+    );
   } catch (err) {
-    console.error(`[Cleanup] Fatal error during cleanup:`, err);
+    console.error(
+      `[Cleanup] Fatal error during cleanup:`,
+      err
+    );
   }
 }
 
