@@ -198,7 +198,16 @@ const GameSessionSchema = new mongoose.Schema(
         default: false,
       },
 
-      submittedAt: Date,
+      submittedAt: {
+        type: Date,
+        default: null,
+      },
+
+      feedbackPromptedAt: {
+        type: Date,
+        default: null,
+        index: true,
+      },
     },
     
     billing: {

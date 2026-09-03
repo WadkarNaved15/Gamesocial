@@ -365,16 +365,19 @@ router.get("/feedback/pending", verifyToken, async (req, res) => {
     const session = await GameSession.findOne({
       user: userId,
       status: "ended",
+
+      // User hasn't submitted feedback.
       "feedback.submitted": { $ne: true },
+
+      // Feedback has never been prompted for this session.
+      "feedback.feedbackPromptedAt": null,
     })
-      .sort({ updatedAt: -1 })
+      .sort({ endedAt: -1 })
       .populate({
         path: "gamePost",
         select: "gamePost.gameName gamePost.steamUrl",
       })
-      .select(
-        "_id status gamePost metrics.totalPlayTime feedback"
-      )
+      .select("_id status gamePost metrics.totalPlayTime feedback endedAt")
       .lean();
 
     if (!session) {
@@ -387,6 +390,36 @@ router.get("/feedback/pending", verifyToken, async (req, res) => {
 
     // Must have played for at least 120 seconds.
     if (playTimeMs < 120000) {
+      return res.json({
+        eligible: false,
+      });
+    }
+
+    // Atomically claim this feedback prompt.
+    //
+    // This prevents multiple tabs/requests from prompting
+    // the same session more than once.
+    const promptedAt = new Date();
+
+    const promptedSession = await GameSession.findOneAndUpdate(
+      {
+        _id: session._id,
+        user: userId,
+        status: "ended",
+        "feedback.submitted": { $ne: true },
+        "feedback.feedbackPromptedAt": null,
+      },
+      {
+        $set: {
+          "feedback.feedbackPromptedAt": promptedAt,
+        },
+      },
+      {
+        new: true,
+      }
+    );
+
+    if (!promptedSession) {
       return res.json({
         eligible: false,
       });
@@ -408,7 +441,6 @@ router.get("/feedback/pending", verifyToken, async (req, res) => {
     });
   }
 });
-
 
 /**
  * GET /api/sessions/status/:sessionId
@@ -467,8 +499,6 @@ router.get(
   ],
   async (req, res) => {
     try {
-      // Validation
-      console.log("Hitting check endpoint");
       const errors = validationResult(req);
 
       if (!errors.isEmpty()) {
@@ -479,45 +509,74 @@ router.get(
       }
 
       const { sessionId } = req.params;
-      console.log("Session ID in checking endpoint:", sessionId);
       const userId = req.user.id;
 
-      // Find session
       const session = await GameSession.findOne({
         _id: sessionId,
         user: userId,
       })
         .populate({
           path: "gamePost",
-           select: "gamePost.gameName gamePost.steamUrl",
+          select: "gamePost.gameName gamePost.steamUrl",
         })
-        .select("status gamePost metrics.totalPlayTime")
+        .select(
+          "_id status gamePost metrics.totalPlayTime feedback"
+        )
         .lean();
-      console.log("Session found:", session);
+
       if (!session) {
         return res.status(404).json({
           error: "Session not found",
         });
       }
-      const playTimeMs = session.metrics?.totalPlayTime || 0;
-      // Session must be completed
+
+      // Session must be completed.
       if (session.status !== "ended") {
         return res.json({
           eligible: false,
         });
       }
 
-      // Played less than 2 minutes
-      if (
-        (session.metrics?.totalPlayTime || 0) < 120000
-      ) {
+      const playTimeMs = session.metrics?.totalPlayTime || 0;
+
+      // Must have played for at least 2 minutes.
+      if (playTimeMs < 120000) {
         return res.json({
           eligible: false,
         });
       }
 
-      // Prevent duplicate feedback
+      // Already submitted.
       if (session.feedback?.submitted) {
+        return res.json({
+          eligible: false,
+        });
+      }
+
+      // IMPORTANT:
+      // Atomically claim the feedback prompt.
+      //
+      // Only ONE request can successfully change
+      // feedbackPromptedAt from null -> Date.
+      const promptedSession = await GameSession.findOneAndUpdate(
+        {
+          _id: sessionId,
+          user: userId,
+          status: "ended",
+          "feedback.submitted": { $ne: true },
+          "feedback.feedbackPromptedAt": null,
+        },
+        {
+          $set: {
+            "feedback.feedbackPromptedAt": new Date(),
+          },
+        },
+        {
+          new: true,
+        }
+      );
+
+      if (!promptedSession) {
         return res.json({
           eligible: false,
         });
@@ -525,14 +584,16 @@ router.get(
 
       return res.json({
         eligible: true,
-        sessionId: session._id,
-        gameId: session.gamePost._id,
-        gameName: session.gamePost.gamePost.gameName,
-        steamUrl: session.gamePost.gamePost.steamUrl || null,
+        sessionId: promptedSession._id,
+        gameId: session.gamePost?._id,
+        gameName:
+          session.gamePost?.gamePost?.gameName || null,
+        steamUrl:
+          session.gamePost?.gamePost?.steamUrl || null,
         playTimeMs,
       });
     } catch (err) {
-      console.error("Feedback eligibility error:", err);
+      console.error("[Feedback] Eligibility check error:", err);
 
       return res.status(500).json({
         error: "Internal server error",
@@ -1028,11 +1089,10 @@ router.post("/complete", async (req, res) => {
         session?.billing?.billedPlayTimeMs || 0;
       console.log(`[Session Complete] Ending session ${session_id} with reason ${exit_reason}`);
 
+      const finalReason =
+  exit_reason || session.exitReason || "user_exit";
 
-      await finalizeSession(
-        session,
-        exit_reason || session.exitReason || "user_exit"
-      );
+await finalizeSession(session, finalReason);
 
       // Release instance
       if (session.instanceId && session.leaseToken) {
@@ -1055,7 +1115,7 @@ router.post("/complete", async (req, res) => {
 
       // Notify SSE
       const send = sessionStreams.get(session_id.toString());
-      if (send) send({ status: "ended", reason: exit_reason });
+      if (send) send({ status: "ended", reason: finalReason });
 
       // ✨ NEW: Trigger controller to prepare for next stream (web server restart)
       if (session.instanceIp) {

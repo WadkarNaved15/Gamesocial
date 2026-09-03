@@ -89,6 +89,8 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
 }, []);
 
+
+
 const restorePendingFeedback = useCallback(async (sessionId: string) => {
   try {
     const res = await fetch(
@@ -128,6 +130,46 @@ const restorePendingFeedback = useCallback(async (sessionId: string) => {
     );
   }
 }, [clearFeedback]);
+
+
+const restorePendingFeedbackFallback = useCallback(async () => {
+  try {
+    const res = await fetch(
+      `${BACKEND_URL}/api/sessions/feedback/pending`,
+      {
+        credentials: "include",
+      }
+    );
+
+    if (!res.ok) {
+      console.error(
+        "[Feedback] Pending feedback request failed:",
+        res.status
+      );
+      return;
+    }
+
+    const data = await res.json();
+
+    if (!data.eligible) {
+      return;
+    }
+
+    setFeedback({
+      open: true,
+      sessionId: data.sessionId,
+      gameId: data.gameId,
+      gameName: data.gameName,
+      steamUrl: data.steamUrl,
+      playTimeMs: data.playTimeMs,
+    });
+  } catch (err) {
+    console.error(
+      "[Feedback] Failed to restore pending feedback:",
+      err
+    );
+  }
+}, []);
 
   // ✅ Save session to localStorage whenever it changes
 useEffect(() => {
@@ -377,6 +419,11 @@ const updateCountdown = () => {
           isDirectPlay: false,
         }));
 
+        // Recovery only:
+        // If SSE was missed because the browser was refreshed/reopened,
+        // look for a recently ended session that has not been prompted.
+        await restorePendingFeedbackFallback();
+
         return;
       }
 
@@ -453,7 +500,7 @@ const updateCountdown = () => {
   return () => {
     mounted = false;
   };
-}, [restorePendingFeedback]);
+}, [restorePendingFeedbackFallback]);
   // Check if feedback is eligible
 
   // 🎮 Start Session
