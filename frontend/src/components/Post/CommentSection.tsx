@@ -169,6 +169,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, BACKEND_URL, on
       user: {
         _id: user?._id || "",
         username: user?.username || "You",
+        displayName: user?.displayName || user?.username || "You",
         avatar: user?.avatar,
       },
 
