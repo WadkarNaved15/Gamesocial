@@ -179,7 +179,7 @@ export const CommentCard = memo(
                 <div className="flex-1 min-w-0">
                     {/* Comment Card Bubble */}
                     <div className="bg-gray-50 dark:bg-zinc-900 rounded-2xl px-4 py-3 shadow-sm border border-gray-100 dark:border-zinc-800">
-                        <div className="flex justify-between items-start mb-1">
+                        <div className="flex justify-between items-start -mt-1 mb-2">
                             <div className="flex items-start gap-2 flex-wrap">
                                 {/* User name + username */}
                                 <div className="flex flex-col">

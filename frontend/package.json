@@ -39,6 +39,7 @@
     "emoji-picker-react": "^4.16.1",
     "fabric": "^7.4.0",
     "framer-motion": "^12.23.12",
+    "gifsicle-wasm-browser": "^1.5.19",
     "html2canvas": "^1.4.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.533.0",
