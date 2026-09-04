@@ -14,6 +14,9 @@ const router = express.Router();
 
 const MAX_MODEL_SIZE_MB = 150;
 const MAX_MODEL_SIZE_BYTES = MAX_MODEL_SIZE_MB * 1024 * 1024;
+const MAX_PROFILE_BANNER_SIZE_MB = 5;
+const MAX_PROFILE_BANNER_SIZE_BYTES =
+  MAX_PROFILE_BANNER_SIZE_MB * 1024 * 1024;
 
 router.post("/presigned-url", async (req, res) => {
   try {
@@ -23,9 +26,27 @@ router.post("/presigned-url", async (req, res) => {
       return res.status(400).json({ message: "fileName and category required" });
     }
 
-    if (fileType?.startsWith("image/") && fileSize > 5 * 1024 * 1024) {
+    // Profile banner: max 5 MB
+    if (
+      category === "media" &&
+      subcategory === "profile-banner" &&
+      fileType?.startsWith("image/") &&
+      fileSize > MAX_PROFILE_BANNER_SIZE_BYTES
+    ) {
+      return res.status(400).json({
+        message: "Profile banner must be 5 MB or smaller",
+      });
+    }
 
-      return res.status(400).json({ message: "Image too large" });
+    // Other images: max 5 MB
+    if (
+      fileType?.startsWith("image/") &&
+      subcategory !== "profile-banner" &&
+      fileSize > 5 * 1024 * 1024
+    ) {
+      return res.status(400).json({
+        message: "Image too large",
+      });
     }
 
     if (fileType?.startsWith("video/") && fileSize > 50 * 1024 * 1024) {
@@ -44,7 +65,11 @@ router.post("/presigned-url", async (req, res) => {
 
     else if (category === "media") {
       if (fileType?.startsWith("image/")) {
-        key = `media/images/${uuidv4()}-${fileName}`;
+        if (subcategory === "profile-banner") {
+          key = `media/images/banners/${uuidv4()}-${fileName}`;
+        } else {
+          key = `media/images/${uuidv4()}-${fileName}`;
+        }
       } else if (fileType?.startsWith("video/")) {
 
         switch (subcategory) {

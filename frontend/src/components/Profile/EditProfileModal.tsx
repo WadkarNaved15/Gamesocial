@@ -80,60 +80,147 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
 
     setForm({ ...form, bio: sanitizedValue });
   };
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>, type: 'avatar' | 'banner') => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.addEventListener("load", () => {
-        setEditingImage({ url: reader.result as string, type });
-      });
-      reader.readAsDataURL(file);
-    }
-  };
+const handleFileChange = async (
+  e: ChangeEvent<HTMLInputElement>,
+  type: "avatar" | "banner"
+) => {
+  const file = e.target.files?.[0];
 
-  const uploadToS3 = async (file: Blob, type: "avatar" | "banner") => {
-    const res = await axios.post(`${BACKEND_URL}/api/upload/presigned-url`, {
-      fileName: `${type}.jpg`,
+  if (!file) return;
+
+
+  // Profile banner: maximum 5 MB
+  if (type === "banner" && file.size > 5 * 1024 * 1024) {
+    alert("Profile banner must be 5 MB or smaller.");
+    e.target.value = "";
+    return;
+  }
+
+  // Allow only supported image formats
+  const allowedTypes = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+  ];
+
+  if (!allowedTypes.includes(file.type)) {
+    alert("Please select a JPG, PNG, WebP, or GIF image.");
+    e.target.value = "";
+    return;
+  }
+
+  // Animated formats must NOT go through canvas cropping.
+  const isAnimatedFormat =
+    file.type === "image/gif" ||
+    file.type === "image/webp";
+
+  if (type === "banner" && isAnimatedFormat) {
+    try {
+      const uploadedUrl = await uploadToS3(
+        file,
+        type,
+        file.name
+      );
+
+      setForm((prev) => ({
+        ...prev,
+        banner: uploadedUrl,
+      }));
+    } catch (err) {
+      console.error("Banner upload failed", err);
+      alert("Failed to upload banner.");
+    }
+
+    e.target.value = "";
+    return;
+  }
+
+  // Static images continue through the cropper
+  const reader = new FileReader();
+
+  reader.addEventListener("load", () => {
+    setEditingImage({
+      url: reader.result as string,
+      type,
+    });
+  });
+
+  reader.readAsDataURL(file);
+
+  e.target.value = "";
+};
+
+const uploadToS3 = async (
+  file: Blob,
+  type: "avatar" | "banner",
+  originalFileName?: string
+) => {
+  const extension =
+    file.type === "image/jpeg"
+      ? "jpg"
+      : file.type === "image/png"
+      ? "png"
+      : file.type === "image/webp"
+      ? "webp"
+      : file.type === "image/gif"
+      ? "gif"
+      : "jpg";
+
+  const fileName = originalFileName
+    ? originalFileName
+    : `${type}.${extension}`;
+
+  const res = await axios.post(
+    `${BACKEND_URL}/api/upload/presigned-url`,
+    {
+      fileName,
       fileType: file.type,
       category: "media",
-    });
+      subcategory:
+        type === "banner" ? "profile-banner" : "profile-avatar",
+      fileSize: file.size,
+    }
+  );
 
-    await axios.put(res.data.uploadUrl, file, {
-      headers: { "Content-Type": file.type },
-    });
+  await axios.put(res.data.uploadUrl, file, {
+    headers: {
+      "Content-Type": file.type,
+    },
+  });
 
-    return res.data.fileUrl as string;
-  };
+  return res.data.fileUrl as string;
+};
 
   const onCropComplete = useCallback((_: any, clippedPixels: any) => {
     setCroppedAreaPixels(clippedPixels);
   }, []);
 
-  const applyCrop = async () => {
-    if (!editingImage || !croppedAreaPixels) return;
+const applyCrop = async () => {
+  if (!editingImage || !croppedAreaPixels) return;
 
-    try {
-      const croppedBlob = await getCroppedImage(
-        editingImage.url,
-        croppedAreaPixels
-      );
+  try {
+    const croppedBlob = await getCroppedImage(
+      editingImage.url,
+      croppedAreaPixels
+    );
 
-      const uploadedUrl = await uploadToS3(
-        croppedBlob,
-        editingImage.type
-      );
+    const uploadedUrl = await uploadToS3(
+      croppedBlob,
+      editingImage.type
+    );
 
-      setForm((prev) => ({
-        ...prev,
-        [editingImage.type]: uploadedUrl,
-      }));
+    setForm((prev) => ({
+      ...prev,
+      [editingImage.type]: uploadedUrl,
+    }));
 
-      setEditingImage(null);
-      setZoom(1);
-    } catch (err) {
-      console.error("Image upload failed", err);
-    }
-  };
+    setEditingImage(null);
+    setZoom(1);
+  } catch (err) {
+    console.error("Image upload failed", err);
+  }
+};
 
   const saveProfile = async () => {
     try {
@@ -306,7 +393,13 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
                   <Camera className="text-white w-6 h-6" />
                 </button>
               </div>
-              <input type="file" ref={bannerInputRef} hidden accept="image/*" onChange={(e) => handleFileChange(e, 'banner')} />
+              <input
+                type="file"
+                ref={bannerInputRef}
+                hidden
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={(e) => handleFileChange(e, "banner")}
+              />
             </div>
 
             {/* Avatar */}
