@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, memo, useCallback } from "react";
+import React, { useState, useEffect, useRef, memo, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../context/user";
 import { Link as LinkIcon, MoreHorizontal, Trash2 } from "lucide-react";
@@ -26,6 +26,7 @@ export interface Comment {
     user?: {
         _id: string;
         username: string;
+        displayName?: string;
         avatar?: string;
     };
     review?: {
@@ -65,6 +66,25 @@ interface CommentCardProps {
 }
 
 const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+const getRelativeTime = (date: string | Date) => {
+    const now = new Date();
+    const created = new Date(date);
+    const diffMs = now.getTime() - created.getTime();
+
+    const seconds = Math.floor(diffMs / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    if (seconds < 60) return `${seconds}s`;
+    if (minutes < 60) return `${minutes}m`;
+    if (hours < 24) return `${hours}h`;
+
+    return created.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+    });
+};
 
 export const CommentCard = memo(
     ({
@@ -118,6 +138,11 @@ export const CommentCard = memo(
 
         const hasCommentText = (comment.text ?? "").trim().length > 0;
 
+        const timestamp = useMemo(
+            () => getRelativeTime(comment.createdAt),
+            [comment.createdAt]
+        );
+
         const formatPlayTime = (ms?: number) => {
             if (!ms) return "";
             const totalSeconds = Math.floor(ms / 1000);
@@ -154,39 +179,52 @@ export const CommentCard = memo(
                 <div className="flex-1 min-w-0">
                     {/* Comment Card Bubble */}
                     <div className="bg-gray-50 dark:bg-zinc-900 rounded-2xl px-4 py-3 shadow-sm border border-gray-100 dark:border-zinc-800">
-                        <div className="flex justify-between items-center mb-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-bold text-sm text-gray-900 dark:text-gray-100">
-                                    {comment.isDeleted
-                                        ? "Deleted"
-                                        : comment.user?.username || "Anonymous"}
-                                </span>
-
-                                {comment.parentComment && comment.mentions && comment.mentions.length > 0 && (
-                                    <span className="text-xs text-gray-400 dark:text-zinc-500 flex items-center gap-1">
-                                        <span>replying to</span>
-                                        <span className="text-blue-600 dark:text-blue-400 font-medium hover:underline cursor-pointer">
-                                            @{comment.mentions[0]?.originalUsername || comment.mentions[0]?.user?.username}
-                                        </span>
+                        <div className="flex justify-between items-start -mt-1 mb-2">
+                            <div className="flex items-start gap-2 flex-wrap">
+                                {/* User name + username */}
+                                <div className="flex flex-col">
+                                    <span className="font-bold text-sm text-gray-900 dark:text-gray-100">
+                                        {comment.isDeleted
+                                            ? "Deleted"
+                                            : comment.user?.displayName || "Anonymous"}
                                     </span>
-                                )}
+
+                                    {!comment.isDeleted && comment.user?.username && (
+                                        <span className="text-xs text-gray-400 dark:text-zinc-500">
+                                            @{comment.user.username}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {comment.parentComment &&
+                                    comment.mentions &&
+                                    comment.mentions.length > 0 && (
+                                        <span className="text-xs text-gray-400 dark:text-zinc-500 flex items-center gap-1 mt-0.5">
+                                            <span>replying to</span>
+                                            <span className="text-blue-600 dark:text-blue-400 font-medium hover:underline cursor-pointer">
+                                                @{comment.mentions[0]?.originalUsername ||
+                                                    comment.mentions[0]?.user?.username}
+                                            </span>
+                                        </span>
+                                    )}
 
                                 {comment.review?.isGameReview && (
-                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold tracking-wide shrink-0 text-teal-600 dark:text-[#62d4ae]">
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold tracking-wide shrink-0 text-teal-600 dark:text-[#62d4ae] mt-0.5">
                                         Played {formatPlayTime(comment.review.feedback?.playTimeMs)}
                                     </span>
                                 )}
 
-                                {comment.review?.isGameReview && comment.review.feedback?.overall && (
-                                    <span className="inline-flex items-center rounded-md bg-amber-100 px-1 py-0.5 text-[10px] font-bold tracking-wide text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
-                                        ⭐ {comment.review.feedback.overall}/10
-                                    </span>
-                                )}
+                                {comment.review?.isGameReview &&
+                                    comment.review.feedback?.overall && (
+                                        <span className="inline-flex items-center rounded-md bg-amber-100 px-1 py-0.5 text-[10px] font-bold tracking-wide text-amber-700 dark:bg-amber-900/20 dark:text-amber-300 mt-0.5">
+                                            ⭐ {comment.review.feedback.overall}/10
+                                        </span>
+                                    )}
                             </div>
 
                             <div className="flex items-center gap-2">
                                 <span className="text-[11px] text-gray-400 font-medium">
-                                    {new Date(comment.createdAt).toLocaleDateString()}
+                                    {timestamp}
                                 </span>
 
                                 {canDelete && !comment.isDeleted && (
@@ -220,6 +258,7 @@ export const CommentCard = memo(
                                 )}
                             </div>
                         </div>
+
 
                         {comment.isDeleted ? (
                             <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">

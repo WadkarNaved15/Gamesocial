@@ -215,7 +215,7 @@ export const createComment = async (req, res) => {
             await Comment.findById(comment._id)
                 .populate(
                     "user",
-                    "username avatar"
+                    "username displayName avatar"
                 )
                 .populate(
                     "mentions.user",
@@ -311,7 +311,7 @@ export const getComments = async (req, res) => {
         };
 
         const comments = await Comment.find(query)
-            .populate("user", "username avatar")
+            .populate("user", "username displayName avatar")
             .populate("mentions.user", "username displayName avatar")
             .populate({
                 path: "review.feedback",
@@ -374,7 +374,7 @@ export const getCommentThread = async (req, res) => {
         };
 
         const rawReplies = await Comment.find(query)
-            .populate("user", "username avatar")
+            .populate("user", "username displayName avatar")
             .populate(
                 "mentions.user",
                 "username displayName avatar"

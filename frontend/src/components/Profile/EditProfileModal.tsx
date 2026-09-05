@@ -3,7 +3,9 @@ import { useState, useRef, ChangeEvent, useCallback, useEffect } from "react";
 import Cropper from "react-easy-crop";
 import axios from "axios";
 import { getCroppedImage } from "../../utils/cropImage";
+import { cropGif } from "../../utils/cropGif";
 import { useUser } from "../../context/user";
+import { toast } from "react-toastify";
 
 interface EditProfileModalProps {
   onClose: () => void;
@@ -25,8 +27,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-  
-  const [editingImage, setEditingImage] = useState<{ url: string; type: 'avatar' | 'banner' } | null>(null);
+
+  const [editingImage, setEditingImage] = useState<{ url: string; type: 'avatar' | 'banner'; file?: File; isGif?: boolean; } | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
@@ -38,7 +40,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
   const [usernameMessage, setUsernameMessage] = useState("");
   const usernameCache = useRef(new Map());
   const controllerRef = useRef<AbortController | null>(null);
-  
+
   if (!user) return null;
 
   const [form, setForm] = useState({
@@ -61,13 +63,13 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
     setForm({ ...form, [field]: sanitizedValue });
   };
 
-// Handler for Bio: allows max 1 empty line, collapses horizontal spaces, and limits TOTAL lines
+  // Handler for Bio: allows max 1 empty line, collapses horizontal spaces, and limits TOTAL lines
   const handleBioChange = (value: string) => {
     let sanitizedValue = value.trimStart();
-    
+
     // 1. Replace 3 or more consecutive newlines with exactly 2 newlines
     sanitizedValue = sanitizedValue.replace(/\n{3,}/g, '\n\n');
-    
+
     // 2. Replace 2 or more horizontal spaces/tabs with a single space
     sanitizedValue = sanitizedValue.replace(/[ \t]{2,}/g, ' ');
 
@@ -80,26 +82,94 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
 
     setForm({ ...form, bio: sanitizedValue });
   };
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>, type: 'avatar' | 'banner') => {
+  const handleFileChange = async (
+    e: ChangeEvent<HTMLInputElement>,
+    type: "avatar" | "banner"
+  ) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.addEventListener("load", () => {
-        setEditingImage({ url: reader.result as string, type });
-      });
-      reader.readAsDataURL(file);
+
+    if (!file) return;
+
+
+    // Profile banner: maximum 5 MB
+    if (type === "banner" && file.size > 5 * 1024 * 1024) {
+      alert("Profile banner must be 5 MB or smaller.");
+      e.target.value = "";
+      return;
     }
+
+    // Allow only supported image formats
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      alert("Please select a JPG, PNG, WebP, or GIF image.");
+      e.target.value = "";
+      return;
+    }
+
+    // Static images continue through the cropper
+    const reader = new FileReader();
+    reader.onload = () => {
+      setEditingImage({
+        url: reader.result as string,
+        type,
+        file: type === "banner" && file.type === "image/gif"
+          ? file
+          : undefined,
+        isGif: type === "banner" && file.type === "image/gif",
+      });
+
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCroppedAreaPixels(null);
+    };
+
+    reader.readAsDataURL(file);
+
+    e.target.value = "";
   };
 
-  const uploadToS3 = async (file: Blob, type: "avatar" | "banner") => {
-    const res = await axios.post(`${BACKEND_URL}/api/upload/presigned-url`, {
-      fileName: `${type}.jpg`,
-      fileType: file.type,
-      category: "media",
-    });
+  const uploadToS3 = async (
+    file: Blob,
+    type: "avatar" | "banner",
+    originalFileName?: string
+  ) => {
+    const extension =
+      file.type === "image/jpeg"
+        ? "jpg"
+        : file.type === "image/png"
+          ? "png"
+          : file.type === "image/webp"
+            ? "webp"
+            : file.type === "image/gif"
+              ? "gif"
+              : "jpg";
+
+    const fileName = originalFileName
+      ? originalFileName
+      : `${type}.${extension}`;
+
+    const res = await axios.post(
+      `${BACKEND_URL}/api/upload/presigned-url`,
+      {
+        fileName,
+        fileType: file.type,
+        category: "media",
+        subcategory:
+          type === "banner" ? "profile-banner" : "profile-avatar",
+        fileSize: file.size,
+      }
+    );
 
     await axios.put(res.data.uploadUrl, file, {
-      headers: { "Content-Type": file.type },
+      headers: {
+        "Content-Type": file.type,
+      },
     });
 
     return res.data.fileUrl as string;
@@ -113,13 +183,27 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
     if (!editingImage || !croppedAreaPixels) return;
 
     try {
-      const croppedBlob = await getCroppedImage(
-        editingImage.url,
-        croppedAreaPixels
-      );
+      let processedFile: Blob;
+
+      if (editingImage.isGif && editingImage.file) {
+        processedFile = await cropGif(
+          editingImage.file,
+          croppedAreaPixels
+        );
+      } else {
+        processedFile = await getCroppedImage(
+          editingImage.url,
+          croppedAreaPixels
+        );
+      }
+
+      if (processedFile.type === "image/gif" && processedFile.size > 4 * 1024 * 1024) {
+        toast.error("The processed GIF exceeds 4 MB. Please pick a smaller GIF.");
+        return;
+      }
 
       const uploadedUrl = await uploadToS3(
-        croppedBlob,
+        processedFile,
         editingImage.type
       );
 
@@ -130,15 +214,17 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
 
       setEditingImage(null);
       setZoom(1);
+      setCrop({ x: 0, y: 0 });
+      setCroppedAreaPixels(null);
     } catch (err) {
-      console.error("Image upload failed", err);
+      toast.error(`Image processing/upload failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
   const saveProfile = async () => {
     try {
       setIsSaving(true);
-      
+
       await axios.patch(
         `${BACKEND_URL}/api/me`,
         {
@@ -178,7 +264,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
     if (!user) return;
 
     const username = form.username.trim().toLowerCase();
-    
+
     if (username === user.username.toLowerCase()) {
       setUsernameStatus("idle");
       setUsernameMessage("");
@@ -190,7 +276,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
       setUsernameMessage("");
       return;
     }
-    
+
     const timeout = setTimeout(async () => {
       if (usernameCache.current.has(username)) {
         const cached: any = usernameCache.current.get(username);
@@ -200,7 +286,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
         setUsernameMessage(cached.error || "");
         return;
       }
-      
+
       try {
         setUsernameStatus("checking");
         controllerRef.current?.abort();
@@ -306,7 +392,13 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
                   <Camera className="text-white w-6 h-6" />
                 </button>
               </div>
-              <input type="file" ref={bannerInputRef} hidden accept="image/*" onChange={(e) => handleFileChange(e, 'banner')} />
+              <input
+                type="file"
+                ref={bannerInputRef}
+                hidden
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={(e) => handleFileChange(e, "banner")}
+              />
             </div>
 
             {/* Avatar */}
@@ -324,7 +416,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
           </div>
 
           <div className="p-4 pt-0 space-y-6">
-            
+
             {/* Display Name */}
             <div className={`group border rounded p-2 focus-within:border-blue-500 transition-colors ${form.displayName.length >= 30 ? 'border-red-500/50' : 'border-zinc-800'}`}>
               <div className="flex justify-between items-center">
@@ -370,7 +462,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
               <div className="flex justify-between items-center">
                 <label className="text-xs text-zinc-500">Bio</label>
                 <span className={`text-xs ${form.bio.length >= 180 ? 'text-red-500' : 'text-zinc-500'}`}>
-                  {form.bio.length}/180 
+                  {form.bio.length}/180
                 </span>
               </div>
               <textarea
@@ -446,7 +538,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose, onSaved })
                 <p className="text-xs text-red-500 mt-1">Maximum character limit reached.</p>
               )}
             </div>
-            
+
           </div>
         </div>
       </div>
